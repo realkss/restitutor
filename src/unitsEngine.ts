@@ -38,7 +38,7 @@ function dimScale(d: Dim, p: number, q: number): Dim {
   return d.map((x) => {
     const scaled = x * p
     if (scaled % q !== 0) {
-      throw new Unsupported("a fractional power produced a dimension the engine cannot represent")
+      throw new Unsupported("a fractional power whose dimension the engine cannot represent")
     }
     return scaled / q
   }) as Dim
@@ -237,24 +237,46 @@ export function findRegistryForSlug(slug: string): HubRegistry | null {
  */
 function solveCG(d: Dim): { a: number; b: number } | string {
   if (d[3] !== 0) {
-    return "the temperature dimensions do not balance — this hub keeps k_B explicit and only reinserts c and G"
+    return "temperature dimensions that do not balance — this hub keeps k_B explicit and only reinserts c and G"
   }
   if (d[4] !== 0) {
-    return "the charge dimensions do not balance — electromagnetic restoration (1/4πε₀) is not wired in yet"
+    return "charge dimensions that do not balance — electromagnetic restoration (1/4πε₀) is not wired in yet"
   }
   const b = -d[0]
   const a = d[1] - 3 * b
   if (-a - 2 * b !== d[2]) {
-    return "no c–G completion exists for this equation under the registry's readings of its symbols"
+    return "a term admitting no c–G completion under the registry's readings of its symbols"
   }
   return { a, b }
+}
+
+// ---------------------------------------------------------------------------
+// Target unit systems
+// ---------------------------------------------------------------------------
+
+/**
+ * Where the translation lands. The three named systems share the same c/G
+ * structure for gravitational content (they diverge only once electromagnetic
+ * symbols enter, via the 4π/ε₀ conventions), but label units differently.
+ * `geometrized` is orthogonal: it strips c and G (after verifying each term's
+ * constants are consistent) instead of restoring them.
+ */
+export type UnitSystem = "hl" | "si" | "gaussian"
+export type TargetSpec = { system: UnitSystem; geometrized: boolean }
+
+export const DEFAULT_TARGET: TargetSpec = { system: "hl", geometrized: false }
+
+export const SYSTEM_LABELS: Record<UnitSystem, string> = {
+  hl: "Heaviside–Lorentz",
+  si: "SI",
+  gaussian: "Gaussian (CGS)",
 }
 
 // ---------------------------------------------------------------------------
 // KaTeX parse-tree analysis
 // ---------------------------------------------------------------------------
 
-export type LegendEntry = { tex: string; gloss: string; si: string }
+export type LegendEntry = { tex: string; gloss: string; unit: string }
 
 export type TranslationResult =
   | {
@@ -268,13 +290,17 @@ export type TranslationResult =
   | { kind: "no-anchor"; legend: LegendEntry[] }
   | { kind: "declined"; reasons: string[]; unknown: string[]; legend: LegendEntry[] }
 
+type LegendRecord = { tex: string; gloss: string; si: string; dim: Dim }
+
 type Ctx = {
   input: string
   reg: HubRegistry
-  legend: Map<string, LegendEntry>
+  legend: Map<string, LegendRecord>
   unknown: Map<string, string>
-  /** Set whenever any c/G insertion happens, at any nesting level. */
+  /** Set whenever the emitted equation differs from the source (insertion or strip). */
   mutated: boolean
+  /** Geometrized target: verify consistency but strip c/G factors instead of inserting. */
+  strip: boolean
 }
 
 type FactorKind = "num" | "glue" | "sym" | "diff" | "frac" | "sqrt" | "group" | "func" | "rider"
@@ -400,7 +426,7 @@ function spanOf(node: unknown): [number, number] | null {
 
 function srcOf(node: unknown, ctx: Ctx): string {
   const span = spanOf(node)
-  if (!span) throw new Unsupported("source positions unavailable for part of this equation")
+  if (!span) throw new Unsupported("a fragment whose source position could not be recovered")
   return ctx.input.slice(span[0], span[1])
 }
 
@@ -517,7 +543,7 @@ function allIndexTokens(nodes: any[]): boolean {
       return u.type === "atom" && u.family === "punct"
     })
   ) {
-    throw new Unsupported("comma/semicolon derivative indices are not supported yet")
+    throw new Unsupported("comma/semicolon derivative indices, which are not supported yet")
   }
   return meaningful.every((n) => isIndexToken(n))
 }
@@ -613,8 +639,11 @@ function resolveSymbol(
     ctx.unknown.set(key, displayTex)
     return ZERO
   }
-  if (!ctx.legend.has(key)) {
-    ctx.legend.set(key, { tex: displayTex, gloss: entry.gloss, si: entry.si })
+  // Key the legend by what the reader would see, so the same symbol reached
+  // through different routes (bare r and the r inside dr) shows one row.
+  const legendKey = `${displayTex}|${entry.gloss}`
+  if (!ctx.legend.has(legendKey)) {
+    ctx.legend.set(legendKey, { tex: displayTex, gloss: entry.gloss, si: entry.si, dim: entry.dim })
   }
   return entry.dim
 }
@@ -671,6 +700,9 @@ function termInsertion(t: TermInfo, target: Dim, ctx: Ctx): { a: number; b: numb
   if (typeof solved === "string") {
     throw new Unsupported(`${solved} (term “${t.src}”)`)
   }
+  // Geometrized target: consistency is verified (above), but no constants are
+  // inserted — the ones present get stripped at emission instead.
+  if (ctx.strip) return null
   ctx.mutated = true
   return solved
 }
@@ -714,14 +746,14 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode): SumInfo {
       continue
     }
     if (n?.type === "atom" && n.family === "bin" && (n.text === "\\pm" || n.text === "\\mp")) {
-      throw new Unsupported("\\pm / \\mp are not supported")
+      throw new Unsupported("a \\pm or \\mp branch, which is not supported")
     }
     current.push(n)
   }
   if (current.length === 0 && termNodeLists.length === 0) {
-    throw new Unsupported("empty expression")
+    throw new Unsupported("an empty expression")
   }
-  if (current.length === 0) throw new Unsupported("expression ends in an operator")
+  if (current.length === 0) throw new Unsupported("an expression that ends in an operator")
   termNodeLists.push(current)
   signs.push(pendingSign)
 
@@ -1013,6 +1045,18 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       }
       const src = srcOf(n, ctx)
       const d = resolveSymbol(text, src, ctx, {})
+      if (text === "c" || text === "G") {
+        // Geometrized target: the constant is set to 1 and vanishes.
+        return {
+          kind: "sym",
+          dim: d,
+          emit: () => {
+            if (!ctx.strip) return src
+            ctx.mutated = true
+            return ""
+          },
+        }
+      }
       return { kind: "sym", dim: d, emit: () => src }
     }
     case "supsub":
@@ -1027,8 +1071,14 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const denFactors = sumAsFactorList(denSum)
       const d = dimSub(numSum.dim, denSum.dim)
       const frac = { cmd, num: numFactors, den: denFactors }
-      const emit = () =>
-        `${cmd}{${joinTex(frac.num.map((f) => f.emit()))}}{${joinTex(frac.den.map((f) => f.emit()))}}`
+      const emit = () => {
+        // Stripped constants may empty a side: \frac{c^4}{4GM} → \frac{1}{4M},
+        // \frac{v}{c} → v.
+        const numTex = joinTex(frac.num.map((f) => f.emit())) || "1"
+        const denTex = joinTex(frac.den.map((f) => f.emit()))
+        if (denTex === "") return numTex
+        return `${cmd}{${numTex}}{${denTex}}`
+      }
       return { kind: "frac", dim: d, emit, frac }
     }
     case "sqrt": {
@@ -1077,7 +1127,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         const innerFactor = analyzeFactor(n.base, ctx)
         return { kind: "sym", dim: innerFactor.dim, emit: () => `${label}{${innerFactor.emit()}}` }
       }
-      throw new Unsupported(`the accent “${label}” is not supported`)
+      throw new Unsupported(`the unsupported accent “${label}”`)
     }
     case "overline": {
       const inner = analyzeFactor(n.body, ctx)
@@ -1091,7 +1141,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       )
     }
     case "operatorname":
-      throw new Unsupported("\\operatorname constructs are not supported")
+      throw new Unsupported("an \\operatorname construct, which is not supported")
     case "text":
       throw new Unsupported("\\text content inside the equation")
     case "ordgroup": {
@@ -1102,7 +1152,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     case "atom":
       throw new Unsupported(`the symbol “${n.text}” in this position`)
     default:
-      throw new Unsupported(`the construct “${n.type}” is not supported yet`)
+      throw new Unsupported(`the construct “${n.type}”, which is not supported yet`)
   }
 }
 
@@ -1146,7 +1196,7 @@ function baseTexOf(rawBase: any, ctx: Ctx): string | null {
 function analyzeSupsub(n: any, ctx: Ctx): Factor {
   const base = unwrap(n.base)
   const sup = n.sup != null ? classifySup(n.sup) : null
-  if (sup === "prime") throw new Unsupported("primed symbols are not in the dictionary")
+  if (sup === "prime") throw new Unsupported("a primed symbol, which is not in the dictionary")
 
   // {}^{d} / {}_{\mu\nu} index riders (as in R_{abc}{}^{d} or \Gamma^{\rho}{}_{\mu\nu}).
   if (base == null || (base.type === "ordgroup" && base.body.length === 0)) {
@@ -1170,7 +1220,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
     if (typeof sup === "object") {
       return { kind: "sym", dim: dimScale(d, sup.p, sup.q), emit: () => wholeTex }
     }
-    throw new Unsupported(`the exponent on “${wholeTex}” could not be read`)
+    throw new Unsupported(`an exponent on “${wholeTex}” that could not be read`)
   }
 
   // Pure superscript.
@@ -1182,7 +1232,19 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
     if (typeof sup === "object") {
       const isConst = baseText === "\\pi" || baseText === "i" || baseText === "e"
       const d = isConst ? ZERO : resolveSymbol(baseText, baseTex!, ctx, {})
-      return { kind: isConst ? "num" : "sym", dim: dimScale(d, sup.p, sup.q), emit: () => wholeTex }
+      const scaled = dimScale(d, sup.p, sup.q)
+      if (baseText === "c" || baseText === "G") {
+        return {
+          kind: "sym",
+          dim: scaled,
+          emit: () => {
+            if (!ctx.strip) return wholeTex
+            ctx.mutated = true
+            return ""
+          },
+        }
+      }
+      return { kind: isConst ? "num" : "sym", dim: scaled, emit: () => wholeTex }
     }
     // Expression exponent: legal only on a dimensionless base; the exponent is
     // itself a geometrized expression restored against a dimensionless target.
@@ -1254,7 +1316,15 @@ function formatExp(tex: string, e12: number): string {
 }
 
 function emitTerm(t: TermInfo): string {
-  return joinTex(t.factors.map((f) => f.emit()))
+  // Stripped constants may leave a side of a "/" (or the whole term) empty.
+  if (t.slashIdx >= 0) {
+    const num = joinTex(t.factors.slice(0, t.slashIdx).map((f) => f.emit()))
+    const den = joinTex(t.factors.slice(t.slashIdx + 1).map((f) => f.emit()))
+    if (den === "") return num === "" ? "1" : num
+    if (num === "") return `1/${den}`
+    return `${num}/${den}`
+  }
+  return joinTex(t.factors.map((f) => f.emit())) || "1"
 }
 
 /**
@@ -1345,19 +1415,83 @@ function emitTermWith(t: TermInfo, a12: number, b12: number): string {
 // Relations, rows, and the top-level entry point
 // ---------------------------------------------------------------------------
 
-function unitTexOf(d: Dim): string {
-  if (dimIsZero(d)) return "\\text{dimensionless}"
-  const units: Array<[string, number]> = [
-    ["\\mathrm{kg}", d[0]],
-    ["\\mathrm{m}", d[1]],
-    ["\\mathrm{s}", d[2]],
-    ["\\mathrm{K}", d[3]],
-    ["\\mathrm{A}", d[4]],
-  ]
-  return units
-    .filter(([, e]) => e !== 0)
-    .map(([u, e]) => formatExp(u, e))
-    .join("\\,")
+/** Base units of the target for [M, L, T, Θ, I]; H-L and Gaussian share the CGS mechanical base. */
+function baseUnitsOf(system: UnitSystem): [string, string, string, string, string] {
+  return system === "si" ? ["kg", "m", "s", "K", "A"] : ["g", "cm", "s", "K", "A"]
+}
+
+/** KaTeX form of the dimension `d` in the target — for the "both sides carry …" banner. */
+function unitTexOf(d: Dim, spec: TargetSpec): string {
+  const [uM, uL, uT, uTh, uI] = baseUnitsOf(spec.system)
+  let units: Array<[string, number]>
+  if (spec.geometrized) {
+    // With G = c = 1, mass and time both measure in length; k_B keeps kelvin explicit.
+    units = [
+      [`\\mathrm{${uL}}`, d[0] + d[1] + d[2]],
+      ["\\mathrm{K}", d[3]],
+      [`\\mathrm{${uI}}`, d[4]],
+    ]
+  } else {
+    units = [
+      [`\\mathrm{${uM}}`, d[0]],
+      [`\\mathrm{${uL}}`, d[1]],
+      [`\\mathrm{${uT}}`, d[2]],
+      [`\\mathrm{${uTh}}`, d[3]],
+      [`\\mathrm{${uI}}`, d[4]],
+    ]
+  }
+  const parts = units.filter(([, e]) => e !== 0)
+  if (parts.length === 0) return "\\text{dimensionless}"
+  return parts.map(([u, e]) => formatExp(u, e)).join("\\,")
+}
+
+const SUPERSCRIPT_DIGITS: Record<string, string> = {
+  "-": "⁻",
+  "0": "⁰",
+  "1": "¹",
+  "2": "²",
+  "3": "³",
+  "4": "⁴",
+  "5": "⁵",
+  "6": "⁶",
+  "7": "⁷",
+  "8": "⁸",
+  "9": "⁹",
+}
+
+function unicodeExp(unit: string, e12: number): string {
+  if (e12 === 0) return ""
+  if (e12 === D12) return unit
+  if (e12 % D12 === 0) {
+    const sup = String(e12 / D12)
+      .split("")
+      .map((ch) => SUPERSCRIPT_DIGITS[ch] ?? ch)
+      .join("")
+    return `${unit}${sup}`
+  }
+  return `${unit}^(${e12}/12)`
+}
+
+/** Plain-text unit label for a legend row, in the target system. */
+function legendUnitOf(record: LegendRecord, spec: TargetSpec): string {
+  if (spec.system === "si" && !spec.geometrized) return record.si
+  const d = record.dim
+  const [uM, uL, uT, uTh, uI] = baseUnitsOf(spec.system)
+  const units: Array<[string, number]> = spec.geometrized
+    ? [
+        [uL, d[0] + d[1] + d[2]],
+        ["K", d[3]],
+        [uI, d[4]],
+      ]
+    : [
+        [uM, d[0]],
+        [uL, d[1]],
+        [uT, d[2]],
+        [uTh, d[3]],
+        [uI, d[4]],
+      ]
+  const parts = units.filter(([, e]) => e !== 0).map(([u, e]) => unicodeExp(u, e))
+  return parts.length === 0 ? "1" : parts.join(" ")
 }
 
 type RowResult = { sideTexts: string[]; rels: string[]; target: Dim; hadRel: boolean }
@@ -1383,7 +1517,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
         throw new Unsupported(
           n.text === "\\propto"
             ? "a proportionality — constants are absorbed in ∝, so restoring them is not meaningful"
-            : `the relation “${n.text}” is not supported`,
+            : `the unsupported relation “${n.text}”`,
         )
       }
       sides.push(current)
@@ -1434,15 +1568,30 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
   return { sideTexts, rels, target: resolvedTarget, hadRel: true }
 }
 
-export function translateGeometrizedTex(
+export function translateTex(
   rawTex: string,
   katex: { __parse: (tex: string, options?: Record<string, unknown>) => any[] },
   reg: HubRegistry,
+  spec: TargetSpec = DEFAULT_TARGET,
 ): TranslationResult {
   // Display equations routinely end in prose punctuation (“… = 8\pi T_{ab}.”,
   // “\right),”). That punctuation is the sentence's, not the equation's.
   const tex = rawTex.replace(/\s+$/, "").replace(/[.,;]$/, "")
-  const ctx: Ctx = { input: tex, reg, legend: new Map(), unknown: new Map(), mutated: false }
+  const ctx: Ctx = {
+    input: tex,
+    reg,
+    legend: new Map(),
+    unknown: new Map(),
+    mutated: false,
+    strip: spec.geometrized,
+  }
+
+  const legendOut = () =>
+    Array.from(ctx.legend.values()).map((record) => ({
+      tex: record.tex,
+      gloss: record.gloss,
+      unit: legendUnitOf(record, spec),
+    }))
 
   const finish = (
     make: () => { restoredTex: string; targetUnitTex: string; changed: boolean } | "no-anchor",
@@ -1454,11 +1603,11 @@ export function translateGeometrizedTex(
           kind: "declined",
           reasons: [],
           unknown: Array.from(ctx.unknown.values()),
-          legend: Array.from(ctx.legend.values()),
+          legend: legendOut(),
         }
       }
       if (outcome === "no-anchor") {
-        return { kind: "no-anchor", legend: Array.from(ctx.legend.values()) }
+        return { kind: "no-anchor", legend: legendOut() }
       }
       return {
         kind: "translated",
@@ -1466,16 +1615,15 @@ export function translateGeometrizedTex(
         restoredTex: outcome.restoredTex,
         changed: outcome.changed,
         targetUnitTex: outcome.targetUnitTex,
-        legend: Array.from(ctx.legend.values()),
+        legend: legendOut(),
       }
     } catch (error) {
-      const reason =
-        error instanceof Unsupported ? error.reason : "KaTeX could not parse this equation"
+      const reason = error instanceof Unsupported ? error.reason : "TeX that KaTeX could not parse"
       return {
         kind: "declined",
         reasons: [reason],
         unknown: Array.from(ctx.unknown.values()),
-        legend: Array.from(ctx.legend.values()),
+        legend: legendOut(),
       }
     }
   }
@@ -1507,7 +1655,7 @@ export function translateGeometrizedTex(
     try {
       nodes = katex.__parse(tex, { strict: false, trust: false })
     } catch {
-      throw new Unsupported("KaTeX could not parse this equation")
+      throw new Unsupported("TeX that KaTeX could not parse")
     }
 
     const meaningful = nodes.filter((n) => n && !SKIP_TYPES.has(n.type))
@@ -1537,7 +1685,7 @@ export function translateGeometrizedTex(
       checkRebuilt(restored)
       return {
         restoredTex: restored,
-        targetUnitTex: unitTexOf(carried ?? ZERO),
+        targetUnitTex: unitTexOf(carried ?? ZERO, spec),
         changed: ctx.mutated,
       }
     }
@@ -1546,6 +1694,10 @@ export function translateGeometrizedTex(
     if (!res.hadRel) return "no-anchor"
     const restored = rowTexOf(res, false)
     checkRebuilt(restored)
-    return { restoredTex: restored, targetUnitTex: unitTexOf(res.target), changed: ctx.mutated }
+    return {
+      restoredTex: restored,
+      targetUnitTex: unitTexOf(res.target, spec),
+      changed: ctx.mutated,
+    }
   })
 }

@@ -1,7 +1,7 @@
 import test, { describe } from "node:test"
 import assert from "node:assert"
 import katexDefault from "katex"
-import { findRegistryForSlug, translateGeometrizedTex, TranslationResult } from "./unitsEngine"
+import { TargetSpec, TranslationResult, findRegistryForSlug, translateTex } from "./unitsEngine"
 
 // katex's published types omit the internal (but stable and documented) __parse.
 const katex = katexDefault as typeof katexDefault & {
@@ -10,12 +10,15 @@ const katex = katexDefault as typeof katexDefault & {
 
 const reg = findRegistryForSlug("en/Topics/Physics/Relativity-and-Gravitation/index")!
 
-function run(tex: string): TranslationResult {
-  return translateGeometrizedTex(tex, katex, reg)
+const SI: TargetSpec = { system: "si", geometrized: false }
+const GEO: TargetSpec = { system: "hl", geometrized: true }
+
+function run(tex: string, target: TargetSpec = SI): TranslationResult {
+  return translateTex(tex, katex, reg, target)
 }
 
-function restored(tex: string): string {
-  const result = run(tex)
+function restored(tex: string, target: TargetSpec = SI): string {
+  const result = run(tex, target)
   assert.strictEqual(
     result.kind,
     "translated",
@@ -343,6 +346,84 @@ describe("legend", () => {
       const keys = result.legend.map((l) => l.gloss)
       assert.ok(keys.some((g) => g.includes("Schwarzschild")))
       assert.ok(keys.some((g) => g.includes("mass")))
+    }
+  })
+
+  test("the same symbol reached as dr and bare r shows one row", () => {
+    const result = run("ds^2 = dr^2 + r^2 d\\Omega^2")
+    assert.strictEqual(result.kind, "translated", JSON.stringify(result))
+    if (result.kind === "translated") {
+      const rRows = result.legend.filter((l) => l.tex === "r")
+      assert.strictEqual(rRows.length, 1, JSON.stringify(result.legend))
+    }
+  })
+})
+
+describe("target systems", () => {
+  test("H-L and SI share the restored TeX for gravitational content; labels differ", () => {
+    const hl = run("r_s = 2M", { system: "hl", geometrized: false })
+    const si = run("r_s = 2M", SI)
+    assert.strictEqual(hl.kind, "translated")
+    assert.strictEqual(si.kind, "translated")
+    if (hl.kind === "translated" && si.kind === "translated") {
+      assert.strictEqual(hl.restoredTex, si.restoredTex)
+      assert.ok(si.targetUnitTex.includes("\\mathrm{m}"), si.targetUnitTex)
+      assert.ok(hl.targetUnitTex.includes("\\mathrm{cm}"), hl.targetUnitTex)
+    }
+  })
+
+  test("Gaussian legend labels use the CGS base", () => {
+    const result = run("r_s = 2M", { system: "gaussian", geometrized: false })
+    assert.strictEqual(result.kind, "translated")
+    if (result.kind === "translated") {
+      const mass = result.legend.find((l) => l.gloss === "mass")
+      assert.strictEqual(mass?.unit, "g", JSON.stringify(result.legend))
+    }
+  })
+
+  test("geometrizing strips constants: Schwarzschild radius", () => {
+    assert.strictEqual(restored("r_s = \\frac{2GM}{c^{2}}", GEO), "r_{s}=2M")
+  })
+
+  test("geometrizing empties a numerator down to 1: surface gravity", () => {
+    assert.strictEqual(restored("\\kappa = \\frac{c^{4}}{4GM}", GEO), "\\kappa=\\frac{1}{4M}")
+  })
+
+  test("geometrizing E = mc²", () => {
+    assert.strictEqual(restored("E = mc^2", GEO), "E=m")
+  })
+
+  test("already-geometrized input passes through unchanged under the geometrized target", () => {
+    const result = run("r_s = 2M", GEO)
+    assert.strictEqual(result.kind, "translated", JSON.stringify(result))
+    if (result.kind === "translated") assert.strictEqual(result.changed, false)
+  })
+
+  test("geometrized target still declines on non-c/G inconsistency", () => {
+    const result = run("T_H = \\kappa", GEO)
+    assert.strictEqual(result.kind, "declined", JSON.stringify(result))
+  })
+
+  test("geometrized target labels dimensions as length powers", () => {
+    const result = run("E = mc^2", GEO)
+    assert.strictEqual(result.kind, "translated")
+    if (result.kind === "translated") {
+      // Energy in G = c = 1 carries one power of length.
+      assert.ok(result.targetUnitTex.includes("\\mathrm{cm}"), result.targetUnitTex)
+      const mass = result.legend.find((l) => l.gloss === "mass")
+      assert.strictEqual(mass?.unit, "cm", JSON.stringify(result.legend))
+    }
+  })
+
+  test("geometrized restored output renders in KaTeX", () => {
+    for (const tex of [
+      "r_s = \\frac{2GM}{c^{2}}",
+      "ds^2 = -\\left(1 - \\frac{2GM}{rc^{2}}\\right)c^{2}dt^{2} + \\left(1 - \\frac{2GM}{rc^{2}}\\right)^{-1}dr^2 + r^2 d\\Omega^2",
+      "T_H = \\frac{\\hbar\\kappa}{2\\pi k_B c}",
+    ]) {
+      const result = run(tex, GEO)
+      assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "translated") rendersInKatex(result.restoredTex)
     }
   })
 })
