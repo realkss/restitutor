@@ -448,16 +448,20 @@ function spanOf(node: unknown): [number, number] | null {
   return e >= s ? [s, e] : null
 }
 
+// A TeX control word absorbs the whitespace that terminates it, and KaTeX's loc
+// spans include it — `\Sigma ` and `\Sigma\n  ` and `\Sigma` are the same symbol
+// but three different slices, which showed up as three legend rows and as raw
+// newlines inside decline sentences. Every slice is trimmed at the source.
 function srcOf(node: unknown, ctx: Ctx): string {
   const span = spanOf(node)
   if (!span) throw new Unsupported("a fragment whose source position could not be recovered")
-  return ctx.input.slice(span[0], span[1])
+  return ctx.input.slice(span[0], span[1]).trim()
 }
 
 function srcOfNodes(nodes: unknown[], ctx: Ctx): string {
   const span = spanOf(nodes)
   if (!span) return ""
-  return ctx.input.slice(span[0], span[1])
+  return ctx.input.slice(span[0], span[1]).trim()
 }
 
 function unwrap(node: any): any {
@@ -814,13 +818,31 @@ function termInsertion(t: TermInfo, target: Dim, ctx: Ctx): { a: number; b: numb
   }
   const solved = solveCG(need)
   if (typeof solved === "string") {
-    throw new Unsupported(`${solved} (term “${t.src}”)`)
+    throw new Unsupported(`${solved} (term “${termQuote(t, ctx)}”)`)
   }
   // Geometrized target: consistency is verified (above), but no constants are
   // inserted — the ones present get stripped at emission instead.
   if (ctx.strip) return null
   ctx.mutated = true
   return solved
+}
+
+/**
+ * The term as it reads, for quoting inside a decline sentence. Slicing the
+ * source over a term containing loc-less nodes drops their heads — a \frac term
+ * quoted itself as `{M}{r}\mathrm{d}r` — so the quote is rebuilt through the
+ * emit path, with insertions masked so it reads as the reader wrote it.
+ */
+function termQuote(t: TermInfo, ctx: Ctx): string {
+  const previous = ctx.mask
+  ctx.mask = true
+  try {
+    return emitTerm(t)
+  } catch {
+    return t.src
+  } finally {
+    ctx.mask = previous
+  }
 }
 
 /** A term built only from powers of c and G — a constant, with nothing to restore. */
@@ -957,8 +979,13 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx): TermInfo {
     if (prefix) {
       const operand = i + 1 < nodes.length ? nodes[i + 1] : null
       if (operand == null) {
+        // Not always an operator-form derivative: a trailing `d` in an index
+        // list (\epsilon_{abcd} = \sqrt{-g}\;[abcd]) lands here too, and telling
+        // that reader to "select the applied form" explains nothing.
         throw new Unsupported(
-          "an operator-form derivative (a bare d or ∂) — select the applied form instead",
+          prefix === "d"
+            ? "a trailing “d” with nothing after it, which the engine reads as a derivative rather than as an index letter"
+            : "an operator-form derivative (a bare ∂) — select the applied form instead",
         )
       }
       const merged = analyzeDifferential(prefix, raw, operand, ctx)
@@ -1022,6 +1049,24 @@ function safeSrc(node: any, ctx: Ctx): string {
   }
 }
 
+/**
+ * Source text of a node, rebuilding the font wrappers that carry no span of
+ * their own. `spanOf` descends past a font node to the letter inside it, so
+ * slicing `\mathrm{d}` returns `d` and the wrapper is lost; analyzeFactor and
+ * baseTexOf already reconstruct, and differentials now do too.
+ */
+function wrappedTexOf(raw: any, ctx: Ctx): string {
+  const peeled = peelStyles(raw)
+  if (peeled?.type === "font") return `\\${peeled.font}{${wrappedTexOf(peeled.body, ctx)}}`
+  if (peeled?.type === "supsub" && peeled.sub == null && peeled.sup != null) {
+    const base = peelStyles(peeled.base)
+    if (base?.type === "font") {
+      return `${wrappedTexOf(peeled.base, ctx)}^{${scriptSrc(peeled.sup, ctx)}}`
+    }
+  }
+  return safeSrc(raw, ctx)
+}
+
 function derivativePrefix(n: any): "d" | "partial" | null {
   if (n?.type === "mathord" && n.text === "d") return "d"
   if (n?.type === "mathord" && n.text === "\\partial") return "partial"
@@ -1045,7 +1090,10 @@ function analyzeDifferential(
   ctx: Ctx,
 ): Factor {
   const opU = unwrap(operandNode)
-  const wholeSrc = () => safeSrc(prefixNode, ctx) + safeSrc(operandNode, ctx)
+  // Reconstructed, never sliced: a font node carries no span of its own, so
+  // slicing `\mathrm{d}` yields the bare `d` inside it and the upright head is
+  // silently deleted — `-c^2\mathrm{d}t^2` shipped as `-c^{2}dt^2`.
+  const wholeSrc = () => joinTex([wrappedTexOf(prefixNode, ctx), wrappedTexOf(operandNode, ctx)])
   const prefixHasOrder = unwrap(prefixNode)?.type === "supsub"
 
   let operandDim: Dim
@@ -1128,6 +1176,16 @@ function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
     return joinTex([headTex, rebuilt])
   }
   return { kind: "func", dim: ZERO, emit }
+}
+
+/**
+ * The content of a braced argument (an accent's or \overline's), analyzed
+ * without the ordgroup emitter's own braces — going through analyzeFactor
+ * doubled them, so `\overline{r}` came back as `\overline{{r}}`.
+ */
+function bracedArg(node: any, ctx: Ctx): { dim: Dim; emit: () => string } {
+  const inner = parseSum(nodeListOf(node), ctx, { anchor: "internal" })
+  return { dim: inner.dim, emit: () => inner.emit() }
 }
 
 /** Peel style wrappers only (not font) — font must survive into the emission. */
@@ -1259,13 +1317,13 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         return { kind: "sym", dim: d, emit: () => display }
       }
       if (TRANSPARENT_ACCENTS.has(label)) {
-        const innerFactor = analyzeFactor(n.base, ctx)
-        return { kind: "sym", dim: innerFactor.dim, emit: () => `${label}{${innerFactor.emit()}}` }
+        const inner = bracedArg(n.base, ctx)
+        return { kind: "sym", dim: inner.dim, emit: () => `${label}{${inner.emit()}}` }
       }
       throw new Unsupported(`the unsupported accent “${label}”`)
     }
     case "overline": {
-      const inner = analyzeFactor(n.body, ctx)
+      const inner = bracedArg(n.body, ctx)
       return { kind: "sym", dim: inner.dim, emit: () => `\\overline{${inner.emit()}}` }
     }
     case "op": {
@@ -1668,13 +1726,20 @@ function legendUnitOf(record: LegendRecord, spec: TargetSpec): string {
 }
 
 /** Emission is a closure so the same analyzed row can be re-emitted with insertions masked. */
-type RowResult = { emitSides: () => string[]; rels: string[]; target: Dim; hadRel: boolean }
+type RowResult = {
+  emitSides: () => string[]
+  rels: string[]
+  /** Whether an alignment tab stood immediately before rels[i] in the source. */
+  tabAtRel: boolean[]
+  target: Dim
+  hadRel: boolean
+}
 
-function rowTexOf(row: RowResult, withTab: boolean): string {
+function rowTexOf(row: RowResult): string {
   const sideTexts = row.emitSides()
   let tex = sideTexts[0]
   for (let idx = 0; idx < row.rels.length; idx += 1) {
-    const tab = withTab && idx === 0 ? "&" : ""
+    const tab = row.tabAtRel[idx] ? "&" : ""
     tex += `${tex.length > 0 ? " " : ""}${tab}${row.rels[idx]} ${sideTexts[idx + 1]}`
   }
   return tex
@@ -1685,8 +1750,14 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
 
   const sides: any[][] = []
   const rels: string[] = []
+  const tabAtRel: boolean[] = []
   let current: any[] = []
+  let pendingTab = false
   for (const n of grouped) {
+    if (n?.type === "__tab") {
+      pendingTab = true
+      continue
+    }
     if (n?.type === "atom" && n.family === "rel") {
       if (!SUPPORTED_RELS.has(n.text)) {
         throw new Unsupported(
@@ -1696,11 +1767,22 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
         )
       }
       sides.push(current)
-      rels.push(safeSrc(n, ctx) || n.text)
+      rels.push((safeSrc(n, ctx) || n.text).trim())
+      tabAtRel.push(pendingTab)
+      pendingTab = false
       current = []
       continue
     }
+    // Spacing shims sit between the tab and the relation without ending the column.
+    if (!isEmptyOrdgroup(n) && !(n != null && SKIP_TYPES.has(n.type)) && pendingTab) {
+      throw new Unsupported(
+        "a column break that does not introduce a relation — the engine aligns equations, not free-form columns",
+      )
+    }
     current.push(n)
+  }
+  if (pendingTab) {
+    throw new Unsupported("a row that ends on an alignment tab")
   }
   sides.push(current)
 
@@ -1708,7 +1790,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
     // No relation: analyze for the legend, but there is nothing to anchor.
     parseSum(grouped, ctx, { anchor: "none" })
     const src = srcOfNodes(nodes, ctx)
-    return { emitSides: () => [src], rels: [], target: ZERO, hadRel: false }
+    return { emitSides: () => [src], rels: [], tabAtRel: [], target: ZERO, hadRel: false }
   }
 
   const sums = sides.map((side) =>
@@ -1748,7 +1830,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
       sum == null ? "" : emitSum(sum.terms, sum.ops, insertionsPerSide[idx], ctx),
     )
 
-  return { emitSides, rels, target: resolvedTarget, hadRel: true }
+  return { emitSides, rels, tabAtRel, target: resolvedTarget, hadRel: true }
 }
 
 export function translateTex(
@@ -1876,14 +1958,45 @@ export function translateTex(
       meaningful.length === 1 && meaningful[0].type === "array" ? meaningful[0] : null
 
     if (arrayNode != null) {
+      // The array node carries no environment name, so it is read off the
+      // source: rewriting every environment to `aligned` silently turned an
+      // array{cc} into something else. An environment outside this list has a
+      // row model the engine does not share (cases, matrix), and falls back to
+      // `aligned` — where the verbatim backstop catches it and declines.
+      const ROW_ENVS = new Set([
+        "aligned",
+        "align",
+        "align*",
+        "alignat",
+        "alignat*",
+        "gathered",
+        "gather",
+        "gather*",
+        "split",
+        "array",
+        "darray",
+      ])
+      const opener = /^\s*\\begin\{([a-zA-Z]+\*?)\}(\{[^{}]*\})?/.exec(tex)
+      const closes =
+        opener != null && new RegExp(`\\\\end\\{${opener[1].replace("*", "\\*")}\\}\\s*$`).test(tex)
+      const envName = closes && ROW_ENVS.has(opener![1]) ? opener![1] : "aligned"
+      const envArg = closes && ROW_ENVS.has(opener![1]) ? (opener![2] ?? "") : ""
+
+      // Cell boundaries are the alignment tabs; flattening the row away loses
+      // every tab past the first. A marker keeps them in the node stream.
       const rows: any[][] = arrayNode.body.map((row: any[]) =>
-        row.flatMap((cell: any) => nodeListOf(cell)),
+        row.flatMap((cell: any, idx: number) =>
+          idx === 0 ? nodeListOf(cell) : [{ type: "__tab" }, ...nodeListOf(cell)],
+        ),
       )
       let carried: Dim | null = null
       let anyRel = false
       const results: RowResult[] = []
-      for (const row of rows) {
-        if (row.length === 0 || row.every((n) => isEmptyOrdgroup(n))) continue
+      const gaps: string[] = []
+      for (let rowIdx = 0; rowIdx < rows.length; rowIdx += 1) {
+        const row = rows[rowIdx]
+        if (row.length === 0 || row.every((n) => isEmptyOrdgroup(n) || n?.type === "__tab"))
+          continue
         const res = translateRow(row, ctx, carried)
         if (res.hadRel) {
           carried = res.target
@@ -1892,10 +2005,19 @@ export function translateTex(
           throw new Unsupported("a continuation row without its own relation")
         }
         results.push(res)
+        // Row spacing is content: `\\[6pt]` must not become a bare `\\`.
+        const gap = arrayNode.rowGaps?.[rowIdx]
+        gaps.push(gap ? `[${gap.number}${gap.unit}]` : "")
       }
       if (!anyRel) return "no-anchor"
-      const rebuild = () =>
-        `\\begin{aligned}\n${results.map((res) => rowTexOf(res, res.hadRel)).join(" \\\\\n")}\n\\end{aligned}`
+      const rebuild = () => {
+        const body = results
+          .map(
+            (res, idx) => rowTexOf(res) + (idx < results.length - 1 ? ` \\\\${gaps[idx]}\n` : ""),
+          )
+          .join("")
+        return `\\begin{${envName}}${envArg}\n${body}\n\\end{${envName}}`
+      }
       const restored = rebuild()
       checkRebuilt(restored, rebuild)
       return {
@@ -1907,7 +2029,7 @@ export function translateTex(
 
     const res = translateRow(nodes, ctx, null)
     if (!res.hadRel) return "no-anchor"
-    const rebuild = () => rowTexOf(res, false)
+    const rebuild = () => rowTexOf(res)
     const restored = rebuild()
     checkRebuilt(restored, rebuild)
     return {

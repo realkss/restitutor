@@ -361,6 +361,81 @@ describe("review regressions", () => {
     if (result.kind === "translated") assert.strictEqual(result.changed, false)
   })
 
+  test("F6: the display-only environments are not reported as unparseable TeX", () => {
+    for (const tex of [
+      "\\begin{align} r_s &= 2M \\end{align}",
+      "\\begin{gather} r_s = 2M \\end{gather}",
+      "\\begin{split} r_s &= 2M \\end{split}",
+      "\\begin{alignat}{1} r_s &= 2M \\end{alignat}",
+    ]) {
+      const result = run(tex)
+      assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "translated") {
+        assert.ok(result.restoredTex.includes("\\frac{2GM}{c^{2}}"), result.restoredTex)
+        rendersInKatex(result.restoredTex)
+      }
+    }
+    // \label really is undefined in KaTeX — that decline is correct and stays.
+    const labelled = run("\\label{eq:rs} r_s = 2M")
+    assert.strictEqual(labelled.kind, "declined", JSON.stringify(labelled))
+  })
+
+  test("F7: alignment tabs, row gaps and the environment name all survive", () => {
+    // A tab before every relation, not just the first.
+    const twoTabs = run("\\begin{aligned} r_s &= 2M &= 2M \\end{aligned}")
+    assert.strictEqual(twoTabs.kind, "translated", JSON.stringify(twoTabs))
+    if (twoTabs.kind === "translated") {
+      assert.strictEqual((twoTabs.restoredTex.match(/&/g) ?? []).length, 2, twoTabs.restoredTex)
+      rendersInKatex(twoTabs.restoredTex)
+    }
+    // Row spacing is content, not decoration.
+    const gapped = run("\\begin{aligned} r_s &= 2M \\\\[6pt] r_s &= 2M \\end{aligned}")
+    assert.strictEqual(gapped.kind, "translated", JSON.stringify(gapped))
+    if (gapped.kind === "translated") {
+      assert.ok(gapped.restoredTex.includes("\\\\[6pt]"), gapped.restoredTex)
+      rendersInKatex(gapped.restoredTex)
+    }
+    // The source environment is echoed, not rewritten to aligned.
+    const arr = run("\\begin{array}{cc} r_s &= 2M \\end{array}")
+    assert.strictEqual(arr.kind, "translated", JSON.stringify(arr))
+    if (arr.kind === "translated") {
+      assert.ok(arr.restoredTex.includes("\\begin{array}{cc}"), arr.restoredTex)
+      assert.ok(!arr.restoredTex.includes("aligned"), arr.restoredTex)
+      rendersInKatex(arr.restoredTex)
+    }
+  })
+
+  test("F7: cmpNorm no longer blinds the backstop to lost alignment", () => {
+    // An environment the engine has no row model for must not be silently
+    // rewritten into `aligned` — the backstop has to be able to see the tabs.
+    const cases = run("\\begin{cases} r_s = 2M \\\\ r_s = 2M \\end{cases}")
+    assert.strictEqual(cases.kind, "declined", JSON.stringify(cases))
+  })
+
+  test("F4: an upright \\mathrm{d} differential keeps its head", () => {
+    // Already consistent: the rebuilt equation must be the source verbatim.
+    const noop = run("ds^2 = -c^2\\mathrm{d}t^2 + \\mathrm{d}r^2")
+    assert.strictEqual(noop.kind, "translated", JSON.stringify(noop))
+    if (noop.kind === "translated") {
+      assert.strictEqual(noop.changed, false, noop.restoredTex)
+      assert.strictEqual(
+        (noop.restoredTex.match(/\\mathrm\{d\}/g) ?? []).length,
+        2,
+        noop.restoredTex,
+      )
+    }
+    // Mutating: this used to ship `c^{2}dt^2`, silently dropping `\mathrm{`.
+    const inserted = run("ds^2 = -\\left(1 - \\frac{2M}{r}\\right)\\mathrm{d}t^2")
+    assert.strictEqual(inserted.kind, "translated", JSON.stringify(inserted))
+    if (inserted.kind === "translated") {
+      assert.ok(inserted.restoredTex.includes("\\mathrm{d}t^2"), inserted.restoredTex)
+      assert.ok(!/[^{]dt\^2/.test(inserted.restoredTex), inserted.restoredTex)
+      rendersInKatex(inserted.restoredTex)
+    }
+    // \partial keeps working, and so does the ordered form d^2x.
+    assert.strictEqual(run("ds^2 = \\mathrm{d}x^a \\mathrm{d}x^b g_{ab}").kind, "translated")
+  })
+
   test("F2: a scripted closing delimiter still closes its group", () => {
     for (const [tex, keep] of [
       ["E = m(1 + v)^2", "(1 + \\frac{v}{c})^{2}"],
@@ -521,6 +596,71 @@ describe("declining honestly", () => {
     assert.strictEqual(result.kind, "declined")
   })
 
+  test("F11: a quoted term reads as written, not as a sliced span", () => {
+    const result = run("S = \\frac{M}{r}\\mathrm{d}r T")
+    assert.strictEqual(result.kind, "declined", JSON.stringify(result))
+    if (result.kind === "declined") {
+      const quoted = result.reasons.find((r) => r.includes("term"))
+      assert.ok(quoted, JSON.stringify(result.reasons))
+      assert.ok(quoted!.includes("\\frac{M}{r}"), quoted)
+      assert.ok(quoted!.includes("\\mathrm{d}r"), quoted)
+    }
+  })
+
+  test("F12: \\overline and transparent accents do not double their braces", () => {
+    for (const [tex, want] of [
+      ["\\overline{r} = 2M", "\\overline{r}"],
+      ["\\bar{r} = 2M", "\\bar{r}"],
+      ["\\vec{v} = 0", "\\vec{v}"],
+    ] as const) {
+      const result = run(tex)
+      assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "translated") {
+        assert.ok(result.restoredTex.includes(want), result.restoredTex)
+        assert.ok(!result.restoredTex.includes("{{"), result.restoredTex)
+        rendersInKatex(result.restoredTex)
+      }
+    }
+  })
+
+  test("F13: decline reasons name what actually stopped the engine", () => {
+    // A sum is a sum, not an unreadable super/subscript.
+    const summed = run("x = \\sum_i r")
+    assert.strictEqual(summed.kind, "declined", JSON.stringify(summed))
+    if (summed.kind === "declined") {
+      assert.ok(
+        summed.reasons.some((r) => r.includes("sums")),
+        JSON.stringify(summed.reasons),
+      )
+      assert.ok(
+        !summed.reasons.some((r) => r.includes("super/subscript")),
+        JSON.stringify(summed.reasons),
+      )
+    }
+    // The `d` closing an index list is not an operator-form derivative.
+    const indexList = run("\\epsilon_{abcd} = \\sqrt{-r}\\;[abcd]")
+    assert.strictEqual(indexList.kind, "declined", JSON.stringify(indexList))
+    if (indexList.kind === "declined") {
+      assert.ok(
+        indexList.reasons.some((r) => r.includes("index letter")),
+        JSON.stringify(indexList.reasons),
+      )
+      assert.ok(
+        !indexList.reasons.some((r) => r.includes("select the applied form")),
+        JSON.stringify(indexList.reasons),
+      )
+    }
+    // A free-standing column break is not a list of statements.
+    const columns = run("\\begin{array}{cc} r_s & 2M \\end{array}")
+    assert.strictEqual(columns.kind, "declined", JSON.stringify(columns))
+    if (columns.kind === "declined") {
+      assert.ok(
+        !columns.reasons.some((r) => r.includes("lists or multiple statements")),
+        JSON.stringify(columns.reasons),
+      )
+    }
+  })
+
   test("an expression with no relation has no anchor", () => {
     const result = run("\\frac{2M}{r}")
     assert.strictEqual(result.kind, "no-anchor")
@@ -535,6 +675,30 @@ describe("legend", () => {
       const keys = result.legend.map((l) => l.gloss)
       assert.ok(keys.some((g) => g.includes("Schwarzschild")))
       assert.ok(keys.some((g) => g.includes("mass")))
+    }
+  })
+
+  test("F10: a control word is one row however its span was spaced", () => {
+    // \Sigma absorbs the space that terminates it, so the three occurrences
+    // slice as "\Sigma ", "\Sigma\n " and "\Sigma" — one symbol, not three rows.
+    const result = run("\\Sigma = \\Sigma\n + \\Sigma")
+    assert.strictEqual(result.kind, "translated", JSON.stringify(result))
+    if (result.kind === "translated") {
+      assert.strictEqual(
+        result.legend.filter((l) => l.tex === "\\Sigma").length,
+        1,
+        JSON.stringify(result.legend),
+      )
+    }
+    // No raw newline may reach a decline sentence or an unknown-symbol name.
+    const declined = run("\\Xi = \\Xi\n + 2M")
+    assert.strictEqual(declined.kind, "declined", JSON.stringify(declined))
+    if (declined.kind === "declined") {
+      for (const text of [...declined.reasons, ...declined.unknown]) {
+        assert.ok(!/\n/.test(text), JSON.stringify(text))
+        assert.strictEqual(text, text.trim(), JSON.stringify(text))
+      }
+      assert.deepStrictEqual(declined.unknown, ["\\Xi"], JSON.stringify(declined.unknown))
     }
   })
 
