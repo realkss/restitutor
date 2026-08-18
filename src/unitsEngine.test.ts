@@ -708,6 +708,26 @@ describe("declining honestly", () => {
         JSON.stringify(indexList.reasons),
       )
     }
+    // A big operator wearing limits is still a big operator.
+    const integral = run("x = \\int_0^\\infty r")
+    assert.strictEqual(integral.kind, "declined", JSON.stringify(integral))
+    if (integral.kind === "declined") {
+      assert.ok(
+        integral.reasons.some((r) => r.includes("integrals, sums, and limits")),
+        JSON.stringify(integral.reasons),
+      )
+    }
+    // A Dirac ket is balanced; the engine simply cannot pair its bare | opener,
+    // and must not tell the reader their own equation is unbalanced.
+    const ket = run("a_i^{\\text{in}} |0_{\\text{in}}\\rangle = 0")
+    assert.strictEqual(ket.kind, "declined", JSON.stringify(ket))
+    if (ket.kind === "declined") {
+      assert.ok(!ket.reasons.some((r) => r.includes("unbalanced")), JSON.stringify(ket.reasons))
+      assert.ok(
+        ket.reasons.some((r) => r.includes("no opener the engine recognizes")),
+        JSON.stringify(ket.reasons),
+      )
+    }
     // A free-standing column break is not a list of statements.
     const columns = run("\\begin{array}{cc} r_s & 2M \\end{array}")
     assert.strictEqual(columns.kind, "declined", JSON.stringify(columns))

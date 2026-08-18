@@ -594,7 +594,16 @@ function groupDelims(nodes: any[]): any[] {
   /** Pop the open group matching `closeAtom` and return the finished synthetic node. */
   const closeGroup = (closeAtom: any): any => {
     if (openers.length === 0 || openers[openers.length - 1] !== closeAtom.text) {
-      throw new Unsupported("unbalanced delimiters")
+      // Saying "unbalanced delimiters" is a claim about the reader's equation,
+      // and it is usually false: a Dirac ket |0\rangle is balanced, but its
+      // opener is a bare | that KaTeX hands over as an ordinary symbol rather
+      // than an open-family atom, so the engine has nothing to pair. Report
+      // what the engine actually found instead.
+      throw new Unsupported(
+        openers.length === 0
+          ? `the closing delimiter “${closeAtom.text}” with no opener the engine recognizes`
+          : `the closing delimiter “${closeAtom.text}” where “${openers[openers.length - 1]}” was open`,
+      )
     }
     openers.pop()
     stack.pop()
@@ -1433,6 +1442,12 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   const base = unwrap(n.base)
   const sup = n.sup != null ? classifySup(n.sup) : null
   if (sup === "prime") throw new Unsupported("a primed symbol, which is not in the dictionary")
+
+  // A decorated big operator (\int_0^\infty, \sum_{i}) is an integral or a sum
+  // wearing limits, not an unreadable script: let the op say so itself.
+  if (base?.type === "op" && !(base.name && FUNC_OPS.has(base.name))) {
+    analyzeFactor(n.base, ctx)
+  }
 
   // {}^{d} / {}_{\mu\nu} index riders (as in R_{abc}{}^{d} or \Gamma^{\rho}{}_{\mu\nu}).
   if (base == null || (base.type === "ordgroup" && base.body.length === 0)) {
