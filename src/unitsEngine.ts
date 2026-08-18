@@ -323,6 +323,11 @@ type Factor = {
   emit: () => string
   /** Multi-term sums need \left(\right) when a constant lands beside them. */
   isBareSum?: boolean
+  /**
+   * A bare power of c or G, in twelfths. An inserted power of the same constant
+   * folds into this one rather than being set beside it.
+   */
+  constant?: { tex: "c" | "G"; e12: number }
   frac?: { cmd: string; num: Factor[]; den: Factor[] }
   sqrt?: { bodyTerm: TermInfo | null }
 }
@@ -336,6 +341,13 @@ type TermInfo = {
   pureNumeral: boolean
   /** A literal 0 — dimension-transparent: it neither anchors nor takes constants. */
   isZero: boolean
+  /**
+   * A literal 1 standing alone. On a bare side of a relation this is a
+   * convention marker ("… = 1"), not a quantity, so it takes no constants —
+   * `G = c = 1` must not restore to `… = 1G`. Inside a sum the 1 is an ordinary
+   * dimensionless term and still pins the sum to dimensionless.
+   */
+  isUnitLiteral: boolean
   src: string
 }
 
@@ -523,19 +535,50 @@ function nodeListOf(node: any): any[] {
   return [u]
 }
 
+/**
+ * Delimiters KaTeX hands over as ordinary symbols rather than open/close atoms,
+ * so they reach symbol resolution and would otherwise be reported as unknown
+ * dictionary entries.
+ */
+const BARE_DELIMITERS = new Set(["|", "\\|", "\\vert", "\\Vert"])
+
+/** Every delimiter pair the engine can group, keyed by the opener's atom text. */
+const CLOSE_FOR: Record<string, string> = {
+  "(": ")",
+  "[": "]",
+  "\\{": "\\}",
+  "\\lbrack": "\\rbrack",
+  "\\lbrace": "\\rbrace",
+  "\\langle": "\\rangle",
+  "\\lVert": "\\rVert",
+  "\\lvert": "\\rvert",
+  "\\lceil": "\\rceil",
+  "\\lfloor": "\\rfloor",
+  "\\lgroup": "\\rgroup",
+  "\\lmoustache": "\\rmoustache",
+}
+
 /** Group flat ( … ) / [ … ] runs into synthetic nodes so sums inside plain parens don't split terms. */
 function groupDelims(nodes: any[]): any[] {
   const out: any[] = []
   const stack: any[][] = [out]
   const openers: string[] = []
-  const CLOSE_FOR: Record<string, string> = {
-    "(": ")",
-    "[": "]",
-    "\\{": "\\}",
-    "\\lbrack": "\\rbrack",
-    "\\lbrace": "\\rbrace",
-    "\\langle": "\\rangle",
+
+  /** Pop the open group matching `closeAtom` and return the finished synthetic node. */
+  const closeGroup = (closeAtom: any): any => {
+    if (openers.length === 0 || openers[openers.length - 1] !== closeAtom.text) {
+      throw new Unsupported("unbalanced delimiters")
+    }
+    openers.pop()
+    stack.pop()
+    const parent = stack[stack.length - 1]
+    const group = parent[parent.length - 1]
+    if (group.loc && closeAtom.loc) {
+      group.loc = { start: group.loc.start, end: closeAtom.loc.end }
+    }
+    return group
   }
+
   for (const raw of nodes) {
     const n = raw
     const fam = n?.family
@@ -553,17 +596,22 @@ function groupDelims(nodes: any[]): any[] {
       continue
     }
     if (n?.type === "atom" && fam === "close") {
-      if (openers.length === 0 || openers[openers.length - 1] !== n.text) {
-        throw new Unsupported("unbalanced delimiters")
-      }
-      openers.pop()
-      stack.pop()
-      const parent = stack[stack.length - 1]
-      const group = parent[parent.length - 1]
-      if (group.loc && n.loc) {
-        group.loc = { start: group.loc.start, end: n.loc.end }
-      }
+      closeGroup(n)
       continue
+    }
+    // A closing delimiter that carries a script is swallowed as the *base* of a
+    // supsub — `(1+v)^2` puts `)` under the supsub — so the close atom never
+    // reaches this level on its own. Close the group here and re-attach the
+    // script to the finished group, or the opener would sit on the stack for
+    // ever and the row would be reported as unbalanced.
+    if (n?.type === "supsub") {
+      const scriptedClose = unwrap(n.base)
+      if (scriptedClose?.type === "atom" && scriptedClose.family === "close") {
+        const group = closeGroup(scriptedClose)
+        const parent = stack[stack.length - 1]
+        parent[parent.length - 1] = { ...n, base: group }
+        continue
+      }
     }
     stack[stack.length - 1].push(n)
   }
@@ -754,6 +802,16 @@ function termInsertion(t: TermInfo, target: Dim, ctx: Ctx): { a: number; b: numb
   if (t.isZero) return null
   const need = dimSub(target, t.dim)
   if (dimIsZero(need)) return null
+  // A term that is nothing but powers of c and G is a constant, not a quantity.
+  // Restoring it would rewrite one constant into another — `G = c = 1` came out
+  // as `G = G = 1`, which states something false about c. A relation whose sides
+  // are the constants themselves declares the unit convention; it carries no
+  // physical content for the restoration to complete, so it declines.
+  if (isPureConstant(t)) {
+    throw new Unsupported(
+      "a relation between the constants themselves — a declaration of the unit convention rather than a physical relation to restore",
+    )
+  }
   const solved = solveCG(need)
   if (typeof solved === "string") {
     throw new Unsupported(`${solved} (term “${t.src}”)`)
@@ -763,6 +821,12 @@ function termInsertion(t: TermInfo, target: Dim, ctx: Ctx): { a: number; b: numb
   if (ctx.strip) return null
   ctx.mutated = true
   return solved
+}
+
+/** A term built only from powers of c and G — a constant, with nothing to restore. */
+function isPureConstant(t: TermInfo): boolean {
+  const meaningful = t.factors.filter((f) => f.kind !== "glue")
+  return meaningful.length > 0 && meaningful.every((f) => f.constant != null)
 }
 
 function emitSum(
@@ -928,14 +992,14 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx): TermInfo {
     factors.some((f) => f.kind === "num") &&
     factors.every((f) => f.kind === "num" || f.kind === "glue")
 
-  const isZero =
+  const numeralsAre = (value: number) =>
     pureNumeral &&
     slashIdx < 0 &&
     factors
       .filter((f) => f.kind === "num")
       .every((f) => {
-        const value = Number.parseFloat(f.emit())
-        return Number.isFinite(value) && value === 0
+        const parsed = Number.parseFloat(f.emit())
+        return Number.isFinite(parsed) && parsed === value
       })
 
   return {
@@ -944,7 +1008,8 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx): TermInfo {
     slashIdx,
     dim: total,
     pureNumeral,
-    isZero,
+    isZero: numeralsAre(0),
+    isUnitLiteral: sign !== "-" && numeralsAre(1),
     src: srcOfNodes(nodes, ctx),
   }
 }
@@ -1098,6 +1163,15 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     case "mathord":
     case "textord": {
       const text = n.text as string
+      // A bare vertical bar is a delimiter, not a symbol: it has no dimension to
+      // look up, and which of a pair opens and which closes is not decidable
+      // from the token alone (|v| versus \langle a|b \rangle). Saying so is a
+      // truthful decline; calling it a dictionary miss is a category error.
+      if (BARE_DELIMITERS.has(text)) {
+        throw new Unsupported(
+          `the delimiter “${text}”, which the engine cannot pair with its partner`,
+        )
+      }
       if (text === "\\pi" || text === "i" || text === "e" || text === "\\infty") {
         const src = srcOf(n, ctx)
         return { kind: "num", dim: ZERO, emit: () => src }
@@ -1109,6 +1183,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         return {
           kind: "sym",
           dim: d,
+          constant: { tex: text, e12: D12 },
           emit: () => {
             if (!ctx.strip || !emitsConstants(ctx)) return src
             ctx.mutated = true
@@ -1162,7 +1237,9 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const inner = parseSum(body, ctx, { anchor: "internal" })
       const open = n.type === "leftright" ? `\\left${n.left}` : n.open
       const close = n.type === "leftright" ? `\\right${n.right}` : n.close
-      const emit = () => `${open}${inner.emit()}${close}`
+      // Control-word delimiters (\langle, \lbrace, \lVert …) would otherwise
+      // swallow the following letter: `\langle`+`v` must not become `\langlev`.
+      const emit = () => joinTex([open, inner.emit(), close])
       return { kind: "group", dim: inner.dim, emit, isBareSum: false }
     }
     case "accent": {
@@ -1292,9 +1369,11 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
       const d = isConst ? ZERO : resolveSymbol(baseText, baseTex!, ctx, {})
       const scaled = dimScale(d, sup.p, sup.q)
       if (baseText === "c" || baseText === "G") {
+        const e12 = (D12 * sup.p) / sup.q
         return {
           kind: "sym",
           dim: scaled,
+          constant: Number.isInteger(e12) ? { tex: baseText, e12 } : undefined,
           emit: () => {
             if (!ctx.strip || !emitsConstants(ctx)) return wholeTex
             ctx.mutated = true
@@ -1319,15 +1398,20 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
     return { kind: "sym", dim: ZERO, emit }
   }
 
-  // Compound base (group, frac, sqrt, accent) with a numeric power: emission is
-  // rebuilt from the analyzed base so inner restorations and delimiters survive.
-  if (base != null && typeof sup === "object" && sup != null && n.sub == null) {
-    const inner = analyzeFactor(n.base, ctx)
-    const supSrc = scriptSrc(n.sup, ctx)
-    return {
-      kind: "group",
-      dim: dimScale(inner.dim, sup.p, sup.q),
-      emit: () => `${inner.emit()}^{${supSrc}}`,
+  // Compound base (group, frac, sqrt, accent) carrying a numeric power and/or
+  // index scripts: emission is rebuilt from the analyzed base so inner
+  // restorations and delimiters survive.
+  if (base != null) {
+    const subIsIndex = n.sub == null || allIndexTokens(nodeListOf(n.sub))
+    const supIsReadable = sup == null || sup === "index" || typeof sup === "object"
+    if (subIsIndex && supIsReadable) {
+      const inner = analyzeFactor(n.base, ctx)
+      const scaled =
+        typeof sup === "object" && sup != null ? dimScale(inner.dim, sup.p, sup.q) : inner.dim
+      const scripts =
+        (n.sub != null ? `_{${scriptSrc(n.sub, ctx)}}` : "") +
+        (n.sup != null ? `^{${scriptSrc(n.sup, ctx)}}` : "")
+      return { kind: "group", dim: scaled, emit: () => `${inner.emit()}${scripts}` }
     }
   }
 
@@ -1461,12 +1545,43 @@ function emitTermWith(t: TermInfo, a12: number, b12: number): string {
     return joinTex(t.factors.map((f, idx) => (idx === fracIdx ? fracTex : f.emit())))
   }
 
-  // Plain product: constants join the product; negatives wrap it in a fraction.
-  const numParts = partsWith(t.factors, gNum, cNum)
-  const numerator = joinTex(numParts)
-  if (!gDen && !cDen) return numerator
-  const den = `${gDen}${cDen}`
-  return `\\frac{${numerator}}{${den}}`
+  // Plain product: an inserted constant first folds into a power of the same
+  // constant the term already carries, then joins the product; negatives wrap
+  // the result in a fraction.
+  const merged = mergeConstants(t.factors, a12, b12)
+  const numParts = partsWith(
+    merged.factors,
+    merged.b12 > 0 ? formatExp("G", merged.b12) : "",
+    merged.a12 > 0 ? formatExp("c", merged.a12) : "",
+  )
+  const numerator = joinTex(numParts) || "1"
+  const mergedDen =
+    (merged.b12 < 0 ? formatExp("G", -merged.b12) : "") +
+    (merged.a12 < 0 ? formatExp("c", -merged.a12) : "")
+  if (mergedDen === "") return numerator
+  return `\\frac{${numerator}}{${mergedDen}}`
+}
+
+/**
+ * Fold an inserted power of c or G into a power of the same constant already in
+ * the term. Without this, `c` needing a c⁻¹ emitted `\frac{Gc}{c}` instead of
+ * `G`, and `mc` needing another c emitted `mcc` instead of `mc^{2}`.
+ */
+function mergeConstants(
+  factors: Factor[],
+  a12: number,
+  b12: number,
+): { factors: Factor[]; a12: number; b12: number } {
+  if (!factors.some((f) => f.constant)) return { factors, a12, b12 }
+  let a = a12
+  let b = b12
+  const rest: Factor[] = []
+  for (const f of factors) {
+    if (f.constant?.tex === "c") a += f.constant.e12
+    else if (f.constant?.tex === "G") b += f.constant.e12
+    else rest.push(f)
+  }
+  return { factors: rest, a12: a, b12: b }
 }
 
 // ---------------------------------------------------------------------------
@@ -1620,10 +1735,14 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
   if (target == null) target = ZERO // every term a literal zero: identity
 
   // Insertions are solved once, during analysis; emission can then be replayed.
+  // A side that is nothing but a literal 1 is a convention marker rather than a
+  // quantity, so it stays a bare 1 (the same transparency a literal 0 has had).
   const resolvedTarget = target
-  const insertionsPerSide = sums.map((sum) =>
-    sum == null ? [] : sum.terms.map((t) => termInsertion(t, resolvedTarget, ctx)),
-  )
+  const insertionsPerSide = sums.map((sum) => {
+    if (sum == null) return []
+    if (!sum.multiTerm && sum.terms[0].isUnitLiteral) return [null]
+    return sum.terms.map((t) => termInsertion(t, resolvedTarget, ctx))
+  })
   const emitSides = () =>
     sums.map((sum, idx) =>
       sum == null ? "" : emitSum(sum.terms, sum.ops, insertionsPerSide[idx], ctx),

@@ -361,6 +361,93 @@ describe("review regressions", () => {
     if (result.kind === "translated") assert.strictEqual(result.changed, false)
   })
 
+  test("F2: a scripted closing delimiter still closes its group", () => {
+    for (const [tex, keep] of [
+      ["E = m(1 + v)^2", "(1 + \\frac{v}{c})^{2}"],
+      ["E = m[1 + v]^2", "[1 + \\frac{v}{c}]^{2}"],
+      ["E = m(1 + v)_i", "(1 + \\frac{v}{c})_{i}"],
+    ] as const) {
+      const result = run(tex)
+      assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "translated") {
+        assert.ok(result.restoredTex.includes(keep), `${tex} → ${result.restoredTex}`)
+        rendersInKatex(result.restoredTex)
+      }
+    }
+    // The \left…\right control never regressed; keep it pinned alongside.
+    assert.strictEqual(run("E = m\\left(1 + v\\right)^2").kind, "translated")
+  })
+
+  test("F3: control-word delimiters do not glue onto the next letter", () => {
+    for (const [tex, glued] of [
+      ["\\langle v \\rangle = 0", "\\langlev"],
+      ["E = m\\langle v \\rangle", "\\langlev"],
+      ["x = \\lbrack r \\rbrack", "\\lbrackr"],
+    ] as const) {
+      const result = run(tex)
+      assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "translated") {
+        assert.ok(!result.restoredTex.includes(glued), result.restoredTex)
+        rendersInKatex(result.restoredTex)
+      }
+    }
+  })
+
+  test("F5: G = c = 1 declines instead of shipping \\frac{Gc}{c} and 1G", () => {
+    for (const target of [SI, GEO]) {
+      const result = run("G = c = 1", target)
+      assert.strictEqual(result.kind, "declined", JSON.stringify(result))
+      if (result.kind === "declined") {
+        assert.ok(
+          result.reasons.some((r) => r.includes("constants themselves")),
+          JSON.stringify(result.reasons),
+        )
+      }
+    }
+  })
+
+  test("F5: a bare literal 1 takes no constants, and inserted ones merge", () => {
+    // A whole side that is just `1` is a convention marker, not a quantity.
+    const unit = run("\\Omega = 1")
+    assert.strictEqual(unit.kind, "translated", JSON.stringify(unit))
+    if (unit.kind === "translated") {
+      assert.ok(!unit.restoredTex.includes("1G"), unit.restoredTex)
+      assert.ok(!/1\s*c/.test(unit.restoredTex), unit.restoredTex)
+    }
+    // A constant already in the term merges with the inserted power instead of
+    // sitting next to it (`mcc`) or across a fraction bar (`\frac{Gc}{c}`).
+    assert.strictEqual(restored("E = mc"), "E=mc^{2}")
+    // A literal 1 that is one term of a sum still pins the sum to dimensionless.
+    assert.strictEqual(run("E^2 = 1 - \\frac{2M}{r}").kind, "declined")
+  })
+
+  test("F8: the \\r* delimiter family closes its opener", () => {
+    for (const tex of [
+      "x = m\\lVert v \\rVert",
+      "x = \\lfloor r \\rfloor",
+      "x = \\lceil r \\rceil",
+    ]) {
+      const result = run(tex)
+      assert.notStrictEqual(
+        result.kind,
+        "declined",
+        `${tex} → ${JSON.stringify(result.kind === "declined" ? result.reasons : result)}`,
+      )
+    }
+  })
+
+  test("F9: a bare | is declined as a delimiter, not as an unknown symbol", () => {
+    const result = run("E = m|v|")
+    assert.strictEqual(result.kind, "declined", JSON.stringify(result))
+    if (result.kind === "declined") {
+      assert.deepStrictEqual(result.unknown, [], "| is a delimiter, never a dictionary miss")
+      assert.ok(
+        result.reasons.some((r) => r.includes("delimiter")),
+        JSON.stringify(result.reasons),
+      )
+    }
+  })
+
   test("the reassembly backstop covers mutating translations, not just no-ops", () => {
     // supsubTex always writes the subscript first, so `p^a_b` re-emits as
     // `p_{b}^{a}`. With a constant to insert, that rewrite used to ride out
