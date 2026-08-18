@@ -570,6 +570,64 @@ describe("review regressions", () => {
   })
 })
 
+// Registry readings added 2026-08-17, pending CEO merge review. Each is checked
+// against the equation on "00. Conventions and Notation" that motivated it.
+describe("registry additions (2026-08-17)", () => {
+  test("bare g is the metric determinant: the d'Alembertian passes through", () => {
+    const result = run(
+      "\\Box \\phi = \\frac{1}{\\sqrt{-g}} \\partial_\\mu \\left( \\sqrt{-g}\\, g^{\\mu \\nu} \\partial_\\nu \\phi \\right)",
+    )
+    assert.strictEqual(result.kind, "translated", JSON.stringify(result))
+    if (result.kind === "translated") {
+      assert.strictEqual(result.changed, false, result.restoredTex)
+      assert.ok(
+        result.legend.some((l) => l.tex === "g" && l.gloss.includes("determinant")),
+        JSON.stringify(result.legend),
+      )
+    }
+  })
+
+  test("indexed omega is a one-form; bare omega is still an angular frequency", () => {
+    const riemann = run(
+      "\\left(\\nabla_a \\nabla_b - \\nabla_b \\nabla_a\\right)\\omega_c = R_{abc}{}^{d}\\,\\omega_d",
+    )
+    assert.strictEqual(riemann.kind, "translated", JSON.stringify(riemann))
+    if (riemann.kind === "translated") assert.strictEqual(riemann.changed, false)
+    // Bare omega keeps its dimensional reading, so e^{-iωt} is still dimensionless.
+    const phase = run("\\phi = e^{-i\\omega t}")
+    assert.strictEqual(phase.kind, "translated", JSON.stringify(phase))
+    if (phase.kind === "translated") assert.strictEqual(phase.changed, false)
+    const bare = run("\\omega = \\frac{v}{r}")
+    assert.strictEqual(bare.kind, "translated", JSON.stringify(bare))
+    if (bare.kind === "translated") {
+      assert.ok(
+        bare.legend.some((l) => l.tex === "\\omega" && l.gloss.includes("angular frequency")),
+        JSON.stringify(bare.legend),
+      )
+    }
+  })
+
+  test("the spin-weight rider {}_s is a label, and s stays out of the dictionary", () => {
+    // The rider parses instead of throwing "a floating super/subscript" …
+    const rider = run("x = {}_sR")
+    assert.strictEqual(rider.kind, "declined", JSON.stringify(rider))
+    if (rider.kind === "declined") {
+      assert.ok(!rider.reasons.some((r) => r.includes("floating")), JSON.stringify(rider.reasons))
+      assert.ok(
+        rider.reasons.some((r) => r.includes("{}_{s}R")),
+        JSON.stringify(rider.reasons),
+      )
+    }
+    // … and it carries no dimension of its own, so it cannot change a reading.
+    assert.strictEqual(restored("r_s = 2M"), "r_{s}=\\frac{2GM}{c^{2}}")
+    const notAnIndex = run("x = T_s")
+    assert.strictEqual(notAnIndex.kind, "declined", JSON.stringify(notAnIndex))
+    if (notAnIndex.kind === "declined") {
+      assert.ok(notAnIndex.unknown.includes("T_{s}"), JSON.stringify(notAnIndex.unknown))
+    }
+  })
+})
+
 describe("declining honestly", () => {
   test("unknown symbols decline and are named", () => {
     const result = run("\\xi = 2M")

@@ -166,6 +166,17 @@ const GR_REGISTRY: HubRegistry = {
     "\\nabla": { dim: dim(0, -1, 0), gloss: "derivative operator", si: "m⁻¹" },
     "\\Box": { dim: dim(0, -2, 0), gloss: "d'Alembertian", si: "m⁻²" },
     K: { dim: dim(0, -1, 0), gloss: "extrinsic curvature", si: "m⁻¹" },
+    // ADDED 2026-08-17 — PENDING CEO MERGE REVIEW.
+    // Reading verified against "00. Conventions and Notation" §6, which writes
+    // the volume form as ε_{abcd} = √(−g)[abcd]: bare g there is the metric
+    // determinant. §3 raises and lowers with g_{ab}, and this registry already
+    // reads the indexed metric as dimensionless (x⁰ = ct), so its determinant —
+    // a product of four such components — is dimensionless too.
+    g: {
+      dim: ZERO,
+      gloss: "metric determinant det g_{ab} (dimensionless, as the metric is with x⁰ = ct)",
+      si: "1",
+    },
   },
   exact: {
     k_B: { dim: dim(1, 2, -2, -1), gloss: "Boltzmann constant (kept explicit)", si: "J K⁻¹" },
@@ -205,6 +216,18 @@ const GR_REGISTRY: HubRegistry = {
     K: { dim: dim(0, -1, 0), gloss: "extrinsic curvature", si: "m⁻¹" },
     "\\beta": { dim: ZERO, gloss: "shift vector", si: "1" },
     "\\Lambda": { dim: ZERO, gloss: "Lorentz transformation", si: "1" },
+    // ADDED 2026-08-17 — PENDING CEO MERGE REVIEW.
+    // Reading verified against "00. Conventions and Notation" §5, where ω_c is
+    // the generic dual vector the Riemann tensor is defined to act on:
+    // (∇_a∇_b − ∇_b∇_a)ω_c = R_{abc}{}^{d} ω_d. That definition is homogeneous
+    // in ω, so it fixes no dimension for it; dimensionless is the same neutral
+    // reading this registry already gives u, h and the shift vector. Bare ω is
+    // untouched and stays an angular frequency.
+    "\\omega": {
+      dim: ZERO,
+      gloss: "one-form / dual vector (indexed ω; bare ω is an angular frequency)",
+      si: "1",
+    },
   },
   differential: {
     s: { dim: dim(0, 1, 0), gloss: "line element", si: "m" },
@@ -639,6 +662,26 @@ function isIndexToken(node: any): boolean {
   const text = textOf(u)
   if (text == null) return false
   return LATIN_INDICES.has(text) || GREEK_INDICES.has(text) || DIGIT_INDICES.has(text)
+}
+
+/**
+ * ADDED 2026-08-17 — PENDING CEO MERGE REVIEW.
+ * Labels a floating `{}` rider may carry beyond the index letters. `s` is the
+ * spin weight in the dominant Teukolsky notation ({}_sR, {}_sS, {}_sA_{\ell m});
+ * it is a label on the symbol, not a factor, and carries no dimension. It is
+ * deliberately confined to the rider path — `s` stays out of LATIN_INDICES and
+ * out of the dictionary, so bare s remains the registry's arc length and a
+ * subscript s (r_s) keeps resolving as part of a symbol's identity.
+ */
+const RIDER_LABELS = new Set(["s"])
+
+function allRiderTokens(nodes: any[]): boolean {
+  const meaningful = nodes.filter((n) => {
+    const u = unwrap(n)
+    return u && !SKIP_TYPES.has(u.type)
+  })
+  if (meaningful.length === 0) return false
+  return meaningful.every((n) => isIndexToken(n) || RIDER_LABELS.has(textOf(n) ?? ""))
 }
 
 function allIndexTokens(nodes: any[]): boolean {
@@ -1393,8 +1436,8 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
 
   // {}^{d} / {}_{\mu\nu} index riders (as in R_{abc}{}^{d} or \Gamma^{\rho}{}_{\mu\nu}).
   if (base == null || (base.type === "ordgroup" && base.body.length === 0)) {
-    const supIsIndex = n.sup == null || sup === "index"
-    const subIsIndex = n.sub == null || allIndexTokens(nodeListOf(n.sub))
+    const supIsIndex = n.sup == null || sup === "index" || allRiderTokens(nodeListOf(n.sup))
+    const subIsIndex = n.sub == null || allRiderTokens(nodeListOf(n.sub))
     if ((n.sup != null || n.sub != null) && supIsIndex && subIsIndex) {
       const tex = supsubTex("{}", n, ctx)
       return { kind: "rider", dim: ZERO, emit: () => tex }
