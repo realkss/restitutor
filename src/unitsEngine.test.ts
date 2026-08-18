@@ -34,6 +34,56 @@ function rendersInKatex(tex: string) {
   assert.doesNotThrow(() => katex.renderToString(tex, { displayMode: true, throwOnError: true }))
 }
 
+// The engine reads a handful of KaTeX parse-tree shapes directly. When a KaTeX
+// bump changes one of them the engine goes quietly wrong (0.16.21 → 0.16.47
+// dropped genfrac's `size` field and every \tfrac started emitting \frac), so
+// the shapes are asserted here: a future bump fails loudly, right here, first.
+describe("KaTeX parse-tree shape assumptions", () => {
+  test("\\tfrac/\\dfrac/\\cfrac are a styling wrapper around a plain genfrac", () => {
+    const shapes = [
+      ["\\tfrac{1}{2}", "text", false],
+      ["\\dfrac{1}{2}", "display", false],
+      ["\\cfrac{1}{2}", "display", true],
+    ] as const
+    for (const [tex, style, continued] of shapes) {
+      const nodes = katex.__parse(tex, { strict: false, trust: false, displayMode: true })
+      assert.strictEqual(nodes.length, 1, `${tex}: unexpected top-level node count`)
+      assert.strictEqual(nodes[0].type, "styling", `${tex}: KaTeX changed the fraction shape`)
+      assert.strictEqual(nodes[0].style, style, `${tex}: styling.style changed`)
+      const inner = nodes[0].body.filter((n: any) => n && n.type !== "kern")
+      assert.strictEqual(inner.length, 1, `${tex}: styling body is no longer a lone node`)
+      assert.strictEqual(inner[0].type, "genfrac", `${tex}: the wrapped node is not a genfrac`)
+      assert.strictEqual(inner[0].continued, continued, `${tex}: genfrac.continued changed`)
+    }
+    const plain = katex.__parse("\\frac{1}{2}", { strict: false, trust: false, displayMode: true })
+    assert.strictEqual(plain[0].type, "genfrac", "\\frac grew a wrapper")
+  })
+
+  test("a closing delimiter carrying a script becomes the base of a supsub", () => {
+    const nodes = katex.__parse("(1)^2", { strict: false, trust: false, displayMode: true })
+    const last = nodes[nodes.length - 1]
+    assert.strictEqual(last.type, "supsub", "scripted close delimiter is no longer a supsub base")
+    assert.strictEqual(last.base.type, "atom")
+    assert.strictEqual(last.base.family, "close")
+  })
+
+  test("the five display-only environments parse only with displayMode", () => {
+    for (const tex of [
+      "\\begin{align} a &= b \\end{align}",
+      "\\begin{gather} a = b \\end{gather}",
+      "\\begin{split} a &= b \\end{split}",
+      "\\begin{alignat}{1} a &= b \\end{alignat}",
+      "a = b \\tag{1}",
+    ]) {
+      assert.throws(() => katex.__parse(tex, { strict: false, trust: false }), tex)
+      assert.doesNotThrow(
+        () => katex.__parse(tex, { strict: false, trust: false, displayMode: true }),
+        tex,
+      )
+    }
+  })
+})
+
 describe("registry routing", () => {
   test("matches GR pages in every language and nothing else", () => {
     assert.ok(findRegistryForSlug("en/Topics/Physics/Relativity-and-Gravitation/index"))
@@ -151,6 +201,28 @@ describe("SI restoration", () => {
 })
 
 describe("review regressions", () => {
+  test("F1: every fraction command survives both the no-op and the insertion path", () => {
+    for (const cmd of ["\\frac", "\\tfrac", "\\dfrac", "\\cfrac"]) {
+      // Insertion path: the command must ride through emitTermWith.
+      const inserted = run(`\\kappa = ${cmd}{1}{4M}`)
+      assert.strictEqual(inserted.kind, "translated", `${cmd} → ${JSON.stringify(inserted)}`)
+      if (inserted.kind === "translated") {
+        assert.ok(
+          inserted.restoredTex.includes(`${cmd}{c^{4}}{4GM}`),
+          `${cmd} insertion → ${inserted.restoredTex}`,
+        )
+        rendersInKatex(inserted.restoredTex)
+      }
+      // No-op path: the rebuilt equation must be the source verbatim.
+      const noop = run(`\\kappa = ${cmd}{c^{4}}{4GM}`)
+      assert.strictEqual(noop.kind, "translated", `${cmd} → ${JSON.stringify(noop)}`)
+      if (noop.kind === "translated") {
+        assert.strictEqual(noop.changed, false, `${cmd} no-op → ${noop.restoredTex}`)
+        assert.ok(noop.restoredTex.includes(cmd), `${cmd} no-op → ${noop.restoredTex}`)
+      }
+    }
+  })
+
   test("literal zeros are dimension-transparent: vacuum/null/conservation equations pass through", () => {
     for (const tex of ["R_{\\mu\\nu} = 0", "ds^2 = 0", "\\nabla_a T^{ab} = 0"]) {
       const result = run(tex)
@@ -287,6 +359,36 @@ describe("review regressions", () => {
     const result = run("ds^2 = dx_1^2 + dx_2^2")
     assert.strictEqual(result.kind, "translated", JSON.stringify(result))
     if (result.kind === "translated") assert.strictEqual(result.changed, false)
+  })
+
+  test("the reassembly backstop covers mutating translations, not just no-ops", () => {
+    // supsubTex always writes the subscript first, so `p^a_b` re-emits as
+    // `p_{b}^{a}`. With a constant to insert, that rewrite used to ride out
+    // unchecked (`E = 2p^a_b` shipped as `E = 2p_{b}^{a}c`); replaying the
+    // emission with the insertion masked makes it visible, and declining is the
+    // contract-correct outcome.
+    const result = run("E = 2p^a_b")
+    assert.strictEqual(result.kind, "declined", JSON.stringify(result))
+    if (result.kind === "declined") {
+      assert.ok(
+        result.reasons.some((r) => r.includes("reassembly fault")),
+        JSON.stringify(result.reasons),
+      )
+    }
+    // The same equation without anything to insert already declined, and still does.
+    assert.strictEqual(run("p^a_b = 0").kind, "declined")
+  })
+
+  test("insertion scaffolding is not mistaken for a divergence", () => {
+    // \left(…\right) around a bare sum, and the dropped redundant 1 numerator,
+    // are part of the insertion itself — the masked replay must not see them.
+    const wrapped = run("E = m{1 + v^2}")
+    assert.strictEqual(wrapped.kind, "translated", JSON.stringify(wrapped))
+    if (wrapped.kind === "translated") {
+      assert.ok(wrapped.restoredTex.includes("\\left("), wrapped.restoredTex)
+      rendersInKatex(wrapped.restoredTex)
+    }
+    assert.strictEqual(restored("\\kappa = \\frac{1}{4M}"), "\\kappa=\\frac{c^{4}}{4GM}")
   })
 
   test("every unchanged result is verbatim the source (reassembly backstop)", () => {

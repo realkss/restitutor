@@ -301,6 +301,18 @@ type Ctx = {
   mutated: boolean
   /** Geometrized target: verify consistency but strip c/G factors instead of inserting. */
   strip: boolean
+  /**
+   * Masked re-emission: suppress every insertion and every strip, so the emitters
+   * reproduce the source equation and nothing else. What comes out is compared
+   * against the source, which is how a mutating translation gets the same
+   * verbatim backstop a no-op one has always had.
+   */
+  mask: boolean
+}
+
+/** Constants are inserted (or stripped) only in a live emission, never in a masked one. */
+function emitsConstants(ctx: Ctx): boolean {
+  return !ctx.mask
 }
 
 type FactorKind = "num" | "glue" | "sym" | "diff" | "frac" | "sqrt" | "group" | "func" | "rider"
@@ -455,6 +467,52 @@ function unwrap(node: any): any {
     }
     return cur
   }
+}
+
+const FRAC_CMDS = new Set(["\\frac", "\\tfrac", "\\dfrac", "\\cfrac"])
+
+/** The innermost `styling` wrapper on the way down to `unwrap(node)`, if any. */
+function stylingWrapperOf(node: any): any {
+  let cur = node
+  let styling: any = null
+  for (;;) {
+    if (cur == null) return styling
+    if (WRAPPER_TYPES.has(cur.type)) {
+      if (cur.type === "styling") styling = cur
+      const body = (Array.isArray(cur.body) ? cur.body : [cur.body]).filter(
+        (n: any) => n && !SKIP_TYPES.has(n.type),
+      )
+      if (body.length !== 1) return styling
+      cur = body[0]
+      continue
+    }
+    if (cur.type === "font") {
+      cur = cur.body
+      continue
+    }
+    return styling
+  }
+}
+
+/**
+ * The fraction command as it was written. genfrac nodes carry no span of their
+ * own, and since KaTeX 0.16.22 they carry no `size` field either: \tfrac,
+ * \dfrac and \cfrac now parse as a `styling` wrapper around a plain genfrac,
+ * and `unwrap` discards wrappers. So the command is read from the source text
+ * immediately before the numerator, with the wrapper's style as the fallback
+ * for fractions whose numerator has no recoverable position.
+ */
+function fracCmdOf(rawNode: any, genfrac: any, ctx: Ctx): string {
+  const span = spanOf(genfrac.numer)
+  if (span) {
+    const written = /\\([a-zA-Z]+)\s*$/.exec(ctx.input.slice(0, span[0]))
+    if (written && FRAC_CMDS.has(`\\${written[1]}`)) return `\\${written[1]}`
+  }
+  if (genfrac.continued === true) return "\\cfrac"
+  const style = stylingWrapperOf(rawNode)?.style
+  if (style === "text") return "\\tfrac"
+  if (style === "display") return "\\dfrac"
+  return "\\frac"
 }
 
 function nodeListOf(node: any): any[] {
@@ -711,10 +769,11 @@ function emitSum(
   terms: TermInfo[],
   ops: string[],
   insertions: ({ a: number; b: number } | null)[],
+  ctx: Ctx,
 ): string {
   return terms
     .map((t, idx) => {
-      const ins = insertions[idx]
+      const ins = emitsConstants(ctx) ? insertions[idx] : null
       const body = ins ? emitTermWith(t, ins.a, ins.b) : emitTerm(t)
       const lead = idx === 0 ? (t.sign === "-" ? "-" : "") : ` ${foldedOp(ops[idx - 1], t.sign)} `
       return lead + body
@@ -769,7 +828,7 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode): SumInfo {
     target = terms[0].dim
   }
 
-  const emit = () => emitSum(terms, ops, insertions)
+  const emit = () => emitSum(terms, ops, insertions, ctx)
 
   return { terms, ops, dim: target, emit, multiTerm }
 }
@@ -1051,7 +1110,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
           kind: "sym",
           dim: d,
           emit: () => {
-            if (!ctx.strip) return src
+            if (!ctx.strip || !emitsConstants(ctx)) return src
             ctx.mutated = true
             return ""
           },
@@ -1063,8 +1122,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       return analyzeSupsub(n, ctx)
     case "genfrac": {
       if (n.hasBarLine === false) throw new Unsupported("a binomial-style construct")
-      // genfrac nodes carry no own span — the command comes from the size style.
-      const cmd = n.size === "text" ? "\\tfrac" : n.size === "display" ? "\\dfrac" : "\\frac"
+      const cmd = fracCmdOf(rawNode, n, ctx)
       const numSum = parseSum(nodeListOf(n.numer), ctx, { anchor: "internal" })
       const denSum = parseSum(nodeListOf(n.denom), ctx, { anchor: "internal" })
       const numFactors = sumAsFactorList(numSum)
@@ -1238,7 +1296,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
           kind: "sym",
           dim: scaled,
           emit: () => {
-            if (!ctx.strip) return wholeTex
+            if (!ctx.strip || !emitsConstants(ctx)) return wholeTex
             ctx.mutated = true
             return ""
           },
@@ -1494,13 +1552,15 @@ function legendUnitOf(record: LegendRecord, spec: TargetSpec): string {
   return parts.length === 0 ? "1" : parts.join(" ")
 }
 
-type RowResult = { sideTexts: string[]; rels: string[]; target: Dim; hadRel: boolean }
+/** Emission is a closure so the same analyzed row can be re-emitted with insertions masked. */
+type RowResult = { emitSides: () => string[]; rels: string[]; target: Dim; hadRel: boolean }
 
 function rowTexOf(row: RowResult, withTab: boolean): string {
-  let tex = row.sideTexts[0]
+  const sideTexts = row.emitSides()
+  let tex = sideTexts[0]
   for (let idx = 0; idx < row.rels.length; idx += 1) {
     const tab = withTab && idx === 0 ? "&" : ""
-    tex += `${tex.length > 0 ? " " : ""}${tab}${row.rels[idx]} ${row.sideTexts[idx + 1]}`
+    tex += `${tex.length > 0 ? " " : ""}${tab}${row.rels[idx]} ${sideTexts[idx + 1]}`
   }
   return tex
 }
@@ -1532,7 +1592,8 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
   if (rels.length === 0) {
     // No relation: analyze for the legend, but there is nothing to anchor.
     parseSum(grouped, ctx, { anchor: "none" })
-    return { sideTexts: [srcOfNodes(nodes, ctx)], rels: [], target: ZERO, hadRel: false }
+    const src = srcOfNodes(nodes, ctx)
+    return { emitSides: () => [src], rels: [], target: ZERO, hadRel: false }
   }
 
   const sums = sides.map((side) =>
@@ -1558,14 +1619,17 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
   }
   if (target == null) target = ZERO // every term a literal zero: identity
 
+  // Insertions are solved once, during analysis; emission can then be replayed.
   const resolvedTarget = target
-  const sideTexts = sums.map((sum) => {
-    if (sum == null) return ""
-    const insertions = sum.terms.map((t) => termInsertion(t, resolvedTarget, ctx))
-    return emitSum(sum.terms, sum.ops, insertions)
-  })
+  const insertionsPerSide = sums.map((sum) =>
+    sum == null ? [] : sum.terms.map((t) => termInsertion(t, resolvedTarget, ctx)),
+  )
+  const emitSides = () =>
+    sums.map((sum, idx) =>
+      sum == null ? "" : emitSum(sum.terms, sum.ops, insertionsPerSide[idx], ctx),
+    )
 
-  return { sideTexts, rels, target: resolvedTarget, hadRel: true }
+  return { emitSides, rels, target: resolvedTarget, hadRel: true }
 }
 
 export function translateTex(
@@ -1584,7 +1648,15 @@ export function translateTex(
     unknown: new Map(),
     mutated: false,
     strip: spec.geometrized,
+    mask: false,
   }
+
+  // The floater only ever fires on a .katex-display, so every equation it sees
+  // was parsed in display mode. Parsing it any other way here would reject the
+  // five environments KaTeX gates on display mode (align, gather, split,
+  // alignat, \tag) as unparseable TeX.
+  const parse = (source: string) =>
+    katex.__parse(source, { strict: false, trust: false, displayMode: true })
 
   const legendOut = () =>
     Array.from(ctx.legend.values()).map((record) => ({
@@ -1628,22 +1700,44 @@ export function translateTex(
     }
   }
 
-  // For comparing a rebuilt equation against its source: whitespace, braces,
-  // alignment tabs, and pure-spacing commands are typographically inert.
-  const cmpNorm = (s: string) => s.replace(/\\qquad|\\quad|\\[,;!:]/g, "").replace(/[\s{}&]/g, "")
+  // For comparing a rebuilt equation against its source: whitespace, braces, and
+  // pure-spacing commands are typographically inert. Adjacent signs are folded on
+  // both sides, because the emitter folds them too (`a - -b` re-emits as `a + b`).
+  const cmpNorm = (s: string) => {
+    let out = s.replace(/\\qquad|\\quad|\\[,;!:]/g, "").replace(/[\s{}]/g, "")
+    for (;;) {
+      const folded = out
+        .replace(/--/g, "+")
+        .replace(/\+-|-\+/g, "-")
+        .replace(/\+\+/g, "+")
+      if (folded === out) return out
+      out = folded
+    }
+  }
 
-  // Backstops for the reassembly itself: the rebuilt TeX must parse, and when
-  // no constants were inserted it must be the source equation verbatim (up to
-  // inert typography). Any divergence declines rather than shipping a mangle.
-  const checkRebuilt = (restoredTex: string) => {
+  // Backstops for the reassembly itself: the rebuilt TeX must parse, and the
+  // same reassembly replayed with every insertion and strip masked out must be
+  // the source equation verbatim (up to inert typography). The masked replay is
+  // what extends the check to *mutating* translations — without it, any part of
+  // the equation the emitters quietly rewrote rode out on the back of a
+  // legitimate constant insertion. Any divergence declines rather than shipping
+  // a mangle.
+  const checkRebuilt = (restoredTex: string, rebuild: () => string) => {
     try {
-      katex.__parse(restoredTex, { strict: false, trust: false })
+      parse(restoredTex)
     } catch {
       throw new Unsupported(
         "an internal reassembly fault — the rebuilt equation did not parse (nothing was shown rather than something wrong)",
       )
     }
-    if (!ctx.mutated && cmpNorm(restoredTex) !== cmpNorm(tex)) {
+    ctx.mask = true
+    let masked: string
+    try {
+      masked = rebuild()
+    } finally {
+      ctx.mask = false
+    }
+    if (cmpNorm(masked) !== cmpNorm(tex)) {
       throw new Unsupported(
         "an internal reassembly fault — the rebuilt equation diverged from the source (nothing was shown rather than something wrong)",
       )
@@ -1653,7 +1747,7 @@ export function translateTex(
   return finish(() => {
     let nodes: any[]
     try {
-      nodes = katex.__parse(tex, { strict: false, trust: false })
+      nodes = parse(tex)
     } catch {
       throw new Unsupported("TeX that KaTeX could not parse")
     }
@@ -1668,7 +1762,7 @@ export function translateTex(
       )
       let carried: Dim | null = null
       let anyRel = false
-      const rowTexts: string[] = []
+      const results: RowResult[] = []
       for (const row of rows) {
         if (row.length === 0 || row.every((n) => isEmptyOrdgroup(n))) continue
         const res = translateRow(row, ctx, carried)
@@ -1678,11 +1772,13 @@ export function translateTex(
         } else if (anyRel) {
           throw new Unsupported("a continuation row without its own relation")
         }
-        rowTexts.push(rowTexOf(res, res.hadRel))
+        results.push(res)
       }
       if (!anyRel) return "no-anchor"
-      const restored = `\\begin{aligned}\n${rowTexts.join(" \\\\\n")}\n\\end{aligned}`
-      checkRebuilt(restored)
+      const rebuild = () =>
+        `\\begin{aligned}\n${results.map((res) => rowTexOf(res, res.hadRel)).join(" \\\\\n")}\n\\end{aligned}`
+      const restored = rebuild()
+      checkRebuilt(restored, rebuild)
       return {
         restoredTex: restored,
         targetUnitTex: unitTexOf(carried ?? ZERO, spec),
@@ -1692,8 +1788,9 @@ export function translateTex(
 
     const res = translateRow(nodes, ctx, null)
     if (!res.hadRel) return "no-anchor"
-    const restored = rowTexOf(res, false)
-    checkRebuilt(restored)
+    const rebuild = () => rowTexOf(res, false)
+    const restored = rebuild()
+    checkRebuilt(restored, rebuild)
     return {
       restoredTex: restored,
       targetUnitTex: unitTexOf(res.target, spec),
