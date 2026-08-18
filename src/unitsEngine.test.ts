@@ -607,6 +607,88 @@ describe("registry additions (2026-08-17)", () => {
     }
   })
 
+  test("CEO ruling: \\partial_t resolves wherever \\partial_a already does", () => {
+    // The four labels the corpus actually carries, each on \partial.
+    for (const label of ["t", "r", "\\theta", "\\phi"]) {
+      const tex = `\\Box \\phi = \\partial_${label} \\partial_${label} \\phi`
+      const result = run(tex)
+      assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "translated") {
+        assert.strictEqual(result.changed, false, result.restoredTex)
+        assert.ok(
+          result.legend.some((l) => l.gloss.includes("coordinate derivative")),
+          `${tex} → ${JSON.stringify(result.legend)}`,
+        )
+      }
+    }
+    // A coordinate label reads the same as an abstract index does.
+    const abstract = run("\\Box \\phi = \\partial_a \\partial_a \\phi")
+    const coordinate = run("\\Box \\phi = \\partial_t \\partial_r \\phi")
+    assert.strictEqual(abstract.kind, "translated")
+    assert.strictEqual(coordinate.kind, "translated")
+    // And it reaches the rest of the indexed family, not just \partial:
+    // coordinate-component notation now resolves.
+    const metric = run("g_{tt} = -1")
+    assert.strictEqual(metric.kind, "translated", JSON.stringify(metric))
+    if (metric.kind === "translated") {
+      assert.ok(
+        metric.legend.some((l) => l.tex === "g_{tt}" && l.gloss.includes("metric")),
+        JSON.stringify(metric.legend),
+      )
+    }
+  })
+
+  test("CEO ruling: coordinate labels change nothing about bare symbols", () => {
+    // Bare t is still the coordinate time, bare r still the radial coordinate.
+    const bare = run("t = \\frac{r}{c}")
+    assert.strictEqual(bare.kind, "translated", JSON.stringify(bare))
+    if (bare.kind === "translated") {
+      assert.strictEqual(bare.changed, false, bare.restoredTex)
+      assert.ok(
+        bare.legend.some((l) => l.tex === "t" && l.gloss === "coordinate time"),
+        JSON.stringify(bare.legend),
+      )
+      assert.ok(
+        bare.legend.some((l) => l.tex === "r" && l.gloss.includes("radial coordinate")),
+        JSON.stringify(bare.legend),
+      )
+    }
+    assert.strictEqual(restored("r = 2M"), "r=\\frac{2GM}{c^{2}}")
+
+    // Differentials are untouched: dt, dr and the upright forms all still read
+    // through the differential table rather than as indices.
+    const line = run("ds^2 = -c^2dt^2 + dr^2 + r^2d\\theta^2")
+    assert.strictEqual(line.kind, "translated", JSON.stringify(line))
+    if (line.kind === "translated") assert.strictEqual(line.changed, false, line.restoredTex)
+    const upright = run("ds^2 = -c^2\\mathrm{d}t^2 + \\mathrm{d}r^2")
+    assert.strictEqual(upright.kind, "translated", JSON.stringify(upright))
+    if (upright.kind === "translated") assert.strictEqual(upright.changed, false)
+
+    // Identity subscripts still win over the index reading.
+    assert.strictEqual(restored("r_s = 2M"), "r_{s}=\\frac{2GM}{c^{2}}")
+    const hawking = run("T_H = \\frac{\\hbar\\kappa}{2\\pi k_B c}")
+    assert.strictEqual(hawking.kind, "translated", JSON.stringify(hawking))
+    if (hawking.kind === "translated") {
+      assert.ok(
+        hawking.legend.some((l) => l.gloss.includes("Hawking temperature")),
+        JSON.stringify(hawking.legend),
+      )
+    }
+
+    // A superscript is the power position: a coordinate label there is still
+    // part of an exponent, not an index, so e^{i\phi} keeps its own reading.
+    for (const tex of ["\\phi = e^{-i\\omega t}", "z = e^{i\\phi/2}"]) {
+      const result = run(tex)
+      assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "translated") assert.strictEqual(result.changed, false, tex)
+    }
+    const exponent = run("x = e^{i\\phi}")
+    assert.strictEqual(exponent.kind, "declined", JSON.stringify(exponent))
+    if (exponent.kind === "declined") {
+      assert.deepStrictEqual(exponent.unknown, [], "e must not become an indexed lookup")
+    }
+  })
+
   test("the spin-weight rider {}_s is a label, and s stays out of the dictionary", () => {
     // The rider parses instead of throwing "a floating super/subscript" …
     const rider = run("x = {}_sR")

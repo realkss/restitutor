@@ -432,6 +432,31 @@ const SUPPORTED_RELS = new Set([
   "\\sim",
 ])
 const LATIN_INDICES = new Set("abcdefghijk".split(""))
+/**
+ * CEO RULING 2026-08-17 — coordinate labels count as index tokens.
+ *
+ * A named coordinate standing in a subscript is an index like any other: it says
+ * *which* component, not *how much* of anything, and carries no dimension. The
+ * conventions page's §3 index table names only the abstract Latin, component
+ * Greek and spatial i–k families, so this is an addition to it rather than a
+ * reading of it — hence the ruling.
+ *
+ * The set is the one the corpus actually uses. Walking all 56 display equations
+ * for subscript tokens the engine rejected turns up exactly four coordinates —
+ * t (×3), r (×2), \theta (×2) and \phi (×3), every one of them on \partial —
+ * alongside tokens that are emphatically *not* coordinates and are deliberately
+ * left out: the identity subscripts B and H (k_B, T_H, \Omega_H), the Weyl index
+ * 4 (\psi_4), and the mode and frequency labels \ell, m, \omega and \Omega. Only
+ * \varphi is here without corpus evidence, because the registry already carries
+ * it as \phi's alternate spelling in both `bare` and `differential`.
+ *
+ * Confined to subscript position on purpose. A superscript is also the power
+ * position, and `classifySup` cannot see whose exponent it is reading: admitting
+ * coordinates there turns `e^{i\phi}` into a lookup of a nonexistent indexed `e`,
+ * which would replace a truthful dimensional decline with a false claim that the
+ * dictionary is missing an entry.
+ */
+const COORDINATE_LABELS = new Set(["t", "r", "\\theta", "\\phi", "\\varphi"])
 const GREEK_INDICES = new Set([
   "\\mu",
   "\\nu",
@@ -661,7 +686,7 @@ function textOf(node: any): string | null {
   return null
 }
 
-function isIndexToken(node: any): boolean {
+function isIndexToken(node: any, coordinates = false): boolean {
   const u = unwrap(node)
   if (!u) return false
   if (u.type === "atom" && (u.family === "open" || u.family === "close" || u.family === "punct")) {
@@ -670,7 +695,8 @@ function isIndexToken(node: any): boolean {
   if (SKIP_TYPES.has(u.type)) return true
   const text = textOf(u)
   if (text == null) return false
-  return LATIN_INDICES.has(text) || GREEK_INDICES.has(text) || DIGIT_INDICES.has(text)
+  if (LATIN_INDICES.has(text) || GREEK_INDICES.has(text) || DIGIT_INDICES.has(text)) return true
+  return coordinates && COORDINATE_LABELS.has(text)
 }
 
 /**
@@ -693,7 +719,12 @@ function allRiderTokens(nodes: any[]): boolean {
   return meaningful.every((n) => isIndexToken(n) || RIDER_LABELS.has(textOf(n) ?? ""))
 }
 
-function allIndexTokens(nodes: any[]): boolean {
+/**
+ * `coordinates` admits the named coordinate labels (CEO ruling 2026-08-17). It is
+ * passed only from subscript position; the superscript caller is also the power
+ * caller and must keep reading `\phi` in `e^{i\phi}` as part of an exponent.
+ */
+function allIndexTokens(nodes: any[], coordinates = false): boolean {
   const meaningful = nodes.filter((n) => {
     const u = unwrap(n)
     return u && !SKIP_TYPES.has(u.type)
@@ -707,7 +738,7 @@ function allIndexTokens(nodes: any[]): boolean {
   ) {
     throw new Unsupported("comma/semicolon derivative indices, which are not supported yet")
   }
-  return meaningful.every((n) => isIndexToken(n))
+  return meaningful.every((n) => isIndexToken(n, coordinates))
 }
 
 /** Parse a superscript as a rational power, or classify it. */
@@ -777,10 +808,12 @@ function resolveSymbol(
   let entry: RegEntry | undefined
   let key = baseText
   if (opts.sub != null) {
+    // Order is load-bearing: a subscript that spells an identity (r_s, T_H, k_B)
+    // is resolved as that identity before the subscript is ever read as an index.
     const exactKey = `${baseText}_${subKeyText(opts.sub, ctx)}`
     entry = reg.exact[exactKey]
     key = exactKey
-    if (!entry && allIndexTokens(nodeListOf(opts.sub))) {
+    if (!entry && allIndexTokens(nodeListOf(opts.sub), true)) {
       entry = reg.indexed[baseText]
       key = `${baseText} (indexed)`
     }
@@ -1518,7 +1551,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   // index scripts: emission is rebuilt from the analyzed base so inner
   // restorations and delimiters survive.
   if (base != null) {
-    const subIsIndex = n.sub == null || allIndexTokens(nodeListOf(n.sub))
+    const subIsIndex = n.sub == null || allIndexTokens(nodeListOf(n.sub), true)
     const supIsReadable = sup == null || sup === "index" || typeof sup === "object"
     if (subIsIndex && supIsReadable) {
       const inner = analyzeFactor(n.base, ctx)
