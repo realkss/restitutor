@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>restitutor</title>
+<link rel="stylesheet" href="dist/katex.min.css">
+<style>
+  :root {
+    --paper: #faf9f6; --ink: #20242c; --soft: #5a6272; --line: #ddd9cf;
+    --accent: #3b5f8f; --accent-ink: #2c4a72; --ok: #22603d; --warn: #a13d3d;
+    --card: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.6 Georgia, "Times New Roman", serif;
+  }
+  .wrap { max-width: 52rem; margin: 0 auto; padding: 2.2rem 1.2rem 4rem; }
+  header { border-bottom: 2px solid var(--ink); padding-bottom: .9rem; margin-bottom: 1.4rem; }
+  h1 { font-size: 1.9rem; margin: 0; letter-spacing: .01em; }
+  .tagline { color: var(--soft); margin: .4rem 0 0; font-size: .95rem; font-style: italic; }
+  label.head { display: block; font: 700 .72rem/1 "Segoe UI", system-ui, sans-serif;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 1.3rem 0 .45rem; }
+  textarea {
+    width: 100%; min-height: 6.5rem; padding: .8rem .9rem; resize: vertical;
+    font: 14px/1.5 Consolas, "Cascadia Mono", monospace; color: var(--ink);
+    background: var(--card); border: 1px solid var(--line); border-radius: 3px;
+  }
+  textarea:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row { display: flex; flex-wrap: wrap; gap: 1rem 1.6rem; align-items: center; margin-top: .6rem; }
+  select, button {
+    font: 15px Georgia, serif; padding: .42rem .7rem; background: var(--card);
+    color: var(--ink); border: 1px solid var(--line); border-radius: 3px;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; cursor: pointer; padding: .45rem 1.3rem; }
+  button.primary:hover { background: var(--accent-ink); }
+  .samples { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .samples button { font-size: .8rem; color: var(--accent-ink); cursor: pointer; padding: .25rem .6rem; }
+  .check { display: flex; gap: .45rem; align-items: center; font-size: .95rem; }
+  #out { margin-top: 1.8rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 3px; padding: 1rem 1.2rem; margin-top: .9rem; overflow-x: auto; }
+  .card h2 { font: 700 .72rem/1 "Segoe UI", system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--soft); margin: 0 0 .6rem; }
+  .verdict { font-weight: 700; }
+  .verdict.ok { color: var(--ok); } .verdict.warn { color: var(--warn); }
+  ul.reasons { margin: .4rem 0 0; padding-left: 1.2rem; }
+  table.legend { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  table.legend td, table.legend th { padding: .35rem .6rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.legend th { font: 700 .68rem/1.3 "Segoe UI", system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
+  .unitline { color: var(--soft); font-size: .9rem; margin-top: .5rem; }
+  footer { margin-top: 3rem; color: var(--soft); font-size: .82rem; border-top: 1px solid var(--line); padding-top: .8rem; }
+  .katex-display { margin: .4rem 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>restitutor</h1>
+    <p class="tagline">Paste a general-relativity display equation; the engine restores or strips its constants. Lookup, never inference — anything it cannot vouch for, it declines with the offending symbols named.</p>
+  </header>
+
+  <label class="head" for="tex">Equation (TeX, geometrized GR source)</label>
+  <textarea id="tex" spellcheck="false">G_{ab} + \Lambda g_{ab} = 8\pi T_{ab}</textarea>
+  <div class="row">
+    <div class="samples" id="samples" aria-label="sample equations"></div>
+  </div>
+
+  <div class="row">
+    <label class="check"><span>Target</span>
+      <select id="system" aria-label="target unit system"></select>
+    </label>
+    <label class="check">
+      <input type="checkbox" id="geom">
+      <span>geometrized target (verify constants, then strip)</span>
+    </label>
+    <button class="primary" id="go">Translate</button>
+  </div>
+
+  <div id="out" aria-live="polite"></div>
+
+  <footer>Stage-1 paste box over the production engine (<code>src/unitsEngine.ts</code>, GR registry). The generator-parameterized convention layer is <code>src/convention.ts</code>; the domain spec is <code>docs/unit-systems-census.md</code>.</footer>
+</div>
+<script type="module" src="dist/main.js"></script>
+</body>
+</html>
