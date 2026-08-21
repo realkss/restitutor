@@ -81,8 +81,8 @@ Census §10 governs: the five benchmark classes, the mined 404-item seed (`bench
 
 | # | Decision | Options / notes |
 |---|---|---|
-| 1 | Repo name | e.g. `units-engine`, `restitutor`, something Latin in the site's register — owner's call |
-| 2 | License now vs at public flip | MIT/Apache-2 from day one (simplest) vs no-license-until-flip (maximal control) |
+| 1 | Repo name | **DECIDED (2026-08-20): `restitutor`** — Latin, the restorer; fits the site's register |
+| 2 | License now vs at public flip | **DECIDED (2026-08-20): no license until the flip** — all rights reserved while private |
 | 3 | Convention data versioning | schema version + CODATA vintage tags on constants; whether registry edits bump a data version consumers can pin |
 | 4 | Numeric converter in stage 1? | cheap and demo-friendly; adds the constants-table maintenance duty |
 | 5 | Stage-4 OCR vendor | Mathpix (paid, best) vs pix2tex/Texify (open); can be deferred for years |
