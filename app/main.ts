@@ -174,3 +174,141 @@ texEl.addEventListener("keydown", (ev) => {
   if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") run()
 })
 run()
+
+// ---------------------------------------------------------------------------
+// Convention inspector: the generator-parameterized layer, live.
+// ---------------------------------------------------------------------------
+import { CONVENTIONS, EM_RIDERS, activeRiders, validateConvention } from "../src/convention"
+
+const convEl = $<HTMLSelectElement>("conv")
+const convOut = $("convOut")
+
+/** Which E&M rendering's rider table demonstrates the span rule for each convention. */
+const RENDERING: Record<string, string> = {
+  si: "si",
+  gaussian: "gaussian",
+  esu: "esu",
+  emu: "emu",
+  "heaviside-lorentz": "heaviside-lorentz",
+  "geometrized-gaussian": "gaussian",
+  "gaussian-natural": "gaussian",
+  "planck-gaussian": "gaussian",
+  "geometrized-hl": "heaviside-lorentz",
+  "hep-hl": "heaviside-lorentz",
+  "hep-hl-kb": "heaviside-lorentz",
+  "planck-hl": "heaviside-lorentz",
+}
+
+for (const [key, c] of Object.entries(CONVENTIONS)) {
+  const opt = document.createElement("option")
+  opt.value = key
+  opt.textContent = c.name
+  if (key === "geometrized") opt.selected = true
+  convEl.appendChild(opt)
+}
+
+function inspect() {
+  const key = convEl.value
+  const c = CONVENTIONS[key]
+  const v = validateConvention(c)
+  convOut.textContent = ""
+
+  const card = document.createElement("div")
+  card.className = "card"
+  const h = document.createElement("h2")
+  h.textContent = "Validation"
+  card.appendChild(h)
+  const p = document.createElement("p")
+  p.style.margin = "0"
+  const badge = document.createElement("span")
+  badge.className = v.kind === "over-determined" ? "verdict warn" : "verdict ok"
+  badge.textContent = v.kind
+  p.appendChild(badge)
+  p.append(
+    ` — ${v.generatorCount} generator${v.generatorCount === 1 ? "" : "s"}, rank ${v.rank}, residual dimension rank ${v.residualRank}`,
+  )
+  card.appendChild(p)
+  if (v.residualRank === 0) {
+    const note = document.createElement("p")
+    note.className = "unitline"
+    note.textContent =
+      "Residual rank 0: dimensional checking is vacuous here — the engine's value is restoration only (census §1.6)."
+    card.appendChild(note)
+  }
+  if (v.kind === "over-determined") {
+    const ul = document.createElement("ul")
+    ul.className = "reasons"
+    for (const grp of v.impliedGroups) {
+      const li = document.createElement("li")
+      li.textContent = `implied physical restriction: ${grp}`
+      ul.appendChild(li)
+    }
+    card.appendChild(ul)
+  }
+  convOut.appendChild(card)
+
+  if (c.generators.length) {
+    const gcard = document.createElement("div")
+    gcard.className = "card"
+    const gh = document.createElement("h2")
+    gh.textContent = "Generators set to 1"
+    gcard.appendChild(gh)
+    const table = document.createElement("table")
+    table.className = "legend"
+    const thead = document.createElement("thead")
+    const hr = document.createElement("tr")
+    for (const t of ["Emits", "Factor", "Kind"]) {
+      const th = document.createElement("th")
+      th.textContent = t
+      hr.appendChild(th)
+    }
+    thead.appendChild(hr)
+    table.appendChild(thead)
+    const tbody = document.createElement("tbody")
+    for (const gen of c.generators) {
+      const tr = document.createElement("tr")
+      const tdE = document.createElement("td")
+      katex.render(gen.emits, tdE, { throwOnError: false })
+      const tdF = document.createElement("td")
+      tdF.textContent = gen.numericFactor
+      const tdK = document.createElement("td")
+      tdK.textContent = gen.kind + (gen.role === "inserted" ? " (inserted)" : "")
+      tr.append(tdE, tdF, tdK)
+      tbody.appendChild(tr)
+    }
+    table.appendChild(tbody)
+    gcard.appendChild(table)
+    convOut.appendChild(gcard)
+  }
+
+  const rendering = RENDERING[key]
+  if (rendering) {
+    const riders = EM_RIDERS[rendering]
+    const rcard = document.createElement("div")
+    rcard.className = "card"
+    const rh = document.createElement("h2")
+    rh.textContent = `E&M riders (${rendering} rendering) under the span rule`
+    rcard.appendChild(rh)
+    if (!riders.length) {
+      const none = document.createElement("p")
+      none.style.margin = "0"
+      none.textContent = "None — SI is the plain quotient's own rendering."
+      rcard.appendChild(none)
+    } else {
+      const active = new Set(activeRiders(c, riders))
+      const ul = document.createElement("ul")
+      ul.className = "reasons"
+      for (const r of riders) {
+        const li = document.createElement("li")
+        const state = active.has(r) ? "ACTIVE" : "suppressed — the solve supplies this factor"
+        li.textContent = `${r.symbol} ${r.direction === "multiply" ? "×" : "÷"} ${r.factorTex.replace("\\pi", "π").replace("4π", "4π")}: ${state}`
+        ul.appendChild(li)
+      }
+      rcard.appendChild(ul)
+    }
+    convOut.appendChild(rcard)
+  }
+}
+
+convEl.addEventListener("change", inspect)
+inspect()
