@@ -167,19 +167,26 @@ function run() {
   const tex = texEl.value
   const result = translateTex(tex, katex, registry!, spec)
   render(result, spec, tex)
+  syncInspectorToTarget(spec)
 }
 
 $("go").addEventListener("click", run)
 texEl.addEventListener("keydown", (ev) => {
   if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") run()
 })
-run()
 
 // ---------------------------------------------------------------------------
-// Convention inspector: the generator-parameterized layer, live.
+// Convention inspector: the generator-parameterized layer, live — and wired:
+// the translate target drives it (src/bridge.ts).
 // ---------------------------------------------------------------------------
 import { CONVENTIONS, EM_RIDERS, TIERS, activeRiders, validateConvention } from "../src/convention"
 import { RENDERING } from "./rendering"
+import { conventionKeyForTarget } from "../src/bridge"
+
+function syncInspectorToTarget(spec: TargetSpec) {
+  convEl.value = conventionKeyForTarget(spec)
+  inspect()
+}
 
 const convEl = $<HTMLSelectElement>("conv")
 const convOut = $("convOut")
@@ -301,4 +308,5 @@ function inspect() {
 }
 
 convEl.addEventListener("change", inspect)
-inspect()
+// Initial render last: run() translates AND syncs the inspector to the target.
+run()
