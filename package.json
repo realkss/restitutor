@@ -6,10 +6,12 @@
   "description": "Deterministic unit-convention restoration and dimensional lint for physics literature. Lookup, never inference.",
   "author": "Keeper <silentumestaureum@protonmail.ch>",
   "scripts": {
-    "test": "tsx --test src/unitsEngine.test.ts",
-    "sync-check": "node scripts/check-site-sync.mjs"
+    "test": "tsx --test src/unitsEngine.test.ts src/convention.test.ts",
+    "sync-check": "node scripts/check-site-sync.mjs",
+    "build:app": "node scripts/build-app.mjs"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "katex": "0.16.47",
     "tsx": "^4.19.0"
   }
