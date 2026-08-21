@@ -624,9 +624,11 @@ export const CONVENTIONS: Record<string, Convention> = {
 
   // --- v1 completion (phases-3+4 review backlog) ---
   "hartree-gaussian": {
-    // The 3-generator half-integer rendering of the same physics as "hartree":
-    // Gaussian charge carries dimension M^½ L^{3/2} T⁻¹ (census §2.1 makes the
-    // halves load-bearing). E_h restores as ħ⁻² m_e e⁴.
+    // The 3-generator half-integer rendering of Hartree physics: Gaussian
+    // charge carries dimension M^½ L^{3/2} T⁻¹ (census §2.1 makes the halves
+    // load-bearing). E_h restores as ħ⁻² m_e e⁴. NOTE: same MECHANICAL sector
+    // as "hartree", different EM basis — SI-charge-dimension targets decline
+    // here (and restore under "hartree"); Gaussian-charge targets vice versa.
     name: "Hartree atomic units, Gaussian rendering (ħ = m_e = e = 1, Gaussian charge)",
     generators: [
       g("\\hbar", CONST_DIM.hbar, "1", "\\hbar"),
@@ -636,8 +638,11 @@ export const CONVENTIONS: Record<string, Convention> = {
   },
   "lattice-model": {
     // Distinct from "lattice" (the QCD ħ = c = a row): the condensed-matter
-    // declaration a = ħ = t = 1 with k_B and e — five switches, full rank.
-    name: "Lattice-model condensed-matter units (a = ħ = t = 1, with k_B and e)",
+    // declaration a = ħ = t = 1 with k_B — and e, which the census declares
+    // CONDITIONALLY ("when a flux or field is present"); with it the basis is
+    // complete (rank 5). The Peierls-phase convention rider is NOT yet
+    // encoded, so B-dimension restorations emit the bare SI-basis form.
+    name: "Lattice-model condensed-matter units (a = ħ = t = 1, k_B; e when flux/field present)",
     generators: [
       g("a", dimQ(0, 1, 0, 0, 0), "1", "a", "regulator"),
       g("\\hbar", CONST_DIM.hbar, "1", "\\hbar"),
@@ -647,28 +652,36 @@ export const CONVENTIONS: Record<string, Convention> = {
     ],
   },
   "effective-au": {
-    name: "Effective (excitonic) atomic units (ħ = m* = 1, e²/(4πε₀ε_r) = 1)",
+    // The census records the Hartree/Rydberg factor-2 fork on BOTH material
+    // generators and calls it a trap ("even less often declared than in the
+    // parent systems"). The fork is data, never a default.
+    name: "Effective (excitonic) atomic units (ħ = m* = 1, e²/(4πε₀ε_r) = 1; Hartree- or Rydberg-like)",
     generators: [
       g("\\hbar", CONST_DIM.hbar, "1", "\\hbar"),
-      g("m^*", dimQ(1, 0, 0, 0, 0), "1", "m^*", "solution_parameter"),
-      g("e^2/(4\\pi\\varepsilon_0\\varepsilon_r)", dimQ(1, 3, -2, 0, 0), "1", "e^2/(4\\pi\\varepsilon_0\\varepsilon_r)", "theory_scale"),
+      g("m^*", dimQ(1, 0, 0, 0, 0), "1 \\text{ (Hartree-like) or } 2", "m^* \\text{ or } (2m^*)", "solution_parameter"),
+      g("e^2/(4\\pi\\varepsilon_0\\varepsilon_r)", dimQ(1, 3, -2, 0, 0), "1 \\text{ (Hartree-like) or } 1/2", "e^2/(4\\pi\\varepsilon_0\\varepsilon_r) \\text{ or its half}", "theory_scale"),
     ],
   },
   "magnetism-emu": {
-    // The experimental-magnetism rendering: μ₀ = 1 with the 4π written
-    // explicitly in the field equations (unrationalized) — distinct from the
-    // "emu" row's μ₀/4π = 1.
+    // The atomic-cm census row "CGS-emu / Gaussian magnetism (gauss, oersted,
+    // emu)": μ₀ = 1 with the 4π explicit in the field equations — distinct
+    // from the "emu" row's μ₀/4π = 1, and ALSO from the still-unencoded v2
+    // materials-science "emu system" row. The row's census content is chiefly
+    // RIDER data (4πM-as-magnetization, G/Oe interchange) not yet encoded, so
+    // this rank-1 generator record restores almost nothing by itself — it
+    // exists to name the convention and hold the slot until the riders land.
     name: "CGS-emu / Gaussian magnetism (μ₀ = 1, unrationalized)",
     generators: [g("\\mu_0", CONST_DIM.mu0, "1", "\\mu_0")],
   },
   "gpe-healing": {
-    // The ξ = ħ/√(2mgn) vs ħ/√(mgn) √2 fork lives in the healing-length
-    // DEFINITION, not the generator set — registry material, noted here.
-    name: "GPE healing-length units (ħ = m = gn = 1; ξ carries the √2 fork)",
+    // Census generator is mgn (dimension M²L²T⁻², since ξ = ħ/√(2mgn) forces
+    // mgn = ħ²/ξ²) carrying the ½-or-1 fork: ξ = ħ/√(2mgn) vs ħ/√(mgn) is a
+    // √2 on every length. The fork is data, never a default.
+    name: "GPE healing-length units (ħ = m = 1, mgn set with the ½-or-1 fork)",
     generators: [
       g("\\hbar", CONST_DIM.hbar, "1", "\\hbar"),
       g("m", dimQ(1, 0, 0, 0, 0), "1", "m", "solution_parameter"),
-      g("gn", dimQ(1, 2, -2, 0, 0), "1", "gn", "theory_scale"),
+      g("mgn", dimQ(2, 2, -2, 0, 0), "1/2 \\text{ or } 1", "mgn", "theory_scale"),
     ],
   },
 }

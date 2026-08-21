@@ -3,7 +3,7 @@
 import test, { describe } from "node:test"
 import assert from "node:assert"
 import { CONVENTIONS, EM_RIDERS, TIERS } from "./convention"
-import { RENDERING, RENDERING_EXCLUDED } from "../app/rendering"
+import { RENDERING, RENDERING_EXCLUDED, RENDERING_NOT_APPLICABLE } from "../app/rendering"
 
 describe("tier stamps", () => {
   test("every convention has a tier and every tier names a convention", () => {
@@ -23,10 +23,20 @@ describe("the inspector's rendering map", () => {
       assert.ok(rendering in EM_RIDERS, rendering)
     }
   })
-  test("the Gaussian-adjacent atomic rows are excluded DELIBERATELY (α-ambiguity, census §6.4)", () => {
-    for (const key of RENDERING_EXCLUDED) {
+  test("every exclusion is deliberate, reasoned, and not also rendered", () => {
+    for (const [key, reason] of Object.entries(RENDERING_EXCLUDED)) {
       assert.ok(key in CONVENTIONS, key)
-      assert.ok(!(key in RENDERING), `${key} must stay excluded until the atomic magnetic story is encoded`)
+      assert.ok(reason.length > 10, `${key} needs a real reason`)
+      assert.ok(!(key in RENDERING), `${key} is both rendered and excluded`)
     }
+  })
+  test("COMPLETENESS: every convention is rendered, excluded, or explicitly not-applicable — exactly once", () => {
+    const all = Object.keys(CONVENTIONS).sort()
+    const partition = [
+      ...Object.keys(RENDERING),
+      ...Object.keys(RENDERING_EXCLUDED),
+      ...RENDERING_NOT_APPLICABLE,
+    ].sort()
+    assert.deepStrictEqual(partition, all)
   })
 })

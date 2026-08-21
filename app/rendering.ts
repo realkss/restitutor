@@ -1,10 +1,7 @@
 // Which E&M rendering's rider table the inspector demonstrates for each
 // convention. Data (not DOM) so the guard tests can import it directly.
-//
-// Deliberate exclusions, pinned by test: hartree/rydberg/hartree-gaussian and
-// friends set 4πε₀ = 1 and are Gaussian-adjacent, but their magnetic sector
-// carries the α-ambiguity (census §6.4) — attaching a rider table here without
-// the atomic-units magnetic story would overstate what the engine knows.
+// Every convention key appears in exactly one of the three lists below —
+// completeness-guarded by test, so no row can go silently unpinned.
 export const RENDERING: Record<string, string> = {
   si: "si",
   gaussian: "gaussian",
@@ -20,10 +17,45 @@ export const RENDERING: Record<string, string> = {
   "planck-hl": "heaviside-lorentz",
 }
 
-export const RENDERING_EXCLUDED: readonly string[] = [
-  "hartree",
-  "rydberg",
-  "hartree-gaussian",
-  "effective-au",
-  "magnetism-emu",
+/**
+ * Deliberate exclusions, each with its reason, pinned by test.
+ */
+export const RENDERING_EXCLUDED: Record<string, string> = {
+  // Atomic rows absorbing the Coulomb 4πε₀ combination (4-generator or
+  // half-integer rendering): the magnetic sector carries the α-ambiguity
+  // (census §6.4) — a rider table here would overstate what the engine knows.
+  hartree: "atomic magnetic α-ambiguity (census §6.4)",
+  rydberg: "atomic magnetic α-ambiguity (census §6.4)",
+  "hartree-gaussian": "atomic magnetic α-ambiguity (census §6.4)",
+  "effective-au": "atomic magnetic α-ambiguity (census §6.4)",
+  "dirac-atomic": "carries the Gaussian/HL fork in its census rescaling list — un-adjudicated here",
+  // Its census content IS rider data (4πM, G/Oe) that is not yet encoded.
+  "magnetism-emu": "unrationalized-magnetism rider table not yet encoded",
+  // Peierls-phase convention rider not yet encoded; B restorations are bare SI-basis.
+  "lattice-model": "Peierls-phase rider not yet encoded",
+}
+
+/**
+ * Conventions with no classical-E&M rendering story to demonstrate —
+ * mechanical, gravitational, or per-paper scales whose EM sector is either
+ * absent or already carried by their generator sets.
+ */
+export const RENDERING_NOT_APPLICABLE: readonly string[] = [
+  "geometrized",
+  "reduced-planck",
+  "kolb-turner",
+  "c-only",
+  "classical-kappa",
+  "sixteen-pi-g",
+  "string-alpha-prime",
+  "string-ls-2pi",
+  "lattice",
+  "bh-scale",
+  "nr-code",
+  "kb-only",
+  "lj-reduced",
+  "chaos-mw",
+  "trap-units",
+  "ns-inertial",
+  "gpe-healing",
 ] as const

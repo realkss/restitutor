@@ -29,7 +29,7 @@ describe("the combination lint (census §2.13(a))", () => {
   test("identical tags combine cleanly with an empty report", () => {
     const tags = { frame: "detector", averaging: "sky-averaged" }
     const r = checkCombinable({ tags }, { tags })
-    assert.deepStrictEqual(r, { combinable: true, conflicts: [], unverifiable: [] })
+    assert.deepStrictEqual(r, { combinable: true, conflicts: [], unverifiable: [], strict: false })
     assert.strictEqual(describeReport(r), "")
   })
 

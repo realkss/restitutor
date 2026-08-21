@@ -42,11 +42,13 @@ export type TagConflict = { key: string; left: string; right: string }
 export type UnverifiableTag = { key: string; declaredOn: "left" | "right" }
 
 export type CombineReport = {
-  /** False iff any shared key disagrees. */
+  /** False iff any shared key disagrees (and, under strict, iff any key is one-sided). */
   combinable: boolean
   conflicts: TagConflict[]
-  /** Keys present on exactly one side: not a bar, but the honest caveat — with the side named. */
+  /** Keys present on exactly one side: caveat by default, a bar under strict — with the side named. */
   unverifiable: UnverifiableTag[]
+  /** Whether strict mode judged this report (so renderers phrase unverifiable honestly). */
+  strict: boolean
 }
 
 export type CombineOptions = {
@@ -76,10 +78,11 @@ export function checkCombinable(a: Tagged, b: Tagged, opts: CombineOptions = {})
       unverifiable.push({ key, declaredOn: hasLeft ? "left" : "right" })
     }
   }
-  const combinable = opts.strict
+  const strict = opts.strict === true
+  const combinable = strict
     ? conflicts.length === 0 && unverifiable.length === 0
     : conflicts.length === 0
-  return { combinable, conflicts, unverifiable }
+  return { combinable, conflicts, unverifiable, strict }
 }
 
 /** Render a report as decline-vocabulary text (empty string when fully clean). */
@@ -89,7 +92,7 @@ export function describeReport(r: CombineReport, aTex = "left", bTex = "right"):
     parts.push(`identity conflict on ${c.key}: ${aTex} is ${c.left}, ${bTex} is ${c.right} — convert or refuse`)
   for (const u of r.unverifiable)
     parts.push(
-      `unverifiable: ${u.key} declared only on ${u.declaredOn === "left" ? aTex : bTex}`,
+      `${r.strict ? "unverifiable (barred under strict)" : "unverifiable"}: ${u.key} declared only on ${u.declaredOn === "left" ? aTex : bTex}`,
     )
   return parts.join("; ")
 }
