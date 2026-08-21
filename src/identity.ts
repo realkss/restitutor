@@ -39,26 +39,31 @@ export type Tagged = {
 
 export type TagConflict = { key: string; left: string; right: string }
 
+export type UnverifiableTag = { key: string; declaredOn: "left" | "right" }
+
 export type CombineReport = {
   /** False iff any shared key disagrees. */
   combinable: boolean
   conflicts: TagConflict[]
-  /** Keys present on exactly one side: not a bar, but the honest caveat. */
-  unverifiable: string[]
+  /** Keys present on exactly one side: not a bar, but the honest caveat — with the side named. */
+  unverifiable: UnverifiableTag[]
 }
 
 /** The §2.13(a) lint: refuse to combine quantities whose identity tags differ. */
 export function checkCombinable(a: Tagged, b: Tagged): CombineReport {
   const conflicts: TagConflict[] = []
-  const unverifiable: string[] = []
+  const unverifiable: UnverifiableTag[] = []
+  // Own-key discipline: an inherited prototype property must never fabricate a
+  // tag ("constructor", "toString" — real hazard with plain-object tag maps).
   const keys = new Set([...Object.keys(a.tags), ...Object.keys(b.tags)])
   for (const key of [...keys].sort()) {
-    const left = a.tags[key]
-    const right = b.tags[key]
-    if (left !== undefined && right !== undefined) {
-      if (left !== right) conflicts.push({ key, left, right })
+    const hasLeft = Object.hasOwn(a.tags, key)
+    const hasRight = Object.hasOwn(b.tags, key)
+    if (hasLeft && hasRight) {
+      if (a.tags[key] !== b.tags[key])
+        conflicts.push({ key, left: a.tags[key], right: b.tags[key] })
     } else {
-      unverifiable.push(key)
+      unverifiable.push({ key, declaredOn: hasLeft ? "left" : "right" })
     }
   }
   return { combinable: conflicts.length === 0, conflicts, unverifiable }
@@ -69,7 +74,9 @@ export function describeReport(r: CombineReport, aTex = "left", bTex = "right"):
   const parts: string[] = []
   for (const c of r.conflicts)
     parts.push(`identity conflict on ${c.key}: ${aTex} is ${c.left}, ${bTex} is ${c.right} — convert or refuse`)
-  if (r.unverifiable.length)
-    parts.push(`unverifiable: ${r.unverifiable.join(", ")} declared on one side only`)
+  for (const u of r.unverifiable)
+    parts.push(
+      `unverifiable: ${u.key} declared only on ${u.declaredOn === "left" ? aTex : bTex}`,
+    )
   return parts.join("; ")
 }

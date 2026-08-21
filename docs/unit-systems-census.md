@@ -74,6 +74,8 @@ SI = (no, no) · HL = (yes, no) · ESU/EMU = (no, yes) · Gaussian = (yes, yes).
 
 A useful failure signature: attempting to restore a Gaussian Faraday law with only the 4πε₀ generator makes the linear system *inconsistent* (no power of a (−1,−3,4,0,2) constant is a velocity). An unsolvable restoration in this family almost always means "hidden c on B" — surface that hint in the decline message.
 
+**Round-5 execution refinement (from implementing this rule):** suppression requires the factor CONSTANT to be generated, not merely its dimension to be reachable. Hartree's {ħ, m_e, e, 4πε₀} spans velocity as e²/(4πε₀ħ) = αc — the solve would "supply" a constant smaller than c by exactly α (c = 137.036 in-system, §5 #9), silently dropping the α the magnetic-ambiguity warning (§6.4) exists for. Implementable criterion: the restoration of the factor's dimension must return exactly one exponent, power 1, on a generator whose bare constant is the factor with numeric factor 1. Dimension-span alone never suppresses.
+
 ### 2.5 The dimensionless-conventions registry
 
 A third data class beside generators and riders: **dimensionless definitional forks** that no dimensional method can ever recover, ranked in §5 (the round-1/2 registry; the round-3 table extends it unranked). They are the product's crown jewels precisely because they are theorems of invisibility: the 8π/16π/32π gravity ladder, the EM 4π placements, √8π in the Planck mass, 2π in the string length, the Hartree/Rydberg factor 2, h vs ħ, the Higgs vev √2, the g-absorbed gauge normalization. Open-ended — 91 entries after three rounds and ~56 more from twelve pilot papers; a growing per-subfield asset with a long tail, not a closed class. Each carries its detection fingerprint.
@@ -731,6 +733,10 @@ Material corrections by class:
 
 
 **Round 4 (empirical pilot `wf_cee35635` + five-lens top-up `wf_99edf84d` + claims verification `wf_65878598` + two drafting agents; ~45 agents):** 232 verified claims, 207 accepted. Pilot: 163 deduplicated clusters from 12 papers — 102 confirmed, 47 accepted as corrected, 8 not_real, 2 pilot-misread, 4 duplicates; a further ~15 census_error claims were dissolved by their verifiers (core did not survive; recorded in `data/`, not applied). Lens gaps: 51 — 37 confirmed, 6 corrected, 7 re-slotted (both truncation-flagged re-slots re-checked against full verdicts: g_A → three rows with the sign leg on the sign axis; RB fidelity → family with the repaired r = 1.0×10⁻³ / 1−p = 2.0×10⁻³ / 1−F_e = 1.5×10⁻³ example), 1 unadjudicated (chemical-potential identity — marked). Backlog: 18/18 rows confirmed into §3. Headline retraction: the registry-closure claim (C11) — §1 and §2.5 rewritten. Ten drafter-size-cut items restored (C31/C32/C34/C37/C42+C153/C78/C79/C111/C152) as catch-up rows and fixes. Session-limit lore: the top-up's verify stage died twice (usage reset, then connection loss) and completed on the third cached resume.
+
+**Round-5 data errata and rule refinement** — see §2.4's execution refinement note.
+
+**Data errata (round 5, found by the encoding):** the `gr-cosmo-astro` enum records ε₀ as (−1,−3,4,2,0) — Θ and I transposed — on the geometrized-Gaussian, geometrized-HL, GRMHD and Landau–Lifshitz rows. The correct SI-basis vector is (−1,−3,4,0,2); the encodings use the correct one and the enum is left as-is with this note.
 
 **Known process gaps**: the historical-engineering enumerator described 24 systems in its notes but delivered only 8 rows (its notes' sections 16–24 — radian convention, affine/logarithmic classes — were reconstructed into §2 and §7 of this census from the notes plus verifier corrections). Sourcing weakness in the nondimensionalization family (several correct entries cite only the Buckingham-π overview); re-source when those rows are encoded.
 

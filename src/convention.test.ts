@@ -134,6 +134,7 @@ describe("all shipped conventions: full validation records (census §1.6 ladder 
     "classical-kappa": { kind: "partial", n: 2, rank: 2, residual: 3 },
     "sixteen-pi-g": { kind: "partial", n: 3, rank: 3, residual: 2 },
     "string-alpha-prime": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    "string-ls-2pi": { kind: "partial", n: 3, rank: 3, residual: 2 },
     "lattice": { kind: "partial", n: 3, rank: 3, residual: 2 },
     // GR / astro
     "bh-scale": { kind: "partial", n: 3, rank: 3, residual: 2 },

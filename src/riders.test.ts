@@ -26,10 +26,37 @@ describe("the span rule on riders (census §2.4)", () => {
 
   test("Heaviside–Lorentz rendering carries c-riders but no 4π-riders (rationalized)", () => {
     const riders = EM_RIDERS["heaviside-lorentz"]
+    assert.strictEqual(riders.length, 4)
     assert.ok(riders.every((r) => r.factorTex === "c"))
-    assert.strictEqual(riderActive(CONVENTIONS["heaviside-lorentz"], riders[0]), true)
+    const bRider = riders.find((r) => r.symbol === "B")!
+    assert.strictEqual(riderActive(CONVENTIONS["heaviside-lorentz"], bRider), true)
     // Under geometrized-HL, c is restored and the rider suppresses:
-    assert.strictEqual(riderActive(CONVENTIONS["geometrized-hl"], riders[0]), false)
+    assert.strictEqual(riderActive(CONVENTIONS["geometrized-hl"], bRider), false)
+  })
+
+  test("ROUND-5 REFINEMENT: dimension-span alone never suppresses — the factor constant must itself be generated", () => {
+    // Hartree spans velocity as e²/(4πε₀ħ) = αc — c is 137.036 in-system
+    // (census §5 #9), so the c-riders must stay ACTIVE. Same for Rydberg
+    // (αc/2), LJ (√(ε/m)), trap units (√(ħω/m)), and NS-inertial (U).
+    const cRider = EM_RIDERS["gaussian"].find((r) => r.factorTex === "c" && r.symbol === "B")!
+    for (const key of ["hartree", "rydberg", "lj-reduced", "trap-units", "ns-inertial"]) {
+      assert.strictEqual(riderActive(CONVENTIONS[key], cRider), true, key)
+    }
+    // …while a convention that genuinely sets c = 1 still suppresses:
+    assert.strictEqual(riderActive(CONVENTIONS["geometrized-gaussian"], cRider), false)
+  })
+
+  test("a factor reachable only as an absorbed COMBINATION does not suppress (numericFactor must be 1)", () => {
+    // A convention whose only G-flavoured generator is 8πG: solving [G] returns
+    // power 1 on that generator, but the generated constant is 8πG, not G.
+    const gRider = {
+      symbol: "X",
+      factorTex: "G",
+      factorDim: CONVENTIONS["geometrized"].generators[1].dim,
+      direction: "multiply" as const,
+    }
+    assert.strictEqual(riderActive(CONVENTIONS["reduced-planck"], gRider), true)
+    assert.strictEqual(riderActive(CONVENTIONS["geometrized"], gRider), false)
   })
 })
 
@@ -51,6 +78,27 @@ describe("the E&M 2×2 table (census §2.4 / §10.3 test 2)", () => {
     assert.deepStrictEqual(classes("esu"), { c: false, fourPi: true })
     assert.deepStrictEqual(classes("emu"), { c: false, fourPi: true })
     assert.deepStrictEqual(classes("gaussian"), { c: true, fourPi: true })
+  })
+
+  test("rider directions match the census relations: B × c, A × c, H ÷ c, M ÷ c; D × 4π, H × 4π", () => {
+    const dir = (key: string, sym: string, factor: string) =>
+      EM_RIDERS[key].find((r) => r.symbol === sym && r.factorTex === factor)!.direction
+    assert.strictEqual(dir("gaussian", "B", "c"), "multiply")
+    assert.strictEqual(dir("gaussian", "A", "c"), "multiply")
+    assert.strictEqual(dir("gaussian", "H", "c"), "divide")
+    assert.strictEqual(dir("gaussian", "M", "c"), "divide")
+    assert.strictEqual(dir("gaussian", "D", "4\\pi"), "multiply")
+    assert.strictEqual(dir("gaussian", "H", "4\\pi"), "multiply")
+  })
+
+  test("EM_RIDERS covers exactly the five classical renderings", () => {
+    assert.deepStrictEqual(Object.keys(EM_RIDERS).sort(), [
+      "emu",
+      "esu",
+      "gaussian",
+      "heaviside-lorentz",
+      "si",
+    ])
   })
 
   test("Gaussian and ESU share the generator and differ ONLY in the c-riders (census §6.3)", () => {

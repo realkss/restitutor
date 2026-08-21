@@ -34,9 +34,9 @@ describe("class-D properties: round-trip solve", () => {
   // target = Σ xᵢ·dim(gᵢ) with fixed exponent vectors (integers and halves)
   // must solve back to exactly x. Deterministic vectors, no RNG (resume-safe).
   const VECTORS: [number, number][][] = [
-    [[1, 1], [2, 1], [-1, 1], [3, 1], [0, 1]],
+    [[1, 3], [2, 1], [-1, 1], [3, 1], [0, 1]], // leads with a third so n=1 conventions exercise it
     [[1, 2], [-3, 2], [1, 1], [0, 1], [5, 2]],
-    [[-2, 1], [0, 1], [1, 3], [-1, 2], [2, 1]],
+    [[-2, 1], [1, 3], [1, 3], [-1, 2], [2, 1]],
   ]
   for (const [key, conv] of Object.entries(CONVENTIONS)) {
     const v = validateConvention(conv)
@@ -60,6 +60,28 @@ describe("class-D properties: round-trip solve", () => {
       }
     })
   }
+})
+
+describe("class-D properties: residues and the empty target (census §2.10)", () => {
+  test("a dimensionless target restores to the EMPTY product — residues are never restored", () => {
+    for (const key of ["geometrized", "hep-hl-kb", "lj-reduced"]) {
+      const s = solveRestoration(CONVENTIONS[key], dimQ(0, 0, 0, 0, 0))
+      assert.strictEqual(s.kind, "unique", key)
+      if (s.kind === "unique") assert.deepStrictEqual(s.exponents, [])
+    }
+  })
+  test("the zero-generator SI baseline: empty target trivially unique, anything else inconsistent", () => {
+    const zero = solveRestoration(CONVENTIONS["si"], dimQ(0, 0, 0, 0, 0))
+    assert.strictEqual(zero.kind, "unique")
+    assert.strictEqual(solveRestoration(CONVENTIONS["si"], dimQ(1, 0, 0, 0, 0)).kind, "inconsistent")
+  })
+  test("the solve never mutates generator dimension vectors (aliasing guard)", () => {
+    const conv = CONVENTIONS["reduced-planck"]
+    const before = conv.generators.map((g) => g.dim.map((f) => f.toString()).join(","))
+    solveRestoration(conv, dimQ(0, 1, 0, 0, 0))
+    const after = conv.generators.map((g) => g.dim.map((f) => f.toString()).join(","))
+    assert.deepStrictEqual(after, before)
+  })
 })
 
 describe("benchmark seed integrity (docs/data/benchmarks-seed.json)", () => {

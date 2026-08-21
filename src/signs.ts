@@ -37,9 +37,9 @@ export type LeviCivita = { value: "+1" | "-1"; indexPosition: "upper" | "lower" 
 
 export type SignConventionRecord = {
   signature: SwitchState<Signature>
-  /** Sign convention of the Riemann tensor (MTW S2). */
+  /** Sign convention of the Riemann tensor (MTW [S2]). */
   riemannSign: SwitchState<"+1" | "-1">
-  /** Sign of the Ricci contraction (MTW S3). */
+  /** Sign of the Ricci contraction R_{μν} = ±R^α_{μαν} — MTW [S2][S3], not [S3] alone. */
   ricciSign: SwitchState<"+1" | "-1">
   leviCivita: SwitchState<LeviCivita>
   /** D_μ = ∂_μ ∓ ieA_μ: the sign written on the coupling. */
@@ -49,14 +49,14 @@ export type SignConventionRecord = {
 }
 
 /** The honest starting state for a document that has declared nothing. */
-export const UNSTAMPED: SignConventionRecord = {
+export const UNSTAMPED: Readonly<SignConventionRecord> = Object.freeze({
   signature: ABSENT,
   riemannSign: ABSENT,
   ricciSign: ABSENT,
   leviCivita: ABSENT,
   chargeSign: ABSENT,
   fourierSign: ABSENT,
-}
+})
 
 // ---------------------------------------------------------------------------
 // Real-signature translation: the contraction-parity rule (census §2.12).
@@ -103,11 +103,15 @@ export function signatureTranslation(from: Signature, to: Signature): SignatureT
 }
 
 /**
- * Normalize a declared ε to its LOWERED value under a real signature (C18):
- * in 4D Lorentzian det g < 0, so ε^{0123} = −ε_{0123} under either signature —
- * the declared index position, not the signature, decides the flip.
+ * Normalize a declared ε to its LOWERED value (C18). ε^{μνρσ} = det(g⁻¹)·ε_{αβγδ}
+ * with matching numerals: in 4D Lorentzian det g < 0, so ε^{0123} = −ε_{0123}
+ * under BOTH real signatures — the index position, not the signature, decides
+ * the flip. In 4D Euclidean det g > 0 and there is no flip. ict is v2.
  */
-export function leviCivitaLowered(declared: LeviCivita): "+1" | "-1" {
+export function leviCivitaLowered(declared: LeviCivita, signature: Signature): "+1" | "-1" {
+  if (signature === "ict")
+    throw new Error("leviCivitaLowered: notational ict is v2 (census §2.12)")
   if (declared.indexPosition === "lower") return declared.value
+  if (signature === "euclidean") return declared.value
   return declared.value === "+1" ? "-1" : "+1"
 }

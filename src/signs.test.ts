@@ -67,10 +67,27 @@ describe("signature translation (census §2.12)", () => {
 })
 
 describe("Levi-Civita typed by index position (census C18)", () => {
-  test("ε^{0123} = −ε_{0123}: an upper-index declaration inverts on lowering", () => {
-    assert.strictEqual(leviCivitaLowered({ value: "+1", indexPosition: "upper" }), "-1")
-    assert.strictEqual(leviCivitaLowered({ value: "-1", indexPosition: "upper" }), "+1")
-    assert.strictEqual(leviCivitaLowered({ value: "+1", indexPosition: "lower" }), "+1")
+  test("Lorentzian: ε^{0123} = −ε_{0123} under BOTH real signatures", () => {
+    for (const sig of ["mostly-plus", "mostly-minus"] as const) {
+      assert.strictEqual(leviCivitaLowered({ value: "+1", indexPosition: "upper" }, sig), "-1")
+      assert.strictEqual(leviCivitaLowered({ value: "-1", indexPosition: "upper" }, sig), "+1")
+      assert.strictEqual(leviCivitaLowered({ value: "+1", indexPosition: "lower" }, sig), "+1")
+      assert.strictEqual(leviCivitaLowered({ value: "-1", indexPosition: "lower" }, sig), "-1")
+    }
+  })
+  test("Euclidean: det g > 0, no flip on lowering", () => {
+    assert.strictEqual(leviCivitaLowered({ value: "+1", indexPosition: "upper" }, "euclidean"), "+1")
+    assert.strictEqual(leviCivitaLowered({ value: "-1", indexPosition: "upper" }, "euclidean"), "-1")
+  })
+  test("ict throws unimplemented rather than guessing", () => {
+    assert.throws(() => leviCivitaLowered({ value: "+1", indexPosition: "upper" }, "ict"), /v2/)
+  })
+})
+
+describe("guard-order precedence", () => {
+  test("euclidean-vs-ict resolves to the Euclidean refusal (pinned so a reorder cannot leak it)", () => {
+    const r = signatureTranslation("euclidean", "ict")
+    assert.strictEqual(r.kind, "refuse")
   })
 })
 
@@ -79,6 +96,19 @@ describe("three-valued switches (census C15)", () => {
     for (const v of Object.values(UNSTAMPED)) {
       assert.strictEqual(v.state, "absent")
     }
+  })
+  test("the record carries exactly the declared axes (a dropped or added axis fails here)", () => {
+    assert.deepStrictEqual(Object.keys(UNSTAMPED).sort(), [
+      "chargeSign",
+      "fourierSign",
+      "leviCivita",
+      "ricciSign",
+      "riemannSign",
+      "signature",
+    ])
+  })
+  test("UNSTAMPED is frozen — never a mutable shared default", () => {
+    assert.ok(Object.isFrozen(UNSTAMPED))
   })
   test("determined/undetermined/absent are distinguishable states", () => {
     const d = determined<"mostly-plus" | "mostly-minus">("mostly-plus")

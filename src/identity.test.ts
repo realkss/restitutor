@@ -11,8 +11,10 @@ describe("the combination lint (census §2.13(a))", () => {
     )
     assert.strictEqual(r.combinable, false)
     assert.deepStrictEqual(r.conflicts, [{ key: "scheme", left: "pole", right: "MS-bar" }])
-    assert.deepStrictEqual(r.unverifiable, ["scale"])
-    assert.match(describeReport(r, "m_b", "m_b"), /identity conflict on scheme/)
+    assert.deepStrictEqual(r.unverifiable, [{ key: "scale", declaredOn: "right" }])
+    const text = describeReport(r, "m_b(pole)", "m_b(MSbar)")
+    assert.match(text, /identity conflict on scheme/)
+    assert.match(text, /unverifiable: scale declared only on m_b\(MSbar\)/)
   })
 
   test("kelvin kinds: K_RJ vs K_CMB refuse to add", () => {
@@ -34,7 +36,13 @@ describe("the combination lint (census §2.13(a))", () => {
   test("a key on one side only is UNVERIFIABLE, not a conflict (three-valued discipline)", () => {
     const r = checkCombinable({ tags: { vintage: "CODATA-2022" } }, { tags: {} })
     assert.strictEqual(r.combinable, true)
-    assert.deepStrictEqual(r.unverifiable, ["vintage"])
+    assert.deepStrictEqual(r.unverifiable, [{ key: "vintage", declaredOn: "left" }])
+  })
+
+  test("an inherited prototype property never fabricates a tag", () => {
+    const r = checkCombinable({ tags: { toString: "declared" } }, { tags: {} })
+    assert.strictEqual(r.combinable, true)
+    assert.deepStrictEqual(r.unverifiable, [{ key: "toString", declaredOn: "left" }])
   })
 
   test("the vector is OPEN (census C04): unknown keys are first-class", () => {

@@ -240,7 +240,10 @@ function inspect() {
     ul.className = "reasons"
     for (const grp of v.impliedGroups) {
       const li = document.createElement("li")
-      li.textContent = `implied physical restriction: ${grp}`
+      li.append("implied physical restriction: ")
+      const span = document.createElement("span")
+      katex.render(grp, span, { throwOnError: false })
+      li.appendChild(span)
       ul.appendChild(li)
     }
     card.appendChild(ul)
@@ -251,7 +254,7 @@ function inspect() {
     const gcard = document.createElement("div")
     gcard.className = "card"
     const gh = document.createElement("h2")
-    gh.textContent = "Generators set to 1"
+    gh.textContent = "Generators (set to 1 unless marked inserted)"
     gcard.appendChild(gh)
     const table = document.createElement("table")
     table.className = "legend"
@@ -270,7 +273,7 @@ function inspect() {
       const tdE = document.createElement("td")
       katex.render(gen.emits, tdE, { throwOnError: false })
       const tdF = document.createElement("td")
-      tdF.textContent = gen.numericFactor
+      katex.render(gen.numericFactor, tdF, { throwOnError: false })
       const tdK = document.createElement("td")
       tdK.textContent = gen.kind + (gen.role === "inserted" ? " (inserted)" : "")
       tr.append(tdE, tdF, tdK)
@@ -301,7 +304,8 @@ function inspect() {
       for (const r of riders) {
         const li = document.createElement("li")
         const state = active.has(r) ? "ACTIVE" : "suppressed — the solve supplies this factor"
-        li.textContent = `${r.symbol} ${r.direction === "multiply" ? "×" : "÷"} ${r.factorTex.replace("\\pi", "π").replace("4π", "4π")}: ${state}`
+        const factorLabel = r.factorTex === "c" ? "c" : "4π"
+        li.textContent = `${r.symbol} ${r.direction === "multiply" ? "×" : "÷"} ${factorLabel}: ${state}`
         ul.appendChild(li)
       }
       rcard.appendChild(ul)
