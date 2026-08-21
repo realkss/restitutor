@@ -1,0 +1,1750 @@
+{
+ "family": "per-paper nondimensionalization (problem-specific scaling / \"code units\" / reduced units)",
+ "systems": [
+  {
+   "name": "Inertial (convective) scaling of the incompressible Navier–Stokes equations",
+   "aliases": [
+    "Reynolds scaling",
+    "outer scaling",
+    "U-L scaling",
+    "advective nondimensionalization"
+   ],
+   "used_in": "fluid mechanics, turbulence, aerodynamics, geophysical fluid dynamics; the default nondimensionalization in almost every incompressible-flow paper",
+   "generators": [
+    {
+     "tex": "L",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "L"
+    },
+    {
+     "tex": "U",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "U"
+    },
+    {
+     "tex": "\\rho",
+     "dimension": "(1, -3, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\rho"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "p",
+     "relation": "p_\\text{phys} = \\rho U^2\\,\\hat p  (some papers use p/(\\rho U^2) + gz absorbed, or \\hat p = (p-p_\\infty)/(\\tfrac12\\rho U^2) = C_p)",
+     "why": "pressure has no independent scale; it is slaved to \\rho U^2, and the engineering convention inserts a factor 1/2 (pressure coefficient) that dimensional analysis cannot see"
+    },
+    {
+     "symbol": "\\nu",
+     "relation": "\\nu is NOT a generator; it survives as 1/Re = \\nu/(UL)",
+     "why": "only three scales are independent in (M,L,T); \\nu is the residue. A paper that says \"we set L=U=\\nu=1\" has silently imposed Re=1, a physical restriction, not a unit choice."
+    }
+   ],
+   "fingerprints": [
+    "\"where lengths are scaled by L, velocities by U and time by L/U\"; \"hats denote dimensionless quantities\"",
+    "displayed momentum equation with a bare 1/Re (or Re^{-1}) multiplying \\nabla^2 u and coefficient 1 on the advective term",
+    "\\partial_t u + (u\\cdot\\nabla)u = -\\nabla p + Re^{-1}\\nabla^2 u ; \\nabla\\cdot u = 0",
+    "phrases \"unit box\", \"domain [0,1]^3\", \"we drop the hats henceforth\"",
+    "a Table 1 of \"reference quantities\" with rows length/velocity/time/pressure"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no electromagnetic content in the incompressible NS system.",
+    "gauss_law": "N/A: no electromagnetic content; the only divergence constraint is the incompressibility condition \\nabla\\cdot\\hat u = 0.",
+    "einstein_field": "N/A: nonrelativistic continuum model.",
+    "schrodinger_or_dirac": "N/A: classical continuum model."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v1",
+   "notes": "Rank-3 generator set over (M,L,T); Θ and I inactive. This is the cleanest test case that the generator formalism extends to user-declared scales: L, U, ρ are dimensionally independent, so the restoration linear system is uniquely solvable exactly as for ħ=c=1. The essential new feature versus fixed unit systems is the RESIDUE: 1/Re is a dimensionless group that must NOT be restored — it is part of the equation. The tool needs a hard distinction between \"absorbed generator\" and \"surviving dimensionless group\".",
+   "sources": [
+    "https://math.mit.edu/~dunkel/Teach/18.354_2014S/lecture_notes/L10_L11_scaling.pdf",
+    "https://en.wikipedia.org/wiki/Buckingham_pi_theorem"
+   ]
+  },
+  {
+   "name": "Viscous (diffusive/Stokes) scaling of the incompressible Navier–Stokes equations",
+   "aliases": [
+    "inner scaling",
+    "creeping-flow scaling",
+    "low-Reynolds nondimensionalization",
+    "viscous time units"
+   ],
+   "used_in": "microhydrodynamics, suspension mechanics, Stokes-flow and lubrication theory, low-Re swimming, and the linear-stability literature (Orr–Sommerfeld in viscous units)",
+   "generators": [
+    {
+     "tex": "L",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "L"
+    },
+    {
+     "tex": "\\nu",
+     "dimension": "(0, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\nu"
+    },
+    {
+     "tex": "\\rho",
+     "dimension": "(1, -3, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\rho"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "t",
+     "relation": "t_\\text{phys} = (L^2/\\nu)\\,\\hat t  instead of (L/U)\\,\\hat t",
+     "why": "same problem, different time generator; a reader who assumes convective time units misreads every reported growth rate by a factor Re"
+    },
+    {
+     "symbol": "p",
+     "relation": "p_\\text{phys} = (\\rho\\nu U/L)\\,\\hat p = (\\mu U/L)\\hat p",
+     "why": "viscous rather than dynamic pressure scale"
+    }
+   ],
+   "fingerprints": [
+    "\"time is measured in viscous units L^2/\\nu\" / \"viscous time\" / \"diffusive time scale\"",
+    "momentum equation of the form Re(\\partial_t u + u\\cdot\\nabla u) = -\\nabla p + \\nabla^2 u  (Re multiplying the LHS, coefficient 1 on the Laplacian)",
+    "Stokes limit displayed as 0 = -\\nabla \\hat p + \\nabla^2\\hat u",
+    "wall units u^+, y^+, t^+ with u_\\tau and \\nu/u_\\tau (the near-wall variant of this scaling)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no electromagnetic content.",
+    "gauss_law": "N/A: only \\nabla\\cdot\\hat u = 0.",
+    "einstein_field": "N/A: nonrelativistic.",
+    "schrodinger_or_dirac": "N/A: classical."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "Dimensionally this is the SAME generator lattice as the inertial scaling with U replaced by \\nu/L; the tool must treat them as distinct named presets because the numerical values reported in papers differ by powers of Re. Wall units (u_\\tau, \\nu/u_\\tau, \\nu/u_\\tau^2) are a third, near-wall member of the same family and are worth a separate preset in v2.",
+   "sources": [
+    "https://math.mit.edu/~dunkel/Teach/18.354_2014S/lecture_notes/L10_L11_scaling.pdf"
+   ]
+  },
+  {
+   "name": "Compressible / aerodynamic (Mach) nondimensionalization",
+   "aliases": [
+    "freestream scaling",
+    "CFD nondimensionalization",
+    "\\rho_\\infty–a_\\infty–L scaling"
+   ],
+   "used_in": "compressible CFD, aeroacoustics, high-speed aerodynamics, shock-capturing scheme papers",
+   "generators": [
+    {
+     "tex": "L",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "L"
+    },
+    {
+     "tex": "\\rho_\\infty",
+     "dimension": "(1, -3, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\rho_\\infty"
+    },
+    {
+     "tex": "a_\\infty \\ \\text{or}\\ U_\\infty",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "a_\\infty=\\sqrt{\\gamma p_\\infty/\\rho_\\infty}"
+    },
+    {
+     "tex": "R \\ (\\text{gas constant, when }T\\text{ is nondimensionalized})",
+     "dimension": "(0, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "R"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "p",
+     "relation": "\\hat p = p/(\\rho_\\infty a_\\infty^2)  \\Rightarrow  \\hat p_\\infty = 1/\\gamma ;  alternative \\hat p = p/(\\gamma p_\\infty) \\Rightarrow \\hat p_\\infty = 1/\\gamma ; alternative \\hat p = p/p_\\infty \\Rightarrow \\hat p_\\infty = 1",
+     "why": "three incompatible pressure normalizations are all called \"nondimensional pressure\"; they differ by the dimensionless factor \\gamma, which no dimensional check can catch"
+    },
+    {
+     "symbol": "e, T",
+     "relation": "\\hat T = T/T_\\infty with \\hat e = \\hat p/((\\gamma-1)\\hat\\rho); some papers scale T by U_\\infty^2/c_p instead",
+     "why": "the temperature generator is either T_\\infty or the recovery temperature; the two differ by (\\gamma-1)M^2/2"
+    }
+   ],
+   "fingerprints": [
+    "\"freestream conditions are used as reference: \\rho_\\infty, a_\\infty, L\"",
+    "residues M_\\infty (or Ma), Re, Pr, \\gamma appearing simultaneously in the displayed viscous flux",
+    "energy equation carrying (\\gamma-1)M_\\infty^2 or \\gamma/(Pr\\,Re) coefficients",
+    "statements like \"the nondimensional freestream pressure is 1/\\gamma\""
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: neutral gas dynamics.",
+    "gauss_law": "N/A: no EM content.",
+    "einstein_field": "N/A: nonrelativistic.",
+    "schrodinger_or_dirac": "N/A: classical."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Θ becomes an active basis dimension here (unlike most of this family, which sets k_B=1 and kills Θ). The 1/\\gamma pressure trap is the single most common source of misread CFD initial conditions and is invisible to dimension checking — it belongs in numeric_factor/emits bookkeeping.",
+   "sources": [
+    "https://arxiv.org/pdf/2011.11089"
+   ]
+  },
+  {
+   "name": "Boussinesq free-fall (buoyancy) scaling",
+   "aliases": [
+    "free-fall units",
+    "convective units",
+    "U_f = sqrt(g \\alpha \\Delta T H) scaling",
+    "turbulent-convection normalization"
+   ],
+   "used_in": "turbulent Rayleigh–Bénard convection, mantle/stellar convection simulations, most DNS papers with Ra > 10^6",
+   "generators": [
+    {
+     "tex": "H",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "H"
+    },
+    {
+     "tex": "U_f=\\sqrt{g\\alpha\\Delta T H}",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\sqrt{g\\alpha\\Delta T H}"
+    },
+    {
+     "tex": "\\Delta T",
+     "dimension": "(0, 0, 0, 1, 0)",
+     "numeric_factor": "1",
+     "emits": "\\Delta T"
+    },
+    {
+     "tex": "\\rho_0",
+     "dimension": "(1, -3, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\rho_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "t",
+     "relation": "t_\\text{phys} = (H/U_f)\\,\\hat t = \\tau_f \\hat t ; free-fall time \\tau_f = H/\\sqrt{g\\alpha\\Delta T H}",
+     "why": "papers quote averaging windows and Nusselt convergence in \"free-fall times\"; converting requires \\tau_f, not H^2/\\kappa"
+    },
+    {
+     "symbol": "\\theta",
+     "relation": "\\hat\\theta = (T - T_\\text{ref})/\\Delta T with T_\\text{ref} = (T_\\text{top}+T_\\text{bot})/2 in most papers, but T_\\text{top} in others",
+     "why": "an additive offset, not a scaling — outside the multiplicative generator formalism entirely"
+    }
+   ],
+   "fingerprints": [
+    "explicit coefficients \\sqrt{Pr/Ra} on the viscous term and 1/\\sqrt{Ra\\,Pr} on the thermal-diffusion term",
+    "\"free-fall velocity\", \"free-fall time units\", \"\\tau_f\"",
+    "\\partial_t u + u\\cdot\\nabla u = -\\nabla p + \\sqrt{Pr/Ra}\\,\\nabla^2 u + \\theta\\hat z ; \\partial_t\\theta + u\\cdot\\nabla\\theta = 1/\\sqrt{Ra\\,Pr}\\,\\nabla^2\\theta",
+    "buoyancy term with coefficient exactly 1"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no EM content.",
+    "gauss_law": "N/A: only \\nabla\\cdot\\hat u = 0 (Boussinesq).",
+    "einstein_field": "N/A: nonrelativistic.",
+    "schrodinger_or_dirac": "N/A: classical."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "Verified: \\nu/(U_f H) = \\sqrt{Pr/Ra} and \\kappa/(U_f H) = 1/\\sqrt{Ra\\,Pr} with Ra = g\\alpha\\Delta T H^3/(\\nu\\kappa), Pr = \\nu/\\kappa. Note the additive temperature offset: this is an affine, not linear, redefinition and is the one place in the whole family where the multiplicative generator table genuinely cannot express the convention.",
+   "sources": [
+    "https://arxiv.org/pdf/1311.1526",
+    "https://arxiv.org/pdf/1507.03151"
+   ]
+  },
+  {
+   "name": "Boussinesq diffusive (thermal) scaling",
+   "aliases": [
+    "Chandrasekhar scaling",
+    "diffusive units",
+    "H^2/\\kappa time units",
+    "linear-stability convection scaling"
+   ],
+   "used_in": "linear stability theory of convection, onset/bifurcation studies, mantle convection, and older RBC literature; still standard in Ra ≲ 10^6 work",
+   "generators": [
+    {
+     "tex": "H",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "H"
+    },
+    {
+     "tex": "\\kappa",
+     "dimension": "(0, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\kappa"
+    },
+    {
+     "tex": "\\Delta T",
+     "dimension": "(0, 0, 0, 1, 0)",
+     "numeric_factor": "1",
+     "emits": "\\Delta T"
+    },
+    {
+     "tex": "\\rho_0",
+     "dimension": "(1, -3, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\rho_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "u",
+     "relation": "\\hat u = u/(\\kappa/H)  (velocity scale is \\kappa/H, not U_f); \\hat u_\\text{diff} = \\sqrt{Ra\\,Pr}\\;\\hat u_\\text{free-fall}",
+     "why": "the two RBC conventions differ by \\sqrt{Ra Pr} in every reported velocity, Reynolds number and spectrum amplitude"
+    },
+    {
+     "symbol": "t",
+     "relation": "t_\\text{phys} = (H^2/\\kappa)\\hat t ; some authors use the VISCOUS diffusive time H^2/\\nu instead",
+     "why": "a third choice inside the same 'diffusive scaling' label, differing by Pr"
+    }
+   ],
+   "fingerprints": [
+    "momentum equation in the form Pr^{-1}(\\partial_t u + u\\cdot\\nabla u) = -\\nabla p + \\nabla^2 u + Ra\\,\\theta\\hat z",
+    "heat equation with coefficient exactly 1 on \\nabla^2\\theta: \\partial_t\\theta + u\\cdot\\nabla\\theta = \\nabla^2\\theta",
+    "\"time is scaled by the thermal diffusion time H^2/\\kappa\"",
+    "quoted critical value Ra_c = 1707.762 (rigid–rigid) or 657.511 (free–free), which are scaling-independent and thus a cross-check"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no EM content.",
+    "gauss_law": "N/A: only \\nabla\\cdot\\hat u = 0.",
+    "einstein_field": "N/A: nonrelativistic.",
+    "schrodinger_or_dirac": "N/A: classical."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "This entry exists to prove a structural point: two papers on IDENTICAL physics declare different generator sets, and the only textual discriminator is which dimensionless group sits on which term. A units-translation tool must be able to translate BETWEEN two per-paper conventions, not just to/from SI — the composite map is a power of Ra and Pr on each symbol.",
+   "sources": [
+    "https://arxiv.org/pdf/1311.1526",
+    "https://www.researchgate.net/publication/294428344_Derivation_of_the_Rayleigh-Benard_equations_for_modeling_convection_in_the_Earth's_mantle_Long_version"
+   ]
+  },
+  {
+   "name": "Periodic-box spectral units",
+   "aliases": [
+    "\"box size 2\\pi\" units",
+    "unit-box units",
+    "L_box = 1 convention",
+    "pseudospectral code units"
+   ],
+   "used_in": "homogeneous isotropic turbulence DNS, MHD turbulence, spectral-method papers, lattice-free field simulations",
+   "generators": [
+    {
+     "tex": "L_\\text{box}",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "2\\pi \\ \\text{or}\\ 1",
+     "emits": "L_\\text{box}/(2\\pi) \\ \\text{or}\\ L_\\text{box}"
+    },
+    {
+     "tex": "u_\\text{rms}\\ \\text{or}\\ \\varepsilon^{1/3}L^{1/3}",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "u_\\text{rms}"
+    },
+    {
+     "tex": "\\rho_0",
+     "dimension": "(1, -3, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\rho_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "k",
+     "relation": "box of side 2\\pi \\Rightarrow k \\in \\mathbb{Z}^3 ; box of side 1 \\Rightarrow k \\in 2\\pi\\mathbb{Z}^3",
+     "why": "the 2\\pi is a pure numeric factor and is exactly the kind of thing dimensional analysis cannot recover; energy spectra E(k), k_\\text{max}\\eta, and the Kolmogorov constant all shift"
+    },
+    {
+     "symbol": "E(k)",
+     "relation": "\\int E(k)\\,dk = \\tfrac12\\langle u^2\\rangle in both conventions, but the shell-binning \\Delta k = 1 differs from \\Delta k = 2\\pi/L",
+     "why": "reported spectral amplitudes differ by 2\\pi even when the physics is identical"
+    }
+   ],
+   "fingerprints": [
+    "\"in a periodic box of size 2\\pi\" / \"[0,2\\pi]^3\" / \"the box size is set to unity\"",
+    "\"wavenumbers are integers\" / \"k_\\text{min} = 1\"",
+    "forcing described as \"applied in the shell 1 \\le |k| \\le 2\"",
+    "resolution quoted as k_\\text{max}\\eta \\ge 1.5 (a residue that is convention-independent)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no EM content in the hydrodynamic case; in the MHD case see the Alfvénic-units entry.",
+    "gauss_law": "N/A: constraints are \\nabla\\cdot\\hat u = 0 and (MHD) \\nabla\\cdot\\hat B = 0.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "N/A."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "The 2\\pi ambiguity here is the direct analogue of the ħ-versus-h ambiguity in natural units: same dimension, different numeric factor. This is strong evidence that numeric_factor must be a first-class field for user-declared generators too, not just for the fixed systems.",
+   "sources": [
+    "https://math.mit.edu/~dunkel/Teach/18.354_2014S/lecture_notes/L10_L11_scaling.pdf"
+   ]
+  },
+  {
+   "name": "MHD Alfvénic code units",
+   "aliases": [
+    "Alfvén units",
+    "\\mu_0 = 1 units",
+    "4\\pi-absorbed units",
+    "normalized MHD",
+    "Alfvén-crossing-time units"
+   ],
+   "used_in": "solar/space physics, MHD turbulence, reconnection studies, fusion MHD codes (JOREK, PLUTO, Athena, BATS-R-US)",
+   "generators": [
+    {
+     "tex": "L_0",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "L_0"
+    },
+    {
+     "tex": "\\rho_0",
+     "dimension": "(1, -3, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\rho_0"
+    },
+    {
+     "tex": "B_0",
+     "dimension": "(1, 0, -2, 0, -1)",
+     "numeric_factor": "1",
+     "emits": "B_0"
+    },
+    {
+     "tex": "\\mu_0",
+     "dimension": "(1, 1, -2, 0, -2)",
+     "numeric_factor": "1 \\ (\\text{SI-rooted})\\ \\text{or}\\ 4\\pi \\ (\\text{Gaussian-rooted})",
+     "emits": "\\mu_0 \\ \\text{or}\\ 4\\pi"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "B",
+     "relation": "B_\\text{code} = B_\\text{SI}/\\sqrt{\\mu_0\\rho_0} (velocity units) or B_\\text{code} = B_\\text{Gauss}/\\sqrt{4\\pi\\rho_0}",
+     "why": "most MHD codes store B in velocity units so that v_A = B; the magnetic pressure then reads B^2/2, not B^2/8\\pi or B^2/2\\mu_0. This is a genuine symbol redefinition on top of the quotient."
+    },
+    {
+     "symbol": "p",
+     "relation": "\\hat p = p/(B_0^2/\\mu_0) \\Rightarrow \\beta = 2\\hat p/\\hat B^2 ; alternative \\hat p = p/(\\rho_0 v_A^2) is identical, but \\hat p = p/p_0 is not",
+     "why": "pressure is slaved to the magnetic scale in one convention and independent in the other; \\beta gets a factor 2 wrong if confused"
+    },
+    {
+     "symbol": "t",
+     "relation": "t_\\text{phys} = (L_0/v_A)\\hat t, v_A = B_0/\\sqrt{\\mu_0\\rho_0}",
+     "why": "'Alfvén times' vs 'Alfvén crossing times' vs 'sound crossing times' are quoted interchangeably in the solar literature"
+    }
+   ],
+   "fingerprints": [
+    "\"velocities are normalized to the Alfvén speed v_A = B_0/\\sqrt{4\\pi\\rho_0}\" (Gaussian) or \"B_0/\\sqrt{\\mu_0\\rho_0}\" (SI)",
+    "induction equation with 1/S (Lundquist number) on the resistive term: \\partial_t B = \\nabla\\times(v\\times B) + S^{-1}\\nabla^2 B",
+    "total pressure written as (p + B^2/2) with no \\mu_0 or 8\\pi anywhere",
+    "\"time is measured in Alfvén times \\tau_A = L_0/v_A\"",
+    "residues S, Re_m, Pr_m = \\nu/\\eta, \\beta, M_A"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: quasineutral MHD; no explicit Coulomb potential appears.",
+    "gauss_law": "Electric Gauss law is dropped (quasineutrality). The retained constraint is \\nabla\\cdot\\hat B = 0, with Ampère's law reduced to \\hat J = \\nabla\\times\\hat B (displacement current dropped, \\mu_0 absorbed).",
+    "einstein_field": "N/A: nonrelativistic MHD. (GRMHD codes stack these normalizations on top of G=c=1 — see the GRMHD entry.)",
+    "schrodinger_or_dirac": "N/A: classical fluid closure."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Four declared scales but only three independent dimensions once I is eliminated by absorbing \\mu_0 — i.e. \\mu_0 = 1 is what removes the current dimension from the basis, exactly as k_B = 1 removes Θ. This is the clearest example in the family of a per-paper declaration performing a BASIS REDUCTION rather than a mere scaling, and the tool needs to model that explicitly.",
+   "sources": [
+    "https://arxiv.org/pdf/2011.09120",
+    "https://arxiv.org/pdf/1012.0661",
+    "https://arxiv.org/pdf/1608.08244"
+   ]
+  },
+  {
+   "name": "Gyrokinetic normalization, GENE / c_s family",
+   "aliases": [
+    "GENE normalization",
+    "sound-speed normalization",
+    "\\rho_s units",
+    "gyro-Bohm units"
+   ],
+   "used_in": "tokamak/stellarator microturbulence (GENE, GENE-X, GKW, ORB5, GX, CGYRO with its own variant)",
+   "generators": [
+    {
+     "tex": "L_\\text{ref}\\ (=R_0\\ \\text{or}\\ a)",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "L_\\text{ref}"
+    },
+    {
+     "tex": "c_\\text{ref}=\\sqrt{T_\\text{ref}/m_\\text{ref}}",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\sqrt{T_\\text{ref}/m_\\text{ref}}"
+    },
+    {
+     "tex": "T_\\text{ref}\\ (\\text{energy units},\\ k_B=1)",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "T_\\text{ref}"
+    },
+    {
+     "tex": "m_\\text{ref}",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m_\\text{ref}"
+    },
+    {
+     "tex": "n_\\text{ref}",
+     "dimension": "(0, -3, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "n_\\text{ref}"
+    },
+    {
+     "tex": "e",
+     "dimension": "(0, 0, 1, 0, 1)",
+     "numeric_factor": "1",
+     "emits": "e"
+    },
+    {
+     "tex": "B_\\text{ref}",
+     "dimension": "(1, 0, -2, 0, -1)",
+     "numeric_factor": "1",
+     "emits": "B_\\text{ref}"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\phi",
+     "relation": "\\phi = (T_\\text{ref}/e)\\,\\hat\\phi in global GENE; local (flux-tube, \\delta f) codes carry an extra \\rho^*: \\phi = (T_\\text{ref}\\rho^*/e)\\hat\\phi",
+     "why": "in the local limit fluctuation amplitudes are O(\\rho^*) by the gyrokinetic ordering, so the field normalization differs between the local and global versions of the SAME code"
+    },
+    {
+     "symbol": "A_\\parallel",
+     "relation": "A_\\parallel = \\rho_\\text{ref}B_\\text{ref}\\hat A_\\parallel",
+     "why": "the parallel vector potential is normalized with a gyroradius, not L_ref — a mixed-scale normalization that a naive quotient reconstruction gets wrong by \\rho^*"
+    },
+    {
+     "symbol": "\\perp\\ \\text{vs}\\ \\parallel\\ \\text{lengths}",
+     "relation": "k_\\perp\\rho_\\text{ref} = O(1) but k_\\parallel L_\\text{ref} = O(1)",
+     "why": "the gyrokinetic ordering means perpendicular and parallel lengths use DIFFERENT length generators; a single L in the generator table is insufficient"
+    },
+    {
+     "symbol": "\\beta",
+     "relation": "\\beta_\\text{ref} = 8\\pi n_\\text{ref}T_\\text{ref}/B_\\text{ref}^2 (Gaussian-rooted, GENE) vs 2\\mu_0 nT/B^2 (SI-rooted)",
+     "why": "factor-of-4\\pi discrepancy in the electromagnetic residue"
+    }
+   ],
+   "fingerprints": [
+    "\"c_s = \\sqrt{T_e/m_i}\" together with \"\\rho_s = c_s/\\Omega_i\"",
+    "time normalized as L_\\text{ref}/c_\\text{ref}; growth rates quoted as \\gamma (c_s/a) or \\gamma (c_s/R)",
+    "gradients quoted as R/L_{T_i} or a/L_n; heat flux quoted in gyro-Bohm units Q_\\text{gB} = n T c_s \\rho_s^2/L^2",
+    "\\rho^* = \\rho_\\text{ref}/L_\\text{ref} appearing as an explicit small parameter",
+    "\"\\beta_\\text{ref} = 8\\pi n_\\text{ref}T_\\text{ref}/B_\\text{ref}^2\""
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: the Coulomb interaction enters only through a collision operator and through quasineutrality; no bare Coulomb potential is displayed.",
+    "gauss_law": "Poisson's equation is REPLACED by gyrokinetic quasineutrality: \\sum_s \\hat q_s\\big(\\int \\hat f_s\\,d^3\\hat v - \\hat n_s\\hat q_s\\hat\\phi/\\hat T_s\\big) = 0, i.e. \\sum_s \\hat q_s \\hat n_{1s} = 0 with a polarization-density term. The Debye term (\\lambda_D/\\rho_s)^2\\nabla^2\\hat\\phi is retained only in codes with an explicit 'Debye length' input.",
+    "einstein_field": "N/A: nonrelativistic plasma model.",
+    "schrodinger_or_dirac": "N/A: classical Vlasov–Maxwell reduction."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Two independent per-paper choices sit INSIDE this single named convention: (i) L_ref = major radius R_0 vs minor radius a (a factor of the aspect ratio in every quoted gradient and growth rate), and (ii) T_ref = T_e vs T_i. Both are runtime switches, not code identities, so the tool cannot infer them from the code name alone. The local/global \\rho^* field normalization difference is stated at moderate confidence — I verified the global-GENE form (\\psi_{1\\alpha} = T_\\text{ref}\\hat\\psi_{1\\alpha}/e, A_\\parallel = \\rho_\\text{ref}B_\\text{ref}\\hat A_\\parallel) from the global-GENE paper but inferred the local-code \\rho^* factor from the gyrokinetic ordering rather than reading it off a source.",
+   "sources": [
+    "http://genecode.org/PAPERS_2/YJCPH3630.pdf",
+    "https://arxiv.org/pdf/2411.09232",
+    "https://arxiv.org/pdf/1403.3293"
+   ]
+  },
+  {
+   "name": "Gyrokinetic normalization, GS2 / stella / AstroGK family",
+   "aliases": [
+    "GS2 normalisation",
+    "v_t = sqrt(2T/m) convention",
+    "a/v_th time units"
+   ],
+   "used_in": "GS2, stella, AstroGK, and the astrophysical-gyrokinetics literature (Howes et al.)",
+   "generators": [
+    {
+     "tex": "a\\ (\\text{minor radius / reference length})",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "a"
+    },
+    {
+     "tex": "v_{t,r}=\\sqrt{2T_r/m_r}",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "\\sqrt{2}",
+     "emits": "\\sqrt{2T_r/m_r}"
+    },
+    {
+     "tex": "T_r",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "T_r"
+    },
+    {
+     "tex": "m_r",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m_r"
+    },
+    {
+     "tex": "n_r",
+     "dimension": "(0, -3, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "n_r"
+    },
+    {
+     "tex": "B_r",
+     "dimension": "(1, 0, -2, 0, -1)",
+     "numeric_factor": "1",
+     "emits": "B_r"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "v_{th}",
+     "relation": "v_{t,\\text{GS2}} = \\sqrt{2T/m} = \\sqrt{2}\\,v_{th,\\text{GENE-style}} ; but the NORMALIZED thermal speed inside the code is \\hat v_{th}=\\sqrt{\\hat T/\\hat m}, i.e. \\sqrt{T/m} without the 2",
+     "why": "GS2's own documentation warns that the reference-species normalization strips the \\sqrt{2}, so the same symbol v_th means different things inside and outside the code; growth rates differ by \\sqrt{2}"
+    },
+    {
+     "symbol": "\\rho",
+     "relation": "\\rho_{r} = v_{t,r}/\\Omega_r = \\sqrt{2}\\,\\rho_{s,\\text{GENE-style}}",
+     "why": "every quoted k_\\perp\\rho spectrum peak shifts by \\sqrt{2} between the two families — the single most common cross-code comparison error in gyrokinetics"
+    },
+    {
+     "symbol": "\\gamma, \\omega",
+     "relation": "\\gamma_\\text{GS2} in units v_{t}/a ; \\gamma_\\text{GENE} in units c_s/L_\\text{ref}",
+     "why": "combined \\sqrt{2} and R/a factors"
+    }
+   ],
+   "fingerprints": [
+    "\"v_t = \\sqrt{2T/m}\" appearing explicitly in a normalization table",
+    "frequencies quoted in units of v_{t,i}/a; wavenumbers as k_y\\rho_i with \\rho_i = v_{t,i}/\\Omega_i",
+    "\"reference species\" language; \"tprim\", \"fprim\", \"vnewk\" (GS2 input-file keywords leaking into the text)",
+    "astrophysical variants quoting k_\\perp\\rho_i across the ion-Larmor transition"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: enters only through the collision operator.",
+    "gauss_law": "Gyrokinetic quasineutrality \\sum_s \\hat q_s \\hat n_{1s} = 0 with polarization, as in the GENE family; the \\sqrt{2} sits in the velocity integrals, not in the field equation's form.",
+    "einstein_field": "N/A: nonrelativistic.",
+    "schrodinger_or_dirac": "N/A: classical Vlasov reduction."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "This is the single best real-world argument in this family for keeping numeric_factor separate from dimension: GS2 and GENE have IDENTICAL generator dimensions and differ only by \\sqrt{2} in the velocity generator. A tool that dimension-checks only will declare the two conventions identical and silently produce results wrong by powers of \\sqrt{2}. Verified against the GS2 user manual's normalisations page.",
+   "sources": [
+    "https://gyrokinetics.gitlab.io/gs2/page/user_manual/normalisations.html",
+    "https://w3.pppl.gov/~hammett/ftp/work/GS2/Readme.html",
+    "https://arxiv.org/pdf/astro-ph/0511812"
+   ]
+  },
+  {
+   "name": "PIC / kinetic-plasma normalized units",
+   "aliases": [
+    "skin-depth units",
+    "\\omega_{pe}=1 units",
+    "normalized units (OSIRIS/Smilei/TRISTAN/EPOCH)",
+    "plasma-frequency units"
+   ],
+   "used_in": "particle-in-cell simulations of laser-plasma interaction, collisionless shocks, magnetic reconnection, astrophysical kinetic plasma",
+   "generators": [
+    {
+     "tex": "\\omega_{pe}=\\sqrt{n_0e^2/(\\varepsilon_0m_e)}",
+     "dimension": "(0, 0, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\omega_{pe}"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "m_e",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m_e"
+    },
+    {
+     "tex": "e",
+     "dimension": "(0, 0, 1, 0, 1)",
+     "numeric_factor": "1",
+     "emits": "e"
+    },
+    {
+     "tex": "n_0",
+     "dimension": "(0, -3, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "n_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "E",
+     "relation": "\\hat E = eE/(m_ec\\omega_{pe}) ; laser-plasma papers instead use a_0 = eE/(m_ec\\omega_L) with the LASER frequency",
+     "why": "two different frequency generators for the same field symbol; a_0 = 1 is the relativistic-intensity threshold, not a unit choice"
+    },
+    {
+     "symbol": "B",
+     "relation": "\\hat B = eB/(m_e\\omega_{pe}) (so that \\hat B = \\hat E for a light wave); alternatively normalized to \\omega_{ce}",
+     "why": "the magnetization residue \\sigma = B^2/(4\\pi n m c^2) or \\omega_{ce}/\\omega_{pe} depends on which is chosen"
+    },
+    {
+     "symbol": "p",
+     "relation": "\\hat p = p/(m_ec) — momentum, not velocity, is normalized, because the code is relativistic",
+     "why": "reported 'velocities' > 1 are four-velocities; a naive v/c reading is wrong"
+    }
+   ],
+   "fingerprints": [
+    "\"lengths are in units of the electron skin depth c/\\omega_{pe}\" or \"d_e\", \"d_i\"",
+    "\"time in units of \\omega_{pe}^{-1}\" / \"\\Omega_{ci}^{-1}\"",
+    "Maxwell equations displayed with all constants gone: \\partial_t E = \\nabla\\times B - J, \\nabla\\cdot E = \\rho",
+    "normalized vector potential a_0 quoted for laser intensity; \"m_i/m_e = 25\" (reduced mass ratio) as a residue",
+    "magnetization \\sigma, plasma \\beta, \\omega_{pe}/\\omega_{ce} appearing as the surviving parameters"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Rarely displayed; the implied form is \\hat U = \\hat q_1\\hat q_2/(4\\pi \\hat r) in SI-rooted normalization or \\hat q_1\\hat q_2/\\hat r in Gaussian-rooted normalization. Papers essentially never write it, so this is a weak fingerprint.",
+    "gauss_law": "\\nabla\\cdot\\hat E = \\hat\\rho — derived here: with \\hat x = x\\omega_{pe}/c, \\hat E = eE/(m_ec\\omega_{pe}), \\hat n = n/n_0, the SI law \\nabla\\cdot E = en/\\varepsilon_0 becomes (m_e\\omega_{pe}^2/e)\\nabla\\!\\cdot\\!\\hat E = e n_0\\hat n/\\varepsilon_0 = m_e\\omega_{pe}^2\\hat n, i.e. \\nabla\\cdot\\hat E = \\hat n exactly, with no residual 4\\pi.",
+    "einstein_field": "N/A for standard PIC; GRPIC codes stack G=c=1 on top (see numerical-relativity entry).",
+    "schrodinger_or_dirac": "N/A: classical Vlasov–Maxwell (QED-PIC modules reintroduce \\hbar and \\alpha explicitly as residues)."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "The \\varepsilon_0/4\\pi bookkeeping is fully absorbed because \\omega_{pe} itself contains it — the derivation above shows the 4\\pi cancels identically. The nastiest real trap is the reduced mass ratio m_i/m_e (25, 64, 100 instead of 1836): a dimensionless residue deliberately set to an unphysical value, which no dimension check can flag and which a restoration engine must never 'restore' to 1836.",
+   "sources": [
+    "https://arxiv.org/pdf/2102.10399"
+   ]
+  },
+  {
+   "name": "Numerical-relativity code units (G = c = M = 1)",
+   "aliases": [
+    "geometrized units with a mass scale",
+    "G=c=M_\\odot=1",
+    "augmented geometric units",
+    "NR code units",
+    "M=1 units"
+   ],
+   "used_in": "binary black hole and binary neutron star simulations, waveform catalogs (SXS, RIT, MAYA), initial-data codes, TOV solvers",
+   "generators": [
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "M\\ (\\text{total ADM mass, or }M_\\odot)",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "M"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "t, r",
+     "relation": "1\\,M_\\odot \\equiv GM_\\odot/c^2 = 1.47662\\ \\text{km} = GM_\\odot/c^3 = 4.92549\\times10^{-6}\\ \\text{s}",
+     "why": "'M' is used simultaneously as a mass, a length and a time in the same paper; the reader must supply the mass scale to disambiguate"
+    },
+    {
+     "symbol": "\\rho",
+     "relation": "\\rho_\\text{unit} = c^6/(G^3M_\\odot^2) \\approx 6.18\\times10^{17}\\ \\text{g\\,cm}^{-3} (so the standard TOV test \\rho_c = 1.28\\times10^{-3} is \\approx 7.9\\times10^{14}\\ \\text{g\\,cm}^{-3})",
+     "why": "matter simulations quote densities in code units that look like small numbers; restoring them requires the mass scale, which is NOT free once an EOS is fixed"
+    },
+    {
+     "symbol": "h_{+,\\times}",
+     "relation": "waveforms published as (D/M)h_{+,\\times} versus (t-r_*)/M",
+     "why": "the M=1 generator is exactly the scale symmetry of vacuum GR, so vacuum waveforms are genuinely mass-independent; this is why the declaration is legitimate there and illegitimate with matter"
+    }
+   ],
+   "fingerprints": [
+    "\"we use geometrized units G = c = 1\" followed by \"and set the total mass M = 1\"",
+    "masses quoted as m_1 = m_2 = 0.5, or \"the initial separation is D = 11M\"",
+    "times and radii carrying an explicit trailing M: \"t = 1000M\", \"r = 100M\"",
+    "\"in units of M_\\odot\" for matter runs; \\rho_c \\sim 10^{-3}, K = 100 (polytropic constant) as tell-tale code-unit numbers",
+    "conversion appendix listing 1.4766 km and 4.9255 \\mu s"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A in vacuum NR. In force-free/GRMHD extensions the Gaussian-rooted form is used with \\mu_0 or 4\\pi additionally absorbed — see the GRMHD entry.",
+    "gauss_law": "The gravitational analogue actually solved is the Hamiltonian constraint R + K^2 - K_{ij}K^{ij} = 16\\pi\\rho (G=c=1), and the momentum constraint D_j(K^{ij}-\\gamma^{ij}K) = 8\\pi S^i. The M=1 generator leaves both coefficient-unchanged.",
+    "einstein_field": "G_{ab} = 8\\pi T_{ab}. The M = 1 declaration emits NOTHING here: it is the exact scale symmetry g_{ab}(x)\\to g_{ab}(x/\\lambda), (M,t,r)\\to\\lambda(M,t,r), T_{ab}\\to\\lambda^{-2}T_{ab} of the vacuum field equations, so the equation form is identical to plain geometrized units. This is the one case in the whole family where a declared generator has no equation-level consequence.",
+    "schrodinger_or_dirac": "N/A: classical field theory."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v1",
+   "notes": "CRITICAL interaction with the fixed geometrized system: G=c=1 leaves a one-parameter residual scaling freedom (a single remaining dimension, usually called 'mass'), and M=1 fixes it. So NR code units are geometrized units PLUS one custom generator, i.e. the generator table composes: fixed generators + user generators, with the user generator's dimension chosen to complete the basis. The physics trap: for VACUUM (BBH) the mass scale is genuinely free and results are universal; with MATTER (BNS, an EOS with its own density scale) the mass scale is NOT free, and 'M=1' means 'M = M_phys/M_scale', a reported number, not a symmetry. The tool should warn when a matter EOS is present alongside an M=1 declaration.",
+   "sources": [
+    "https://gist.github.com/jeffdk/4699693?permalink_comment_id=5065583",
+    "https://handwiki.org/wiki/Geometrized_unit_system",
+    "https://arxiv.org/pdf/1908.00655",
+    "https://arxiv.org/pdf/0804.3787"
+   ]
+  },
+  {
+   "name": "Astrophysical simulation code-unit triples (G ≠ 1)",
+   "aliases": [
+    "Gadget units",
+    "UnitLength/UnitMass/UnitVelocity",
+    "internal units",
+    "simulation code units"
+   ],
+   "used_in": "cosmological N-body and hydro simulations (GADGET, AREPO, RAMSES, GIZMO), galactic dynamics, star-cluster simulations, ISM codes (FLASH, Athena++)",
+   "generators": [
+    {
+     "tex": "[L]\\ (\\text{e.g. } \\mathrm{kpc}/h)",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "[L]"
+    },
+    {
+     "tex": "[M]\\ (\\text{e.g. } 10^{10}M_\\odot/h)",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "10^{10}",
+     "emits": "[M]"
+    },
+    {
+     "tex": "[V]\\ (\\text{e.g. } \\mathrm{km\\,s^{-1}})",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "[V]"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "G",
+     "relation": "G_\\text{code} = G\\,[M]/([L][V]^2) = 43007.1 for (\\mathrm{kpc}/h,\\ 10^{10}M_\\odot/h,\\ \\mathrm{km\\,s^{-1}}) — the h factors cancel",
+     "why": "THE central counterexample in this family: the declared generators do NOT set G=1. A restoration engine that assumes 'code units ⇒ G=1' is simply wrong for the most widely used astrophysics codes."
+    },
+    {
+     "symbol": "t",
+     "relation": "[T] = [L]/[V] = 0.978\\ \\mathrm{Gyr}/h for the Gadget triple",
+     "why": "the derived time unit is never declared explicitly and must be computed from the triple"
+    },
+    {
+     "symbol": "a\\ (\\text{scale factor})",
+     "relation": "comoving vs physical: x_\\text{phys} = a\\,x_\\text{com}, and Gadget's internal velocity variable carries an extra \\sqrt{a}",
+     "why": "a time-dependent rescaling — outside the constant-generator formalism altogether"
+    }
+   ],
+   "fingerprints": [
+    "a table \"UnitLength_in_cm / UnitMass_in_g / UnitVelocity_in_cm_per_s\"",
+    "\"masses are in units of 10^{10}\\,M_\\odot/h\", \"lengths in ckpc/h\"",
+    "the literal number 43007.1 or 43009 appearing as G in a methods section or parameter file",
+    "\"comoving coordinates\", \"internal velocity variable\", \"\\sqrt{a} factor\""
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: gravity-only or MHD; see the Alfvénic entry for the magnetic sector.",
+    "gauss_law": "Poisson's equation retains G explicitly: \\nabla^2\\Phi = 4\\pi G_\\text{code}\\,\\rho, with G_\\text{code} = 43007.1 rather than 1.",
+    "einstein_field": "N/A: Newtonian (or Newtonian + expansion) codes.",
+    "schrodinger_or_dirac": "N/A, except in fuzzy-dark-matter codes which additionally declare \\hbar/m as a single generator (a length^2/time)."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "This entry is the reason the tool must not conflate 'code units' with 'natural units'. A code-unit declaration is a pure change of numerical scale with NO constants absorbed; every physical constant survives with a nontrivial numeric value. The generator table handles it fine — the generators are (L, M, V) with numeric values in SI — but the UI must accept generators whose absorbed constant list is EMPTY.",
+   "sources": [
+    "https://arxiv.org/pdf/2409.01939"
+   ]
+  },
+  {
+   "name": "GRMHD code units (G = c = M = 1 plus an independent density/accretion scale)",
+   "aliases": [
+    "HARM units",
+    "\\mathcal{M}_\\text{unit}",
+    "code units with a free mass-accretion scale"
+   ],
+   "used_in": "black-hole accretion simulations (HARM, KORAL, BHAC, H-AMR), EHT-related radiative transfer, jet launching",
+   "generators": [
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "M_\\text{BH}",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "M_\\text{BH}"
+    },
+    {
+     "tex": "\\mathcal{M}_\\text{unit}\\ (\\text{mass/density scale of the accreting plasma})",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\mathcal{M}_\\text{unit}"
+    },
+    {
+     "tex": "4\\pi\\ \\text{absorbed into }B",
+     "dimension": "(0, 0, 0, 0, 0)",
+     "numeric_factor": "4\\pi",
+     "emits": "\\sqrt{4\\pi}"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "B",
+     "relation": "B_\\text{code} = B_\\text{Gauss}/\\sqrt{4\\pi} (Heaviside-like absorption), so magnetic pressure is b^2/2 and \\beta = 2p/b^2",
+     "why": "the same \\sqrt{4\\pi} redefinition as in Newtonian MHD codes, stacked on top of geometrized units"
+    },
+    {
+     "symbol": "\\rho",
+     "relation": "\\rho_\\text{phys} = \\mathcal{M}_\\text{unit}/L_\\text{unit}^3 \\times \\rho_\\text{code}, L_\\text{unit} = GM_\\text{BH}/c^2",
+     "why": "ideal GRMHD is scale-free in density, so the density scale is set only in post-processing (fixed by matching an observed flux); the SAME simulation is published at several \\mathcal{M}_\\text{unit} values"
+    }
+   ],
+   "fingerprints": [
+    "\"the simulations are scale-free in density; we set the mass unit in post-processing\"",
+    "\"M_\\text{unit}\", \"\\mathcal{M}_\\text{unit}\", \"the density scale is fixed by matching the 230 GHz flux\"",
+    "r_g = GM/c^2, t_g = GM/c^3; times quoted as \"t = 10^4\\,r_g/c\"",
+    "\\sigma = b^2/\\rho, \\beta = 2p/b^2 as the surviving parameters; \"\\sigma_\\text{cut}\""
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: ideal MHD, quasineutral.",
+    "gauss_law": "\\nabla_\\mu {}^*F^{\\mu\\nu} = 0 (no magnetic monopoles) with the 4\\pi absorbed; electric Gauss law is not solved (ideal-MHD condition u_\\mu F^{\\mu\\nu} = 0 replaces it).",
+    "einstein_field": "G_{ab} = 8\\pi T_{ab} in the Cowling/fixed-Kerr approximation the metric is prescribed and this is not solved; when it is (dynamical GRMHD), the coefficient is 8\\pi exactly as in geometrized units.",
+    "schrodinger_or_dirac": "N/A: classical."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "Structurally interesting: TWO mass generators are declared (M_BH and \\mathcal{M}_unit) even though they have identical dimensions. That is only consistent because the equations have an exact density-scaling symmetry in ideal GRMHD — the second 'generator' is really a symmetry parameter. A rank check on dimensions alone would flag this as over-determined and would be wrong. The tool needs a concept of 'generator that exploits a symmetry of the equations' distinct from 'generator that fixes a unit'.",
+   "sources": [
+    "https://arxiv.org/pdf/2104.00741",
+    "https://arxiv.org/pdf/1708.08452"
+   ]
+  },
+  {
+   "name": "Shearing-box / accretion-disk units (Ω = 1)",
+   "aliases": [
+    "local shearing sheet units",
+    "orbital units",
+    "\\Omega = c_s = \\rho_0 = 1",
+    "H = 1 units"
+   ],
+   "used_in": "MRI and disk-turbulence simulations, planet-formation and dust-settling studies, protoplanetary disk microphysics",
+   "generators": [
+    {
+     "tex": "\\Omega\\ (\\text{orbital angular frequency})",
+     "dimension": "(0, 0, -1, 0, 0)",
+     "numeric_factor": "1\\ \\text{or}\\ 2\\pi",
+     "emits": "\\Omega"
+    },
+    {
+     "tex": "c_s\\ \\text{or}\\ H=c_s/\\Omega",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1\\ (\\text{sometimes}\\ \\sqrt{2}\\ \\text{for the isothermal-vs-adiabatic }c_s)",
+     "emits": "c_s"
+    },
+    {
+     "tex": "\\rho_0\\ (\\text{midplane density})",
+     "dimension": "(1, -3, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\rho_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "t",
+     "relation": "\"orbits\" = 2\\pi/\\Omega, \"shear times\" = 1/(q\\Omega), \"\\Omega^{-1}\" — three time units in the same literature",
+     "why": "the 2\\pi is a pure numeric factor; a run reported as '100 orbits' is 628 \\Omega^{-1}"
+    },
+    {
+     "symbol": "H",
+     "relation": "H = c_s/\\Omega (isothermal) vs H = \\sqrt{2}c_s/\\Omega (Gaussian-profile convention)",
+     "why": "factor-\\sqrt{2} disagreement in the scale-height definition propagates into every quoted box size"
+    }
+   ],
+   "fingerprints": [
+    "\"we adopt the shearing-box approximation with \\Omega = 1\"; \"q = -d\\ln\\Omega/d\\ln R = 3/2\"",
+    "box dimensions quoted in H: \"L_x \\times L_y \\times L_z = 4H\\times 8H \\times 4H\"",
+    "times quoted in \"orbits\" or \"\\Omega^{-1}\"",
+    "residues: \\alpha (Shakura–Sunyaev), \\beta_\\text{plasma}, Stokes number St = \\tau_s\\Omega, Elsasser number"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A.",
+    "gauss_law": "\\nabla\\cdot\\hat B = 0; magnetic units follow the Alfvénic convention (\\mu_0 or 4\\pi absorbed).",
+    "einstein_field": "N/A: Newtonian, with tidal expansion of the potential -q\\Omega^2x^2 + \\tfrac12\\Omega^2z^2.",
+    "schrodinger_or_dirac": "N/A."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "The Stokes number St = \\tau_s\\Omega is a residue that looks like a unit statement ('we set the stopping time to 0.1') but is a physical parameter. Confusing the two is a common misreading of dust-dynamics papers.",
+   "sources": [
+    "https://arxiv.org/pdf/2001.01609"
+   ]
+  },
+  {
+   "name": "Hénon (N-body standard) units",
+   "aliases": [
+    "N-body units",
+    "standard units",
+    "Heggie–Mathieu units",
+    "G = M = 1, E = -1/4"
+   ],
+   "used_in": "collisional stellar dynamics, globular-cluster and star-cluster N-body simulations, and the direct-N-body code literature (NBODY6, PeTar)",
+   "generators": [
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "M\\ (\\text{total cluster mass})",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "M"
+    },
+    {
+     "tex": "E\\ (\\text{total energy})",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "-1/4",
+     "emits": "|4E|"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "R_v",
+     "relation": "virial radius R_v \\equiv GM^2/(-2W) = 1 exactly, given the virial theorem W = 2E = -1/2",
+     "why": "the E = -1/4 numeric choice exists precisely to make R_v = 1; the '-1/4' is a pure numeric factor invisible to dimensional analysis"
+    },
+    {
+     "symbol": "t_\\text{cr}",
+     "relation": "crossing time t_\\text{cr} = 2R_v/v_\\text{rms} = 2\\sqrt{2} \\approx 2.828 N-body time units",
+     "why": "derived here: T = -E = 1/4 = \\tfrac12 M v_\\text{rms}^2 with M=1 gives v_\\text{rms} = 1/\\sqrt{2}, so t_\\text{cr} = 2\\sqrt2. Papers quote both 'N-body times' and 'crossing times'."
+    },
+    {
+     "symbol": "N",
+     "relation": "individual particle masses m_i = 1/N",
+     "why": "a further dimensionless choice; some papers instead set m_i = 1 and M = N"
+    }
+   ],
+   "fingerprints": [
+    "\"we use N-body units (Hénon units) in which G = M = 1 and E = -1/4\"",
+    "\"the virial radius is unity\"; \"times are given in N-body units\"",
+    "the number 2\\sqrt{2} or 2.83 as a crossing time",
+    "relaxation times quoted as t_\\text{rh} \\propto N/\\ln(\\gamma N) in N-body units"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: gravitational N-body only. (Formally identical 1/r structure with G\\,m_im_j replacing q_iq_j/4\\pi\\varepsilon_0.)",
+    "gauss_law": "\\nabla^2\\Phi = 4\\pi\\rho with G absorbed.",
+    "einstein_field": "N/A: Newtonian (post-Newtonian terms, when included, reintroduce c explicitly as a residue c \\approx 3\\times10^5 in the code's velocity unit — an easy-to-miss dimensional leak).",
+    "schrodinger_or_dirac": "N/A."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "Dimensionally independent: the 3x3 exponent matrix for (G, M, E) has determinant 2, so the generator set is complete and the restoration system is uniquely solvable. The -1/4 is the numeric_factor. I verified R_v = 1 and t_cr = 2\\sqrt2 by direct derivation from the virial theorem rather than from a source; confidence high but the source citation is indirect. Worth noting the historical sibling: the astronomical system based on the Gaussian gravitational constant k = 0.01720209895, in which GM_\\odot = k^2\\,\\mathrm{AU}^3\\,\\mathrm{day}^{-2} — a per-field scaling that defined the AU until the 2012 IAU redefinition.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Buckingham_pi_theorem"
+   ]
+  },
+  {
+   "name": "Lennard-Jones reduced (molecular-dynamics) units",
+   "aliases": [
+    "LJ units",
+    "reduced units",
+    "\\sigma = \\varepsilon = m = k_B = 1",
+    "LAMMPS units lj",
+    "argon units"
+   ],
+   "used_in": "molecular dynamics and Monte Carlo of simple liquids, glass-formers, colloids, polymer coarse-graining; the LAMMPS/GROMACS/HOOMD 'lj' unit setting",
+   "generators": [
+    {
+     "tex": "\\sigma\\ (\\text{LJ length})",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\sigma"
+    },
+    {
+     "tex": "\\varepsilon\\ (\\text{LJ well depth})",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\varepsilon"
+    },
+    {
+     "tex": "m",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m"
+    },
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "t",
+     "relation": "\\tau = \\sqrt{m\\sigma^2/\\varepsilon} ; t^* = t/\\tau",
+     "why": "the derived time unit is never a declared generator but is the quantity every reported timestep (\\Delta t^* = 0.005) refers to"
+    },
+    {
+     "symbol": "T",
+     "relation": "T^* = k_BT/\\varepsilon",
+     "why": "once k_B = 1 the Θ dimension is eliminated from the basis; 'temperature' in the paper is an energy"
+    },
+    {
+     "symbol": "P",
+     "relation": "P^* = P\\sigma^3/\\varepsilon",
+     "why": "derived, not declared"
+    },
+    {
+     "symbol": "\\rho",
+     "relation": "\\rho^* = N\\sigma^3/V (number density, NOT mass density)",
+     "why": "the asterisked density in MD papers is a number density even though \\rho denotes mass density elsewhere in physics"
+    }
+   ],
+   "fingerprints": [
+    "\"units lj\" (a LAMMPS input line quoted in the methods)",
+    "U(r) = 4\\varepsilon[(\\sigma/r)^{12}-(\\sigma/r)^6] written with \\varepsilon = \\sigma = 1, i.e. U^*(r^*) = 4(r^{*-12}-r^{*-6})",
+    "starred variables T^*, \\rho^*, P^*, t^* with a 'reduced units' sentence",
+    "cutoff quoted as r_c = 2.5 (in \\sigma); LJ triple point \\rho^*\\approx0.84, T^*\\approx0.69",
+    "\"in argon units, \\sigma = 3.4\\ \\text{Å}, \\varepsilon/k_B = 120\\ \\text{K}\" as the restoration recipe"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A for the neutral LJ system; charged variants use the reduced form \\beta u_C(r) = \\ell_B q_iq_j/r with the Bjerrum length \\ell_B = e^2/(4\\pi\\varepsilon_0\\varepsilon_r k_BT) measured in \\sigma — see the soft-matter entry.",
+    "gauss_law": "N/A: no field equations are solved (pairwise forces only); Ewald/PPPM solvers reintroduce 4\\pi\\varepsilon_0 through a single prefactor constant.",
+    "einstein_field": "N/A: nonrelativistic classical mechanics.",
+    "schrodinger_or_dirac": "N/A: classical MD. Path-integral MD reintroduces \\hbar as an explicit residue \\hbar^*=\\hbar/\\sqrt{m\\sigma^2\\varepsilon} (the de Boer parameter \\Lambda^*)."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v1",
+   "notes": "Four generators over four active dimensions (M, L, T, Θ) — a complete, dimensionally independent set, so restoration is unique. This is the textbook case that the generator formalism extends verbatim to user-declared scales. Note that k_B = 1 here performs the same basis reduction as in thermal-field-theory natural units; the tool's Θ-elimination logic can be shared. Verified against the LAMMPS units documentation.",
+   "sources": [
+    "https://docs.lammps.org/99/units.html",
+    "https://arxiv.org/pdf/2102.10399",
+    "https://arxiv.org/pdf/2012.09025"
+   ]
+  },
+  {
+   "name": "Soft-matter / coarse-grained reduced units with electrostatics",
+   "aliases": [
+    "k_BT = 1 units",
+    "Bjerrum-length units",
+    "DPD units",
+    "primitive-model units",
+    "oxDNA units"
+   ],
+   "used_in": "polyelectrolyte and colloid simulation, dissipative particle dynamics, implicit-solvent electrostatics, coarse-grained DNA/protein models",
+   "generators": [
+    {
+     "tex": "\\sigma\\ \\text{or}\\ r_c\\ (\\text{bead diameter / DPD cutoff})",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\sigma"
+    },
+    {
+     "tex": "k_BT",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "k_BT"
+    },
+    {
+     "tex": "m",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m"
+    },
+    {
+     "tex": "4\\pi\\varepsilon_0\\varepsilon_r\\ (\\text{absorbed into }\\ell_B)",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0\\varepsilon_r)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "q",
+     "relation": "charges in units of e, with the entire electrostatic prefactor carried by \\ell_B = e^2/(4\\pi\\varepsilon_0\\varepsilon_rk_BT); \\beta u(r) = \\ell_B q_iq_j/r",
+     "why": "the paper's only electrostatic 'unit' is a LENGTH (the Bjerrum length), so the charge dimension I is eliminated entirely — a basis reduction, not a rescaling"
+    },
+    {
+     "symbol": "T",
+     "relation": "energy scale is k_BT itself, so temperature never appears; instead \\ell_B/\\sigma is the control parameter",
+     "why": "the temperature dependence is folded into a length ratio, which makes T-dependence invisible in the equations"
+    },
+    {
+     "symbol": "\\lambda_D",
+     "relation": "screening enters as \\kappa^2 = 4\\pi\\ell_B\\sum_i q_i^2 n_i (Debye–Hückel), with the 4\\pi explicit",
+     "why": "a surviving 4\\pi that a rationalization-blind converter will misplace"
+    }
+   ],
+   "fingerprints": [
+    "\"energies are measured in units of k_BT\"; \"the Bjerrum length is \\ell_B = 0.7\\ \\text{nm} = 1.4\\sigma\"",
+    "\\beta u(r) = \\ell_B/r appearing as the Coulomb interaction",
+    "DPD: \"a_{ij} = 25\" (the standard repulsion parameter), r_c = 1, k_BT = 1, m = 1",
+    "\"reduced units\" + \"implicit solvent\" + \"primitive model\""
+   ],
+   "benchmark_equations": {
+    "coulomb": "\\beta u_C(r) = \\ell_B\\,q_iq_j/r with \\ell_B \\equiv e^2/(4\\pi\\varepsilon_0\\varepsilon_r k_BT); equivalently u_C(r) = q_iq_j\\ell_B/r in k_BT units. The 4\\pi is absorbed into \\ell_B.",
+    "gauss_law": "\\nabla^2\\psi = -4\\pi\\ell_B\\,\\rho_q (Poisson–Boltzmann in Bjerrum units) — note the 4\\pi survives explicitly here even though the Coulomb form has none, because \\ell_B is defined with the 4\\pi absorbed.",
+    "einstein_field": "N/A: nonrelativistic.",
+    "schrodinger_or_dirac": "N/A: classical coarse-grained model."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "The Coulomb/Gauss pair here is a genuinely instructive inconsistency: the pair potential shows no 4\\pi but Poisson's equation shows 4\\pi, precisely because \\ell_B carries the 4\\pi. Any converter that infers 'rationalized vs unrationalized' from a single displayed equation will get this wrong. The elimination of the current dimension I in favour of a length is the sharpest example in this family of a per-paper declaration collapsing the dimension basis.",
+   "sources": [
+    "https://docs.lammps.org/99/units.html",
+    "https://arxiv.org/pdf/2104.11567"
+   ]
+  },
+  {
+   "name": "Hamiltonian and classical-chaos conventions (m = ω = 1, Lyapunov-time rescaling)",
+   "aliases": [
+    "m = \\omega = 1",
+    "unit-mass unit-frequency",
+    "Lyapunov time units",
+    "Hénon–Heiles units",
+    "standard-map units",
+    "billiard units"
+   ],
+   "used_in": "nonlinear dynamics, classical and quantum chaos, celestial-mechanics stability studies, Hamiltonian normal-form theory",
+   "generators": [
+    {
+     "tex": "m",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m"
+    },
+    {
+     "tex": "\\omega\\ (\\text{a chosen mode frequency, orbital frequency, or }\\lambda_\\text{max})",
+     "dimension": "(0, 0, -1, 0, 0)",
+     "numeric_factor": "1\\ \\text{or}\\ 2\\pi",
+     "emits": "\\omega"
+    },
+    {
+     "tex": "E\\ \\text{or}\\ \\hbar\\ \\text{or}\\ L\\ (\\text{third scale, problem-dependent})",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "E"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "t",
+     "relation": "'time in units of the orbital period T' vs 'in units of \\Omega^{-1}': T = 2\\pi/\\Omega",
+     "why": "the 2\\pi. Chaos papers routinely quote both; a Lyapunov exponent quoted 'per orbit' differs from one 'per time unit' by 2\\pi"
+    },
+    {
+     "symbol": "t",
+     "relation": "Lyapunov time t_\\lambda = 1/\\lambda_\\text{max} used as the time generator; also 'e-folding times' vs 'doubling times' (\\ln 2)",
+     "why": "\\ln 2 is another invisible numeric factor; and \\lambda is itself an OUTPUT, so declaring t_\\lambda = 1 makes the unit depend on the result"
+    },
+    {
+     "symbol": "m_i",
+     "relation": "'we set m = 1' for a multi-particle system means all masses equal, not a unit choice",
+     "why": "only ONE mass can be absorbed into units; setting every m_i = 1 is a physical restriction (equal masses) masquerading as a convention"
+    },
+    {
+     "symbol": "\\omega_i",
+     "relation": "same for multi-mode systems: setting \\omega_1 = 1 is a unit choice; setting \\omega_1=\\omega_2=1 fixes a resonance",
+     "why": "identical failure mode in the frequency sector; the residues are the frequency RATIOS \\omega_2/\\omega_1"
+    }
+   ],
+   "fingerprints": [
+    "\"we set m = \\omega = \\hbar = 1 throughout\"; \"for convenience we take unit mass\"",
+    "H = \\tfrac12(p_x^2+p_y^2) + \\tfrac12(x^2+y^2) + x^2y - \\tfrac13y^3 (Hénon–Heiles with all constants unity; critical escape energy E = 1/6)",
+    "standard map p' = p + K\\sin\\theta, \\theta' = \\theta + p' — fully dimensionless, K the only parameter",
+    "\"times are given in units of the Lyapunov time\"; \"we integrate for 10^4 orbital periods\"",
+    "billiards: \"unit area\", \"the boundary has unit perimeter\", velocity set to 1"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A in general; Coulomb-billiard and hydrogen-in-a-field chaos papers use atomic units instead (a different family).",
+    "gauss_law": "N/A: no field equations.",
+    "einstein_field": "N/A, except for geodesic-flow chaos studies, which use geometrized units plus a curvature-scale generator (e.g. 'we set the AdS radius \\ell = 1' or 'the black-hole mass M = 1').",
+    "schrodinger_or_dirac": "Quantum-chaos papers write i\\partial_t\\psi = (-\\tfrac12\\nabla^2 + V)\\psi with \\hbar = m = 1, and then treat \\hbar_\\text{eff} as a free small parameter — a DIMENSIONLESS residue built from the same symbol that was set to 1, which is a genuine ambiguity for an automated reader."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v1",
+   "notes": "Two structural warnings that generalize beyond this entry. (1) Many chaos models (standard map, logistic map, tent map, coupled-map lattices) have NO dimensional preimage at all: the dimension basis has rank 0 and there is nothing to restore. The tool should detect and say so rather than invent units. (2) 'm=\\omega=\\hbar=1' plus a separately-tracked '\\hbar_eff' is a real convention in quantum chaos in which the SAME symbol is both a generator and a residue; this needs an explicit UI affordance (a symbol can be declared 'absorbed' in one role and 'free parameter' in another).",
+   "sources": [
+    "https://math.mit.edu/~dunkel/Teach/18.354_2014S/lecture_notes/L10_L11_scaling.pdf"
+   ]
+  },
+  {
+   "name": "Lattice-model condensed-matter units (a = ħ = t = 1)",
+   "aliases": [
+    "lattice units",
+    "hopping units",
+    "J = 1 units",
+    "\"energies in units of the hopping\"",
+    "tight-binding units"
+   ],
+   "used_in": "Hubbard/t–J/Heisenberg model papers, DMRG/QMC/DMFT numerics, topological-band-structure literature",
+   "generators": [
+    {
+     "tex": "a\\ (\\text{lattice constant})",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "a"
+    },
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "t\\ \\text{or}\\ J\\ (\\text{hopping or exchange energy})",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "t"
+    },
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    },
+    {
+     "tex": "e\\ (\\text{when a flux or field is present})",
+     "dimension": "(0, 0, 1, 0, 1)",
+     "numeric_factor": "1",
+     "emits": "e"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "J",
+     "relation": "H = -J\\sum_{\\langle ij\\rangle}s_is_j with s=\\pm1 versus H = -J\\sum \\mathbf{S}_i\\cdot\\mathbf{S}_j with S=\\pm\\tfrac12: the two 'J = 1' differ by a factor of 4",
+     "why": "a pure numeric factor; it moves the 2D Ising T_c between 2.269 and 0.567 in 'units of J'"
+    },
+    {
+     "symbol": "t",
+     "relation": "'energies in units of t' versus 'in units of the bandwidth W = 4t (1D), 8t (2D square), 12t (3D cubic)'",
+     "why": "DMFT papers overwhelmingly use W or the half-bandwidth D = W/2; Hubbard-model papers use t. U/t = 8 and U/W = 1 are the same physics."
+    },
+    {
+     "symbol": "\\Phi",
+     "relation": "magnetic flux per plaquette in units of the flux quantum \\Phi_0 = h/e (or hc/e in Gaussian, or h/2e for superconductors)",
+     "why": "three different flux quanta differing by 2 and by c"
+    },
+    {
+     "symbol": "k",
+     "relation": "crystal momentum in units of 1/a, with the Brillouin zone [-\\pi,\\pi] rather than [-\\pi/a,\\pi/a]",
+     "why": "the \\pi's are structural, but papers that set a = 2\\pi or use [-1/2,1/2] reduced coordinates exist"
+    }
+   ],
+   "fingerprints": [
+    "\"we set \\hbar = a = 1 and measure energies in units of the hopping t\"",
+    "dispersion displayed as \\epsilon(k) = -2(\\cos k_x + \\cos k_y) with no a and no t",
+    "\"U/t = 8\", \"J/t\", \"we take t = 1 as the energy unit\"",
+    "\"temperatures are in units of t\" (i.e. k_B = 1)",
+    "band structures with the BZ labelled \\Gamma, X, M and k running over [-\\pi,\\pi]"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Usually replaced by an on-site/nearest-neighbour Hubbard term U n_\\uparrow n_\\downarrow + V n_in_j, with U and V given as ratios to t. Where long-range Coulomb is kept, it appears as (U/t)\\,/\\,|i-j| in lattice units — the 4\\pi\\varepsilon_0 is absorbed into the single number U.",
+    "gauss_law": "N/A for lattice models; the electromagnetic sector enters only through Peierls phases \\exp(i\\frac{e}{\\hbar}\\!\\int\\! A\\cdot dl) \\to \\exp(i\\theta_{ij}) with the flux measured in \\Phi_0.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "i\\,\\partial_t c_j = -\\sum_{\\delta} c_{j+\\delta} + \\ldots ; continuum Dirac-cone limit written as H = v_F(\\sigma_xk_x+\\sigma_yk_y) with v_F = 3ta/2\\hbar \\to 3/2, or with the further declaration v_F = 1."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "Five generators over five dimensions once e is included — a complete basis. The dangerous content is entirely in numeric_factor: the spin-1/2 versus Ising factor of 4, the hopping-vs-bandwidth factor of 4–12, and the flux-quantum factor of 2. Note also 'v_F = 1' in Dirac-material papers, which is a SECOND velocity generator layered on top of a=\\hbar=t=1 and is therefore over-determined unless one of the others is released — a rank violation the tool should catch.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Buckingham_pi_theorem"
+   ]
+  },
+  {
+   "name": "Harmonic-trap units (BEC / Gross–Pitaevskii)",
+   "aliases": [
+    "oscillator units",
+    "\\hbar = m = \\omega = 1",
+    "a_\\text{ho} units",
+    "trap units"
+   ],
+   "used_in": "Bose–Einstein condensate theory and simulation, Gross–Pitaevskii solvers, cold-atom many-body papers",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "m",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m"
+    },
+    {
+     "tex": "\\omega_\\perp\\ \\text{or}\\ \\omega_\\text{ho}=(\\omega_x\\omega_y\\omega_z)^{1/3}",
+     "dimension": "(0, 0, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\omega_\\perp"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "x",
+     "relation": "length unit a_\\text{ho} = \\sqrt{\\hbar/(m\\omega)}; note the absence of a factor 2 — but the oscillator GROUND-STATE width is a_\\text{ho}/\\sqrt2",
+     "why": "'the oscillator length' is used for both, a factor \\sqrt2"
+    },
+    {
+     "symbol": "g",
+     "relation": "\\hat g = 4\\pi N a_s/a_\\text{ho} when \\int|\\psi|^2 = 1; \\hat g = 4\\pi a_s/a_\\text{ho} when \\int|\\psi|^2 = N",
+     "why": "the factor N moves between the coupling and the normalization; the two conventions are equally common and dimensionally identical"
+    },
+    {
+     "symbol": "\\omega",
+     "relation": "which \\omega is the generator: \\omega_\\perp (quasi-1D/2D papers), \\omega_z, or the geometric mean \\omega_\\text{ho}",
+     "why": "anisotropy ratios \\lambda = \\omega_z/\\omega_\\perp are the residues; picking the wrong generator rescales every length by \\sqrt\\lambda"
+    }
+   ],
+   "fingerprints": [
+    "\"lengths in units of the oscillator length a_\\text{ho} = \\sqrt{\\hbar/m\\omega}, energies in \\hbar\\omega, time in \\omega^{-1}\"",
+    "GPE displayed as i\\partial_t\\psi = \\big(-\\tfrac12\\nabla^2 + \\tfrac12(x^2+y^2+\\lambda^2z^2) + g|\\psi|^2\\big)\\psi",
+    "the combination Na_s/a_\\text{ho} quoted as the interaction parameter",
+    "\"Thomas–Fermi radius R_\\text{TF} = (15Na_s/a_\\text{ho})^{1/5}\" (in trap units)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: neutral atoms; dipolar BEC papers introduce \\epsilon_{dd} = a_{dd}/a_s, a dimensionless residue.",
+    "gauss_law": "N/A: no gauge field, except in synthetic-gauge-field papers where the flux is quoted in dimensionless units.",
+    "einstein_field": "N/A: nonrelativistic (analogue-gravity BEC papers introduce an emergent 'c' equal to the sound speed, a second velocity generator).",
+    "schrodinger_or_dirac": "i\\,\\partial_t\\psi = \\big(-\\tfrac12\\nabla^2 + V_\\text{ext} + g|\\psi|^2\\big)\\psi, with V_\\text{ext} = \\tfrac12 r^2 for an isotropic trap and g = 4\\pi N a_s/a_\\text{ho} for \\int|\\psi|^2 = 1. The kinetic prefactor is exactly 1/2, not 1 — a frequent transcription error."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "Three generators over (M, L, T) — complete and independent. The whole risk is in the coupling constant's numeric factor (4\\pi, and whether N is inside g). Worth an explicit UI field: 'wavefunction normalization convention' is a per-paper datum that changes the meaning of g by a factor of N.",
+   "sources": [
+    "https://arxiv.org/pdf/1804.05192"
+   ]
+  },
+  {
+   "name": "Optical-lattice recoil units",
+   "aliases": [
+    "recoil units",
+    "E_R units",
+    "lattice depth in units of the recoil energy",
+    "s = V_0/E_R"
+   ],
+   "used_in": "optical-lattice cold-atom experiments and theory, Bose/Fermi–Hubbard parameter derivations, matter-wave diffraction",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "k_L=2\\pi/\\lambda",
+     "dimension": "(0, -1, 0, 0, 0)",
+     "numeric_factor": "2\\pi",
+     "emits": "k_L"
+    },
+    {
+     "tex": "E_R=\\hbar^2k_L^2/(2m)",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "1/2",
+     "emits": "\\hbar^2k_L^2/(2m)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "E_R",
+     "relation": "E_R = \\hbar^2k_L^2/2m with k_L = 2\\pi/\\lambda (photon recoil) versus E_R = \\hbar^2k^2/2m with k = 2\\pi/(\\lambda/2) = 2k_L (lattice-period recoil), a factor of 4",
+     "why": "the lattice period is \\lambda/2, so both definitions are 'natural'; a lattice depth of '10 E_R' can mean two different physical depths"
+    },
+    {
+     "symbol": "V_0",
+     "relation": "V(x) = V_0\\sin^2(k_Lx) versus V(x) = \\tfrac{V_0}{2}[1-\\cos(2k_Lx)] versus V(x) = -\\tfrac{V_0}{2}\\cos(2k_Lx): peak-to-peak versus amplitude, a factor of 2",
+     "why": "a pure numeric factor that changes the derived Hubbard t and U substantially because they depend exponentially on \\sqrt{s}"
+    },
+    {
+     "symbol": "m",
+     "relation": "m is absorbed inside E_R rather than declared separately, so 'the mass' is not an independent generator here",
+     "why": "E_R, \\hbar, k_L is a complete independent set and m = \\hbar^2k_L^2/(2E_R) is derived — the reverse of the trap-units convention"
+    }
+   ],
+   "fingerprints": [
+    "\"the lattice depth is s = V_0/E_R = 12\"; \"E_R = \\hbar^2k^2/2m is the recoil energy\"",
+    "H/E_R = -\\partial_{\\tilde x}^2 + s\\sin^2(\\tilde x) with \\tilde x = k_Lx",
+    "band structures plotted versus quasimomentum q/\\hbar k_L \\in [-1,1]",
+    "\"in units of the recoil\"; \"E_R/h = 3.5\\ \\text{kHz}\" (frequency-unit restoration)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: neutral atoms.",
+    "gauss_law": "N/A.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "In recoil units with x̃ = k_Lx and energies in E_R: \\hat H = -\\partial_{\\tilde x}^2 + s\\sin^2\\tilde x. Derivation: -\\frac{\\hbar^2}{2m}\\partial_x^2 = -E_R\\,\\partial_{\\tilde x}^2 exactly, because E_R \\equiv \\hbar^2k_L^2/2m. Note the kinetic prefactor is 1, NOT 1/2 — the opposite of trap units, because the 1/2 was absorbed into E_R."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Instructive contrast with trap units: the same physics (\\hbar = m = 1-style) yields a kinetic prefactor of 1 here and 1/2 there, purely because of which numeric factor sat inside the energy generator. This is a strong argument that numeric_factor must be attached to the generator, not to the equation. The \\lambda-vs-\\lambda/2 recoil ambiguity is a genuine, documented source of confusion in the cold-atom literature.",
+   "sources": [
+    "https://arxiv.org/pdf/0808.2557"
+   ]
+  },
+  {
+   "name": "Cavity-QED / circuit-QED and open-system conventions",
+   "aliases": [
+    "\\hbar = 1 plus rotating frame",
+    "\\kappa = 1 units",
+    "\"frequencies in units of g\"",
+    "quantum-optics conventions"
+   ],
+   "used_in": "cavity and circuit QED, optomechanics, quantum-optics master-equation papers, Jaynes–Cummings and Dicke-model literature",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "g\\ \\text{or}\\ \\kappa\\ \\text{or}\\ \\omega_c\\ (\\text{one chosen rate set to }1)",
+     "dimension": "(0, 0, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "g"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\text{rotating frame}",
+     "relation": "H \\to UHU^\\dagger - iU\\partial_tU^\\dagger with U = e^{i\\omega_d t(a^\\dagger a + \\sigma_z/2)}, giving detunings \\Delta_c = \\omega_c-\\omega_d",
+     "why": "this is an ADDITIVE, time-dependent transformation of the Hamiltonian, not a unit choice at all, yet it is announced in the same breath as '\\hbar=1' and it removes \\omega_c from every displayed equation"
+    },
+    {
+     "symbol": "g",
+     "relation": "H_\\text{int} = g(a\\sigma_+ + a^\\dagger\\sigma_-) versus \\tfrac{\\Omega}{2}(\\ldots) with \\Omega = 2g (vacuum Rabi frequency = 2g, vacuum Rabi splitting = 2g)",
+     "why": "factor-of-2 conventions between coupling, Rabi frequency and splitting; all reported as 'the coupling'"
+    },
+    {
+     "symbol": "\\kappa, \\gamma",
+     "relation": "\\mathcal{D}[a] with rate \\kappa (energy decay) versus \\kappa/2 (amplitude decay); linewidth (FWHM) = \\kappa",
+     "why": "factor-of-2 ambiguity in every quoted cooperativity C = g^2/(\\kappa\\gamma) versus 4g^2/(\\kappa\\gamma)"
+    }
+   ],
+   "fingerprints": [
+    "\"we set \\hbar = 1\" immediately followed by a Hamiltonian in angular-frequency units",
+    "\"all rates are given in units of \\kappa\" / \"in units of g\" / \"energies are measured in units of the cavity linewidth\"",
+    "H = \\omega_ca^\\dagger a + \\tfrac{\\omega_a}{2}\\sigma_z + g(a\\sigma_+ + a^\\dagger\\sigma_-) (Jaynes–Cummings, \\hbar=1)",
+    "cooperativity C = g^2/(\\kappa\\gamma) or 2g^2/(\\kappa\\gamma) quoted as the figure of merit",
+    "\"in the frame rotating at the drive frequency\""
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: the light–matter coupling is already reduced to a dipole matrix element folded into g.",
+    "gauss_law": "N/A: the field is a single quantized mode; no field equation is displayed.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "i\\,\\partial_t|\\psi\\rangle = H|\\psi\\rangle with \\hbar=1, or the Lindblad form \\dot\\rho = -i[H,\\rho] + \\kappa\\mathcal{D}[a]\\rho + \\gamma\\mathcal{D}[\\sigma_-]\\rho. With \\hbar=1 every 'energy' in the paper is an angular frequency, and the conversion to laboratory numbers usually goes through h (not \\hbar): 'g/2\\pi = 100\\ \\text{MHz}'."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Only ONE genuine dimensional generator beyond \\hbar (a frequency), so the dimensional content is thin; nearly all the convention risk here is factor-of-2 and factor-of-2\\pi (the ubiquitous 'g/2\\pi = ...' means the quoted number is an ordinary frequency while the symbol is angular). Rotating frames are the clearest case in the whole family of a transformation that a units engine must recognize and REFUSE to model as a unit change.",
+   "sources": [
+    "https://arxiv.org/pdf/0704.3489",
+    "https://arxiv.org/pdf/2510.16634v1"
+   ]
+  },
+  {
+   "name": "Fermi units (ħ = k_F = 1, with m or E_F set to 1)",
+   "aliases": [
+    "Fermi-momentum units",
+    "k_F units",
+    "E_F = 1 units",
+    "unitary-gas units"
+   ],
+   "used_in": "ultracold Fermi gases and the BCS–BEC crossover, nuclear matter, Fermi-liquid theory, quantum Monte Carlo of the electron gas",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "k_F",
+     "dimension": "(0, -1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "k_F"
+    },
+    {
+     "tex": "m\\ \\text{or}\\ E_F\\ (\\text{third generator; only one may be chosen})",
+     "dimension": "(1, 0, 0, 0, 0)\\ \\text{or}\\ (1, 2, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m\\ \\text{or}\\ E_F"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "E_F\\ \\text{vs}\\ m",
+     "relation": "E_F = \\hbar^2k_F^2/(2m). Choosing \\hbar=k_F=m=1 forces E_F = 1/2. Choosing \\hbar=k_F=E_F=1 forces m = 1/2.",
+     "why": "derived here explicitly. Both declarations appear in the literature and BOTH are dimensionally complete (the 3x3 exponent matrix for (\\hbar,k_F,E_F) has determinant 1), so a dimension check cannot distinguish them — only the factor-of-2 in every reported energy does."
+    },
+    {
+     "symbol": "n",
+     "relation": "n = k_F^3/(3\\pi^2) for a two-component gas (spin-1/2, both species) versus k_F^3/(6\\pi^2) per species",
+     "why": "the density–k_F relation carries a spin-degeneracy factor that varies between the cold-atom and nuclear conventions"
+    },
+    {
+     "symbol": "r_s",
+     "relation": "electron-gas papers use r_s (Wigner–Seitz radius in Bohr radii) instead: k_Fr_sa_0 = (9\\pi/4)^{1/3}",
+     "why": "a wholly different but equivalent one-parameter scaling of the same system"
+    }
+   ],
+   "fingerprints": [
+    "\"we set \\hbar = k_F = m = 1\" or \"energies are measured in units of the Fermi energy\"",
+    "1/(k_Fa_s) as the crossover control parameter; \"the unitary limit 1/k_Fa = 0\"",
+    "the Bertsch parameter \\xi = E/E_\\text{FG} \\approx 0.37 quoted as a pure number",
+    "T/T_F quoted for temperature; k/k_F for momentum",
+    "\"r_s = 5\" in electron-gas QMC papers"
+   ],
+   "benchmark_equations": {
+    "coulomb": "For the electron gas in these units: H = -\\tfrac12\\sum_i\\nabla_i^2 + \\sum_{i<j}1/r_{ij} in Hartree atomic units, or in Rydberg-scaled r_s units H = \\frac{1}{r_s^2}\\big[-\\sum\\nabla_i^2 + r_s\\sum_{i<j}2/r_{ij}\\big] Ry — the r_s prefactor is exactly why r_s measures the coupling strength. For neutral cold atoms Coulomb is N/A (contact interaction g\\delta(r) with g \\to 4\\pi a_s/m).",
+    "gauss_law": "N/A for cold atoms; for the electron gas the uniform neutralizing background replaces Gauss's law (jellium).",
+    "einstein_field": "N/A, except in neutron-star matter papers, which combine Fermi units for the EOS with geometrized units for the TOV equation — a two-convention document (see family notes).",
+    "schrodinger_or_dirac": "i\\partial_t\\psi = (-\\tfrac{1}{2m}\\nabla^2 + \\ldots)\\psi ; with \\hbar=k_F=m=1 the free dispersion is \\epsilon_k = k^2/2 and E_F = 1/2, whereas with \\hbar=k_F=E_F=1 it is \\epsilon_k = k^2 and m = 1/2."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "The m=1 versus E_F=1 factor of 2 is derived above and is, to my knowledge, an under-documented trap: papers say 'Fermi units' without specifying which triple. Nuclear-matter papers typically use \\hbar=c=1 with k_F in fm^{-1} (a hybrid: natural units plus a per-paper length), which the tool should represent as fixed generators plus one custom generator.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Buckingham_pi_theorem"
+   ]
+  },
+  {
+   "name": "Soliton / NLS normalization (nonlinear fiber optics)",
+   "aliases": [
+    "dispersion-length units",
+    "soliton units",
+    "Agrawal normalization",
+    "\\xi = z/L_D, \\tau = T/T_0"
+   ],
+   "used_in": "nonlinear fiber optics, supercontinuum generation, optical-soliton theory, and by extension nonlinear-Schrödinger studies in BEC and plasma",
+   "generators": [
+    {
+     "tex": "T_0\\ (\\text{pulse duration})",
+     "dimension": "(0, 0, 1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "T_0"
+    },
+    {
+     "tex": "L_D=T_0^2/|\\beta_2|",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "T_0^2/|\\beta_2|"
+    },
+    {
+     "tex": "P_0\\ (\\text{peak power})",
+     "dimension": "(1, 2, -3, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "P_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "T_0",
+     "relation": "T_0 = T_\\text{FWHM}/1.763 for a sech pulse, T_\\text{FWHM}/1.665 for a Gaussian",
+     "why": "the reported pulse width is almost always FWHM while the generator is the 1/e half-width; the numeric factor differs by pulse shape"
+    },
+    {
+     "symbol": "N",
+     "relation": "N^2 = \\gamma P_0T_0^2/|\\beta_2| = L_D/L_\\text{NL}; the fundamental soliton is N=1",
+     "why": "the soliton order is the surviving dimensionless residue and must not be restored"
+    },
+    {
+     "symbol": "z",
+     "relation": "some papers use the soliton period z_0 = (\\pi/2)L_D as the length unit instead of L_D",
+     "why": "a factor \\pi/2 in every reported propagation distance"
+    }
+   ],
+   "fingerprints": [
+    "\"\\xi = z/L_D, \\tau = (T - z/v_g)/T_0, U = A/\\sqrt{P_0}\"",
+    "i\\,\\partial_\\xi U = \\tfrac{\\text{sgn}(\\beta_2)}{2}\\partial_\\tau^2 U - N^2|U|^2U",
+    "\"L_D = T_0^2/|\\beta_2|\", \"L_\\text{NL} = 1/(\\gamma P_0)\", \"soliton order N\"",
+    "\"retarded frame\" / \"co-moving frame\" (an additive coordinate shift, not a scaling)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A.",
+    "gauss_law": "N/A: the NLS is already an envelope reduction of Maxwell's equations; \\varepsilon_0 has been absorbed into \\gamma = n_2\\omega_0/(cA_\\text{eff}).",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "i\\,\\partial_\\xi U + \\tfrac12\\partial_\\tau^2U + |U|^2U = 0 in the anomalous-dispersion, N=1 normalization (equivalently i\\partial_\\xi U = \\tfrac{\\text{sgn}\\beta_2}{2}\\partial_\\tau^2U - N^2|U|^2U before absorbing N). Note that \\xi plays the role of time and \\tau of space — the roles of the coordinates are swapped relative to the quantum NLS, which is a per-field reading convention rather than a unit one."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "Moderate confidence on the exact Agrawal normalization form; I reproduced it from memory and checked its internal dimensional consistency (L_D = T_0^2/|\\beta_2| is a length given [\\beta_2] = (0,-1,2,0,0)), but did not verify the sign/prefactor convention against the text. The coordinate-role swap (propagation distance as the 'time' variable) is worth a UI note because a naive dimension check on 'the Schrödinger equation' will flag it.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Buckingham_pi_theorem"
+   ]
+  },
+  {
+   "name": "Dimensionless-generator declarations (little-h units, \"units where Re = 1\", α = 1)",
+   "aliases": [
+    "h-units",
+    "Mpc/h",
+    "\"in units where the coupling is unity\"",
+    "hidden dimensionless normalizations"
+   ],
+   "used_in": "observational and computational cosmology (h-units are near-universal); occasionally in field theory (\"we set the coupling to 1\") and in fluid papers that over-declare scales",
+   "generators": [
+    {
+     "tex": "h\\ (H_0 = 100h\\ \\mathrm{km\\,s^{-1}Mpc^{-1}})",
+     "dimension": "(0, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "h\\ \\text{(power varies per quantity: }h,\\ h^{-1},\\ h^3,\\ h^{-2}\\ldots)"
+    },
+    {
+     "tex": "\\mathrm{Mpc}",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\mathrm{Mpc}"
+    },
+    {
+     "tex": "M_\\odot",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "M_\\odot"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "k",
+     "relation": "k\\,[h\\,\\mathrm{Mpc}^{-1}] versus k\\,[\\mathrm{Mpc}^{-1}]",
+     "why": "a factor h with OPPOSITE sign of exponent from the length case"
+    },
+    {
+     "symbol": "P(k)",
+     "relation": "P(k)\\,[h^{-3}\\mathrm{Mpc}^3]",
+     "why": "the h-exponent is +3 here, -1 for lengths, +1 for masses (M_\\odot/h), +2 for surface densities — there is no single 'h-power' for the system"
+    },
+    {
+     "symbol": "\\sigma_8, n_s",
+     "relation": "h-independent",
+     "why": "some quantities carry no h at all, so the exponent must be tracked PER SYMBOL, not derived from dimensions"
+    }
+   ],
+   "fingerprints": [
+    "\"h^{-1}\\,\\mathrm{Mpc}\", \"ckpc/h\", \"10^{10}M_\\odot/h\", \"h^{-3}\\mathrm{Mpc}^3\"",
+    "\"H_0 = 100h\\ \\mathrm{km\\,s^{-1}\\,Mpc^{-1}}\"",
+    "\"we quote results in h-units unless otherwise stated\"",
+    "a caveat sentence: \"note that different h conventions are used for masses and lengths\""
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A.",
+    "gauss_law": "N/A. (The cosmological Poisson equation \\nabla^2\\phi = 4\\pi G a^2\\bar\\rho\\delta is written with G explicit; the h's cancel in it, which is exactly why they are so easy to lose track of.)",
+    "einstein_field": "The Friedmann equation H^2 = (8\\pi G/3)\\rho - k/a^2 + \\Lambda/3 is written with G explicit; h enters only through the numerical value of H_0, never as an absorbed constant.",
+    "schrodinger_or_dirac": "N/A."
+   },
+   "schema_fit": "unsupported",
+   "scope_tier": "v2",
+   "notes": "THE structural failure case, and the reason I recommend an explicit 'unsupported' verdict rather than a heroic extension. h is DIMENSIONLESS: its exponent tuple is (0,0,0,0,0), so it contributes a zero row to the restoration matrix and carries no dimensional trace whatsoever. Restoration of h-factors is therefore not a linear-algebra problem over dimensions at all — it requires a per-quantity lookup table of h-exponents. The same objection applies to any declaration of the form 'we set [dimensionless quantity] = 1' (Re = 1, \\alpha = 1, \\hbar_\\text{eff} = 1, m_i/m_e = 25). The honest tool behavior is to DETECT such a declaration, refuse to fold it into the generator table, and surface it as an un-restorable annotation on the affected symbols. A v2 feature could ship a curated h-exponent table for the ~20 standard cosmological observables.",
+   "sources": [
+    "https://arxiv.org/pdf/2409.01939"
+   ]
+  }
+ ],
+ "family_notes": "VERDICT. The generator-table formalism does extend to per-paper nondimensionalization, but only after four schema additions; without them the extension is unsound rather than merely incomplete.\n\n(1) Generators must be allowed to be FREE SYMBOLS, not constants of nature. A user/mined generator is a triple (tex, dimension 5-tuple, optional SI value). The dimension tuple is what the restoration linear system needs and is always known symbolically from the declaration sentence (\"lengths are scaled by L\", \"velocities by U\"); the SI value is needed only for round-tripping to physical numbers and is frequently absent from the paper entirely (scale-free simulations: ideal GRMHD, vacuum NR, LJ MD). So the tool must support restoration WITHOUT numeric values — emitting \"L\", \"U\", \"\\\\rho_0\" symbolically — and treat numeric values as an optional overlay. Roughly half the systems above are published without them.\n\n(2) A RANK CHECK is mandatory and is the single highest-value new feature. In fixed systems (ħ=c=G=1) the generators are known-independent. In per-paper scaling they very often are not. Three distinct outcomes must be distinguished: (a) rank = number of active base dimensions and generator count equals rank — well-posed, unique restoration (LJ units, NS inertial scaling, Hénon units, trap units); (b) generator count exceeds rank — OVER-DETERMINED, and the excess declarations are physical restrictions disguised as unit choices (\"L = U = ν = 1\" secretly means Re = 1; \"m_i = 1 for all i\" means equal masses; \"a = ħ = t = v_F = 1\" in Dirac-material papers is a rank violation). The tool should compute the null-space combination that has been silently set to 1 and name it; (c) generator count is below rank — PARTIAL nondimensionalization, leaving residual dimensional freedom, which is common and legitimate (nuclear matter in ħ=c=1 with k_F still in fm^-1). Note the important exception in the GRMHD entry: two same-dimension mass generators are consistent there only because ideal GRMHD has an exact density-scaling symmetry, so the rank check must be overridable with a flag \"generator exploits an equation symmetry\" rather than hard-failing.\n\n(3) BASIS REDUCTION must be modeled explicitly. Several declarations do not scale a dimension, they delete it: k_B = 1 removes Θ (LJ, gyrokinetics, lattice models), μ0 = 1 or absorption into the Bjerrum length removes I (MHD codes, soft matter), c = 1 merges L and T. The active-basis state is therefore part of the convention record, and translating between two conventions with different active bases (e.g. a compressible-CFD paper with Θ live and an MD paper with Θ dead) requires re-inflating the basis, not just multiplying quotients.\n\n(4) RESIDUES must be a first-class output, and must never be restored. The defining feature of this family, versus fixed unit systems, is that the surviving dimensionless groups — Re, Pr, Ra, Ma, Ek, Ro, St, Pe, Sc, S, Pr_m, β, ρ*, ν*, σ, N (soliton order), U/t, ℓ_B/σ, 1/k_F a, s = V0/E_R, C = g²/κγ, m_i/m_e — are physics, not units. A restoration engine that treats them as absorbable constants produces nonsense. The correct output of the engine on a per-paper convention is: {generator list} + {Buckingham Π basis of the null space, labeled against a registry of named groups}. A curated residue registry (name, definition, field) is a modest, high-value data asset.\n\nUI / DATA THE TOOL NEEDS. A per-document \"scale declaration\" panel with one row per declared scale: TeX symbol; dimension 5-tuple (entered directly, or inferred from a defining expression like sqrt(g α ΔT H), which the tool can dimension-check); numeric factor (the 2π, √2, 1/2, 4π, −1/4 that dimensional analysis cannot see); optional SI value; and a three-way classifier {unit generator | symmetry parameter | physical restriction}. Plus: an active-basis widget showing which of (M,L,T,Θ,I) survive; a computed rank/nullity readout with the Π-basis named; a per-symbol rider table for definitional rescalings (B_code = B/√(4π); v_th = √(2T/m) vs √(T/m); ψ normalized to 1 vs N; T_FWHM vs T_0); and a convention-to-convention translator that composes two per-paper tables and reports the answer as powers of named residues (the RBC free-fall ↔ diffusive map is exactly a power of √(Ra Pr)). Preset library: the named conventions above, shipped as editable templates, since most papers use a standard one with one or two switches flipped (GENE with L_ref = a vs R_0; Boussinesq free-fall vs diffusive; recoil energy at λ vs λ/2).\n\nFINGERPRINTING THE DECLARATION SENTENCE. High-precision cues, roughly in order of reliability: (i) a normalization TABLE in the methods section, two columns, rows like \"length | L_ref\", \"time | L_ref/c_ref\" — this is the single strongest signal and is machine-extractable; (ii) explicit declarative templates — /we (work|shall work|will work) in units (in )?(which|where)/, /we set ([^.]{1,80}) = 1/, /(all )?(lengths|times|energies|velocities|frequencies|masses) are (measured |given |expressed )?in units of/, /normalized (to|by)/, /we adopt the following normali[sz]ation/, /(reduced|code|internal|natural|dimensionless) units/, /for convenience( we| ,)/, /henceforth/, /unless otherwise (stated|noted)/; (iii) decorated variables plus a legend — /(hats?|tildes?|primes?|asterisks?|stars?) denote (the )?(dimensionless|normali[sz]ed|reduced)/, followed later by /we drop the (hats|tildes|primes)/, which is the point after which every subsequent equation is in-system; (iv) named dimensionless groups appearing as bare coefficients on displayed PDE terms; (v) a restoration appendix — /to convert to (physical|cgs|SI) units/, /multiplying by/, a table of unit values; (vi) code-specific keyword leakage (\"units lj\", \"UnitLength_in_cm\", \"M_unit\", \"tprim/fprim\", \"\\\\Omega = 1\"). A useful two-stage extractor: regex-locate the declaration paragraph, then LLM-parse it into (symbol, defining expression, dimension) triples, then dimension-CHECK each defining expression against the claimed role and show the user any mismatch before committing the convention.\n\nFAILURE MODES TO FLAG (ranked by how often they actually bite).\n- Partial nondimensionalization. \"We set c = ħ = 1 but quote lengths in fm\"; \"energies in eV, lengths in lattice units\". Very common, entirely legitimate, and fatal to any engine that assumes a declaration is total. Detect by rank < basis size and warn rather than fail.\n- Inconsistent / over-declared scales. Papers that list more unit-fixing statements than there are dimensions. Almost always the author means \"and additionally the relevant dimensionless group equals 1\", which is a physical claim. Compute and display the implied group.\n- Section-local conventions. A single paper using linear theory in ω_ce units, simulations in code units, and observations in SI, with no explicit switch marker. Neutron-star papers routinely combine Fermi units (EOS) with geometrized units (TOV) in adjacent equations. The tool's convention state must be scoped to a text span, not to a document.\n- Silent per-symbol redefinition. The symbol looks the same, the dimension is the same, the meaning is not: B → B/√(4π), v_th with or without √2, ψ normalized to 1 or N, g vs Ω/2, κ vs κ/2, J for s=±1 vs S=±1/2, hopping t vs bandwidth W. Dimension checking is blind to all of these; only the numeric_factor/rider tables catch them.\n- The 2π/ln2 class. Box side 1 vs 2π, period vs angular frequency, orbits vs Ω^-1, e-folding vs doubling times, \"g/2π = 100 MHz\". Same dimension, different number.\n- Dimensionless \"units\". Little-h, \"units where Re = 1\", α = 1, ħ_eff. No dimensional trace exists; restoration is impossible in principle. Detect and annotate; do not attempt.\n- Equations with no dimensional preimage. Standard map, logistic map, coupled-map lattices, abstract dynamical systems: rank 0, nothing to restore. Say so rather than inventing units.\n- Non-multiplicative \"normalizations\" announced alongside real ones. Additive temperature offsets θ = (T − T_ref)/ΔT in Boussinesq; co-moving/retarded frames in NLS; rotating frames in quantum optics; comoving-vs-physical coordinates with a time-dependent a(t) in cosmological codes. These are affine or time-dependent transformations, outside the multiplicative generator group entirely; the tool must recognize and refuse them rather than mis-modeling them.\n- Scales that are not actually free. \"M = 1\" is a genuine symmetry in vacuum NR and a mere reported number in BNS/matter NR; \"density is scale-free\" holds in ideal GRMHD but not once radiative cooling fixes a density. A warning triggered by the co-presence of a fixed-scale ingredient (an EOS, a cooling function, a real collision frequency) alongside a claimed free scale would catch a real class of physics errors.\n- Deliberately unphysical residues. Reduced ion-to-electron mass ratios (25, 64, 100), reduced speed of light, inflated resistivity. Dimensionally invisible, and a restoration engine must never \"correct\" them to physical values.\n\nSCOPE RECOMMENDATION. v1: the custom-generator engine itself (symbolic generators, rank check, residue extraction, basis reduction) plus presets for the handful of conventions a theoretical-physics reader meets constantly — NS inertial scaling, LJ reduced units, m=ω=ħ=1 Hamiltonian/chaos, NR G=c=M=1, lattice a=ħ=t=1, trap units. v2: the domain presets (Boussinesq ×2, Alfvénic MHD, both gyrokinetic families, PIC, shearing box, Hénon, recoil, Fermi, NLS, code-unit triples, GRMHD) plus the convention-to-convention translator and the named-residue registry. Out of scope for restoration, in scope for detection-and-warning: dimensionless-generator declarations (h-units and friends), affine/rotating-frame transformations, and models with no dimensional preimage."
+}

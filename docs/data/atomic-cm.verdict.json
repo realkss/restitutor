@@ -1,0 +1,186 @@
+{
+ "family": "Atomic, molecular, condensed-matter and spectroscopy conventions (\"atomic-cm\")",
+ "verdicts": [
+  {
+   "system": "Hartree atomic units (SI-based rendering, 4πε₀ = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "its numerical value in Hartree a.u. is G = 2.4006\\times10^{-43} (i.e. G\\,m_e\\,t_{\\rm au}^2/a_0^3)",
+     "problem": "The arithmetic is wrong in the 4th–5th significant figure. Using CODATA 2022 (G = 6.67430e-11 m³kg⁻¹s⁻², m_e = 9.1093837139e-31 kg, t_au = 2.4188843265864e-17 s, a₀³ = 1.481847e-31 m³): G·m_e·t²/a₀³ = 6.67430e-11 × 9.1093837139e-31 × 5.850979e-34 / 1.481847e-31 = 2.4004e-43. The 7e-5 relative discrepancy exceeds G's own 2.2e-5 uncertainty, so it is a slip, not a CODATA-version difference.",
+     "correction": "G = 2.4004×10⁻⁴³ in Hartree a.u. (and correspondingly 1.9204×10⁻⁴² in Rydberg a.u., not 1.9205×10⁻⁴²).",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Hartree atomic units (Gaussian/cgs-based rendering)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Rydberg atomic units",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "The Rydberg unit of charge is e/\\sqrt2 = 1.13288\\times10^{-19}\\ \\mathrm{C}",
+     "problem": "Arithmetic slip. e/√2 = 1.602176634e-19 / 1.41421356237 = 1.132911e-19 C. The quoted 1.13288e-19 is low by 2.7e-5 relative, and e (exact) and √2 make this value exact to all printed digits, so there is no uncertainty excuse.",
+     "correction": "e/√2 = 1.132911×10⁻¹⁹ C.",
+     "confidence": "certain"
+    },
+    {
+     "claim": "used_in: ... Quantum ESPRESSO/PWscf, ... ELK partially, Abinit's Ry output options",
+     "problem": "Elk does not use Rydberg units even partially. The Elk manual states that the code works in atomic units with the Hartree as the energy unit and the Bohr as the length unit, and that 'Rydbergs, electron volts and Ångströms are never used'. Listing Elk as a Rydberg-unit code is a detection hazard for exactly the Hartree/Rydberg confusion this entry exists to prevent. (The ABINIT claim is also shaky: ABINIT accepts 'Ry' as an input-variable unit but prints energies in Ha/eV, not Ry.)",
+     "correction": "Remove Elk from the Rydberg list (it is a Hartree-atomic-unit code); restrict the ABINIT mention to Ry-suffixed *input* variables, not output.",
+     "confidence": "certain"
+    },
+    {
+     "claim": "Its numerical value in Rydberg a.u. is G = 1.9205\\times10^{-42} = 8\\times G_{\\rm Hartree\\ a.u.}",
+     "problem": "Inherits the Hartree-entry arithmetic slip; the factor-8 relation itself is correct (mass unit ×2, time unit ×2, length unit unchanged ⇒ G unit ÷8).",
+     "correction": "G = 1.9204×10⁻⁴² in Rydberg a.u.",
+     "confidence": "certain"
+    },
+    {
+     "claim": "schema_fit: needs_symbol_rescaling",
+     "problem": "For the 4-generator SI rendering that the entry itself presents (ħ, 2m_e, e/√2, 4πε₀), nothing needs a symbol rescaling: 'e = √2' is a *consequence* of the recorded numeric_factor 1/√2 on the charge generator, not independent information, and the second rescaling (B, μ with c = 274.072) belongs to the Gaussian rendering, which the enumeration handles elsewhere by splitting it into its own entry (Hartree SI-based = generators_only vs Gaussian = needs_symbol_rescaling). Classifying Rydberg as needs_symbol_rescaling while classifying the structurally identical Hartree SI rendering as generators_only is internally inconsistent.",
+     "correction": "schema_fit = generators_only for the SI-rendered Rydberg system; move the c = 2/α magnetic riders into a Gaussian-rendered Rydberg entry (or a note), mirroring the Hartree treatment.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Relativistic (Dirac) atomic units — ħ = m_e = c = 1",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "schema_fit: generators_only",
+     "problem": "The entry carries a non-empty per_symbol_rescalings array recording the Gaussian (e² = α, ∇·E = 4πρ) vs Heaviside–Lorentz (e² = 4πα, ∇·E = ρ) fork. That fork rescales E, B, A and ρ by √(4π) between the two renderings — exactly the same class of convention the enumeration classified as needs_symbol_rescaling for Gaussian Hartree a.u. A verdict of generators_only with populated rescalings is self-contradictory under the enumeration's own usage.",
+     "correction": "schema_fit = needs_symbol_rescaling (or split the Gaussian and Heaviside–Lorentz renderings into two generators_only entries, as was done for Hartree).",
+     "confidence": "likely"
+    },
+    {
+     "claim": "Length: L_rel = α L_Ha. Energy: E_rel = α⁻² E_Ha. Time: T_rel = α² T_Ha. So a converter can implement this as an α-scaling",
+     "problem": "These relations are correct only if read as ratios of *unit sizes* (ƛ_C = α a₀, m_ec² = α⁻²E_h, t_C = α² t_au). Read as the value-mapping a converter would implement — the reading the following sentence invites — every one is inverted: a length whose numerical value is L in Hartree a.u. has value L/α here, and an energy of E hartree has value α²E.",
+     "correction": "State the direction explicitly, e.g. 'unit(length) = α·a₀, so value_rel = value_Ha/α; unit(energy) = α⁻²E_h, so value_rel = α²·value_Ha'.",
+     "confidence": "speculative"
+    }
+   ]
+  },
+  {
+   "system": "Effective (excitonic / material) atomic units — m* = 1, ε absorbed",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Quantum-chemistry molar energy conventions (kcal mol⁻¹, kJ mol⁻¹, eV)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "k_B = 1 (temperature as energy)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Spectroscopists' energy equivalences (cm⁻¹, GHz, K, eV, nm)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "generators[2]: {tex: \\hbar, numeric_factor: 1/(2\\pi), emits: (h/2\\pi)}",
+     "problem": "Inconsistent with the numeric_factor convention used everywhere else in the enumeration, where the unit constant = numeric_factor × the tex symbol (e.g. tex ε₀ with factor 4π ⇒ 4πε₀; tex m_e with factor 2 ⇒ 2m_e). Applied here it gives ħ/(2π) = h/4π², not the intended ħ. The emits string (h/2π) shows the intent was tex = h. A tool consuming the table literally acquires a spurious 2π — in the one entry whose whole point is policing 2π errors.",
+     "correction": "Either {tex: h, numeric_factor: 1/(2π), emits: (h/2π)} or {tex: ħ, numeric_factor: 1, emits: ħ}. Note also that {hc, h, ħ, k_B} is not an independent generator set (h and ħ share the dimension tuple (1,2,−1,0,0) and hc/h = c), which the entry's own 'this is an equivalence graph, not a generator solve' remark should be reflected in the generators field.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Molecular-constant conventions (rotational and vibrational spectroscopy)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Condensed-matter theory units (ħ = k_B = 1, lattice constant a = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "generators: [\\hbar, k_B, a (lattice constant), e] — with schema_fit needs_custom_generators",
+     "problem": "This generator set does not span the dimension space; it is rank 4 over 5 dimensions and leaves one free scale. Solving: a fixes L; ħ then fixes M/T; e fixes I = 1/T; k_B fixes Θ = 1/T. M, T, Θ, I all remain undetermined up to one free parameter — no mass, energy or time unit is set. ħ = k_B = a = 1 is therefore not a complete unit system, and a linear solve against this table is singular rather than merely 'material-dependent'.",
+     "correction": "Add the missing energy/mass generator that real papers actually declare in the same sentence — t (hopping), or m_e, or E_F, or v_F — e.g. generators {ħ, k_B, a, e, t}. The entry's own note that this 'composes with the model-Hamiltonian entry' is precisely the missing generator, and it must be in the table for the system to be well-posed.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Model-Hamiltonian units (t = 1, J = 1, U/t)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "generators: [t (hopping) dim (1,2,-2,0,0), J (exchange) dim (1,2,-2,0,0), \\hbar] — name 'Model-Hamiltonian units (t = 1, J = 1, U/t)'",
+     "problem": "t and J carry identical dimension tuples (both are energies), so the generator matrix is singular (rank 2, not 3) and t and J cannot both be generators of one system. Setting t = 1 AND J = 1 simultaneously is not a unit choice at all — it is the physical statement J/t = 1, which fixes a point in the model's parameter space (and in the t–J model J/t ≈ 0.3 is the whole physics). Real papers set exactly one energy scale to unity and report the others as ratios (U/t, J/t, J₂/J₁). Separately, the table also fixes no length (ħ and an energy fix only time), so it is non-spanning like the condensed-matter entry.",
+     "correction": "Record a single energy generator with a per-paper label (t OR J OR U OR |β|), plus ħ and a lattice constant a for length; treat 'U/t', 'J/t' as dimensionless model parameters, not as a second generator.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "CGS-emu / Gaussian magnetism (gauss, oersted, emu)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "Historical: the Weiss magneton μ_W ≈ μ_B/4.97 ≈ 1.853×10⁻²¹ erg/G",
+     "problem": "The two halves are mutually inconsistent: μ_B/4.97 = 9.2740100657e-21/4.97 = 1.8660e-21 erg/G, not 1.853e-21 (0.7% apart). The historical definition (molar Weiss magneton 1123.5 erg G⁻¹ mol⁻¹ against N_A μ_B = 5585 erg G⁻¹ mol⁻¹) gives the ratio 4.9711 and hence μ_W = 1.8657e-21 erg/G; the circulating figure 1.853e-24 J/T corresponds instead to a ratio of 5.005. At most one of the entry's two numbers can stand.",
+     "correction": "Use μ_W = μ_B/4.971 = 1.866×10⁻²¹ erg/G (from N_A μ_W = 1123.5 vs N_A μ_B = 5585 emu/mol), or drop the ratio and quote only the sourced 1.853×10⁻²¹ erg/G — but not both together.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "SI magnetism — Sommerfeld vs Kennelly conventions",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "cgs-esu molecular electric property units (debye, Å³ polarizability, buckingham)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Solid-state and DFT practical units (eV, Å, meV/atom, GPa, r.l.u.)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Molecular-dynamics simulation unit sets (LAMMPS real/metal/electron, GROMACS, AMBER, reduced LJ)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "LAMMPS \"units electron\": energy in E_h, length in bohr, BUT time in fs, mass in u, pressure in Pa, dipole in D, field in V/cm",
+     "problem": "The enumeration of the hybrid is incomplete on the axis that matters most for its own cautionary point. The current LAMMPS documentation also specifies velocity = Bohr per 'atomic time unit' of 1.03275e-15 s — which is neither the femtosecond used for time nor the Hartree atomic time unit 2.4189e-17 s. (That 1.03275e-15 s is √(m_u a₀²/E_h) = √1822.888 × 2.41888e-17 s, i.e. the atomic time unit built from the amu rather than m_e.) A converter that reads distance/time from this unit set and then reads a velocity will be wrong by a factor 1.03275e-15/1e-15 ≈ 1.033 relative to bohr/fs, and by 42.7 relative to true a.u. velocity.",
+     "correction": "Add: velocity = bohr/(1.03275×10⁻¹⁵ s) = √(m_u/m_e) × (Hartree a.u. of time), so velocity is inconsistent with the fs time axis as well; the hybrid is inconsistent on three axes (time, mass, velocity), not two.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Magnetic-resonance units (NMR/EPR: ppm, Hz, gauss, MHz/T)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Historical X-ray and spectroscopic length units (X unit, kX, ångström star; air vs vacuum wavelengths)",
+   "status": "confirmed",
+   "errors": []
+  }
+ ],
+ "missing_systems": [
+  "Atomic/molecular MASS unit conventions. The family covers energy exhaustively and mass barely at all. Missing: unified atomic mass unit u = dalton (Da) vs the pre-1961 PHYSICAL scale (¹⁶O ≡ 16, 1 u = 1.000318 amu_phys) and CHEMICAL scale (natural O ≡ 16, chemical/physical = 1.000275, u/chemical ≈ 1.00004); 'amu' used unqualified in older literature and in force fields; Da vs kDa in biomolecular work; and mass spectrometry's m/z with the thomson (Th), where the quantity reported is dimensionless-by-convention. This is a ~3e-4 silent error in exactly the pre-1961 literature the X-unit entry already flags for lengths, and the u ↔ m_e = 1822.888486278 conversion in the Hartree entry rests on it.",
+  "Cross-section units. Entry 3 cites 'cross sections in a₀² or πa₀²' and entry 4 the Zα literature, but no entry ever defines them: a₀² = 2.80028×10⁻¹⁷ cm² = 28.0028 Mb, πa₀² = 87.974 Mb, 1 Mb = 10⁻¹⁸ cm², 1 barn = 10⁻²⁴ cm². Photoionization/photodetachment reports Mb, electron scattering reports a₀² or πa₀², nuclear-adjacent work reports barn — a three-way fork with a bare π in it, which is precisely this family's failure mode.",
+  "Line-intensity conventions in spectroscopy: oscillator strength f (dimensionless, with the absorption/emission f_ik vs f_ki and gf degeneracy fork), line strength S in atomic units of e²a₀², Einstein A_ki in s⁻¹, and the experimental bridge f = 4.319×10⁻⁹ ∫ε dν̃ with ε the molar decadic absorption coefficient in L mol⁻¹ cm⁻¹ — plus the decadic-vs-Napierian (ln 10) fork in absorption coefficients and the base-e vs base-10 fork in optical density. Entry 9 flags the IR-intensity mess (km/mol vs HITRAN) but the electronic-spectroscopy side is absent.",
+  "Electric field gradient / nuclear quadrupole coupling units. Atomic unit of EFG = E_h/(e a₀²) = 9.7173624424×10²¹ V m⁻², with the standard bridge χ[MHz] = 234.9647 × Q[barn] × q[a.u.] and nuclear quadrupole moments tabulated in barn vs fm² (factor 100). This is a parameterized conversion of exactly the kind entry 17 exists to model (it needs a nuclear Q, just as MHz↔mT needs g), and entry 9 mentions eQq in MHz without ever giving the route to computed EFGs.",
+  "Cold-atom / optical-lattice units, claimed under 'used_in' for both the k_B = 1 and effective-atomic-unit entries but never enumerated: recoil energy E_R = ħ²k_L²/(2m) with lattice depths quoted as s = V₀/E_R, and the notorious factor-4 fork over whether k_L = 2π/λ (laser) or 2π/(λ/2) (lattice period); harmonic-oscillator units a_ho = √(ħ/mω) and energies in ħω; trap 'frequency' as ω vs ν; s-wave scattering lengths quoted in bohr while everything else is SI.",
+  "Thermochemical STANDARD-STATE conventions, which belong with the kcal/mol entry: 1 atm vs 1 bar reference state (post-1982 IUPAC change), and the gas-phase 1 bar vs solution 1 mol L⁻¹ standard state, worth RT ln(24.46) = 1.89 kcal/mol = 7.9 kJ/mol at 298.15 K on every reported ΔG°. It is dimensionally invisible, larger than 'chemical accuracy', and routinely undeclared — the same failure profile as the entries already included.",
+  "Force-constant and displacement-parameter units in vibrational/structural work: k in mdyn/Å = aJ/Å² = 100 N/m vs E_h/a₀² = 1556.9 N/m vs kcal mol⁻¹ Å⁻²; and the crystallographic Debye–Waller fork B = 8π²⟨u²⟩ (Å² both ways) — a dimensionally invisible 8π² of exactly the type catalogued in family_notes §1.",
+  "Hyperpolarizability esu conversions. Entry 14 lists 'β in 10⁻³⁰ esu' as a fingerprint and gives the a.u. values in SI, but never the esu bridge that the NLO literature actually needs: 1 a.u. of β = 8.639×10⁻³³ esu, 1 a.u. of γ = 5.037×10⁻⁴⁰ esu (and 1 a.u. of α = 0.1481847 Å³ = 1.4818×10⁻²⁵ cm³). Without these the entry cannot convert the very numbers it teaches the tool to recognize."
+ ],
+ "overall": "Substantively this is a strong enumeration: I independently recomputed essentially every numeric claim (CODATA 2022 unit values, the E_h/Ry/eV/cm⁻¹/K/kJ mol⁻¹ chains, I₀ = ½ε₀cE_au² = 3.5094e16 W/cm², 16.857629 cm⁻¹·u·Å² and 505379.01 MHz·u·Å², 81.804 meV·Å² for neutrons, 3.80998 eV·Å², 48.888213 fs for AMBER, 332.0637/1389.35458, 2.827869 and 797.727 for μ_eff, 71.4477/g mT per GHz, 28.024951 MHz/mT, 7.957747 kJ/m³ per MGOe, ℓ_B = 25.6556 nm, Gaussian a.u. B = e/a₀² = 1.71526e7 G = α × 2.35052e5 T, m_ec² = 18778.87 E_h = 37557.73 Ry, R_H = 109677.583 cm⁻¹, G = (m_e/m_Pl)² = 1.7518e-45), and all of them check out except the ones listed. The benchmark equations are correct as written in all 18 entries — including the two easiest to get backwards, the Rydberg Dirac Hamiltonian [cα·p + (β−1)c²/2 − 2Z/r] with c = 2/α, and the direction of the Gaussian/SI magnetic α-rescalings (B_Gauss = c·B_SI, μ_Gauss = α·μ_SI, product invariant). The real defects are structural rather than numerical: three generator tables are ill-posed (entry 8's ħ row double-counts 2π under the enumeration's own numeric_factor convention; entry 10's {ħ, k_B, a, e} is rank-4 over five dimensions and fixes no energy scale; entry 11 lists t and J, which share a dimension tuple, as independent generators of one system, making 't = 1, J = 1' a physical constraint rather than a unit choice), two schema_fit verdicts are inconsistent with the enumeration's own precedent (Rydberg over-classified, relativistic under-classified), one 'used_in' claim is factually wrong (Elk is a Hartree-atomic-unit code that explicitly never uses rydbergs), the LAMMPS-electron hybrid is inconsistent on a third axis the entry misses (velocity), and there are three small arithmetic slips (e/√2, G in a.u., the Weiss magneton's internal contradiction). Completeness is the weaker dimension: mass-unit conventions (u/Da/amu physical vs chemical scales), cross-section units the entries themselves cite without defining, line-strength/oscillator-strength conventions, EFG-to-NQCC conversion, cold-atom recoil/lattice units, thermochemical standard states, and force-constant/B-factor units are all in scope for this family and entirely absent."
+}

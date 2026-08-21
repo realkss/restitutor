@@ -1,0 +1,263 @@
+{
+ "family": "per-paper nondimensionalization (problem-specific scaling / \"code units\" / reduced units)",
+ "verdicts": [
+  {
+   "system": "Inertial (convective) scaling of the incompressible Navier–Stokes equations",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Viscous (diffusive/Stokes) scaling of the incompressible Navier–Stokes equations",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "p_\\text{phys} = (\\rho\\nu U/L)\\,\\hat p = (\\mu U/L)\\hat p",
+     "problem": "U is not among the declared generators (L, \\nu, \\rho). That generator set fixes the velocity scale at \\nu/L, hence the pressure scale at \\rho\\nu^2/L^2 = \\mu\\nu/L^2. The stated \\mu U/L silently imports an imposed-velocity convention that the declared lattice does not contain, and the entry's own note (\"the SAME generator lattice as the inertial scaling with U replaced by \\nu/L\") contradicts it.",
+     "correction": "Either p_scale = \\rho\\nu^2/L^2 = \\mu\\nu/L^2 for the declared (L,\\nu,\\rho) set, or declare U as a fourth generator and record Re = UL/\\nu as the resulting residue; then p_scale = \\mu U/L is correct.",
+     "confidence": "certain"
+    },
+    {
+     "claim": "momentum equation of the form Re(\\partial_t u + u\\cdot\\nabla u) = -\\nabla p + \\nabla^2 u (Re multiplying the LHS, coefficient 1 on the Laplacian) [listed as a fingerprint of \"time is measured in viscous units L^2/\\nu\"]",
+     "problem": "That displayed form comes from velocity scale U, length L, CONVECTIVE time L/U and viscous pressure \\mu U/L — not from viscous time units. Recomputing: with the entry's viscous time L^2/\\nu and velocity U one gets \\partial_{\\hat t}\\hat u + Re(\\hat u\\cdot\\hat\\nabla\\hat u) = -\\hat\\nabla\\hat p + \\hat\\nabla^2\\hat u (Re on the advective term only); with the fully self-consistent (L,\\nu,\\rho) set every coefficient is exactly 1 and Re does not appear anywhere. The two fingerprints in this entry cannot both hold.",
+     "correction": "Split the fingerprints: (a) L, \\nu, \\rho with t=L^2/\\nu, u=\\nu/L, p=\\rho\\nu^2/L^2 gives \\partial_t u + u\\cdot\\nabla u = -\\nabla p + \\nabla^2 u (no Re); (b) L, U, t=L/U, p=\\mu U/L gives Re(\\partial_t u + u\\cdot\\nabla u) = -\\nabla p + \\nabla^2 u; (c) L, U, t=L^2/\\nu gives \\partial_t u + Re\\,u\\cdot\\nabla u = -\\nabla p + \\nabla^2 u.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Compressible / aerodynamic (Mach) nondimensionalization",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "three incompatible pressure normalizations ... \\hat p = p/(\\rho_\\infty a_\\infty^2) \\Rightarrow \\hat p_\\infty = 1/\\gamma ; alternative \\hat p = p/(\\gamma p_\\infty) \\Rightarrow \\hat p_\\infty = 1/\\gamma ; alternative \\hat p = p/p_\\infty \\Rightarrow \\hat p_\\infty = 1",
+     "problem": "The first two are the SAME normalization: a_\\infty^2 = \\gamma p_\\infty/\\rho_\\infty, so \\rho_\\infty a_\\infty^2 \\equiv \\gamma p_\\infty identically. Only two distinct conventions are listed, not three, and calling them 'incompatible' is wrong for that pair.",
+     "correction": "The genuinely distinct set is: \\hat p = p/(\\rho_\\infty a_\\infty^2) = p/(\\gamma p_\\infty) \\Rightarrow \\hat p_\\infty = 1/\\gamma; \\hat p = p/p_\\infty \\Rightarrow \\hat p_\\infty = 1; and (the omitted third, very common in CFD) \\hat p = p/(\\rho_\\infty U_\\infty^2) \\Rightarrow \\hat p_\\infty = 1/(\\gamma M_\\infty^2).",
+     "confidence": "certain"
+    },
+    {
+     "claim": "the temperature generator is either T_\\infty or the recovery temperature; the two differ by (\\gamma-1)M^2/2",
+     "problem": "They differ by the FACTOR 1 + r(\\gamma-1)M^2/2 (r = recovery factor; r=1 gives the stagnation temperature T_0/T_\\infty = 1+(\\gamma-1)M^2/2). The quoted expression is only the excess term and is wrong if used as a ratio — it tends to 0, not 1, in the incompressible limit.",
+     "correction": "T_r/T_\\infty = 1 + r(\\gamma-1)M_\\infty^2/2, with r \\approx Pr^{1/2} (laminar) or Pr^{1/3} (turbulent); T_0/T_\\infty = 1+(\\gamma-1)M_\\infty^2/2.",
+     "confidence": "certain"
+    },
+    {
+     "claim": "R declared as a generator with numeric_factor 1 (emits R), together with per_symbol '\\hat T = T/T_\\infty' and the note '\\Theta becomes an active basis dimension here'",
+     "problem": "Mutually inconsistent. Absorbing R eliminates \\Theta exactly as k_B=1 does; with a_\\infty as the velocity generator the resulting temperature unit is a_\\infty^2/R = \\gamma T_\\infty, so \\hat T_\\infty = 1/\\gamma, not 1. One cannot simultaneously set R=1, keep \\Theta active, and have \\hat T_\\infty = 1.",
+     "correction": "Pick one: (i) R absorbed \\Rightarrow \\Theta dead, temperature unit a_\\infty^2/R, \\hat T_\\infty = 1/\\gamma (or 1/(\\gamma M_\\infty^2) if U_\\infty is the velocity generator); or (ii) T_\\infty declared as the \\Theta generator \\Rightarrow \\Theta active, \\hat T_\\infty = 1 and R survives as the residue \\hat R = RT_\\infty/a_\\infty^2 = 1/\\gamma.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Boussinesq free-fall (buoyancy) scaling",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "schema_fit: needs_custom_generators",
+     "problem": "The entry's own per_symbol row states that \\hat\\theta = (T-T_\\text{ref})/\\Delta T is an additive offset, 'outside the multiplicative generator formalism entirely', and the notes call it 'the one place in the whole family where the multiplicative generator table genuinely cannot express the convention'. A pure-quotient verdict therefore understates what the schema must carry — milder per-symbol riders (e.g. B/\\sqrt{\\mu_0\\rho_0} in the MHD entry) were classified needs_symbol_rescaling.",
+     "correction": "schema_fit should be needs_symbol_rescaling (with the affine T_\\text{ref} offset flagged as outside the multiplicative group), not needs_custom_generators. All physics claims in this entry — \\nu/(U_fH)=\\sqrt{Pr/Ra}, \\kappa/(U_fH)=1/\\sqrt{RaPr}, unit buoyancy coefficient, \\tau_f=H/U_f — recompute correctly.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Boussinesq diffusive (thermal) scaling",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Periodic-box spectral units",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "MHD Alfvénic code units",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Gyrokinetic normalization, GENE / c_s family",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "\\beta_\\text{ref} = 8\\pi n_\\text{ref}T_\\text{ref}/B_\\text{ref}^2 (Gaussian-rooted, GENE) vs 2\\mu_0 nT/B^2 (SI-rooted) — why: 'factor-of-4\\pi discrepancy in the electromagnetic residue'",
+     "problem": "\\beta is dimensionless and takes the SAME numerical value in both systems; the two expressions are one quantity written in Gaussian and in SI, because B is measured in different units in each. There is no 4\\pi discrepancy in the residue. Stating one invites a converter to apply a spurious 4\\pi correction to a convention-independent number.",
+     "correction": "Both formulas give identical \\beta. The actual trap is a formula/units mismatch — inserting SI-valued n, T, B into 8\\pi nT/B^2 (or Gaussian values into 2\\mu_0nT/B^2). Record it as a units-of-input hazard, not as a factor in the residue.",
+     "confidence": "likely"
+    },
+    {
+     "claim": "gyrokinetic quasineutrality: \\sum_s \\hat q_s(\\int \\hat f_s d^3\\hat v - \\hat n_s\\hat q_s\\hat\\phi/\\hat T_s) = 0",
+     "problem": "As written the second term is the adiabatic (Boltzmann) response; the gyrokinetic polarization density carries the gyroaverage / (1-\\Gamma_0(b_s)) factor, and the first integral is over the gyro-averaged distribution, not f_s.",
+     "correction": "\\sum_s q_s\\int J_0\\hat f_s d^3\\hat v = \\sum_s (q_s^2 n_s/T_s)(1-\\Gamma_0(b_s))\\hat\\phi, b_s = k_\\perp^2\\rho_s^2; the entry's form is the b_s\\to\\infty / adiabatic simplification.",
+     "confidence": "speculative"
+    }
+   ]
+  },
+  {
+   "system": "Gyrokinetic normalization, GS2 / stella / AstroGK family",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "PIC / kinetic-plasma normalized units",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "coulomb: 'the implied form is \\hat U = \\hat q_1\\hat q_2/(4\\pi \\hat r) in SI-rooted normalization or \\hat q_1\\hat q_2/\\hat r in Gaussian-rooted normalization'",
+     "problem": "Recomputing with the entry's own normalizations (charges in e, lengths in d_e = c/\\omega_{pe}, energies in m_ec^2): U/(m_ec^2) = [e^2\\omega_{pe}/(4\\pi\\varepsilon_0 m_ec^3)]\\,\\hat q_1\\hat q_2/\\hat r, and using e^2/\\varepsilon_0 = m_e\\omega_{pe}^2/n_0 the prefactor is 1/(4\\pi n_0 d_e^3). A large dimensionless plasma-parameter residue survives; the pair Coulomb energy is NOT unity-normalized the way the field equations are.",
+     "correction": "\\hat U = \\hat q_1\\hat q_2/(4\\pi n_0 d_e^3\\,\\hat r) (SI-rooted), i.e. \\hat U = \\hat q_1\\hat q_2/(\\hat r\\,\\cdot 4\\pi N_{d_e}) with N_{d_e}=n_0d_e^3 the number of particles per skin-depth cube — the same residue that governs the (deliberately unphysical) macro-particle collisionality of a PIC run.",
+     "confidence": "certain"
+    },
+    {
+     "claim": "gauss_law derivation: '... = e n_0\\hat n/\\varepsilon_0 = m_e\\omega_{pe}^2\\hat n'",
+     "problem": "Algebra slip: en_0/\\varepsilon_0 = m_e\\omega_{pe}^2/e, not m_e\\omega_{pe}^2 — the intermediate expression is dimensionally inconsistent with the LHS (m_e\\omega_{pe}^2/e)\\nabla\\cdot\\hat E.",
+     "correction": "... = e n_0\\hat n/\\varepsilon_0 = (m_e\\omega_{pe}^2/e)\\hat n, whence \\nabla\\cdot\\hat E = \\hat n. The stated conclusion is right; only the middle step is wrong.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Numerical-relativity code units (G = c = M = 1)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Astrophysical simulation code-unit triples (G ≠ 1)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "GRMHD code units (G = c = M = 1 plus an independent density/accretion scale)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "schema_fit: needs_custom_generators, with a fifth 'generator' listed as '4\\pi absorbed into B', dimension (0,0,0,0,0), numeric_factor 4\\pi",
+     "problem": "Two problems. (i) B_\\text{code} = B_\\text{Gauss}/\\sqrt{4\\pi} is a genuine per-symbol redefinition not derivable as a quotient of (G, c, M_\\text{BH}, \\mathcal{M}_\\text{unit}); the identical rescaling in the Newtonian MHD entry was correctly classified needs_symbol_rescaling. (ii) The fifth entry is a dimensionless 'generator' — exactly the construct the enumeration's own h-units entry declares unsupportable in a generator table (zero row in the restoration matrix).",
+     "correction": "schema_fit = needs_symbol_rescaling; move the \\sqrt{4\\pi} out of the generator list and into the per_symbol rider for B (where the entry already states it correctly), keeping the generator list to G, c, M_\\text{BH}, \\mathcal{M}_\\text{unit}.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Shearing-box / accretion-disk units (Ω = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "c_s generator numeric_factor: '1 (sometimes \\sqrt{2} for the isothermal-vs-adiabatic c_s)'",
+     "problem": "The adiabatic and isothermal sound speeds differ by \\sqrt{\\gamma} (c_{s,\\text{ad}}=\\sqrt{\\gamma P/\\rho}, c_{s,\\text{iso}}=\\sqrt{P/\\rho}), not by \\sqrt2; \\sqrt2 holds only in the special case \\gamma=2. The \\sqrt2 appears to be imported from the neighbouring scale-height convention (H=c_s/\\Omega vs \\sqrt2 c_s/\\Omega), which the entry lists separately and correctly.",
+     "correction": "numeric_factor '1 or \\sqrt{\\gamma} (adiabatic vs isothermal c_s)'; keep the \\sqrt2 only on the H definition row.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Hénon (N-body standard) units",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Lennard-Jones reduced (molecular-dynamics) units",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Soft-matter / coarse-grained reduced units with electrostatics",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Hamiltonian and classical-chaos conventions (m = ω = 1, Lyapunov-time rescaling)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "generator 'E \\ \\text{or}\\ \\hbar\\ \\text{or}\\ L (third scale, problem-dependent)' with dimension (1, 2, -2, 0, 0)",
+     "problem": "The single 5-tuple is wrong for two of the three listed alternatives. \\hbar and angular momentum L have dimension (1,2,-1,0,0) (action), not (1,2,-2,0,0) (energy). Since m and \\omega are already fixed, choosing \\hbar rather than E is a different completion of the basis (it sets the action scale, and then E=\\hbar\\omega is derived), so the alternatives are not interchangeable at fixed dimension.",
+     "correction": "Split into two generator rows, as the Fermi-units entry does: E with (1,2,-2,0,0), and \\hbar or L with (1,2,-1,0,0). Note that with m and \\omega already declared, adding both E and \\hbar over-determines the (M,L,T) basis and imposes a dimensionless condition (E/\\hbar\\omega = 1).",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Lattice-model condensed-matter units (a = ħ = t = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "continuum Dirac-cone limit written as H = v_F(\\sigma_xk_x+\\sigma_yk_y) with v_F = 3ta/2\\hbar \\to 3/2",
+     "problem": "v_F = 3ta/(2\\hbar) uses a = the carbon–carbon bond length (a_{cc} \\approx 1.42 Å), whereas this entry's length generator is explicitly declared as 'a (lattice constant)'. For graphene the lattice constant is a = \\sqrt3\\,a_{cc} \\approx 2.46 Å, so in the declared units v_F = \\sqrt3\\,ta/(2\\hbar) \\to \\sqrt3/2 \\approx 0.866, not 3/2. This is exactly the class of silent numeric-factor error the entry says it exists to catch.",
+     "correction": "With a = lattice constant: v_F = \\sqrt3 t a/(2\\hbar) \\to \\sqrt3/2 in a=\\hbar=t=1 units; the value 3/2 holds only if the declared length unit is the nearest-neighbour bond length a_{cc}.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Harmonic-trap units (BEC / Gross–Pitaevskii)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Optical-lattice recoil units",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "V(x) = V_0\\sin^2(k_Lx) versus V(x) = \\tfrac{V_0}{2}[1-\\cos(2k_Lx)] versus V(x) = -\\tfrac{V_0}{2}\\cos(2k_Lx): peak-to-peak versus amplitude, a factor of 2",
+     "problem": "No factor of 2 exists among the three forms as written. The first two are literally the same function (\\sin^2\\theta \\equiv (1-\\cos2\\theta)/2), and the third differs from the second only by the additive constant V_0/2. All three have peak-to-peak depth exactly V_0, so a paper using any of them means the same lattice depth.",
+     "correction": "The genuine factor-of-2 ambiguity is between depth-convention forms V(x)=V_0\\sin^2(k_Lx) (peak-to-peak V_0) and amplitude-convention forms V(x)=V_0\\cos(2k_Lx) or -V_0\\cos(2k_Lx) (peak-to-peak 2V_0). Replace the third listed form by V_0\\cos(2k_Lx) to make the row true; the downstream claim (t and U depend exponentially on \\sqrt{s}) is fine.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Cavity-QED / circuit-QED and open-system conventions",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "per_symbol: 'factor-of-2 ambiguity in every quoted cooperativity C = g^2/(\\kappa\\gamma) versus 4g^2/(\\kappa\\gamma)' vs fingerprint: 'cooperativity C = g^2/(\\kappa\\gamma) or 2g^2/(\\kappa\\gamma) quoted as the figure of merit'",
+     "problem": "The entry states two different partner conventions for the same quantity in two places (4g^2/\\kappa\\gamma in per_symbol, 2g^2/\\kappa\\gamma in fingerprints), so at least one row is wrong as a description of the ambiguity it is meant to encode.",
+     "correction": "Fix a single κ/γ definition and state the pair consistently: with \\kappa,\\gamma as energy-decay (FWHM) rates the common pair is C = g^2/(\\kappa\\gamma) and C = 4g^2/(\\kappa\\gamma); the form 2g^2/(\\kappa\\gamma) arises when \\gamma denotes the amplitude (\\gamma/2) decay. Listing all three without saying which κ/γ convention each assumes is the actual trap.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Fermi units (ħ = k_F = 1, with m or E_F set to 1)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Soliton / NLS normalization (nonlinear fiber optics)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Dimensionless-generator declarations (little-h units, \"units where Re = 1\", α = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "'the h-exponent is +3 here [P(k) in h^{-3}Mpc^3], -1 for lengths, +1 for masses (M_\\odot/h), +2 for surface densities — there is no single h-power for the system'",
+     "problem": "The list mixes two opposite sign conventions and gets the surface-density magnitude wrong. Under one consistent convention (exponent of h appearing in the quoted unit label): lengths h^{-1}Mpc → -1; masses h^{-1}M_\\odot → -1 (the entry says +1, contradicting its own parenthetical M_\\odot/h); P(k) in h^{-3}Mpc^3 → -3 (the entry says +3); surface density h^{-1}M_\\odot/(h^{-1}Mpc)^2 = h\\,M_\\odot Mpc^{-2} → +1 (the entry says +2). Under the opposite (value-multiplier) convention all signs flip together, so no convention makes the quoted list self-consistent.",
+     "correction": "Using the unit-label convention: lengths -1, masses -1, P(k) -3, surface densities +1 (the standard weak-lensing unit is h\\,M_\\odot\\,pc^{-2}), densities +2, H_0 +1, \\sigma_8 and n_s 0. The structural point — the exponent must be tabulated per symbol, not derived from dimensions — is correct and survives the fix.",
+     "confidence": "certain"
+    }
+   ]
+  }
+ ],
+ "missing_systems": [
+  "Rotating / geophysical scaling (f-plane and quasi-geostrophic nondimensionalization): lengths by L, time by f^{-1} or the advective L/U, depth by H, with Rossby Ro=U/(fL), Ekman Ek=\\nu/(fL^2), Burger Bu=(NH/fL)^2 and the \\beta-plane parameter as residues. Named in entry 1's 'used_in' but never enumerated, though it is the default convention of the entire GFD literature.",
+  "Rotating-convection / geodynamo units: shell gap d as length; time chosen as viscous d^2/\\nu, magnetic d^2/\\eta, or the rotational \\Omega^{-1}; B scaled by \\sqrt{\\rho\\mu_0\\eta\\Omega} (Elsasser scaling) or \\sqrt{\\rho\\mu_0}\\,\\Omega d. Residues Ek, Ra, Pm, \\Lambda. The Christensen et al. dynamo-benchmark convention is a de facto standard and differs from both Boussinesq entries here.",
+  "Kolmogorov (dissipation-scale) units: \\eta=(\\nu^3/\\varepsilon)^{1/4}, u_\\eta=(\\nu\\varepsilon)^{1/4}, \\tau_\\eta=(\\nu/\\varepsilon)^{1/2}. Distinct from both the outer scaling and the box units, and the convention in which most DNS small-scale statistics are actually reported.",
+  "Lattice-gauge-theory lattice units: a=1 with \\hbar=c=1, dimensionless bare coupling \\beta=6/g^2, masses and momenta as am and ap, scale set a posteriori by r_0, w_0, t_0 or f_\\pi. This is the QFT sibling of the condensed-matter a=\\hbar=t=1 entry and has its own 'restoration' problem (scale setting) that the enumeration never addresses.",
+  "Gravitational-action normalizations in holography / string theory: 16\\pi G=1 (equivalently 2\\kappa^2=1), AdS radius \\ell=1, \\alpha'=1 or \\ell_s=1, sometimes with an extra L_{AdS}=1 layered on G=c=1. These change the Einstein-equation coefficient away from the 8\\pi assumed throughout the GR entries and are exactly the 8\\pi-vs-16\\pi trap the brief asks about.",
+  "Lattice-Boltzmann lattice units: \\delta x=\\delta t=1, lattice speed c=1, c_s^2=1/3, viscosity tied to the relaxation time by \\nu=(\\tau-1/2)c_s^2, conversion to physical units via independent \\Delta x, \\Delta t and \\Delta\\rho. One of the most widely used 'code units' systems in computational fluids, with residues (lattice Mach and Knudsen numbers) that must never be restored.",
+  "Circular restricted three-body / astrodynamics canonical units: G(m_1+m_2)=1, separation a=1, mean motion n=1 (period 2\\pi), leaving the mass ratio \\mu as the only parameter; the two-body 'DU/TU' canonical units with \\mu_\\oplus=1 are the same convention in orbital mechanics.",
+  "Lane–Emden / polytrope scaling in stellar structure: r=\\alpha\\xi, \\rho=\\rho_c\\theta^n, \\alpha^2=(n+1)K\\rho_c^{1/n-1}/(4\\pi G) — a per-problem scaling whose length generator depends on the central density and the EOS constant, and the standard nondimensionalization of every stellar-structure and TOV-polytrope paper (K=100 is quoted in the NR entry without ever defining its convention).",
+  "Homogeneous-GPE healing-length units: \\xi=\\hbar/\\sqrt{2mgn} (or \\hbar/\\sqrt{mgn} — a genuine \\sqrt2 convention trap), sound speed c=\\sqrt{gn/m}, time \\xi/c or \\hbar/(gn), \\psi normalized to \\sqrt{n}. Used throughout vortex-dynamics and quantum-turbulence work and structurally different from the trap-units entry (no \\omega, and g is a generator rather than a residue).",
+  "Radiative-transfer optical-depth units: the independent variable is d\\tau=-\\kappa\\rho\\,ds, intensities in units of B(T) or of the incident flux, with the opacity absorbed into the coordinate itself. A per-field nondimensionalization in which a generator is applied to the coordinate rather than to a field, which the schema never covers.",
+  "Diffusion-equation (Fourier) scaling: t^*=\\alpha t/L^2, Fourier number Fo, Biot number Bi, with the mass-transfer analogues Pe, Sc, Sh and the Stefan number for phase change. The canonical textbook nondimensionalization of heat and mass transfer; entry 2 covers only its momentum analogue.",
+  "Combustion / flame units: laminar flame thickness \\delta_L=\\alpha/s_L and speed s_L as the length and velocity generators, temperature by (T_b-T_u), with Zel'dovich number \\beta, Damköhler and Karlovitz numbers as residues; also the Arrhenius activation-energy asymptotics scaling.",
+  "Reaction–diffusion and mathematical-biology nondimensionalization: Michaelis–Menten quasi-steady-state scaling (Segel–Slemrod), Turing systems reduced to a domain-size parameter \\gamma and a diffusion ratio d, epidemic models scaled to R_0. The largest single literature that nondimensionalizes per paper, and entirely absent.",
+  "Practical MD/chemistry code-unit systems that absorb nothing: GROMACS (nm, ps, u, kJ/mol, e, bar), LAMMPS 'real' and 'metal' unit sets, CHARMM kcal/mol/Å. These are the molecular analogue of the Gadget UnitLength/UnitMass/UnitVelocity entry — pure numerical rescalings with every constant surviving — and the LJ entry covers only 'units lj'.",
+  "Self-similar / similarity-variable scalings: Blasius \\eta=y\\sqrt{U/(\\nu x)}, Sedov–Taylor \\xi=r/(Et^2/\\rho)^{1/5}, Barenblatt intermediate asymptotics. The 'unit' depends on an independent variable, so it is neither a constant generator nor an affine map — a fourth structural failure mode the family notes do not list.",
+  "Hybrid-code / ion-scale plasma units: lengths in the ion inertial length d_i=c/\\omega_{pi}, time in \\Omega_{ci}^{-1}, velocities in v_A, B in B_0 (the standard normalization of reconnection and space-plasma hybrid codes). Mentioned only in passing in the PIC entry's fingerprints, though it is a distinct preset with its own residues (\\beta_i, m_i/m_e absent by construction, \\Omega_{ci}/\\omega_{pi})."
+ ],
+ "overall": "Unusually strong enumeration: 14 of 25 entries survive independent recomputation with every dimension 5-tuple, numeric factor, per-symbol relation and benchmark equation correct. I recomputed all generator tuples and found exactly one wrong (entry 18's 'E or ħ or L' given an energy tuple when ħ/L are action, (1,2,-1,0,0)); tesla (1,0,-2,0,-1), μ0 (1,1,-2,0,-2), ε0 (-1,-3,4,0,2), charge (0,0,1,0,1), specific R (0,2,-2,-1,0) and β2 (0,-1,2,0,0) are all right. I independently re-derived and confirm: √(Pr/Ra) and 1/√(RaPr) in free-fall RBC; the Pr^{-1}/Ra diffusive form and √(RaPr) velocity map; Ra_c = 1707.762 / 657.511; Hénon R_v=1, t_cr=2√2, det(G,M,E)=2; det(ħ,k_F,E_F)=1 with E_F=1/2 vs m=1/2; E_R kinetic prefactor 1 vs trap-units 1/2; g=4πNa_s/a_ho; ρ_unit=c^6/G^3M^2≈6.18e17 g/cm^3 and 1.47662 km / 4.92549 μs; G_code=43007.1 with h cancelling and [T]=0.978 Gyr/h; ∇²ψ=-4πℓ_B ρ_q against βu=ℓ_B q q/r; Ising-vs-spin-1/2 factor 4 with 2.269→0.567; W=4t/8t/12t; Agrawal's i∂_ξU=(sgn β2/2)∂_τ²U-N²|U|²U with T_FWHM/1.763 and z_0=(π/2)L_D; GS2's √2 and v̂_th=√(T̂/m̂); HARM β=2p/b², σ=b²/ρ. Errors cluster in four places: (1) two internal contradictions in the viscous-NS entry (a pressure scale invoking a non-generator U, and a Re-on-LHS fingerprint that belongs to convective time units — the declared (L,ν,ρ) set makes every coefficient 1); (2) numeric-factor rows that are self-cancelling or misattributed (two 'incompatible' compressible pressure normalizations that are algebraically identical; three optical-lattice potentials that are the same function up to an additive constant; √2 where √γ belongs in the shearing box; h-exponents with mixed signs and a wrong surface-density power); (3) one benchmark equation that is genuinely wrong (the PIC Coulomb form omits the surviving 1/(4π n_0 d_e³) plasma-parameter residue), plus a dropped 1/e in the otherwise-correct PIC Gauss-law derivation; (4) two schema_fit misclassifications (Boussinesq free-fall, whose own notes describe an affine offset; GRMHD, which carries the same B/√4π rescaling that earned the Newtonian MHD entry a needs_symbol_rescaling verdict, and which smuggles in a dimensionless generator the enumeration elsewhere declares unsupportable). Secondary weakness: sourcing. Hénon units, Fermi units, lattice CM units, NLS and the chaos entry all cite the Buckingham-π Wikipedia page, which supports none of their specific numeric claims — those entries happen to be correct, but they are unverified by their own citations. Coverage is fluid/plasma/astro-heavy and thin on diffusion-dominated, reacting, rotating/geophysical, lattice-field-theory and similarity-variable conventions."
+}

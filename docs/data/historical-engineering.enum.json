@@ -1,0 +1,350 @@
+{
+ "family": "Historical, engineering, and outlier unit systems (imperial/US customary, gravitational-metric and other technical systems, historical metric variants, legacy electrical unit eras, angle/logarithmic/affine conventions, and problem-normalized \"nondimensional\" schemes)",
+ "family_notes": "SCOPE VERDICT UP FRONT. Of the 24 systems below, exactly one is v1, ten are v2, and thirteen are out of scope. The boundary is not drawn by \"how obscure\" but by a structural test I applied uniformly:\n\n**The load-bearing distinction: unit-magnitude systems vs. convention systems.** A generator table exists to restore constants that a convention ABSORBED. Imperial, FPS (all three variants), MTS, the gravitational-metric system, the practical/international/conventional electrical unit eras, and the legacy pressure/navigation units absorb NOTHING. They are diagonal rescalings of the *same* dimension algebra as SI: every exponent 5-tuple is identical, every equation is written character-for-character as the SI equation, and translation is a per-base-dimension numeric scale factor. Ten of my thirteen out-of-scope calls are this: **there is nothing for a restoration engine to restore.** They need a units *converter* (a much simpler, separate subsystem the tool probably wants anyway for numeric evaluation), not a units *translator*. Reporting them with empty `generators` arrays is not a data gap — the empty array IS the finding.\n\n**Four structural stresses on the schema, in descending severity:**\n\n1. **The schema assumes conventions REMOVE constants; non-coherent engineering systems ADD them.** English Engineering (`F = ma/g_c`) and pre-SI engineering thermodynamics (`du = δq − (1/J)p dv`) are the mirror image of a natural-unit system: they take a constant that equals 1 in every coherent system and force it to be written with a value ≠ 1. `numeric_factor` cannot hold this — 32.174049 and 778.169 are not dimensionless absorbed factors like 8π, they are dimensionful in the source system's own algebra. I encoded them as generators with explanatory `numeric_factor` strings, but a v2 schema should carry a signed `role` field (`absorbed` | `inserted`).\n\n2. **The (M, L, T, Θ, I) basis is too small in two directions at once.** It is missing SI's own J (luminous intensity) and N (amount of substance) — photometry (§23) and everything with mol⁻¹ cannot be typed at all. And the most valuable system in my entire family (§12/§13, the radian convention) needs a *sixth, non-SI* exponent A for plane angle. So the basis needs to be both completed to 7 and extended to 8. I recommend the tuple become `(M, L, T, Θ, I, N, J, A)` with A defaulting to 0 and only ever nonzero under the angle-dimension flag.\n\n3. **Affine and logarithmic quantities are not in the multiplicative group at all.** °C, °F, psig, atü (§16) are affine (y = ax + b); dB, Np, magnitude, pH (§17) are logarithms of ratios. Neither has a dimension exponent vector, and both are *common in the target literature* (noise temperature in dB, astronomical magnitudes). They must live in a sibling type — `affine(scale, offset, base_dimension)` and `level(reference_value, log_base, field_or_power)` — never in the generator table. Forcing them in produces silent nonsense: the tool would happily \"check\" `T = 20 °C` against a Kelvin-typed slot.\n\n4. **Same dimension, different quantity, dimensionless weighting factor in between.** Gray vs. sievert (§18) both type as J/kg and differ by the radiation weighting factor w_R; radiometric vs. photometric flux (§23) differ by V(λ) and K_cd; magnetization M vs. 4πM (§11) differ by 4π; C_p carries a hidden ½ (§19). Dimension checking is structurally blind to all four. This is the strongest argument in my family for the `numeric_factor`/`emits` split the schema already has — and evidence it should be extended to cover *quantity-kind tags*, not just numbers.\n\n**The one genuinely high-value system I found.** §12, the radian convention (1 rad = 1), is the most widely instantiated and most completely invisible convention in physics, and it lives in my family only because nobody thinks of it as a unit system. It is the direct structural cause of the ħ-vs-h factor of 2π that the task brief names as a core case: under Quincey's formalism ħ (angular momentum, J·s·rad⁻¹) and ħ̸ (action, J·s) are *different physical quantities* that the radian convention collapses onto one symbol, and the ν-vs-ω, f-vs-ω, Hz-ambiguity, and Strouhal-number traps are all the same collapse. I recommend v1 for the convention itself plus the 2π riders, and v2 for the optional angle-dimension lint mode (§13).\n\n**Cross-system traps worth encoding regardless of tier:**\n- `μ₀ = 10⁻⁷` (not 4π×10⁻⁷) in a paper is a hard fingerprint for unrationalized MKS (§9), and it silently rescales D, H, ε, μ by 4π while leaving E, B, q untouched. Verified against Goldfarb's NIST/IEEE review, which quotes the IEC's 1935 dual recommendation directly.\n- \"MKS\", \"MKSA\", \"MKSQ\", \"Giorgi system\", \"rationalized MKS\" in a 1935–1960 paper all mean SI (§10). This is a pure alias mapping, near-zero cost, and prevents the tool from treating a Stratton-style paper as an unknown system.\n- Any pre-1948 paper quoting Ω/V/A means *international* units, off absolute by ~5×10⁻⁴ (§7); any 1990–2019 precision-electrical paper may mean conventional units, off by ~10⁻⁷ (§8). Both are invisible to dimension checking and both matter exactly where precision matters.\n- torr ≠ mmHg (133.322368421… vs 133.322387415 Pa exactly) — they differ at 1.4×10⁻⁷ relative, and both appear in the same vacuum-physics papers (§24).\n- The rutherford (10⁶ Bq, §18) is an MTS-family unit (§5) — the historical systems interlock in ways a flat table will miss.\n\n**Adjacent families I deliberately did not claim:** CGS-ESU/EMU/Gaussian/Heaviside–Lorentz equation forms (I only claim the *decimal-scaling* relationship of the practical units to EMU, §6); atomic/Hartree/Rydberg units and the factor-of-2 between them; particle-physics natural units. Where my §6, §9, §10, and §11 touch EM equation forms, they should be reconciled against the E&M family's table rather than duplicated.",
+ "systems": [
+  {
+   "name": "Foot–pound–second, absolute (poundal) system",
+   "aliases": [
+    "FPS absolute",
+    "absolute English system",
+    "poundal–pound–foot system",
+    "British absolute system"
+   ],
+   "used_in": "British physics and engineering texts c. 1880–1950s; interior/exterior ballistics; older British aerodynamics reports (ARC R&M series). Effectively extinct in post-1960 literature.",
+   "generators": [],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "the unit 'poundal' or symbol 'pdl' anywhere in the text",
+    "energy in 'foot-poundals' or 'ft-pdl'",
+    "mass in pounds (lb) together with force in a unit that is NOT lbf",
+    "density quoted in lb/ft³ while F = ma is used with no g_c",
+    "British sources predating ~1960; phrases 'absolute units', 'absolute British system'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: the FPS absolute system was never extended to a coherent electrical subsystem. Electrical work contemporaneous with it was done in CGS-EMU/ESU or in the practical (volt/ampere/ohm) units, both of which carry their own equation forms.",
+    "gauss_law": "N/A: same reason as Coulomb's law — no FPS electromagnetic subsystem exists.",
+    "einstein_field": "N/A: no relativity literature has ever been written in FPS. G would have to be quoted as ≈ 3.439×10⁻⁸ ft³·lb⁻¹·s⁻² (with mass in slugs) and c as 9.8357×10⁸ ft/s; nothing in the literature does this.",
+    "schrodinger_or_dirac": "N/A: no quantum literature in FPS. The equation form would be identical to SI (\\,i\\hbar\\,\\partial_t\\psi = -\\tfrac{\\hbar^2}{2m}\\nabla^2\\psi + V\\psi\\,) since no constant is absorbed — only ħ's numerical value changes."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "out_of_scope",
+   "notes": "The empty `generators` array is the substantive finding, not an omission. FPS-absolute is dimensionally IDENTICAL to SI — same 5-tuple for every quantity, same coherent F = ma, no constant absorbed anywhere. Translation is three numeric scale factors: L: 1 ft = 0.3048 m exactly; M: 1 lb = 0.45359237 kg exactly; T: unchanged. Derived exactly: 1 poundal = 0.138254954376 N; 1 foot-poundal = 0.0421401100938048 J. A restoration engine has literally nothing to restore, and every equation is byte-identical to its SI form. OUT OF SCOPE REASON: the target literature (theoretical physics) never writes equations in this system, and even where an FPS-era paper is read, the equations need no translation — only the numbers do, which is a unit-converter job, not a units-translator job. Keep it in a magnitude table if the tool ever evaluates numerically; keep it out of the generator table.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Slug_(unit)",
+    "https://grokipedia.com/page/Foot%E2%80%93pound%E2%80%93second_system_of_units",
+    "https://physics.nist.gov/cuu/pdf/sp811.pdf"
+   ]
+  },
+  {
+   "name": "British Gravitational / foot–slug–second system (and its inch-based variant)",
+   "aliases": [
+    "BG system",
+    "FSS",
+    "foot–slug–second",
+    "gravitational FPS",
+    "engineering FPS (slug form)",
+    "inch-pound-second (slinch/blob/snail variant)"
+   ],
+   "used_in": "US aerospace and aeronautics — AIAA journals, NASA TM/TP/CR reports, flight-dynamics and stability-and-control literature (ρ in slug/ft³); US external ballistics; structural dynamics and vibration analysis in the inch variant (lbf·s²/in with psi).",
+   "generators": [],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "the unit 'slug', or density in 'slug/ft³' (the single strongest marker — near-diagnostic for US aerospace)",
+    "'slinch', 'blob', or 'snail'; mass in lbf·s²/in",
+    "force in lbf with mass NOT in lbm, and no g_c appearing in F = ma",
+    "moduli in psi (lbf/in²) alongside mass in lbf·s²/in",
+    "AIAA/NASA report formatting; 'English units' stated with a slug-based nomenclature table"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no coherent electrical extension of the British Gravitational system exists or was ever standardized.",
+    "gauss_law": "N/A: same reason.",
+    "einstein_field": "N/A: no GR literature uses this system.",
+    "schrodinger_or_dirac": "N/A: no quantum literature uses this system. The form would be identical to SI, since no constant is absorbed."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "out_of_scope",
+   "notes": "Again coherent and again generator-free: force (lbf) is primitive, mass is derived as slug = lbf·s²/ft, and F = ma holds with NO g_c. Same dimension algebra as SI; equations byte-identical. Exact magnitudes I verified by derivation: 1 lbf = 0.45359237 × 9.80665 = 4.4482216152605 N exactly; 1 slug = 1 lbf·s²/ft = 4.4482216152605 / 0.3048 = 14.5939029372064 kg exactly; ratio slug/lb = 9.80665/0.3048 = 32.17404855643045 exactly (this is the same number as g_c, which is the source of endless confusion between this system and English Engineering — they are NOT the same system). Inch variant: 1 slinch = 1 lbf·s²/in = 12 slug = 175.126835246477 kg = 386.0885826771654 lb; standard gravity in that variant is 386.0885826771654 in/s². OUT OF SCOPE REASON: the target literature never writes equations in it, and there is no constant to restore. NOTE the trap for the numeric-conversion layer: 'lb' in an aerospace paper may mean lbm or lbf depending on whether the paper is BG or English Engineering, and 32.174 appears in BOTH systems for entirely different reasons (as a unit ratio here, as an equation-resident constant there). A converter that keys on the number 32.174 will misclassify.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Slug_(unit)",
+    "https://en.wikipedia.org/wiki/Pound_(force)",
+    "https://physics.nist.gov/cuu/pdf/sp811.pdf"
+   ]
+  },
+  {
+   "name": "English Engineering system (lbm + lbf with g_c)",
+   "aliases": [
+    "EE system",
+    "Engineering English units",
+    "US customary engineering units",
+    "lbm–lbf system",
+    "American Engineering System"
+   ],
+   "used_in": "US mechanical, chemical, aerospace-propulsion, and HVAC engineering: ASME literature, undergraduate and professional thermodynamics texts (Moran, Çengel, Sonntag), boiler/turbine/refrigeration practice, process engineering. Still actively published in US industrial and standards literature.",
+   "generators": [
+    {
+     "tex": "g_c",
+     "dimension": "(0, 0, 0, 0, 0)",
+     "numeric_factor": "32.174049 — NOT absorbed; this is the value the constant is SET TO and it is written explicitly in every dynamical equation. The schema has no field for an inserted (rather than absorbed) constant.",
+     "emits": "g_c"
+    },
+    {
+     "tex": "J",
+     "dimension": "(0, 0, 0, 0, 0)",
+     "numeric_factor": "778.169 ft·lbf/Btu_IT — the mechanical equivalent of heat, again inserted rather than absorbed; appears as 1/J in pre-SI first-law statements. Optional: only present when the thermal subsystem (Btu) is in use.",
+     "emits": "J"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "F (any force)",
+     "relation": "F_EE = m·a / g_c, with g_c = 32.174049 lbm·ft/(lbf·s²)",
+     "why": "Both mass (lbm) and force (lbf) are taken as primitive, so the system is NON-COHERENT: Newton's second law acquires a dimensional constant. Every kinematic and dynamic equation inherits it — kinetic energy becomes KE = mv²/(2g_c), Bernoulli becomes p/ρ + v²/(2g_c) + gz/g_c = const, and weight becomes W = mg/g_c (which is why 1 lbm 'weighs' 1 lbf at standard gravity, the design goal of the whole system)."
+    },
+    {
+     "symbol": "u, h (specific internal energy, enthalpy)",
+     "relation": "du = δq − (1/J)·p dv, with J = 778.169 ft·lbf/Btu_IT",
+     "why": "Heat is measured in Btu while work is measured in ft·lbf, so the first law carries an explicit mechanical-equivalent-of-heat factor. This is the thermal analogue of g_c and appears throughout pre-SI engineering thermodynamics."
+    }
+   ],
+   "fingerprints": [
+    "the symbol g_c appearing in a dynamical equation (F = ma/g_c, KE = mv²/2g_c, v²/2g_c in Bernoulli) — this is diagnostic and machine-detectable",
+    "the literal number 32.174 or 32.17 adjacent to 'lbm' and 'lbf' in the same expression",
+    "lbm and lbf both used as units in the same nomenclature table",
+    "specific heat in Btu/(lbm·°R); heat-transfer coefficient in Btu/(h·ft²·°F); R-value in ft²·h·°F/Btu",
+    "'778' or '778.17' as a conversion constant in a first-law expression",
+    "temperatures in °R alongside energies in Btu"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: the English Engineering system has no electrical subsystem. US engineering electrical work uses SI/practical electrical units unchanged, producing genuinely mixed-system papers (volts and amperes alongside Btu and lbf).",
+    "gauss_law": "N/A: same reason.",
+    "einstein_field": "N/A: no relativity literature in this system.",
+    "schrodinger_or_dirac": "N/A: no quantum literature in this system."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "out_of_scope",
+   "notes": "This is the ONE imperial-family system that is genuinely convention-bearing rather than a pure rescaling, and it stresses the schema harder than anything else in my family — but in the WRONG DIRECTION. A natural-unit convention sets a constant to 1 and hides it; English Engineering sets a constant to 32.174049 and writes it out. The restoration engine's linear solve over dimension exponents is exactly inverted here. Worse, g_c is not expressible in the (M,L,T,Θ,I) basis at all: because force is primitive alongside mass, the system's own dimension algebra has SIX mechanical-and-thermal base dimensions, and g_c has exponent tuple (1, 1, −2, 0, 0, −1) over an EXTENDED basis (M, L, T, Θ, I, F). In the SI 5-tuple g_c is identically dimensionless with value 32.174049, which is why I recorded (0,0,0,0,0) — honest but uninformative, and precisely the kind of silent degeneracy that would let the tool 'check' a wrong equation as correct. OUT OF SCOPE REASON: the target literature never writes equations in it, so the cost of extending the basis with a force dimension and inverting the generator semantics buys nothing for theoretical-physics reading. BUT I recommend keeping this entry in the table as a documented NEGATIVE case: it is the cleanest available counterexample to the assumption that every convention absorbs constants, and if the schema ever grows a signed `role` field (absorbed | inserted), this system is its regression test.",
+   "sources": [
+    "https://www.sciencedirect.com/topics/engineering/engineering-english-unit",
+    "https://grokipedia.com/page/English_Engineering_Units",
+    "https://www.nist.gov/pml/special-publication-811/nist-guide-si-footnotes",
+    "https://physics.nist.gov/cuu/pdf/sp811.pdf"
+   ]
+  },
+  {
+   "name": "Gravitational metric (technical) system — MKpS/MKfS, and its non-coherent kg+kgf engineering variant",
+   "aliases": [
+    "MKpS",
+    "MKfS",
+    "MKS technical",
+    "technical metric system",
+    "metre–kilopond–second",
+    "mètre–kilogramme-force–seconde",
+    "Technisches Maßsystem",
+    "kilopond system",
+    "gravitational metric system"
+   ],
+   "used_in": "German, Russian/Soviet, Japanese, and Korean engineering literature through roughly 1980; turbomachinery and hydraulics; soil mechanics and geotechnics (kgf/cm² is still encountered); older Central-European and Soviet physics-adjacent engineering reports; automotive power ratings (PS) to the present day in informal use.",
+   "generators": [
+    {
+     "tex": "g_c",
+     "dimension": "(0, 0, 0, 0, 0)",
+     "numeric_factor": "9.80665 kg·m/(kgf·s²) — inserted, not absorbed; present ONLY in the non-coherent variant that uses kg for mass and kgf for force simultaneously. The coherent MKpS system (kp + hyl) has NO generators at all.",
+     "emits": "g_c"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "F (any force), in the non-coherent variant only",
+     "relation": "F_[kgf] = m_[kg]·a / g_c, with g_c = 9.80665 kg·m/(kgf·s²)",
+     "why": "Exactly the metric mirror of the lbm/lbf problem. The coherent form avoids it by making force primitive (kilopond) and mass derived (hyl = kp·s²/m = 9.80665 kg), in which case F = ma holds with no constant. Engineering practice frequently mixed the two, which is the error class worth detecting."
+    }
+   ],
+   "fingerprints": [
+    "the units 'kp' (kilopond) or 'kgf'; 'Mp' (megapond)",
+    "'hyl', 'TME', 'technische Masseneinheit', 'metric slug', or 'mug' as a mass unit",
+    "mass expressed as kp·s²/m or kgf·s²/m",
+    "pressure in kgf/cm², kp/cm², 'at' (technical atmosphere), 'ata' (absolute) or 'atü' (gauge)",
+    "power in PS (Pferdestärke), CV, or ch — 1 PS = 75 kgf·m/s = 735.49875 W exactly",
+    "torque in kp·m or kgf·m; the number 9.80665 or 9.81 appearing as an equation-resident constant"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no electrical subsystem. Electrical quantities in this literature are in practical/SI units, producing mixed-system papers.",
+    "gauss_law": "N/A: same reason.",
+    "einstein_field": "N/A: no relativity literature in this system.",
+    "schrodinger_or_dirac": "N/A: no quantum literature in this system."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "out_of_scope",
+   "notes": "Two distinct systems share one name and the tool must not conflate them. (a) COHERENT MKpS: base m, kp, s with mass derived as the hyl/TME = 1 kp·s²/m = 9.80665 kg exactly. Force primitive, mass derived, F = ma with no constant, zero generators, pure diagonal rescaling of SI. (b) NON-COHERENT engineering practice: kg for mass AND kgf for force together, forcing g_c = 9.80665 into the equations exactly as in English Engineering. Only (b) is convention-bearing; I recorded the generator for (b) and noted (a)'s emptiness. Exact anchors verified: 1 kgf = 1 kp = 9.80665 N exactly (by definition of standard gravity); 1 hyl = 9.80665 kg exactly; 1 at = 1 kgf/cm² = 98066.5 Pa exactly; 1 PS = 735.49875 W exactly. A CGS-gravitational cousin exists (gram-force, g₀ = 980.665 cm/s²) in a metre–gram-force–second arrangement; it is rarer and shares all the same structure. OUT OF SCOPE REASON: same as English Engineering — the target literature never writes equations here, and supporting variant (b) would require the same force-dimension basis extension and inverted generator semantics for zero theoretical-physics payoff. Worth one line in a fingerprint-only lookup so that a reader encountering 'kp' in an old Soviet or German report gets told what it is.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Gravitational_metric_system",
+    "https://en.wikipedia.org/wiki/Kilogram-force",
+    "https://www.sizes.com/units/sys_MKGFS.htm",
+    "https://units.fandom.com/wiki/Hyl"
+   ]
+  },
+  {
+   "name": "Metre–tonne–second (MTS) system",
+   "aliases": [
+    "MTS",
+    "mètre–tonne–seconde",
+    "sthène–pièze system",
+    "absolute metre-tonne-second system"
+   ],
+   "used_in": "Legal system in France 1919–1961; adopted by the Soviet Union 1933–1955. French and Soviet interwar industrial engineering, civil engineering, and explosives/blasting literature. Extinct.",
+   "generators": [],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "the units 'sthène' / 'sn' (force) or 'pièze' / 'pz' (pressure); 'kilopièze', 'barye-pièze' hybrids",
+    "'sthène-metre' or 'sn·m' as an energy unit",
+    "'rutherford' (Rd) as a radioactivity unit — 10⁶ decays/s, the MTS-family activity unit",
+    "French- or Russian-language engineering documents dated 1919–1961",
+    "mass given in tonnes as a BASE unit rather than as a convenience multiple"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: MTS had no electrical subsystem; electrical quantities were taken in practical (volt/ampere/ohm) units.",
+    "gauss_law": "N/A: same reason.",
+    "einstein_field": "N/A: no relativity literature in MTS.",
+    "schrodinger_or_dirac": "N/A: no quantum literature in MTS."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "out_of_scope",
+   "notes": "Fully coherent, fully generator-free — a clean diagonal rescaling with a single nontrivial scale factor (M: 1 t = 1000 kg; L and T unchanged from SI). Consequently every derived unit is a decimal multiple of an SI unit: 1 sthène = 1 kN exactly; 1 pièze = 1 sn/m² = 1 kPa exactly; 1 sthène-metre = 1 kJ exactly. That decimal cleanliness is why MTS translation is trivial and why it never needed a generator table. OUT OF SCOPE REASON: extinct for 65 years, no equations to translate, and the entire content of the system is three unit names. Its one live legacy worth recording is the RUTHERFORD (10⁶ Bq), which still surfaces in mid-century nuclear literature and which a reader would not otherwise connect to MTS — an example of historical systems interlocking in ways a flat per-system table loses.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Metre%E2%80%93tonne%E2%80%93second_system_of_units",
+    "https://en.wikipedia.org/wiki/Sthene_unit",
+    "https://en.wikipedia.org/wiki/Pi%C3%A8ze",
+    "https://glossary.ametsoc.org/wiki/Meter-tonne-second_system"
+   ]
+  },
+  {
+   "name": "Practical electrical units (1881 BAAS/Paris Congress) and the QES absolute system",
+   "aliases": [
+    "practical system",
+    "practical units",
+    "BAAS practical units",
+    "QES system",
+    "quadrant–eleventh-gram–second system",
+    "quad–11gram–second"
+   ],
+   "used_in": "Electrical engineering and electrical physics from 1881 until superseded by the international units (1893) and eventually SI (1948/1960). The volt/ampere/ohm/coulomb/farad/henry/joule/watt names all originate here and survive unchanged into SI.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "all electrical quantities relative to CGS-EMU",
+     "relation": "1 ohm = 10⁹ abohm; 1 volt = 10⁸ abvolt; 1 ampere = 10⁻¹ abampere; 1 coulomb = 10⁻¹ abcoulomb; 1 farad = 10⁻⁹ abfarad; 1 henry = 10⁹ abhenry; 1 joule = 10⁷ erg; 1 watt = 10⁷ erg/s",
+     "why": "The practical units are CGS-EMU units scaled by powers of ten chosen for human-convenient magnitudes. The EQUATION FORMS are therefore EMU equation forms (unrationalized), not new ones — only the unit magnitudes changed. This is a scale rescaling, not a redefinition of any symbol."
+    }
+   ],
+   "fingerprints": [
+    "'practical units' stated explicitly in a paper dated 1881–1948",
+    "abohm/abvolt/abampere/abcoulomb/abfarad/abhenry appearing alongside volt/ampere/ohm — the decimal bridge in use",
+    "'quadrant' as a length unit (10⁹ cm) or 'eleventh-gram' (10⁻¹¹ g) as a mass unit — diagnostic of the QES system",
+    "'quadrant' used as an early name for the henry",
+    "powers of ten (10⁸, 10⁹, 10⁻¹) appearing as bare conversion constants in electrical formulae"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Equation form is inherited from CGS-EMU (unrationalized): F = \\dfrac{c^{2} q_1 q_2}{r^{2}} with q in abcoulombs, r in cm, F in dyn. Expressed in the practical units themselves with metres and newtons, the same physics reads F = \\dfrac{q_1 q_2}{\\varepsilon\\, r^{2}} with \\varepsilon = 4\\pi\\varepsilon_0 — i.e. the unrationalized MKS form (see §9). This coincidence IS Giorgi's insight: the practical units plus m, kg, s already form a coherent system.",
+    "gauss_law": "Unrationalized throughout: \\nabla\\cdot\\mathbf{D} = 4\\pi\\rho, \\quad \\nabla\\times\\mathbf{H} = 4\\pi\\mathbf{J} + \\partial_t\\mathbf{D}, \\quad \\nabla\\times\\mathbf{E} = -\\partial_t\\mathbf{B}, \\quad \\nabla\\cdot\\mathbf{B} = 0",
+    "einstein_field": "N/A: the practical system predates and never engaged with general relativity.",
+    "schrodinger_or_dirac": "N/A: the practical system predates quantum mechanics; by the time the Schrödinger equation was written the international units (§7) were in force."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Two facts make this entry worth keeping despite its age. First, the OBSCURE-BUT-REAL QES system: the practical units are not merely arbitrary decimal multiples — they are the coherent derived units of an absolute system with base length the 'quadrant' (10⁹ cm, one Earth quadrant), base mass the 'eleventh-gram' (10⁻¹¹ g), and the second. I verified the coherence by derivation: energy = M L² T⁻² = 10⁻¹¹ g × 10¹⁸ cm² s⁻² = 10⁷ erg = 1 joule exactly, and force = 10⁻¹¹ × 10⁹ = 10⁻² dyn = 10⁻⁷ N = 1 J/(10⁹ cm), consistent. So the 'practical' units are genuinely coherent, not a kludge. Second, the direct line to Giorgi (§10): because the practical coulomb IS the SI coulomb, combining practical electrical units with m/kg/s yields a coherent four-dimensional system — which is exactly what Giorgi proposed in 1901 and what became SI. V2 REASON: pre-1948 electrical papers do get read (and this user's own reading habits include pre-1997 primary literature), and the decimal bridge between practical and EMU units is the single thing a modern reader most needs supplied. IMPORTANT SCOPE NOTE: the equation FORMS here belong to the CGS/EMU family's table, not mine. My claim is limited to the decimal scaling relationship and the QES coherence fact; these should be reconciled with the E&M family rather than duplicated.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Abvolt",
+    "https://en.wikipedia.org/wiki/Abohm",
+    "https://en.wikipedia.org/wiki/International_System_of_Electrical_and_Magnetic_Units",
+    "https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=926425"
+   ]
+  },
+  {
+   "name": "International electrical units (1893 Chicago / 1908 London, in force to 1 Jan 1948)",
+   "aliases": [
+    "international units",
+    "international ohm",
+    "international volt",
+    "international ampere",
+    "mean international units",
+    "US international units",
+    "1893 legal ohm",
+    "Giorgi MKSΩ (1905 variant)"
+   ],
+   "used_in": "Essentially ALL experimental electrical physics and electrical engineering published between 1893 and 1948 — resistance and EMF standards work, electrochemistry, early solid-state and vacuum-tube physics, precision measurement. Any pre-1948 paper quoting a value in ohms, volts, or amperes is quoting international units unless it explicitly says 'absolute'.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "Ω, V, A and all derived electrical units",
+     "relation": "MEAN INTERNATIONAL (CIPM 1948): 1 Ω_int = 1.000 49 Ω; 1 V_int = 1.000 34 V; 1 A_int = 0.999 85 A. US INTERNATIONAL (NIST/NBS): 1 Ω_int(US) = 1.000 495 Ω; 1 V_int(US) = 1.000 330 V.",
+     "why": "The international units were defined by physical artefacts (a mercury column for the ohm, a silver voltameter for the ampere, a Clark cell for the volt) rather than by mechanical force measurements. The artefacts turned out to disagree with the absolute definitions at the few-times-10⁻⁴ level. This is a pure scale offset — no equation changes — but it is entirely invisible to dimensional analysis and sits exactly where precision matters."
+    }
+   ],
+   "fingerprints": [
+    "publication date before 1 January 1948 with electrical values in Ω, V, or A",
+    "the words 'international ohm', 'international volt', 'international ampere', or the subscript 'int'",
+    "explicit contrast with 'absolute ohm' / 'absolute volt' (papers from ~1930–1948 often quote both)",
+    "the mercury-column definition: '106.300 cm', '14.4521 g', 'column of mercury at the temperature of melting ice'",
+    "the silver voltameter definition: '0.001 118 00 gram per second' silver deposition",
+    "the Clark cell: '1000/1434 of the electromotive force of a Clark cell at 15 °C'",
+    "'MKSΩ' or 'Giorgi system with the ohm as fourth unit' (the 1905 variant)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Equation form unchanged from whatever EM convention the paper otherwise uses (usually unrationalized). Only unit magnitudes shift: F = \\dfrac{q_1 q_2}{\\varepsilon r^{2}} with charges in international coulombs, 1 C_int = 0.999 85 C.",
+    "gauss_law": "Unchanged in form (typically unrationalized in this era): \\nabla\\cdot\\mathbf{D} = 4\\pi\\rho. The international-unit choice is orthogonal to rationalization — a 1930s paper independently picks (i) international vs absolute and (ii) rationalized vs unrationalized, and the tool must detect both axes separately.",
+    "einstein_field": "N/A: the international electrical units have no bearing on GR and no GR paper is written in them.",
+    "schrodinger_or_dirac": "Form unchanged: i\\hbar\\,\\partial_t\\psi = -\\dfrac{\\hbar^{2}}{2m}\\nabla^{2}\\psi + V\\psi. Relevant only through the numerical value of e (and hence of α and the Rydberg): pre-1948 quoted values of the elementary charge are in international coulombs and are off by 1.5×10⁻⁴, which propagates into every constant derived from them."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "The two PRIMARY published factors (1 Ω_int = 1.00049 Ω, 1 V_int = 1.00034 V, mean international; and the US values 1.000495 / 1.000330) are verified against the standard reference. The remaining derived factors I obtained BY DERIVATION from Ohm's law and power, not by quotation, and flag them as such: A_int = V_int/Ω_int = 1.00034/1.00049 = 0.999 85 (✓ matches the published ampere value, a good consistency check); W_int = V_int·A_int = 1.000 19; J_int = 1.000 19; F_int = A_int·s/V_int = 0.999 51; H_int = Ω_int·s = 1.000 49. The self-consistency of the derived ampere against the published one gives me reasonable confidence in the rest, but they should be checked against NIST SP 811's conversion tables before shipping. SEPARATELY: Giorgi's 1905 'MKSΩ' proposal — m, kg, s plus the international ohm as fourth base unit — is a genuine historical variant confirmed in Goldfarb's NIST/IEEE review, and it is the missing link between the practical units (§6) and rationalized MKSA (§10). V2 REASON: this is the highest-value historical electrical entry, because pre-1948 papers ARE read, the offset is invisible to every form of dimension checking, and no modern reader carries the factor in their head. The tool's correct behaviour is not to translate equations (they don't change) but to FLAG: 'this paper predates 1948; its electrical values are international units, ~5×10⁻⁴ from absolute.'",
+   "sources": [
+    "https://en.wikipedia.org/wiki/International_System_of_Electrical_and_Magnetic_Units",
+    "https://en.wikipedia.org/wiki/Ohm",
+    "https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=926425",
+    "https://physics.nist.gov/cuu/pdf/sp811.pdf"
+   ]
+  },
+  {
+   "name": "Conventional electrical units of 1990 (V₉₀, Ω₉₀)",
+   "aliases": [
+    "conventional electrical units",
+    "1990 electrical units",
+    "V-90",
+    "ohm-90",
+    "K_J-90 / R_K-90 units",
+    "as-maintained electrical units"
+   ],
+   "used_in": "Precision electrical metrology and any experiment traceable to it, 1 January 1990 through the 2019 SI redefinition: quantum Hall effect and Josephson voltage standards, precision resistance and voltage measurement, condensed-matter transport at metrological precision, watt-balance/Kibble-balance work, and determinations of fundamental constants. Directly relevant to precision-measurement physics generally.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "V, Ω, A, W, F, H",
+     "relation": "V₉₀ = 1.000 000 106 66… V; Ω₉₀ = 1.000 000 017 79… Ω; A₉₀ = 1.000 000 088 87… A; W₉₀ = 1.000 000 195 53… W; F₉₀ = 0.999 999 982 20… F; H₉₀ = 1.000 000 017 79… H (ratios to the post-2019 SI)",
+     "why": "The CIPM fixed the Josephson and von Klitzing constants at CONVENTIONAL values — K_J-90 = 483 597.9 GHz/V exactly and R_K-90 = 25 812.807 Ω exactly — chosen in 1988 from the best data then available. Because those conventional values differ slightly from the now-exact 2019 SI values (K_J = 2e/h, R_K = h/e²), the whole electrical unit set is offset by parts in 10⁷–10⁸. No equation changes; only realized magnitudes."
+    }
+   ],
+   "fingerprints": [
+    "the literal constants 483 597.9 GHz/V or 25 812.807 Ω",
+    "the symbols K_J-90, R_K-90, or the subscript 90 on V, Ω, A, W (V₉₀, Ω₉₀)",
+    "the phrases 'conventional electrical units', 'conventional value of the Josephson constant', 'in 1990 units'",
+    "publication window 1990–2019 combined with quantum-Hall or Josephson-standard traceability",
+    "post-2019 papers re-stating older results 'converted from the 1990 units'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Identical in form to SI: F = \\dfrac{1}{4\\pi\\varepsilon_0}\\dfrac{q_1 q_2}{r^{2}}. Only the realized magnitude of the charge unit shifts, by 8.887×10⁻⁸ relative.",
+    "gauss_law": "Identical to SI: \\nabla\\cdot\\mathbf{E} = \\rho/\\varepsilon_0 (differential), \\oint \\mathbf{E}\\cdot d\\mathbf{A} = Q_{\\text{enc}}/\\varepsilon_0 (integral). No convention change whatsoever.",
+    "einstein_field": "Identical to SI: G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\dfrac{8\\pi G}{c^{4}} T_{\\mu\\nu}. The 1990 electrical units have no mechanical or gravitational content.",
+    "schrodinger_or_dirac": "Identical to SI: i\\hbar\\,\\partial_t\\psi = -\\dfrac{\\hbar^{2}}{2m}\\nabla^{2}\\psi + V\\psi; (i\\hbar\\gamma^{\\mu}\\partial_{\\mu} - mc)\\psi = 0. Relevant only through the realized value of e."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Values verified: K_J-90 = 483 597.9 GHz/V and R_K-90 = 25 812.807 Ω, both exact by definition; the six ratios above are as published. I independently checked their internal consistency: A₉₀ = V₉₀/Ω₉₀ gives 1.000 000 106 66 − 1.000 000 017 79 → 1.000 000 088 87 ✓, and W₉₀ = V₉₀·A₉₀ → 1.000 000 195 53 ✓. That the derived combinations reproduce the published table is good evidence the set is transcribed correctly. UNCERTAIN, FLAGGED: pre-1990 national laboratories maintained their own 'as-maintained' volts (V_NBS, V_BIPM, etc.) with their own K_J values; I did not verify any of those numbers and did not include them. If the tool wants 1970s–80s precision-electrical papers, that sub-era needs separate research. V2 REASON: this is the modern counterpart of §7 and it fails in the same silent way — the equations are untouched, so no dimension check and no equation translation will ever surface the discrepancy, yet the offset is real and lands precisely in the precision-measurement literature a physics reader is most likely to be quoting numbers from. The right tool behaviour is again a FLAG on the date-and-traceability fingerprint, not a translation. Cheap to implement, and it prevents a whole class of ppm-level errors that nothing else in the system would catch.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Conventional_electrical_unit",
+    "https://www.nist.gov/publications/electrical-units-new-si-saying-goodbye-1990-values",
+    "https://physics.nist.gov/cuu/pdf/sp811.pdf"
+   ]
+  }
+ ]
+}

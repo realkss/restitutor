@@ -1,0 +1,113 @@
+si-cgs-em	SI (2019 revision)	—	generators_only	v1	0
+si-cgs-em	MKSA / pre-2019 SI (Giorgi rationalized system)	—	generators_only	v1	0
+si-cgs-em	Unrationalized MKS (pre-1950 Giorgi; Kennelly-type MKS)	—	needs_symbol_rescaling	v2	4
+si-cgs-em	SI with the Kennelly (magnetic-polarization) convention	—	needs_symbol_rescaling	v2	3
+si-cgs-em	CGS-Gaussian	4\pi·4\pi\varepsilon_0	needs_symbol_rescaling	v1	5
+si-cgs-em	CGS-ESU (electrostatic units)	4\pi·4\pi\varepsilon_0	needs_symbol_rescaling	v1	2
+si-cgs-em	CGS-EMU (electromagnetic units)	1/(4\pi)·\mu_0/(4\pi)	needs_symbol_rescaling	v1	2
+si-cgs-em	Heaviside–Lorentz	\varepsilon_0	needs_symbol_rescaling	v1	4
+si-cgs-em	Variant-Gaussian (hybrid "rogue" convention)	4\pi·4\pi\varepsilon_0; 1/(4\pi)·\mu_0/(4\pi)	unsupported	v2	1
+si-cgs-em	Practical/mixed CGS of experimental magnetism ("the emu system" as used in materials science)	4\pi·4\pi\varepsilon_0	needs_symbol_rescaling	v2	5
+si-cgs-em	Jackson 3rd edition hybrid (document-level convention)	—	generators_only	v1	0
+si-cgs-em	Gaussian-geometrized (Gaussian with G = c = 1)	4\pi·4\pi\varepsilon_0; c; G	needs_symbol_rescaling	v1	1
+si-cgs-em	Heaviside–Lorentz natural units (ħ = c = 1, rationalized)	\varepsilon_0; \hbar; c	needs_symbol_rescaling	v1	1
+si-cgs-em	QES practical system (quadrant–eleventhgram–second)	1/(4\pi)·\mu_0/(4\pi)	generators_only	out_of_scope	2
+si-cgs-em	International electrical units (1893/1908–1948)	—	needs_symbol_rescaling	out_of_scope	3
+si-cgs-em	Gauss's absolute magnetic system (1832)	1/(4\pi)·\mu_0/(4\pi)	unsupported	out_of_scope	1
+si-cgs-em	Weber's absolute electrodynamic system	—	unsupported	out_of_scope	1
+hep-natural	HEP natural units (ħ = c = 1) with Heaviside–Lorentz electromagnetism	\hbar; c; \varepsilon_0	needs_symbol_rescaling	v1	3
+hep-natural	HEP natural units with Boltzmann constant (ħ = c = k_B = 1, Heaviside–Lorentz)	\hbar; c; k_B; \varepsilon_0	needs_symbol_rescaling	v1	2
+hep-natural	Gaussian natural units (ħ = c = 4πε₀ = 1)	\hbar; c; 4\pi·\varepsilon_0	needs_symbol_rescaling	v1	3
+hep-natural	Hybrid: ħ = c = 1 with SI/laboratory electromagnetism retained (ε₀ NOT set)	\hbar; c	needs_symbol_rescaling	v2	2
+hep-natural	CODATA/NIST natural units (ħ = c = m_e = 1)	\hbar; c; m_e; 1 (Heaviside–Lorentz flavour) or 4\pi (Gaussian flavour) — paper-dependent·\varepsilon_0	generators_only	v2	1
+hep-natural	Relativistic units (c = 1 only; ħ retained)	c	generators_only	v2	1
+hep-natural	Planck units, Gaussian flavour (ħ = c = G = k_B = 4πε₀ = 1)	\hbar; c; G; k_B; 4\pi·\varepsilon_0	needs_symbol_rescaling	v1	2
+hep-natural	Planck units, Heaviside–Lorentz flavour (ħ = c = G = k_B = ε₀ = 1)	\hbar; c; G; k_B; \varepsilon_0	needs_symbol_rescaling	v2	2
+hep-natural	Reduced Planck units (ħ = c = k_B = 1, 8πG = 1, M̄_pl = 1)	\hbar; c; k_B; 8\pi·G; \varepsilon_0	needs_symbol_rescaling	v1	2
+hep-natural	Holographic/SUGRA gravitational units (16πG = 1, equivalently 2κ² = 1)	\hbar; c; 16\pi·G	needs_symbol_rescaling	v1	2
+hep-natural	String units α' = 1 (with ħ = c = 1)	\hbar; c; \alpha'	generators_only	v1	2
+hep-natural	String length units ℓ_s = 1 with α' = ℓ_s²	\hbar; c; \alpha'	generators_only	v1	1
+hep-natural	String length units ℓ_s = 1 with ℓ_s = 2π√α' (2π convention)	\hbar; c; (2\pi)^2·\alpha'	generators_only	v1	2
+hep-natural	Worldsheet-convenience convention α' = 2 (closed string)	\hbar; c; \tfrac12·\alpha'	generators_only	v2	1
+hep-natural	Worldsheet-convenience convention α' = 1/2 (open string)	\hbar; c; 2·\alpha'	generators_only	v2	1
+hep-natural	Eleven-dimensional Planck / M-theory units (ℓ_p = 1, or 2κ₁₁² = 1)	\hbar; c; \ell_p^{(11)}	generators_only	v2	2
+hep-natural	AdS radius units (L = 1), usually with 16πG = 1	\hbar; c; L_{\rm AdS}; 16\pi\ (\text{when } 16\pi G = 1 \text{ is also imposed})·G	needs_custom_generators	v2	3
+hep-natural	Lattice units (a = 1) on top of ħ = c = 1	\hbar; c; a\ (\text{lattice spacing})	needs_custom_generators	v1	4
+hep-natural	Stoney units (c = G = e²/4πε₀ = 1; ħ ≠ 1)	c; G; \dfrac{e^2}{4\pi\varepsilon_0}	generators_only	out_of_scope	1
+gr-cosmo-astro	Geometrized units (G = c = 1)	c; G	generators_only	v1	0
+gr-cosmo-astro	Geometrized-Gaussian units (G = c = 4\pi\varepsilon_0 = 1)	c; G; 4\pi·4\pi\varepsilon_0	needs_symbol_rescaling	v1	2
+gr-cosmo-astro	Geometrized Heaviside-Lorentz units (G = c = \varepsilon_0 = 1)	c; G; \varepsilon_0	needs_symbol_rescaling	v2	2
+gr-cosmo-astro	Black-hole scale units (G = c = M = 1; 'in units of M')	c; G; M	needs_custom_generators	v1	2
+gr-cosmo-astro	Numerical-relativity code units (G = c = M_\odot = 1)	c; G; M_\odot	generators_only	v2	0
+gr-cosmo-astro	GRMHD code units (G = c = 1, M = 1, \sqrt{4\pi} absorbed into B)	c; G; M_{\rm BH}; 4\pi·4\pi\varepsilon_0	needs_symbol_rescaling	v2	2
+gr-cosmo-astro	c = 1 only (relativist's / special-relativity units)	c	generators_only	v1	0
+gr-cosmo-astro	Reduced-Planck cosmology units (\hbar = c = k_B = 8\pi G = 1)	c; \hbar; 8\pi·8\pi G; k_B	generators_only	v1	0
+gr-cosmo-astro	Classical \kappa = 1 units (8\pi G = c = 1, \hbar not set)	c; 8\pi·8\pi G	generators_only	v1	0
+gr-cosmo-astro	Planck units (G = c = \hbar = k_B = 1)	c; G; \hbar; k_B	needs_symbol_rescaling	v1	0
+gr-cosmo-astro	\kappa kept symbolic (Einstein's gravitational constant as a named combination)	—	needs_custom_generators	v1	2
+gr-cosmo-astro	Gaussian-CGS relativistic astrophysics (all constants explicit; Landau-Lifshitz style)	4\pi·4\pi\varepsilon_0	needs_symbol_rescaling	v2	2
+gr-cosmo-astro	Observational cosmology hybrid units (km s^{-1} Mpc^{-1}, Mpc, M_\odot, K, eV)	—	generators_only	v1	0
+gr-cosmo-astro	Little-h units (h^{-1} Mpc, h^{-1} M_\odot, h^2 densities)	—	needs_symbol_rescaling	v1	9
+gr-cosmo-astro	Comoving / scale-factor normalization conventions	—	needs_symbol_rescaling	v1	4
+gr-cosmo-astro	Hubble units (H_0 = 1, or H = 1 during inflation)	c; H_0	needs_custom_generators	v2	1
+gr-cosmo-astro	Henon units (N-body units): G = M = 1, E = -1/4	G; M_{\rm tot}; 4·|E_{\rm tot}|	generators_only	v2	0
+gr-cosmo-astro	Model-scale units (G = M = a = 1; Plummer/King/NFW model units)	G; M; a	generators_only	v2	0
+gr-cosmo-astro	Galactic-dynamics units (kpc, M_\odot, km s^{-1} or Myr)	—	generators_only	v2	0
+gr-cosmo-astro	galpy / AGAMA normalized units (R_0 = v_c = 1)	R_0; v_c(R_0); G	needs_custom_generators	v2	1
+gr-cosmo-astro	Gaussian celestial-mechanics units (au, day, M_\odot; Gaussian gravitational constant k)	—	generators_only	v2	1
+gr-cosmo-astro	Astrodynamics canonical units (\mu = 1 DU^3/TU^2)	GM_{\rm central}; \mathrm{DU}; M_{\rm central}	needs_custom_generators	v2	0
+gr-cosmo-astro	Ephemeris units and the TDB/TCB time-scale rescaling	—	needs_symbol_rescaling	v2	4
+gr-cosmo-astro	Astronomical magnitudes (logarithmic scale)	—	unsupported	out_of_scope	0
+gr-cosmo-astro	Radio and millimetre flux units (Jansky family)	—	generators_only	v2	2
+gr-cosmo-astro	Stellar and solar reference units (M_\odot, R_\odot, L_\odot; IAU nominal values)	—	generators_only	v2	1
+atomic-cm	Hartree atomic units (SI-based rendering, 4πε₀ = 1)	\hbar; m_e; e; 4\pi·\varepsilon_0	generators_only	v1	0
+atomic-cm	Hartree atomic units (Gaussian/cgs-based rendering)	\hbar; m_e; e	needs_symbol_rescaling	v1	3
+atomic-cm	Rydberg atomic units	\hbar; 2·m_e; 1/\sqrt{2}·e; 4\pi·\varepsilon_0	needs_symbol_rescaling	v1	2
+atomic-cm	Relativistic (Dirac) atomic units — ħ = m_e = c = 1	\hbar; m_e; c	generators_only	v2	1
+atomic-cm	Effective (excitonic / material) atomic units — m* = 1, ε absorbed	\hbar; 1 (Hartree-like) or 2 (Rydberg-like)·m^{*}; 1 (Hartree-like) or 1/2 (Rydberg-like)·e^2/(4\pi\varepsilon_0\varepsilon_r)	needs_custom_generators	v1	2
+atomic-cm	Quantum-chemistry molar energy conventions (kcal mol⁻¹, kJ mol⁻¹, eV)	N_A	needs_custom_generators	v1	2
+atomic-cm	k_B = 1 (temperature as energy)	k_B	generators_only	v1	2
+atomic-cm	Spectroscopists' energy equivalences (cm⁻¹, GHz, K, eV, nm)	hc; h; 1/(2\pi)·\hbar; k_B	needs_symbol_rescaling	v1	4
+atomic-cm	Molecular-constant conventions (rotational and vibrational spectroscopy)	hc; h	needs_symbol_rescaling	v2	3
+atomic-cm	Condensed-matter theory units (ħ = k_B = 1, lattice constant a = 1)	\hbar; k_B; a\ (\text{lattice constant}); e	needs_custom_generators	v2	2
+atomic-cm	Model-Hamiltonian units (t = 1, J = 1, U/t)	t\ (\text{hopping integral}); 1, 2, \text{ or } -1\ \text{depending on the Hamiltonian convention (see rescalings)}·J\ (\text{exchange coupling}); \hbar	needs_custom_generators	v2	3
+atomic-cm	CGS-emu / Gaussian magnetism (gauss, oersted, emu)	1 (unrationalized: the 4\pi is written explicitly in the field equations, not absorbed)·\mu_0	needs_symbol_rescaling	v1	12
+atomic-cm	SI magnetism — Sommerfeld vs Kennelly conventions	—	needs_symbol_rescaling	v1	3
+atomic-cm	cgs-esu molecular electric property units (debye, Å³ polarizability, buckingham)	—	needs_symbol_rescaling	v1	4
+atomic-cm	Solid-state and DFT practical units (eV, Å, meV/atom, GPa, r.l.u.)	—	needs_custom_generators	v1	4
+atomic-cm	Molecular-dynamics simulation unit sets (LAMMPS real/metal/electron, GROMACS, AMBER, reduced LJ)	\varepsilon\ (\text{LJ well depth}); \sigma\ (\text{LJ diameter}); m\ (\text{particle mass}); k_B	needs_custom_generators	v2	3
+atomic-cm	Magnetic-resonance units (NMR/EPR: ppm, Hz, gauss, MHz/T)	h	needs_symbol_rescaling	v2	5
+atomic-cm	Historical X-ray and spectroscopic length units (X unit, kX, ångström star; air vs vacuum wavelengths)	—	unsupported	v2	4
+historical-engineering	Foot–pound–second, absolute (poundal) system	—	generators_only	out_of_scope	0
+historical-engineering	British Gravitational / foot–slug–second system (and its inch-based variant)	—	generators_only	out_of_scope	0
+historical-engineering	English Engineering system (lbm + lbf with g_c)	32.174049 — NOT absorbed; this is the value the constant is SET TO and it is written explicitly in every dynamical equation. The schema has no field for an inserted (rather than absorbed) constant.·g_c; 778.169 ft·lbf/Btu_IT — the mechanical equivalent of heat, again inserted rather than absorbed; appears as 1/J in pre-SI first-law statements. Optional: only present when the thermal subsystem (Btu) is in use.·J	needs_custom_generators	out_of_scope	2
+historical-engineering	Gravitational metric (technical) system — MKpS/MKfS, and its non-coherent kg+kgf engineering variant	9.80665 kg·m/(kgf·s²) — inserted, not absorbed; present ONLY in the non-coherent variant that uses kg for mass and kgf for force simultaneously. The coherent MKpS system (kp + hyl) has NO generators at all.·g_c	needs_custom_generators	out_of_scope	1
+historical-engineering	Metre–tonne–second (MTS) system	—	generators_only	out_of_scope	0
+historical-engineering	Practical electrical units (1881 BAAS/Paris Congress) and the QES absolute system	—	needs_symbol_rescaling	v2	1
+historical-engineering	International electrical units (1893 Chicago / 1908 London, in force to 1 Jan 1948)	—	needs_symbol_rescaling	v2	1
+historical-engineering	Conventional electrical units of 1990 (V₉₀, Ω₉₀)	—	needs_symbol_rescaling	v2	1
+nondimensionalization	Inertial (convective) scaling of the incompressible Navier–Stokes equations	L; U; \rho	needs_custom_generators	v1	2
+nondimensionalization	Viscous (diffusive/Stokes) scaling of the incompressible Navier–Stokes equations	L; \nu; \rho	needs_custom_generators	v2	2
+nondimensionalization	Compressible / aerodynamic (Mach) nondimensionalization	L; \rho_\infty; a_\infty \ \text{or}\ U_\infty; R \ (\text{gas constant, when }T\text{ is nondimensionalized})	needs_symbol_rescaling	v2	2
+nondimensionalization	Boussinesq free-fall (buoyancy) scaling	H; U_f=\sqrt{g\alpha\Delta T H}; \Delta T; \rho_0	needs_custom_generators	v2	2
+nondimensionalization	Boussinesq diffusive (thermal) scaling	H; \kappa; \Delta T; \rho_0	needs_custom_generators	v2	2
+nondimensionalization	Periodic-box spectral units	2\pi \ \text{or}\ 1·L_\text{box}; u_\text{rms}\ \text{or}\ \varepsilon^{1/3}L^{1/3}; \rho_0	needs_custom_generators	v2	2
+nondimensionalization	MHD Alfvénic code units	L_0; \rho_0; B_0; 1 \ (\text{SI-rooted})\ \text{or}\ 4\pi \ (\text{Gaussian-rooted})·\mu_0	needs_symbol_rescaling	v2	3
+nondimensionalization	Gyrokinetic normalization, GENE / c_s family	L_\text{ref}\ (=R_0\ \text{or}\ a); c_\text{ref}=\sqrt{T_\text{ref}/m_\text{ref}}; T_\text{ref}\ (\text{energy units},\ k_B=1); m_\text{ref}; n_\text{ref}; e; B_\text{ref}	needs_symbol_rescaling	v2	4
+nondimensionalization	Gyrokinetic normalization, GS2 / stella / AstroGK family	a\ (\text{minor radius / reference length}); \sqrt{2}·v_{t,r}=\sqrt{2T_r/m_r}; T_r; m_r; n_r; B_r	needs_symbol_rescaling	v2	3
+nondimensionalization	PIC / kinetic-plasma normalized units	\omega_{pe}=\sqrt{n_0e^2/(\varepsilon_0m_e)}; c; m_e; e; n_0	needs_custom_generators	v2	3
+nondimensionalization	Numerical-relativity code units (G = c = M = 1)	G; c; M\ (\text{total ADM mass, or }M_\odot)	needs_custom_generators	v1	3
+nondimensionalization	Astrophysical simulation code-unit triples (G ≠ 1)	[L]\ (\text{e.g. } \mathrm{kpc}/h); 10^{10}·[M]\ (\text{e.g. } 10^{10}M_\odot/h); [V]\ (\text{e.g. } \mathrm{km\,s^{-1}})	needs_custom_generators	v2	3
+nondimensionalization	GRMHD code units (G = c = M = 1 plus an independent density/accretion scale)	G; c; M_\text{BH}; \mathcal{M}_\text{unit}\ (\text{mass/density scale of the accreting plasma}); 4\pi·4\pi\ \text{absorbed into }B	needs_custom_generators	v2	2
+nondimensionalization	Shearing-box / accretion-disk units (Ω = 1)	1\ \text{or}\ 2\pi·\Omega\ (\text{orbital angular frequency}); 1\ (\text{sometimes}\ \sqrt{2}\ \text{for the isothermal-vs-adiabatic }c_s)·c_s\ \text{or}\ H=c_s/\Omega; \rho_0\ (\text{midplane density})	needs_custom_generators	v2	2
+nondimensionalization	Hénon (N-body standard) units	G; M\ (\text{total cluster mass}); -1/4·E\ (\text{total energy})	needs_custom_generators	v2	3
+nondimensionalization	Lennard-Jones reduced (molecular-dynamics) units	\sigma\ (\text{LJ length}); \varepsilon\ (\text{LJ well depth}); m; k_B	needs_custom_generators	v1	4
+nondimensionalization	Soft-matter / coarse-grained reduced units with electrostatics	\sigma\ \text{or}\ r_c\ (\text{bead diameter / DPD cutoff}); k_BT; m; 4\pi·4\pi\varepsilon_0\varepsilon_r\ (\text{absorbed into }\ell_B)	needs_symbol_rescaling	v2	3
+nondimensionalization	Hamiltonian and classical-chaos conventions (m = ω = 1, Lyapunov-time rescaling)	m; 1\ \text{or}\ 2\pi·\omega\ (\text{a chosen mode frequency, orbital frequency, or }\lambda_\text{max}); E\ \text{or}\ \hbar\ \text{or}\ L\ (\text{third scale, problem-dependent})	needs_custom_generators	v1	4
+nondimensionalization	Lattice-model condensed-matter units (a = ħ = t = 1)	a\ (\text{lattice constant}); \hbar; t\ \text{or}\ J\ (\text{hopping or exchange energy}); k_B; e\ (\text{when a flux or field is present})	needs_symbol_rescaling	v1	4
+nondimensionalization	Harmonic-trap units (BEC / Gross–Pitaevskii)	\hbar; m; \omega_\perp\ \text{or}\ \omega_\text{ho}=(\omega_x\omega_y\omega_z)^{1/3}	needs_symbol_rescaling	v1	3
+nondimensionalization	Optical-lattice recoil units	\hbar; 2\pi·k_L=2\pi/\lambda; 1/2·E_R=\hbar^2k_L^2/(2m)	needs_symbol_rescaling	v2	3
+nondimensionalization	Cavity-QED / circuit-QED and open-system conventions	\hbar; g\ \text{or}\ \kappa\ \text{or}\ \omega_c\ (\text{one chosen rate set to }1)	needs_symbol_rescaling	v2	3
+nondimensionalization	Fermi units (ħ = k_F = 1, with m or E_F set to 1)	\hbar; k_F; m\ \text{or}\ E_F\ (\text{third generator; only one may be chosen})	needs_symbol_rescaling	v2	3
+nondimensionalization	Soliton / NLS normalization (nonlinear fiber optics)	T_0\ (\text{pulse duration}); L_D=T_0^2/|\beta_2|; P_0\ (\text{peak power})	needs_custom_generators	v2	3
+nondimensionalization	Dimensionless-generator declarations (little-h units, "units where Re = 1", α = 1)	h\ (H_0 = 100h\ \mathrm{km\,s^{-1}Mpc^{-1}}); \mathrm{Mpc}; M_\odot	unsupported	v2	3

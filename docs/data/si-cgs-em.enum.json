@@ -1,0 +1,886 @@
+{
+ "family": "SI and the CGS electromagnetic family (SI/MKSA, CGS-ESU, CGS-EMU, CGS-Gaussian, Heaviside–Lorentz, and their rationalization/legacy variants)",
+ "systems": [
+  {
+   "name": "SI (2019 revision)",
+   "aliases": [
+    "Système international d'unités",
+    "International System of Units",
+    "rationalized MKSA (post-2019)",
+    "ISQ (as the quantity system behind SI)"
+   ],
+   "used_in": "Essentially all engineering, metrology, condensed-matter experiment, undergraduate E&M texts (Griffiths, Purcell 3rd ed), most of applied optics and photonics, all NIST/BIPM/CODATA documents, and Jackson 3rd ed. chapters 1–10. Rare in high-energy theory, plasma physics, and astrophysics.",
+   "generators": [],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "Explicit \\varepsilon_0 and \\mu_0 (or 4\\pi\\varepsilon_0) anywhere in the equations",
+    "Lorentz force with NO 1/c: F = q(E + v×B)",
+    "Faraday with NO 1/c: ∇×E = −∂B/∂t",
+    "Gauss with a 1/\\varepsilon_0 and no 4π: ∇·E = ρ/ε₀",
+    "Fine-structure constant written α = e²/(4πε₀ħc)",
+    "Bohr magneton μ_B = eħ/(2m_e) (no c in the denominator)",
+    "Maxwell Lagrangian −(1/4μ₀)F_{μν}F^{μν}; energy density (ε₀E² + B²/μ₀)/2; Poynting S = E×H",
+    "Unit names: tesla, weber, coulomb, ampere, volt, farad, henry, siemens, A/m, V/m",
+    "Impedance of free space Z₀ = √(μ₀/ε₀) ≈ 376.730 Ω in antenna/optics papers",
+    "Post-2019 metrology phrasing: 'e, h, k_B, N_A are exact', 'μ₀ is now a measured quantity'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{1}{4\\pi\\varepsilon_0}\\dfrac{q_1 q_2}{r^2}\\,\\hat r",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho/\\varepsilon_0 (microscopic); \\nabla\\cdot\\mathbf{D} = \\rho_f with \\mathbf{D} = \\varepsilon_0\\mathbf{E} + \\mathbf{P}; \\nabla\\times\\mathbf{H} = \\mathbf{J}_f + \\partial_t\\mathbf{D}, \\mathbf{H} = \\mathbf{B}/\\mu_0 - \\mathbf{M}",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\dfrac{8\\pi G}{c^4} T_{\\mu\\nu}, with the EM source T^{\\mu\\nu} = \\dfrac{1}{\\mu_0}\\left(F^{\\mu\\alpha}F^{\\nu}{}_{\\alpha} - \\tfrac14\\eta^{\\mu\\nu}F_{\\alpha\\beta}F^{\\alpha\\beta}\\right). Reissner–Nordström: f(r) = 1 - \\dfrac{2GM}{c^2 r} + \\dfrac{G Q^2}{4\\pi\\varepsilon_0 c^4 r^2}",
+    "schrodinger_or_dirac": "i\\hbar\\,\\partial_t\\psi = \\left[-\\dfrac{\\hbar^2}{2m}\\nabla^2 - \\dfrac{e^2}{4\\pi\\varepsilon_0 r}\\right]\\psi;  Dirac with minimal coupling \\left[\\gamma^\\mu\\left(i\\hbar\\partial_\\mu - qA_\\mu\\right) - mc\\right]\\psi = 0 (with A_\\mu = (\\phi/c, -\\mathbf{A}))"
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "The identity element of the family: empty generator set, and the target every restoration emits into. For equation-checking only five of the seven base dimensions matter: (M, L, T, Θ, I). Θ enters solely through k_B (thermal/statistical equations only); mol (N) and cd (J) essentially never enter a physics equation being dimension-checked — N is a counting factor that cancels (R = N_A k_B), and cd is photometric. Carry the 5-tuple; keep N and cd as inert slots if full SI coverage is wanted. 2019 redefinition: e, h, k_B, N_A, Δν_Cs, c, K_cd are exact; ε₀ and μ₀ are NO LONGER exact. μ₀ = 4παħ/(e²c), so u_r(μ₀) = u_r(ε₀) = u_r(Z₀) = u_r(α) ≈ 1.5×10⁻¹⁰ (CODATA 2022, 1/α = 137.035999177(21)). μ₀ = 4π×10⁻⁷ N/A² only to ~1.3×10⁻¹⁰ relative. Never changes equation form. Magnetization convention: as written this is the Sommerfeld convention (m = IA, M in A/m, B = μ₀(H+M)); see the separate SI-Kennelly row.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Gaussian_units",
+    "https://arxiv.org/pdf/2409.03787 (CODATA 2022 recommended values)",
+    "https://arxiv.org/pdf/2007.02473 (From mu_0 to e: impacts of the SI revision on electrical measurement)",
+    "https://www.bipm.org/en/history-si/ampere",
+    "https://pdg.lbl.gov/2022/reviews/rpp2022-rev-phys-constants.pdf"
+   ]
+  },
+  {
+   "name": "MKSA / pre-2019 SI (Giorgi rationalized system)",
+   "aliases": [
+    "MKSA",
+    "Giorgi system",
+    "rationalized MKS",
+    "practical MKS",
+    "SI 1960–2019"
+   ],
+   "used_in": "All physics and engineering literature written in SI between roughly 1948 and 2019; every pre-2019 CODATA/NIST table; classical E&M texts of the second half of the 20th century.",
+   "generators": [],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "'μ₀ = 4π×10⁻⁷ H/m exactly' or 'μ₀ ≡ 4π×10⁻⁷ N·A⁻²'",
+    "'ε₀ = 1/(μ₀c²) = 8.854187817...×10⁻¹² F/m' quoted as exact (the trailing '...' with no uncertainty digits is the tell)",
+    "Ampere defined by the force 2×10⁻⁷ N/m between infinite parallel wires 1 m apart",
+    "'MKSA' or 'Giorgi' named explicitly",
+    "Otherwise equation-identical to SI"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{1}{4\\pi\\varepsilon_0}\\dfrac{q_1 q_2}{r^2} — identical in form to SI",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho/\\varepsilon_0; \\nabla\\cdot\\mathbf{D} = \\rho_f — identical in form to SI",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\dfrac{8\\pi G}{c^4}T_{\\mu\\nu}; T^{\\mu\\nu}_{\\rm EM} = \\dfrac{1}{\\mu_0}(F^{\\mu\\alpha}F^{\\nu}{}_{\\alpha} - \\tfrac14\\eta^{\\mu\\nu}F^2) — identical in form to SI",
+    "schrodinger_or_dirac": "i\\hbar\\partial_t\\psi = [-\\tfrac{\\hbar^2}{2m}\\nabla^2 - \\tfrac{e^2}{4\\pi\\varepsilon_0 r}]\\psi — identical in form to SI"
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "Equation-form-identical to SI(2019): empty generator set in both, so a reader can treat them as one system for equations. They differ ONLY in which constants are exact and in numeric values at the 10⁻¹⁰ level. Keep the separate row so a numeric mode picks the right exact/measured status for μ₀, ε₀, e, h, k_B. History: Giorgi proposed the four-unit MKS-with-an-electrical-unit system in Oct 1901; IEC adopted the 'M.K.S. System of Giorgi' in 1935 without fixing the fourth unit; CCE recommended the ampere in 1939; IEC adopted rationalization in 1950 (raising μ₀ by 4π to 4π×10⁻⁷) and affirmed the rationalized value in 1956; CGPM made the ampere a base unit in 1954; 'SI' named 1960.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/MKS_system_of_units",
+    "https://www.bipm.org/en/history-si/ampere",
+    "https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=926425 (Electromagnetic Units, the Giorgi System, and the Revised SI)",
+    "https://www.sizes.com/units/sys_MKS.htm"
+   ]
+  },
+  {
+   "name": "Unrationalized MKS (pre-1950 Giorgi; Kennelly-type MKS)",
+   "aliases": [
+    "non-rationalized MKS",
+    "unrationalized Giorgi system",
+    "Kennelly MKS system",
+    "MKSΩ (unrationalized)"
+   ],
+   "used_in": "European electrical-engineering and magnetism literature roughly 1901–1950, before the IEC's 1950 rationalization vote; occasional older Continental magnetism monographs.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mu_0",
+     "relation": "\\mu_0^{\\rm unrat} = \\mu_0^{\\rm SI}/4\\pi = 10^{-7}\\ \\mathrm{H/m}",
+     "why": "The 1950 IEC rationalization multiplied the vacuum permeability by 4\\pi. Before it, the Ampère force law read dF/d\\ell = 2\\mu_0 I_1I_2/d with \\mu_0 = 10^{-7}, numerically the same force as the modern 2(\\mu_0/4\\pi)I_1I_2/d."
+    },
+    {
+     "symbol": "\\varepsilon_0",
+     "relation": "\\varepsilon_0^{\\rm unrat} = 4\\pi\\,\\varepsilon_0^{\\rm SI} = 1/(\\mu_0^{\\rm unrat}c^2)",
+     "why": "Follows from \\varepsilon_0\\mu_0 = 1/c^2 once \\mu_0 is divided by 4\\pi."
+    },
+    {
+     "symbol": "\\mathbf{D}",
+     "relation": "\\mathbf{D}^{\\rm unrat} = 4\\pi\\,\\mathbf{D}^{\\rm SI}, so \\nabla\\cdot\\mathbf{D} = 4\\pi\\rho and \\mathbf{D} = \\varepsilon_0^{\\rm unrat}\\mathbf{E} + 4\\pi\\mathbf{P}",
+     "why": "Unrationalization: the 4\\pi moves out of Coulomb's law and into Gauss's law. Dimensionless, therefore invisible to the generator solve."
+    },
+    {
+     "symbol": "\\mathbf{H}",
+     "relation": "\\mathbf{H}^{\\rm unrat} = 4\\pi\\,\\mathbf{H}^{\\rm SI}, so \\nabla\\times\\mathbf{H} = 4\\pi\\mathbf{J} + \\partial_t\\mathbf{D} and \\mathbf{H} = \\mathbf{B}/\\mu_0^{\\rm unrat} - 4\\pi\\mathbf{M}",
+     "why": "Same unrationalization rider on the auxiliary magnetic field."
+    }
+   ],
+   "fingerprints": [
+    "'μ₀ = 10⁻⁷' (NOT 4π×10⁻⁷) in an otherwise MKS/SI-looking paper",
+    "4π present in Gauss's law AND SI-looking unit names (weber, tesla, ampere) at the same time",
+    "Coulomb written F = q₁q₂/(ε r²) with no 4π but with metre-kilogram-second units",
+    "Pre-1950 IEC / electrical-engineering literature",
+    "Explicit complaint about 'the evil of the 4π' (Giorgi's phrase) in surrounding text"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1 q_2}{\\varepsilon_0^{\\rm unrat} r^2}, with \\varepsilon_0^{\\rm unrat} = 4\\pi\\varepsilon_0^{\\rm SI}",
+    "gauss_law": "\\nabla\\cdot\\mathbf{D} = 4\\pi\\rho, \\mathbf{D} = \\varepsilon_0^{\\rm unrat}\\mathbf{E} + 4\\pi\\mathbf{P}; equivalently \\nabla\\cdot\\mathbf{E} = 4\\pi\\rho/\\varepsilon_0^{\\rm unrat}",
+    "einstein_field": "N/A: never used in general relativity. The mechanical EFE G_{\\mu\\nu} = (8\\pi G/c^4)T_{\\mu\\nu} would be unchanged; the EM stress tensor would carry 1/(4\\pi\\mu_0^{\\rm unrat}).",
+    "schrodinger_or_dirac": "N/A: never used in quantum mechanics. Formally the hydrogen potential would read V = -e^2/(\\varepsilon_0^{\\rm unrat} r)."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "UNCERTAIN in detail: primary sources on the exact D/H conventions of pre-1950 unrationalized MKS are thin and inconsistent between authors, and different writers put the 4π in slightly different places. What IS well sourced is the headline fact that the 1950 IEC rationalization multiplied μ₀ by 4π (10⁻⁷ → 4π×10⁻⁷); that is the only fingerprint I would let a tool act on automatically. NAMING TRAP: 'Kennelly system' in the historical-units literature means this unrationalized MKS; 'Kennelly convention' in modern magnetism means something entirely different (magnetic polarization J = μ₀M inside ordinary SI). Do not conflate them.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/MKS_system_of_units",
+    "https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=926425",
+    "https://www.sizes.com/units/sys_MKS.htm",
+    "https://pdfs.semanticscholar.org/cc7a/2bf99d45c7414e9f186b4d33124adc9fe638.pdf (IEEE Magnetics Letters, 'Magnetic Units')"
+   ]
+  },
+  {
+   "name": "SI with the Kennelly (magnetic-polarization) convention",
+   "aliases": [
+    "Kennelly convention",
+    "magnetic polarization convention",
+    "J-convention",
+    "B = μ₀H + J"
+   ],
+   "used_in": "European (especially German and IEC-standards) magnetism and magnetic-materials literature; permanent-magnet engineering; some ISO/IEC 80000-6 usage. Coexists with the Sommerfeld convention inside SI; both are recognized.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{M} \\to \\mathbf{J} (or \\mathbf{I})",
+     "relation": "\\mathbf{J}_{\\rm Kennelly} = \\mu_0 \\mathbf{M}_{\\rm Sommerfeld}, so B = \\mu_0 H + J instead of B = \\mu_0(H + M). J is in tesla; M is in A/m.",
+     "why": "Kennelly defines the magnetic moment as m' = \\mu_0 I A (unit Wb·m) rather than m = IA (unit A·m²), so magnetization per unit volume comes out in tesla."
+    },
+    {
+     "symbol": "m (magnetic moment)",
+     "relation": "m'_{\\rm Kennelly} = \\mu_0 m_{\\rm Sommerfeld}; [m'] = \\mathrm{Wb\\,m}, [m] = \\mathrm{A\\,m^2}",
+     "why": "Same redefinition at the level of the dipole moment."
+    },
+    {
+     "symbol": "\\mathbf{H} (definition, not units)",
+     "relation": "\\mathbf{H} = (\\mathbf{B} - \\mathbf{J})/\\mu_0 instead of \\mathbf{H} = \\mathbf{B}/\\mu_0 - \\mathbf{M}",
+     "why": "Algebraic consequence of J = \\mu_0 M."
+    }
+   ],
+   "fingerprints": [
+    "'B = μ₀H + J' or 'B = μ₀H + I' rather than 'B = μ₀(H + M)'",
+    "A magnetization-like quantity quoted in tesla rather than A/m",
+    "'magnetic polarization' as the quantity name, symbol J or I",
+    "Magnetic moment quoted in Wb·m rather than A·m²",
+    "Torque written τ = m'×H rather than τ = m×B"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{1}{4\\pi\\varepsilon_0}\\dfrac{q_1q_2}{r^2} — unchanged from SI",
+    "gauss_law": "\\nabla\\cdot\\mathbf{D} = \\rho_f unchanged; the magnetic constitutive relation becomes \\mathbf{B} = \\mu_0\\mathbf{H} + \\mathbf{J}, \\mathbf{H} = (\\mathbf{B}-\\mathbf{J})/\\mu_0",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\dfrac{8\\pi G}{c^4}T_{\\mu\\nu} — unchanged",
+    "schrodinger_or_dirac": "i\\hbar\\partial_t\\psi = [-\\tfrac{\\hbar^2}{2m}\\nabla^2 - \\tfrac{e^2}{4\\pi\\varepsilon_0 r}]\\psi — unchanged; only the Zeeman term's moment normalization shifts by \\mu_0"
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Strictly not a different unit system — the generator set is still empty and the units are still SI — but it is a live per-symbol definitional split that silently injects or removes a factor of μ₀ if ignored. It earns a row precisely because per_symbol_rescalings is the right home for it. The Sommerfeld convention (m = IA, H = B/μ₀ − M) is the one SI 'recognizes' and the one assumed in the plain SI row.",
+   "sources": [
+    "https://ui.adsabs.harvard.edu/abs/1973AmJPh..41..221C/abstract (Conventions for Magnetic Quantities in SI, Am. J. Phys. 41, 221)",
+    "https://www.e-magnetica.pl/doku.php/magnetisation",
+    "https://www.nist.gov/system/files/documents/pml/electromagnetics/magnetics/magnetic_units.pdf",
+    "https://pdfs.semanticscholar.org/cc7a/2bf99d45c7414e9f186b4d33124adc9fe638.pdf"
+   ]
+  },
+  {
+   "name": "CGS-Gaussian",
+   "aliases": [
+    "Gaussian units",
+    "Gaussian-cgs",
+    "CGS-Gaussian",
+    "symmetric CGS",
+    "mixed CGS (esu-electric + emu-magnetic)",
+    "unrationalized symmetric system"
+   ],
+   "used_in": "Theoretical E&M (Jackson 1st/2nd ed. throughout, 3rd ed. ch. 11–16; Landau–Lifshitz vols. 2 and 8; Panofsky–Phillips), plasma physics (NRL Plasma Formulary), astrophysics and astrophysical MHD, atomic/molecular/optical physics, nuclear physics, and most of the general-relativity literature on charged black holes.",
+   "generators": [
+    {
+     "tex": "4\\pi\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B}",
+     "relation": "B_{\\rm G} = c\\,B_{q}, where B_q is the SI symbol carried through the pure 4\\pi\\varepsilon_0 = 1 quotient. Directly against SI: B_{\\rm G} = \\sqrt{4\\pi/\\mu_0}\\;B_{\\rm SI} (1 T ≘ 10^4 G).",
+     "why": "THE acid test. Setting 4\\pi\\varepsilon_0 = 1 alone leaves [E]/[B] = velocity: the quotient gives Faraday as \\nabla\\times E = -\\partial_t B, but Gaussian writes -\\tfrac1c\\partial_t B. Gaussian additionally REDEFINES B by one factor of c so that E and B share the dimension M^{1/2}L^{-1/2}T^{-1}. In the Jackson / Babel-of-Units four-parameter language this is k_B = c (vs k_B = 1 for SI, ESU, EMU)."
+    },
+    {
+     "symbol": "\\mathbf{A}",
+     "relation": "A_{\\rm G} = c\\,A_q = \\sqrt{4\\pi/\\mu_0}\\;A_{\\rm SI}",
+     "why": "A must scale with B since B = \\nabla\\times A in both systems; this is also what makes (\\phi, \\mathbf{A}) a 4-vector with homogeneous dimensions in Gaussian."
+    },
+    {
+     "symbol": "\\mathbf{H}",
+     "relation": "H_{\\rm G} = (4\\pi/c)\\,H_q = \\sqrt{4\\pi\\mu_0}\\;H_{\\rm SI} (1 A/m ≘ 4\\pi\\times10^{-3} Oe)",
+     "why": "Carries BOTH riders at once: 1/c from the symmetric B-normalization and 4\\pi from unrationalization."
+    },
+    {
+     "symbol": "\\mathbf{M}",
+     "relation": "M_{\\rm G} = M_q/c = \\sqrt{\\mu_0/4\\pi}\\;M_{\\rm SI} (1 A/m ≘ 10^{-3} G, i.e. 10^{-3} emu/cm^3)",
+     "why": "Follows from H = B - 4\\pi M with H and B each rescaled; M picks up the 1/c but NOT the 4\\pi."
+    },
+    {
+     "symbol": "\\mathbf{D}",
+     "relation": "D_{\\rm G} = 4\\pi\\,D_q = \\sqrt{4\\pi/\\varepsilon_0}\\;D_{\\rm SI}",
+     "why": "Pure unrationalization rider: \\nabla\\cdot D = 4\\pi\\rho rather than \\rho, and D = E + 4\\pi P rather than \\varepsilon_0 E + P. Dimensionless, therefore invisible to the linear dimension solve."
+    }
+   ],
+   "fingerprints": [
+    "4\\pi in Maxwell AND no 4\\pi in Coulomb: \\nabla\\cdot E = 4\\pi\\rho together with F = q_1q_2/r^2",
+    "Explicit 1/c in Faraday and in the Lorentz force: \\nabla\\times E = -\\tfrac1c\\partial_t B and F = q(E + \\tfrac{v}{c}\\times B)",
+    "\\alpha = e^2/(\\hbar c) = 1/137; hydrogen V = -e^2/r; a_0 = \\hbar^2/(me^2); Ry = e^2/(2a_0)",
+    "\\mu_B = e\\hbar/(2m_e c) — the c in the denominator is the giveaway vs SI",
+    "\\mathcal{L} = -\\tfrac{1}{16\\pi}F_{\\mu\\nu}F^{\\mu\\nu}; energy density (E^2+B^2)/8\\pi; Poynting S = \\tfrac{c}{4\\pi}E\\times B; T^{\\mu\\nu} = \\tfrac{1}{4\\pi}(F^{\\mu\\alpha}F^\\nu{}_\\alpha - \\tfrac14\\eta^{\\mu\\nu}F^2)",
+    "Unit names: gauss, oersted, maxwell, statvolt, statcoulomb / franklin / 'esu of charge', statampere, erg, dyne, cm",
+    "Plasma signatures: \\omega_{pe} = (4\\pi n e^2/m_e)^{1/2}, v_A = B/\\sqrt{4\\pi\\rho}, \\beta = 8\\pi nkT/B^2, magnetic pressure B^2/8\\pi",
+    "Magnetism signatures: \\chi_{\\rm G} = \\chi_{\\rm SI}/4\\pi, demagnetizing factors summing to 4\\pi, \\mu = 1 + 4\\pi\\chi",
+    "Phrases 'Gaussian units', 'cgs units', 'we set 4\\pi\\varepsilon_0 = 1'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1 q_2}{r^2}\\,\\hat r",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = 4\\pi\\rho (microscopic); \\nabla\\cdot\\mathbf{D} = 4\\pi\\rho_f with \\mathbf{D} = \\mathbf{E} + 4\\pi\\mathbf{P}; \\nabla\\times\\mathbf{H} = \\dfrac{4\\pi}{c}\\mathbf{J}_f + \\dfrac{1}{c}\\partial_t\\mathbf{D}, \\mathbf{H} = \\mathbf{B} - 4\\pi\\mathbf{M}; \\nabla\\times\\mathbf{E} = -\\dfrac{1}{c}\\partial_t\\mathbf{B}; \\nabla\\cdot\\mathbf{B} = 0",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\dfrac{8\\pi G}{c^4}T_{\\mu\\nu}, with T^{\\mu\\nu}_{\\rm EM} = \\dfrac{1}{4\\pi}\\left(F^{\\mu\\alpha}F^{\\nu}{}_{\\alpha} - \\tfrac14\\eta^{\\mu\\nu}F_{\\alpha\\beta}F^{\\alpha\\beta}\\right). With G = c = 1 (usual GR practice) Reissner–Nordström is f(r) = 1 - \\dfrac{2M}{r} + \\dfrac{Q^2}{r^2}.",
+    "schrodinger_or_dirac": "i\\hbar\\,\\partial_t\\psi = \\left[-\\dfrac{\\hbar^2}{2m}\\nabla^2 - \\dfrac{e^2}{r}\\right]\\psi;  Dirac with minimal coupling \\left[\\gamma^\\mu\\left(i\\hbar\\partial_\\mu - \\dfrac{q}{c}A_\\mu\\right) - mc\\right]\\psi = 0"
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "ANSWER TO THE ACID TEST: Gaussian is NOT a pure quotient of SI by 4πε₀ = 1. Setting 4πε₀ = 1 (ε₀ = 1/4π, hence μ₀ = 4π/c²) reproduces Gaussian's Coulomb law and ∇·E = 4πρ exactly, but reproduces CGS-ESU's magnetic sector, not Gaussian's: the quotient gives ∇×E = −∂_t B and ∇×B − c⁻²∂_t E = 4πc⁻²J. Gaussian is that quotient with B → cB (equivalently H → H/c, A → cA, M → M/c), which is exactly what makes [E] = [B] = M^(1/2)L^(−1/2)T^(−1). Dimensional proof: under 4πε₀ = 1 the SI current dimension collapses to I = M^(1/2)L^(3/2)T^(−2); then [E]_SI = MLT⁻³I⁻¹ → M^(1/2)L^(−1/2)T^(−1) but [B]_SI = MT⁻²I⁻¹ → M^(1/2)L^(−3/2), differing by exactly one power of velocity. Independently confirmed by the k_B column of the Babel-of-Units table (k_B = c for Gaussian and HL; k_B = 1 for ESU, EMU, SI) and by the Wikipedia Gaussian-units statement that E and B sharing a dimension 'amounts to a factor of c between how B is defined in the two unit systems'.\n\nFULL SI→GAUSSIAN TABLE (quantity relations; factors are DIMENSIONFUL, so numeric checks must also convert m/kg/s→cm/g/s):\nq_G = q_SI/√(4πε₀); ρ_G = ρ_SI/√(4πε₀); J_G = J_SI/√(4πε₀); I_G = I_SI/√(4πε₀); P_G = P_SI/√(4πε₀)\nE_G = √(4πε₀) E_SI; φ_G = √(4πε₀) φ_SI\nD_G = √(4π/ε₀) D_SI\nB_G = √(4π/μ₀) B_SI; A_G = √(4π/μ₀) A_SI\nH_G = √(4πμ₀) H_SI\nM_G = √(μ₀/4π) M_SI; m_G = √(μ₀/4π) m_SI\nσ_G = σ_SI/(4πε₀); C_G = C_SI/(4πε₀); R_G = 4πε₀ R_SI; L_G = 4πε₀ L_SI\nNumeric spot-checks I did by hand including the base-unit conversion: 1 T ≘ 10⁴ G; 1 A/m ≘ 10⁻³ G (emu/cm³); 1 C ≘ 2.99792458×10⁹ Fr; 1 V/m ≘ (1/2.99792458)×10⁻⁴ statV/cm.\n\nGAUSSIAN→HEAVISIDE–LORENTZ (pure √4π rationalization, no c, since both share k_B = c):\nq_HL = √(4π) q_G, ρ_HL = √(4π) ρ_G, J_HL = √(4π) J_G, P_HL = √(4π) P_G, M_HL = √(4π) M_G\nE_HL = E_G/√(4π), B_HL = B_G/√(4π), D_HL = D_G/√(4π), H_HL = H_G/√(4π), A_HL = A_G/√(4π), φ_HL = φ_G/√(4π)\n\nGAUSSIAN vs ESU vs EMU (all powers of c; everything else identical):\nq, ρ, J, I, P, D: ESU = Gaussian = c × EMU\nE, φ: ESU = Gaussian = EMU/c\nB, A: EMU = Gaussian = c × ESU\nH, M: EMU = Gaussian = ESU/c\nThis is exactly why Gaussian's electric units are ESU (statvolt, statcoulomb) and its magnetic units are EMU (gauss, oersted, maxwell).",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Gaussian_units",
+    "https://en.wikipedia.org/wiki/Centimetre%E2%80%93gram%E2%80%93second_system_of_units",
+    "https://arxiv.org/abs/1506.01951 (Trapero, 'Babel of Units', Table 1: k_e, k_m, k_B, k_F)",
+    "https://arxiv.org/abs/2411.09568 (Quincey, converting equations between SI, Heaviside-Lorentz and Gaussian)",
+    "J. D. Jackson, Classical Electrodynamics 3rd ed., Appendix (Tables 3 and 4)",
+    "https://www.astro.uvic.ca/~tatum/elmag/em16.pdf (Tatum, CGS Electricity and Magnetism)"
+   ]
+  },
+  {
+   "name": "CGS-ESU (electrostatic units)",
+   "aliases": [
+    "esu",
+    "CGS-esu",
+    "electrostatic system",
+    "Franklin system",
+    "statcoulomb system",
+    "CGSE"
+   ],
+   "used_in": "19th- and early-20th-century electrostatics, electrochemistry, gas-discharge and ion-mobility work; source of surviving unit names (statvolt, statfarad, 'esu of charge'); appears in older Continental texts and in tables of capacitance quoted in centimetres.",
+   "generators": [
+    {
+     "tex": "4\\pi\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{D}",
+     "relation": "D_{\\rm ESU} = 4\\pi\\,D_q, so \\nabla\\cdot\\mathbf{D} = 4\\pi\\rho and \\mathbf{D} = \\mathbf{E} + 4\\pi\\mathbf{P}",
+     "why": "Unrationalization only. Dimensionless 4\\pi, invisible to the dimension solve, so it must be a rider."
+    },
+    {
+     "symbol": "\\mathbf{H}",
+     "relation": "H_{\\rm ESU} = 4\\pi\\,H_q = c^2\\mathbf{B}_{\\rm ESU} - 4\\pi\\mathbf{M}_{\\rm ESU}, so \\nabla\\times\\mathbf{H} = 4\\pi\\mathbf{J} + \\partial_t\\mathbf{D}",
+     "why": "Same unrationalization rider. NOTE the vacuum relation is H = c^2 B, because \\mu_{\\rm vac} = 1/c^2 in ESU."
+    }
+   ],
+   "fingerprints": [
+    "Coulomb WITHOUT 4\\pi: F = q_1q_2/r^2 (same as Gaussian) BUT Faraday and Lorentz WITHOUT 1/c: \\nabla\\times E = -\\partial_t B, F = q(E + v\\times B)",
+    "Explicit c^{-2} in Ampère–Maxwell: \\nabla\\times\\mathbf{B} - c^{-2}\\partial_t\\mathbf{E} = 4\\pi c^{-2}\\mathbf{J}",
+    "Statement '\\varepsilon_{\\rm vac} = 1, \\mu_{\\rm vac} = 1/c^2'",
+    "Capacitance quoted in centimetres ('the capacitance of an isolated sphere equals its radius in cm')",
+    "Unit names: statcoulomb / franklin (Fr) / 'esu', statvolt, statampere, statohm, statfarad, stathenry; magnetic ESU units are unnamed and quoted as bare g^{1/2}cm^{-3/2}",
+    "B quoted in a unit equal to c_cgs gauss ≈ 3×10^{10} G — an absurdly large number is the tell"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1 q_2}{r^2}\\,\\hat r — identical to Gaussian",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = 4\\pi\\rho; \\nabla\\cdot\\mathbf{D} = 4\\pi\\rho_f, \\mathbf{D} = \\mathbf{E} + 4\\pi\\mathbf{P}; \\nabla\\times\\mathbf{E} = -\\partial_t\\mathbf{B} (no 1/c); \\nabla\\times\\mathbf{B} - c^{-2}\\partial_t\\mathbf{E} = 4\\pi c^{-2}\\mathbf{J}; \\nabla\\times\\mathbf{H} = 4\\pi\\mathbf{J} + \\partial_t\\mathbf{D} with \\mathbf{H} = c^2\\mathbf{B} - 4\\pi\\mathbf{M}",
+    "einstein_field": "N/A: ESU admits no dimensionally homogeneous F^{\\mu\\nu} (E and B differ by a factor of velocity), so the covariant EM stress tensor cannot be written cleanly and ESU is never used in GR. The mechanical EFE G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = (8\\pi G/c^4)T_{\\mu\\nu} is unaffected.",
+    "schrodinger_or_dirac": "i\\hbar\\,\\partial_t\\psi = \\left[-\\dfrac{\\hbar^2}{2m}\\nabla^2 - \\dfrac{e^2}{r}\\right]\\psi — IDENTICAL to Gaussian, because q, E and \\phi are the same in ESU and Gaussian. The discriminator is the minimal coupling: \\left[\\gamma^\\mu(i\\hbar\\partial_\\mu - qA_\\mu) - mc\\right]\\psi = 0 with NO 1/c, since A_{\\rm ESU} = A_{\\rm G}/c."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "ESU is what makes the acid test sharp: ESU and Gaussian share EXACTLY the same generator (4πε₀ = 1), the same Coulomb law, the same ∇·E = 4πρ, and the same q, ρ, J, E, φ, D, P — yet they are different systems, differing only by B→cB, A→cA, H→H/c, M→M/c. A generator table alone therefore CANNOT distinguish CGS-ESU from CGS-Gaussian. This is the strongest argument in the family for keeping per_symbol_rescalings as a first-class field. ESU is the pure 4πε₀ = 1 quotient of SI in its microscopic sector (E, B, q, ρ, J, A, φ); the only riders are the 4π on D and H from unrationalization. Verified against the CGS Wikipedia article's ESU Maxwell equations (∇·E = 4πρ, ∇×B − c⁻²Ė = 4πc⁻²J), which match substituting ε₀ = 1/4π, μ₀ = 4π/c² into SI term by term. Unit check: the ESU unit of B is g^(1/2)cm^(−3/2) = c_cgs gauss = 2.99792458×10¹⁰ G, confirming B_G = c·B_ESU.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Centimetre%E2%80%93gram%E2%80%93second_system_of_units",
+    "https://arxiv.org/abs/1506.01951 (Table 1: esu has k_e = 1, k_m = c^-2, k_B = 1, k_F = 1)",
+    "https://phys.libretexts.org/Bookshelves/Electricity_and_Magnetism/Electricity_and_Magnetism_(Tatum)/16:_CGS_Electricity_and_Magnetism/16.02:_The_CGS_Electrostatic_System",
+    "https://en.wikipedia.org/wiki/Statcoulomb",
+    "https://www.gnu.org/software/units/manual/html_node/CGS-Units-Systems.html"
+   ]
+  },
+  {
+   "name": "CGS-EMU (electromagnetic units)",
+   "aliases": [
+    "emu",
+    "CGS-emu",
+    "electromagnetic system",
+    "abampere system",
+    "Biot system",
+    "CGSM",
+    "absolute electromagnetic system"
+   ],
+   "used_in": "Classical magnetism and magnetometry; source of gauss, oersted, maxwell, gilbert; still pervasive in experimental magnetic-materials literature (VSM/SQUID output quoted in 'emu'); 19th-century telegraphy and the ancestor of the practical volt/ohm/ampere.",
+   "generators": [
+    {
+     "tex": "\\mu_0/(4\\pi)",
+     "dimension": "(1, 1, -2, 0, -2)",
+     "numeric_factor": "1/(4\\pi)",
+     "emits": "(\\mu_0/4\\pi)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{D}",
+     "relation": "D_{\\rm EMU} = 4\\pi\\,D_q = \\mathbf{E}_{\\rm EMU}/c^2 + 4\\pi\\mathbf{P}_{\\rm EMU}, so \\nabla\\cdot\\mathbf{D} = 4\\pi\\rho",
+     "why": "Unrationalization rider; note \\varepsilon_{\\rm vac} = 1/c^2 in EMU."
+    },
+    {
+     "symbol": "\\mathbf{H}",
+     "relation": "H_{\\rm EMU} = 4\\pi\\,H_q = \\mathbf{B}_{\\rm EMU} - 4\\pi\\mathbf{M}_{\\rm EMU}, so \\nabla\\times\\mathbf{H} = 4\\pi\\mathbf{J} + \\partial_t\\mathbf{D}",
+     "why": "Unrationalization rider; \\mu_{\\rm vac} = 1 makes H numerically equal to B in vacuum, which is why 1 Oe and 1 G are interchangeable in free space."
+    }
+   ],
+   "fingerprints": [
+    "Coulomb WITH an explicit c^2: F = c^2 q_1q_2/r^2 — the single most diagnostic equation in the family",
+    "\\nabla\\cdot\\mathbf{E} = 4\\pi c^2\\rho; \\nabla\\times\\mathbf{B} - c^{-2}\\partial_t\\mathbf{E} = 4\\pi\\mathbf{J}",
+    "Biot–Savart with no constant at all: \\mathbf{B} = \\oint I\\,d\\boldsymbol\\ell\\times\\hat r/r^2; Ampère force dF/d\\ell = 2I_1I_2/d",
+    "Statement '\\mu_{\\rm vac} = 1, \\varepsilon_{\\rm vac} = 1/c^2'",
+    "Unit names: abampere / biot (Bi), abvolt, abcoulomb, abohm, abfarad, abhenry; gauss, oersted, maxwell, gilbert",
+    "Inductance quoted in centimetres",
+    "Magnetometry usage: moment in 'emu' (= erg/G = G·cm^3 = 10^{-3} A·m^2), magnetization in 'emu/cm^3', mass magnetization in 'emu/g'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{c^2 q_1 q_2}{r^2}\\,\\hat r",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = 4\\pi c^2\\rho; \\nabla\\cdot\\mathbf{D} = 4\\pi\\rho_f with \\mathbf{D} = \\mathbf{E}/c^2 + 4\\pi\\mathbf{P}; \\nabla\\times\\mathbf{E} = -\\partial_t\\mathbf{B} (no 1/c); \\nabla\\times\\mathbf{B} - c^{-2}\\partial_t\\mathbf{E} = 4\\pi\\mathbf{J}; \\nabla\\times\\mathbf{H} = 4\\pi\\mathbf{J} + \\partial_t\\mathbf{D} with \\mathbf{H} = \\mathbf{B} - 4\\pi\\mathbf{M}",
+    "einstein_field": "N/A: like ESU, EMU has no dimensionally homogeneous F^{\\mu\\nu} ([E]/[B] is a velocity), so it is never used in GR. Mechanical EFE unaffected: G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = (8\\pi G/c^4)T_{\\mu\\nu}.",
+    "schrodinger_or_dirac": "N/A in practice: EMU is never used for atomic quantum mechanics. Formally the hydrogen Hamiltonian would read i\\hbar\\partial_t\\psi = [-\\tfrac{\\hbar^2}{2m}\\nabla^2 - c^2e^2/r]\\psi and the fine-structure constant would be \\alpha = c\\,e_{\\rm EMU}^2/\\hbar — a strong argument for why nobody does this."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "EMU is the pure μ₀/(4π) = 1 quotient of SI in its microscopic sector — verified by substituting μ₀ = 4π and ε₀ = 1/(4πc²) into the SI Maxwell equations and recovering the Wikipedia EMU forms term by term (∇·E = 4πc²ρ, ∇×B − c⁻²Ė = 4πJ). Like ESU, k_B = 1: EMU does NOT rescale B. Consequences worth encoding: B_EMU = B_Gaussian exactly (hence gauss is the B unit of both), H_EMU = H_Gaussian exactly (oersted), M_EMU = M_Gaussian, A_EMU = A_Gaussian; but q_G = c·q_EMU and E_G = E_EMU/c. Unit relations: 1 abC = c_cgs statC = 2.99792458×10¹⁰ Fr; 1 statvolt = c_cgs abvolt; 1 abA = 10 A; 1 abV = 10⁻⁸ V. TRAP: in materials science 'emu' is written as if it were a unit of magnetic moment (1 emu = 1 erg/G = 1 G·cm³ = 10⁻³ A·m²) and 'emu/cm³' as a unit of magnetization; e-magnetica and NIST both flag this as an abuse — emu is a SYSTEM, not a unit. A parser should accept it but tag it. Also: χ_SI = 4πχ_cgs, μ_r = 1 + χ_SI vs μ = 1 + 4πχ_cgs, and demagnetizing factors sum to 1 in SI but 4π in cgs.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Centimetre%E2%80%93gram%E2%80%93second_system_of_units",
+    "https://arxiv.org/abs/1506.01951 (Table 1: emu has k_e = c^2, k_m = 1, k_B = 1, k_F = 1)",
+    "https://www.nist.gov/system/files/documents/pml/electromagnetics/magnetics/magnetic_units.pdf",
+    "https://www.e-magnetica.pl/doku.php/emu_electromagnetic_unit_of_magnetic_moment",
+    "https://www.astro.uvic.ca/~tatum/elmag/em16.pdf"
+   ]
+  },
+  {
+   "name": "Heaviside–Lorentz",
+   "aliases": [
+    "HL units",
+    "Lorentz–Heaviside units",
+    "rationalized Gaussian",
+    "rationalized cgs",
+    "natural units (in particle-physics papers, when combined with ħ=c=1)"
+   ],
+   "used_in": "Quantum field theory and particle physics (Peskin–Schroeder, Weinberg QFT, Srednicki), lattice gauge theory, most of the QED literature, and increasingly in relativistic plasma / astro-particle work. Also Weinberg's Gravitation and Cosmology.",
+   "generators": [
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "1",
+     "emits": "\\varepsilon_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B}",
+     "relation": "B_{\\rm HL} = c\\,B_q, where B_q is the SI symbol under the pure \\varepsilon_0 = 1 quotient. Directly against SI: B_{\\rm HL} = B_{\\rm SI}/\\sqrt{\\mu_0} = c\\sqrt{\\varepsilon_0}\\,B_{\\rm SI}.",
+     "why": "Same acid-test rider as Gaussian: k_B = c. Setting \\varepsilon_0 = 1 alone gives \\nabla\\times E = -\\partial_t B, but HL writes -\\tfrac1c\\partial_t B; the extra c is what makes [E] = [B] in HL and hence F^{\\mu\\nu} homogeneous."
+    },
+    {
+     "symbol": "\\mathbf{A}",
+     "relation": "A_{\\rm HL} = c\\,A_q = A_{\\rm SI}/\\sqrt{\\mu_0}",
+     "why": "Scales with B, since B = \\nabla\\times A."
+    },
+    {
+     "symbol": "\\mathbf{H}",
+     "relation": "H_{\\rm HL} = H_q/c = \\sqrt{\\mu_0}\\,H_{\\rm SI}",
+     "why": "Inverse of the B rider. NOTE: unlike Gaussian, HL has NO 4\\pi rider on H or D — it is rationalized."
+    },
+    {
+     "symbol": "\\mathbf{M}",
+     "relation": "M_{\\rm HL} = M_q/c = \\sqrt{\\mu_0}\\,M_{\\rm SI}",
+     "why": "Follows from H = B - M with both rescaled."
+    }
+   ],
+   "fingerprints": [
+    "NO 4\\pi anywhere in Maxwell: \\nabla\\cdot\\mathbf{E} = \\rho, \\nabla\\times\\mathbf{B} - \\tfrac1c\\partial_t\\mathbf{E} = \\tfrac1c\\mathbf{J}",
+    "4\\pi PRESENT in Coulomb: F = q_1q_2/(4\\pi r^2) — the exact mirror image of Gaussian",
+    "\\mathcal{L} = -\\tfrac14 F_{\\mu\\nu}F^{\\mu\\nu} with no 1/4\\pi and no 1/\\mu_0; T^{\\mu\\nu} = F^{\\mu\\alpha}F^{\\nu}{}_{\\alpha} - \\tfrac14\\eta^{\\mu\\nu}F^2; energy density (E^2+B^2)/2",
+    "\\alpha = e^2/(4\\pi\\hbar c); with \\hbar=c=1, e^2 = 4\\pi\\alpha and e \\approx 0.30282 — the value 0.303 for the electron charge is a dead giveaway",
+    "Covariant derivative D_\\mu = \\partial_\\mu + ieA_\\mu with no 1/c or \\varepsilon_0",
+    "Phrases: 'Heaviside–Lorentz units', 'rationalized Gaussian units', 'natural units \\hbar = c = \\varepsilon_0 = 1'",
+    "Coulomb potential written V(r) = -\\alpha/r rather than -e^2/r"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1 q_2}{4\\pi r^2}\\,\\hat r",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho; \\nabla\\cdot\\mathbf{D} = \\rho_f with \\mathbf{D} = \\mathbf{E} + \\mathbf{P}; \\nabla\\times\\mathbf{H} = \\dfrac{1}{c}\\mathbf{J}_f + \\dfrac{1}{c}\\partial_t\\mathbf{D}, \\mathbf{H} = \\mathbf{B} - \\mathbf{M}; \\nabla\\times\\mathbf{E} = -\\dfrac{1}{c}\\partial_t\\mathbf{B}",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\dfrac{8\\pi G}{c^4}T_{\\mu\\nu}, with T^{\\mu\\nu}_{\\rm EM} = F^{\\mu\\alpha}F^{\\nu}{}_{\\alpha} - \\tfrac14\\eta^{\\mu\\nu}F_{\\alpha\\beta}F^{\\alpha\\beta} (no prefactor at all). With G = c = 1, Reissner–Nordström reads f(r) = 1 - \\dfrac{2M}{r} + \\dfrac{Q^2}{4\\pi r^2} — the 4\\pi here, absent in the Gaussian-geometrized form, is the cleanest discriminator in the charged-black-hole literature.",
+    "schrodinger_or_dirac": "i\\hbar\\,\\partial_t\\psi = \\left[-\\dfrac{\\hbar^2}{2m}\\nabla^2 - \\dfrac{e^2}{4\\pi r}\\right]\\psi;  Dirac \\left[\\gamma^\\mu\\left(i\\hbar\\partial_\\mu - \\dfrac{q}{c}A_\\mu\\right) - mc\\right]\\psi = 0. With \\hbar = c = 1: (i\\gamma^\\mu D_\\mu - m)\\psi = 0, D_\\mu = \\partial_\\mu + ieA_\\mu, e = \\sqrt{4\\pi\\alpha}."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "The cleanest member of the family in the generator formalism: a single generator ε₀ = 1 with numeric factor exactly 1 (all 4π's already explicit), plus the SAME k_B = c rider as Gaussian and NO unrationalization rider. In the 2×2 classification (c-rider on B × 4π-rider on D,H): HL = (yes, no), Gaussian = (yes, yes), ESU/EMU = (no, yes), SI = (no, no). SI→HL: q_HL = q_SI/√ε₀, ρ_HL = ρ_SI/√ε₀, J_HL = J_SI/√ε₀, P_HL = P_SI/√ε₀, E_HL = √ε₀ E_SI, φ_HL = √ε₀ φ_SI, D_HL = D_SI/√ε₀, B_HL = B_SI/√μ₀, A_HL = A_SI/√μ₀, H_HL = √μ₀ H_SI, M_HL = √μ₀ M_SI. HL→Gaussian: multiply charge-like quantities (q, ρ, J, P, M) by 1/√(4π) and field-like quantities (E, B, D, H, A, φ) by √(4π). CAUTION: many particle-physics papers say 'natural units' and mean HL with ħ=c=1; a few say it and mean Gaussian with ħ=c=1. The discriminator is whether α = e²/4π or α = e². HL is unusual as a rationalized system with cgs mechanical base units — but HL papers set ħ=c=1 and never write cm or erg, so the mechanical base is moot.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Heaviside%E2%80%93Lorentz_units",
+    "https://arxiv.org/abs/1506.01951 (Table 1: HL has k_e = 1/4pi, k_m = 1/4pi c^2, k_B = c, k_F = c^-1)",
+    "https://arxiv.org/abs/2411.09568 (Quincey)",
+    "https://en.wikipedia.org/wiki/Centimetre%E2%80%93gram%E2%80%93second_system_of_units",
+    "https://pdg.lbl.gov/2022/reviews/rpp2022-rev-phys-constants.pdf"
+   ]
+  },
+  {
+   "name": "Variant-Gaussian (hybrid \"rogue\" convention)",
+   "aliases": [
+    "variant Gaussian",
+    "hybrid esu/emu without c",
+    "(often confusingly just called 'Gaussian')"
+   ],
+   "used_in": "Scattered older and pedagogical texts and lecture notes; identified and named in Trapero's 'Babel of Units' survey as the one system there that does not fit the standard four-parameter framework.",
+   "generators": [
+    {
+     "tex": "4\\pi\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    },
+    {
+     "tex": "\\mu_0/(4\\pi)",
+     "dimension": "(1, 1, -2, 0, -2)",
+     "numeric_factor": "1/(4\\pi)",
+     "emits": "(\\mu_0/4\\pi)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "(inconsistent)",
+     "relation": "Setting k_e = 1 AND k_m = 1 simultaneously violates the required constraint k_e/k_m = c^2, i.e. it implicitly asserts c = 1 while still writing c elsewhere.",
+     "why": "Coulomb is written F = q_1q_2/r^2 (an ESU choice) while the Ampère / Biot–Savart law is written without the compensating c^{-2} (an EMU choice). The two cannot hold in the same system unless c = 1."
+    }
+   ],
+   "fingerprints": [
+    "Coulomb F = q_1q_2/r^2 AND Ampère force dF/d\\ell = 2I_1I_2/d in the same document with no factor of c^2 between them",
+    "A stated claim of 'Gaussian units' together with a Lorentz force F = q(E + v\\times B) that has no 1/c",
+    "Any document where both k_e = 1 and k_m = 1 can be inferred while c is still written explicitly in the wave equation"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1 q_2}{r^2} (ESU/Gaussian form)",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = 4\\pi\\rho, but the magnetic sector is written as if \\mu_0/4\\pi = 1 as well, giving \\nabla\\times\\mathbf{B} = 4\\pi\\mathbf{J} + \\ldots — inconsistent with the electric sector unless c = 1",
+    "einstein_field": "N/A: the system is not self-consistent and is never used in relativity.",
+    "schrodinger_or_dirac": "N/A: not used."
+   },
+   "schema_fit": "unsupported",
+   "scope_tier": "v2",
+   "notes": "UNCERTAIN — I rely on a single secondary source (Trapero, arXiv:1506.01951), whose Table 1 lists 'Variant-Gaussian' with k_e = 1 and k_m = 1 and whose footnote 38 calls it 'a hybrid, rogue convention... the only one that does not conform to the four parameter framework'. I could not identify specific textbooks that use it and would not assert its D/H conventions. Recommended treatment: do NOT attempt to translate; DETECT and WARN. The detector is cheap and valuable — the pattern 'Coulomb with no 4π and no ε₀' plus 'Ampère/Lorentz with no c' is either this rogue system or an actual typo, and either way the reader should be told.",
+   "sources": [
+    "https://arxiv.org/abs/1506.01951 (Trapero, 'Babel of Units', Table 1 and footnote 38, Section 5.3 / 6.4)"
+   ]
+  },
+  {
+   "name": "Practical/mixed CGS of experimental magnetism (\"the emu system\" as used in materials science)",
+   "aliases": [
+    "cgs emu (materials-science usage)",
+    "Gaussian-practical mixed system",
+    "magnetometry units"
+   ],
+   "used_in": "Experimental magnetism, magnetic-materials and thin-film literature; VSM and SQUID magnetometer output; nearly all hysteresis-loop figures published in cgs.",
+   "generators": [
+    {
+     "tex": "4\\pi\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "m (magnetic moment)",
+     "relation": "quoted in 'emu', where 1 emu = 1 erg/G = 1 G·cm^3 = 10^{-3} A·m^2",
+     "why": "'emu' is used as if it were a unit name; it is actually the name of a unit SYSTEM. NIST and the magnetics community both flag this, but the usage is universal in practice."
+    },
+    {
+     "symbol": "\\mathbf{M} (magnetization)",
+     "relation": "quoted in 'emu/cm^3' (= G) or 'emu/g'; 1 emu/cm^3 = 10^3 A/m; 1 emu/g = 1 A·m^2/kg",
+     "why": "Same abuse applied per unit volume or per unit mass."
+    },
+    {
+     "symbol": "\\chi (susceptibility)",
+     "relation": "\\chi_{\\rm SI} = 4\\pi\\,\\chi_{\\rm cgs}; \\mu_r = 1 + \\chi_{\\rm SI} vs \\mu = 1 + 4\\pi\\chi_{\\rm cgs}",
+     "why": "Direct consequence of unrationalization (D = E + 4\\pi P, B = H + 4\\pi M)."
+    },
+    {
+     "symbol": "N (demagnetizing factor)",
+     "relation": "\\sum_i N_i = 4\\pi in cgs but \\sum_i N_i = 1 in SI; N_{\\rm SI} = N_{\\rm cgs}/4\\pi",
+     "why": "Same 4\\pi, and one of the most commonly botched conversions in the literature."
+    },
+    {
+     "symbol": "H vs B in free space",
+     "relation": "1 Oe and 1 G are numerically interchangeable in vacuum (\\mu_{\\rm vac} = 1), and papers routinely write 'applied field in gauss'",
+     "why": "EMU vacuum relation H = B; strictly the applied field is H in oersted."
+    }
+   ],
+   "fingerprints": [
+    "Axis labels 'M (emu/cm³)', 'M (emu/g)', 'moment (emu)' against 'H (Oe)' or 'H (kOe)'",
+    "'4πM' quoted in gauss as the saturation magnetization — a hard EMU/Gaussian tell",
+    "Susceptibility quoted as dimensionless but off by 4π from an SI value for the same material",
+    "Field quoted in gauss when it is really H",
+    "Mixed usage: fields in Oe/G but sample currents in amperes and dimensions in mm"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = q_1q_2/r^2 (Gaussian form; electrostatics is almost never written in these papers)",
+    "gauss_law": "\\mathbf{B} = \\mathbf{H} + 4\\pi\\mathbf{M}; \\mathbf{M} = \\chi\\mathbf{H}; \\mu = 1 + 4\\pi\\chi; internal field H_{\\rm int} = H_{\\rm app} - N M with \\sum N_i = 4\\pi",
+    "einstein_field": "N/A: not a relativistic system; never used in GR.",
+    "schrodinger_or_dirac": "Zeeman/spin Hamiltonian in Gaussian form, H = -\\boldsymbol\\mu\\cdot\\mathbf{B} with \\mu_B = e\\hbar/(2m_e c) = 9.274\\times10^{-21} erg/G"
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Not a distinct convention at the level of Maxwell's equations — it is Gaussian/EMU with a layer of community-specific unit abuse on top. It earns a row because a tool reading papers will hit 'emu' and 'emu/cm³' constantly and must not choke, and because the 4π traps (χ, N, 4πM) are the highest-frequency real-world conversion errors in this whole family. NIST's 'Units for Magnetic Properties' table is the right ground truth for the numeric layer.",
+   "sources": [
+    "https://www.nist.gov/system/files/documents/pml/electromagnetics/magnetics/magnetic_units.pdf",
+    "https://www.e-magnetica.pl/doku.php/emu_electromagnetic_unit_of_magnetic_moment",
+    "https://materials.soe.ucsc.edu/sites/default/files/conv_table_pdf.pdf",
+    "https://arxiv.org/pdf/cond-mat/0210657 (misconceptions in hysteresis-loop presentation)",
+    "https://www.magneticmicrosphere.com/ckfinder/userfiles/files/unit_Bruce_Moskovitz.pdf"
+   ]
+  },
+  {
+   "name": "Jackson 3rd edition hybrid (document-level convention)",
+   "aliases": [
+    "Jackson 3e mixed units",
+    "SI-then-Gaussian"
+   ],
+   "used_in": "J. D. Jackson, Classical Electrodynamics, 3rd ed. (1999) and everything that cites it chapter-by-chapter; also a pattern followed by some lecture-note sets that teach SI and then switch to Gaussian for relativity.",
+   "generators": [],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "Chapters 1–10 in SI (\\varepsilon_0, \\mu_0, tesla) and chapters 11–16 in Gaussian (4\\pi, 1/c, gauss) IN THE SAME BOOK",
+    "Jackson 1st (1962) and 2nd (1975) editions are Gaussian throughout — so a citation to 'Jackson Eq. (6.x)' means SI if 3rd ed. and Gaussian if 2nd",
+    "An appendix containing SI↔Gaussian conversion tables and a four-constant (k_1, k_2, k_3, \\alpha) parameterization of Maxwell's equations",
+    "The book's own explanation that Gaussian units 'seem more suited to relativity'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = q_1q_2/(4\\pi\\varepsilon_0 r^2) in ch. 1–10; F = q_1q_2/r^2 in ch. 11–16",
+    "gauss_law": "\\nabla\\cdot\\mathbf{D} = \\rho in ch. 1–10; \\nabla\\cdot\\mathbf{D} = 4\\pi\\rho in ch. 11–16",
+    "einstein_field": "N/A: Jackson does not treat general relativity.",
+    "schrodinger_or_dirac": "N/A: Jackson is classical; the Dirac equation appears only in passing in the Gaussian chapters."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "Not a unit system — a DOCUMENT-LEVEL convention split, and exactly the thing that breaks a naive per-paper system tag. Recorded because it is the most useful structural fingerprint in the family for a tool that reads published sources: the system can change mid-document, so a units engine must support per-section (ideally per-equation) system assignment rather than one global tag. The same warning applies more mildly to Griffiths (SI with Gaussian appendices), to Landau–Lifshitz vol. 8 (Gaussian), and to review articles that quote formulas from mixed sources without normalizing them.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Classical_Electrodynamics_(book)",
+    "https://www.wiley.com/en-us/Classical+Electrodynamics,+3rd+Edition-p-9780471309321",
+    "https://arxiv.org/pdf/0901.0194 (covariant Maxwell in a unit-independent form; discusses Jackson's constants)",
+    "J. D. Jackson, Classical Electrodynamics 3rd ed., Preface and Appendix"
+   ]
+  },
+  {
+   "name": "Gaussian-geometrized (Gaussian with G = c = 1)",
+   "aliases": [
+    "geometrized Gaussian units",
+    "MTW/Wald electromagnetic conventions",
+    "relativists' Gaussian"
+   ],
+   "used_in": "General relativity: Misner–Thorne–Wheeler, Wald, and the great majority of the charged-black-hole literature (Reissner–Nordström, Kerr–Newman, Einstein–Maxwell exact solutions).",
+   "generators": [
+    {
+     "tex": "4\\pi\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B}, \\mathbf{A}, \\mathbf{H}, \\mathbf{M}",
+     "relation": "Same k_B = c rider as plain Gaussian (B \\to cB, A \\to cA, H \\to H/c, M \\to M/c); with c = 1 the rider becomes numerically invisible while remaining structurally present.",
+     "why": "This is why Gaussian-with-c=1 LOOKS like a pure quotient and is not. Restoring c in a Gaussian-geometrized equation requires knowing which symbols carried the hidden factor of c."
+    }
+   ],
+   "fingerprints": [
+    "F^{\\mu\\nu} used covariantly with T^{\\mu\\nu} = \\tfrac{1}{4\\pi}(F^{\\mu\\alpha}F^{\\nu}{}_{\\alpha} - \\tfrac14 g^{\\mu\\nu}F^2) — the 1/4\\pi is the Gaussian tell",
+    "Reissner–Nordström f(r) = 1 - 2M/r + Q^2/r^2 (NOT Q^2/4\\pi r^2)",
+    "Kerr–Newman with \\Delta = r^2 - 2Mr + a^2 + Q^2",
+    "Einstein–Maxwell action S = \\int d^4x\\sqrt{-g}\\,(R/16\\pi - F_{\\mu\\nu}F^{\\mu\\nu}/16\\pi)",
+    "'We use geometrized Gaussian units G = c = 1' or 'units in which G = c = 1 and Maxwell's equations take Gaussian form'",
+    "Charge Q quoted in the same units as mass M (cm, g, or M_\\odot)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = q_1q_2/r^2",
+    "gauss_law": "\\nabla_\\mu F^{\\mu\\nu} = 4\\pi J^\\nu (covariant Gaussian form); flat-space limit \\nabla\\cdot\\mathbf{E} = 4\\pi\\rho",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi T_{\\mu\\nu}, with T^{\\mu\\nu}_{\\rm EM} = \\dfrac{1}{4\\pi}\\left(F^{\\mu\\alpha}F^{\\nu}{}_{\\alpha} - \\tfrac14 g^{\\mu\\nu}F_{\\alpha\\beta}F^{\\alpha\\beta}\\right); Reissner–Nordström f(r) = 1 - \\dfrac{2M}{r} + \\dfrac{Q^2}{r^2}",
+    "schrodinger_or_dirac": "Curved-space Dirac (i\\gamma^\\mu\\nabla_\\mu - m)\\psi = 0 with \\nabla_\\mu = \\partial_\\mu + \\tfrac14\\omega_{\\mu ab}\\gamma^a\\gamma^b - iqA_\\mu"
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "Cross-family entry (the G and c generators belong to the natural-units family) but the 4π placement is squarely ours, and this is where readers of the charged-black-hole literature get burned. Highest-value single discriminator for a reading tool: Q²/r² (Gaussian-geometrized) vs Q²/(4πr²) (HL-geometrized) in Reissner–Nordström and Kerr–Newman, equivalently T^{μν} with a 1/4π prefactor vs without. The SI form for comparison is f(r) = 1 − 2GM/(c²r) + GQ²/(4πε₀c⁴r²), which I dimension-checked: GQ²/(4πε₀c⁴) has dimension L².",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Gaussian_units",
+    "Misner, Thorne & Wheeler, Gravitation (geometrized Gaussian conventions, Box 1.8)",
+    "R. M. Wald, General Relativity, Appendix F (units)",
+    "https://arxiv.org/abs/1506.01951"
+   ]
+  },
+  {
+   "name": "Heaviside–Lorentz natural units (ħ = c = 1, rationalized)",
+   "aliases": [
+    "natural units (particle physics)",
+    "HL natural units",
+    "QFT units",
+    "GeV units"
+   ],
+   "used_in": "Essentially all of high-energy theory and phenomenology; the Particle Data Group; lattice QCD; the particle sector of cosmology.",
+   "generators": [
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "1",
+     "emits": "\\varepsilon_0"
+    },
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B}, \\mathbf{A}, \\mathbf{H}, \\mathbf{M}",
+     "relation": "Same k_B = c rider as plain Heaviside–Lorentz; invisible while c = 1, but must be restored when converting back to SI.",
+     "why": "Identical structural point to the Gaussian-geometrized row: setting c = 1 hides, but does not remove, the definitional factor of c in B."
+    }
+   ],
+   "fingerprints": [
+    "e^2 = 4\\pi\\alpha, e \\approx 0.30282 (or 0.303) quoted as the electromagnetic coupling",
+    "\\mathcal{L} = -\\tfrac14 F_{\\mu\\nu}F^{\\mu\\nu} + \\bar\\psi(i\\gamma^\\mu D_\\mu - m)\\psi with D_\\mu = \\partial_\\mu + ieA_\\mu",
+    "Everything quoted in GeV or GeV^n; 'we work in natural units \\hbar = c = 1'",
+    "Cross-sections in GeV^{-2} or barns; 1 GeV^{-2} = 0.3894 mb",
+    "\\alpha = e^2/4\\pi \\approx 1/137 stated explicitly",
+    "k_B = 1 as well, so temperatures quoted in GeV/eV"
+   ],
+   "benchmark_equations": {
+    "coulomb": "V(r) = \\dfrac{q_1q_2}{4\\pi r} = -\\dfrac{\\alpha}{r} for q_1 = -q_2 = e (attractive)",
+    "gauss_law": "\\partial_\\mu F^{\\mu\\nu} = J^\\nu (no 4\\pi, no \\varepsilon_0, no c); flat-space \\nabla\\cdot\\mathbf{E} = \\rho",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi G\\,T_{\\mu\\nu} = \\dfrac{8\\pi}{M_{\\rm Pl}^2}T_{\\mu\\nu} (G left explicit, or absorbed into the reduced Planck mass \\bar M_{\\rm Pl}^2 = 1/(8\\pi G)); T^{\\mu\\nu}_{\\rm EM} = F^{\\mu\\alpha}F^{\\nu}{}_{\\alpha} - \\tfrac14 g^{\\mu\\nu}F^2",
+    "schrodinger_or_dirac": "(i\\gamma^\\mu D_\\mu - m)\\psi = 0 with D_\\mu = \\partial_\\mu + ieA_\\mu, e = \\sqrt{4\\pi\\alpha}; hydrogen V = -\\alpha/r, E_n = -m\\alpha^2/(2n^2)"
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "Cross-family (ħ and c generators belong elsewhere) but listed because the rationalization choice — the 4π living in Coulomb rather than in Gauss — is a property of THIS family and is what distinguishes 'natural units' in a QFT paper from 'natural units' in an atomic-physics paper. Discriminator to encode: α = e²/4π (HL-natural, e ≈ 0.303) vs α = e² (Gaussian-natural / atomic units, e ≈ 0.0854). Papers routinely say only 'natural units' and leave the reader to infer which.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Heaviside%E2%80%93Lorentz_units",
+    "https://pdg.lbl.gov/2022/reviews/rpp2022-rev-phys-constants.pdf",
+    "https://arxiv.org/abs/1506.01951",
+    "https://arxiv.org/pdf/2409.03787 (CODATA 2022, alpha)"
+   ]
+  },
+  {
+   "name": "QES practical system (quadrant–eleventhgram–second)",
+   "aliases": [
+    "QES",
+    "quad–eleventhgram–second",
+    "practical electromagnetic system",
+    "practical units (1873–1901)"
+   ],
+   "used_in": "Late-19th-century electrical engineering and telegraphy; the system in which the volt, ohm, ampere, coulomb, farad and henry were first defined as coherent units.",
+   "generators": [
+    {
+     "tex": "\\mu_0/(4\\pi)",
+     "dimension": "(1, 1, -2, 0, -2)",
+     "numeric_factor": "1/(4\\pi)",
+     "emits": "(\\mu_0/4\\pi)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "(base units only)",
+     "relation": "Length = 1 quadrant of the Earth's meridian = 10^9 cm = 10^7 m; mass = 1 'eleventhgram' = 10^{-11} g; time = 1 s. Equation forms are exactly those of CGS-EMU.",
+     "why": "The base-unit rescaling was chosen precisely so that the awkward EMU electrical units (abvolt = 10^{-8} V, abohm = 10^{-9} \\Omega, abampere = 10 A) come out as the practical volt, ohm and ampere."
+    },
+    {
+     "symbol": "\\mathbf{D}, \\mathbf{H}",
+     "relation": "Same 4\\pi unrationalization riders as CGS-EMU.",
+     "why": "QES is EMU with rescaled base units, so it inherits EMU's unrationalization."
+    }
+   ],
+   "fingerprints": [
+    "The words 'quadrant', 'eleventhgram', or 'practical system' in a 19th-century electrical paper",
+    "Volt/ohm/ampere used as coherent (not derived) units alongside EMU field quantities",
+    "EMU equation forms (Coulomb with c^2, Biot–Savart with no constant) but practical unit names"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = c^2 q_1q_2/r^2 — same form as CGS-EMU, with c expressed in quadrants per second",
+    "gauss_law": "\\nabla\\cdot\\mathbf{D} = 4\\pi\\rho, \\nabla\\times\\mathbf{H} = 4\\pi\\mathbf{J} + \\partial_t\\mathbf{D} — same form as CGS-EMU",
+    "einstein_field": "N/A: predates general relativity.",
+    "schrodinger_or_dirac": "N/A: predates quantum mechanics."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "out_of_scope",
+   "notes": "Included for completeness of the historical record; a units-translation tool aimed at modern theoretical-physics reading will never encounter it. Equation forms are identical to CGS-EMU — only the base-unit magnitudes differ — so if it ever mattered it would be handled as EMU plus a scalar base-unit map. UNCERTAIN: the eleventhgram value comes from a single secondary source (Trapero) and I did not verify it against a primary 19th-century source.",
+   "sources": [
+    "https://arxiv.org/abs/1506.01951 (Trapero, 'Babel of Units', on the QES/practical system)",
+    "https://en.wikipedia.org/wiki/MKS_system_of_units",
+    "https://www.sizes.com/units/sys_MKS.htm"
+   ]
+  },
+  {
+   "name": "International electrical units (1893/1908–1948)",
+   "aliases": [
+    "international ohm",
+    "international ampere",
+    "international volt",
+    "mean international units",
+    "reproducible units"
+   ],
+   "used_in": "All electrical metrology and much of experimental physics from the 1893 Chicago Electrical Congress (confirmed London 1908) until 1 January 1948, when the CIPM replaced them with absolute units.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\Omega",
+     "relation": "1 international ohm = 1.00049 absolute ohm (defined by the resistance of a specified mercury column, 14.4521 g, 106.300 cm, at 0 °C)",
+     "why": "The international units were realized by artifacts rather than derived from mechanical units, so they drifted from the absolute (MKSA) values."
+    },
+    {
+     "symbol": "A",
+     "relation": "1 international ampere = 0.99985 absolute ampere (defined by the electrodeposition rate of silver, 0.00111800 g/s); equivalently the absolute ampere is 1.00015 mean international amperes",
+     "why": "Same artifact-realization origin."
+    },
+    {
+     "symbol": "V",
+     "relation": "1 international volt = 1.00034 absolute volt (= 1.00049 × 0.99985)",
+     "why": "Follows from Ohm's law applied to the two ratios above."
+    }
+   ],
+   "fingerprints": [
+    "'international ohm', 'int. ohm', '\\Omega_{\\rm int}', 'international ampere' in a pre-1948 paper",
+    "Resistances quoted against a mercury-column standard; currents against a silver voltameter",
+    "Any paper dated 1893–1948 quoting electrical quantities without saying 'absolute'",
+    "Post-1948 papers explicitly restating old data 'converted to absolute units'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = q_1q_2/(4\\pi\\varepsilon_0 r^2) — the equation forms are those of the contemporaneous (unrationalized or rationalized) MKSA; only the realized unit magnitudes differ",
+    "gauss_law": "Same forms as the contemporaneous MKS/MKSA convention; the international units affect numeric values, not equation structure",
+    "einstein_field": "N/A: not an equation-level convention.",
+    "schrodinger_or_dirac": "N/A: not an equation-level convention. Relevant only in that pre-1948 measured values of e, h and m_e were quoted in international units and must be rescaled before comparison with modern CODATA values."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "out_of_scope",
+   "notes": "Purely a realization/scale issue, not a convention in the generator sense — the generator set is empty and the equations are unchanged. Out of scope for equation reading, but worth a numeric table in a later version, because pre-1948 measured constants (Millikan's e, early h determinations) are quoted in international units and are systematically off by a few parts in 10⁴ if read as absolute. UNCERTAIN: the 1.00049 / 0.99985 / 1.00034 figures are the standard CIPM 1946 values as I recall them; my searches independently confirmed the ampere ratio (1.00015 ≈ 1/0.99985) from BIPM but did not directly confirm the ohm figure.",
+   "sources": [
+    "https://www.bipm.org/en/history-si/ampere",
+    "https://en.wikipedia.org/wiki/International_System_of_Electrical_and_Magnetic_Units",
+    "https://www.sizes.com/units/ohm_international.htm",
+    "https://www.sizes.com/units/ampHist.htm",
+    "https://nvlpubs.nist.gov/nistpubs/jres/33/jresv33n4p235_A1b.pdf"
+   ]
+  },
+  {
+   "name": "Gauss's absolute magnetic system (1832)",
+   "aliases": [
+    "Gauss absolute system",
+    "millimetre–milligram–second magnetic system",
+    "mm-mg-s"
+   ],
+   "used_in": "Gauss's 1832 'Intensitas vis magneticae terrestris ad mensuram absolutam revocata' and subsequent geomagnetic work by Gauss and Weber; the historical origin of the whole idea of absolute electromagnetic units.",
+   "generators": [
+    {
+     "tex": "\\mu_0/(4\\pi)",
+     "dimension": "(1, 1, -2, 0, -2)",
+     "numeric_factor": "1/(4\\pi)",
+     "emits": "(\\mu_0/4\\pi)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "(base units)",
+     "relation": "Length = mm, mass = mg, time = s; magnetic pole strength defined by an inverse-square force law between poles, F = p_1p_2/r^2",
+     "why": "The system was built on magnetostatics alone (magnetic 'charge'), before the electric/magnetic unification, so it has a magnetic-pole analogue of Coulomb's law and no electric sector at all."
+    }
+   ],
+   "fingerprints": [
+    "Geomagnetic field intensities quoted in mm^{-1/2}mg^{1/2}s^{-1}, or in units later renamed the gauss",
+    "'absolute measure' / 'ad mensuram absolutam' phrasing",
+    "Magnetic pole strength as a primitive quantity, force between poles F = p_1p_2/r^2",
+    "Dates 1832–1870s; geomagnetism and magnetometer-calibration papers"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A (electric): the system has no electric sector. Its magnetostatic analogue is F = p_1p_2/r^2 between magnetic pole strengths.",
+    "gauss_law": "N/A: predates Maxwell's equations. The magnetostatic potential satisfies \\nabla^2\\Omega = 0 outside sources, with \\mathbf{H} = -\\nabla\\Omega.",
+    "einstein_field": "N/A: predates general relativity by 83 years.",
+    "schrodinger_or_dirac": "N/A: predates quantum mechanics."
+   },
+   "schema_fit": "unsupported",
+   "scope_tier": "out_of_scope",
+   "notes": "Recorded only for historical completeness and because 'the gauss' descends from it. It is the ancestor of CGS-EMU: Weber generalized it to electrical phenomena in 1846, and the 1873 BAAS committee (including Maxwell) fixed cm-g-s as the base. No modern paper uses it; a tool should not attempt to support it.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Centimetre%E2%80%93gram%E2%80%93second_system_of_units",
+    "https://arxiv.org/abs/1506.01951",
+    "https://en.wikipedia.org/wiki/Gauss_(unit)"
+   ]
+  },
+  {
+   "name": "Weber's absolute electrodynamic system",
+   "aliases": [
+    "Weber system",
+    "Weber–Kohlrausch units",
+    "Weber's constant c"
+   ],
+   "used_in": "Weber's electrodynamics (1846–1870s) and the Weber–Kohlrausch measurement of 1855/56; German electrodynamics before the Maxwellian synthesis.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "c (Weber's constant)",
+     "relation": "c_{\\rm Weber} = \\sqrt{2}\\,c \\approx 3.1074\\times10^8\\ \\mathrm{m/s}, where c is the modern speed of light",
+     "why": "Weber defined his constant as the relative velocity at which two like charges exert no net force in his velocity-dependent force law — a definition carrying an extra factor of \\sqrt2 relative to the ESU/EMU charge-unit ratio. Weber and Kohlrausch's measured 3.107\\times10^8 m/s is therefore NOT the speed of light, despite being routinely quoted as such."
+    }
+   ],
+   "fingerprints": [
+    "A quoted value near 3.107×10^8 m/s (or 3.1074×10^{10} cm/s) presented as an electromagnetic constant",
+    "Velocity-dependent two-body force laws of the form F = (q_1q_2/r^2)[1 - \\dot r^2/c^2 + 2r\\ddot r/c^2]",
+    "The name 'Weber's constant'; German electrodynamics literature 1846–1880",
+    "Any pre-1873 paper where 'c' appears without a Maxwellian wave equation"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1q_2}{r^2}\\left[1 - \\dfrac{1}{c_W^2}\\left(\\dfrac{dr}{dt}\\right)^2 + \\dfrac{2r}{c_W^2}\\dfrac{d^2r}{dt^2}\\right] with c_W = \\sqrt2\\,c",
+    "gauss_law": "N/A: Weber's electrodynamics is an action-at-a-distance force theory with no field equations.",
+    "einstein_field": "N/A: predates general relativity.",
+    "schrodinger_or_dirac": "N/A: predates quantum mechanics."
+   },
+   "schema_fit": "unsupported",
+   "scope_tier": "out_of_scope",
+   "notes": "Included solely as a HISTORICAL TRAP worth a warning string: the √2 in Weber's constant means that quotations of '3.107×10⁸ m/s' from Weber–Kohlrausch as an early measurement of the speed of light are off by √2, and secondary literature repeats the error frequently. Not a dimensional convention in the generator sense — Weber's theory is not a field theory at all — so schema_fit is genuinely 'unsupported'.",
+   "sources": [
+    "https://www.cartesio-episteme.net/ep8/Kohlrausch.pdf (The 1856 Weber-Kohlrausch Experiment)",
+    "https://math.ucr.edu/home/baez/physics/Relativity/SpeedOfLight/c.html",
+    "https://en.wikipedia.org/wiki/Centimetre%E2%80%93gram%E2%80%93second_system_of_units"
+   ]
+  }
+ ],
+ "family_notes": "ACID TEST — THE ANSWER. Gaussian units are NOT a pure quotient of SI by 4πε₀ = 1. They are that quotient PLUS a definitional rescaling of B by one factor of c (and correspondingly A by c, H by 1/c, M by 1/c). schema_fit for Gaussian is needs_symbol_rescaling, and the same holds for Heaviside–Lorentz.\n\nThe derivation, done independently and then cross-checked: setting 4πε₀ = 1 forces ε₀ = 1/4π and hence μ₀ = 1/(ε₀c²) = 4π/c². Substituting those into the SI Maxwell equations term by term gives ∇·E = 4πρ, ∇×E = −∂B/∂t, and ∇×B − c⁻²∂E/∂t = 4πc⁻²J. The first is Gaussian's; the second and third are NOT — they are exactly CGS-ESU's. Gaussian is that same ESU set under B → cB. The dimension algebra says the same thing: 4πε₀ = 1 collapses the SI current dimension to I = M^(1/2)L^(3/2)T^(−2), whereupon [E]_SI = M L T^(−3) I^(−1) → M^(1/2)L^(−1/2)T^(−1) while [B]_SI = M T^(−2) I^(−1) → M^(1/2)L^(−3/2). Those differ by exactly one power of velocity, so the quotient alone can never deliver Gaussian's defining property [E] = [B]. Independent confirmation: the four-parameter table in Trapero's \"Babel of Units\" lists k_B = c for Gaussian and Heaviside–Lorentz and k_B = 1 for SI, ESU and EMU; and Wikipedia's Gaussian-units article states that E and B sharing a dimension \"amounts to a factor of c between how B is defined in the two unit systems.\"\n\nCLEAN STRUCTURAL RESULT — A 2×2 CLASSIFICATION. Two independent riders sit on top of a single generator choice and generate the whole family:\n  (i) the c-rider (\"symmetric/relativistic B\"): B → cB, A → cA, H → H/c, M → M/c. Present in Gaussian and Heaviside–Lorentz; absent in SI, ESU, EMU.\n  (ii) the 4π-rider (\"unrationalized\"): D → 4πD, H → 4πH, so D = E + 4πP, H = B − 4πM, and the 4π moves out of Coulomb into Gauss. Present in Gaussian, ESU, EMU and unrationalized MKS; absent in SI and Heaviside–Lorentz.\nSo SI = (no, no); Heaviside–Lorentz = (yes, no); ESU/EMU = (no, yes); Gaussian = (yes, yes). Note M picks up the c-rider but NOT the 4π-rider, while H picks up both — I verified this from H = B − 4πM in each system. Both riders are invisible to the linear dimension solve (4π is dimensionless; c is a dimension that ε₀ or μ₀ alone cannot supply), which is exactly why numeric_factor and per-symbol riders must be stored separately from the generator table.\n\nWHAT THIS BREAKS IN A GENERATOR-ONLY SCHEMA. CGS-ESU and CGS-Gaussian have the IDENTICAL generator (4πε₀ = 1, numeric factor 4π), the identical Coulomb law F = q₁q₂/r², the identical ∇·E = 4πρ, and identical q, ρ, J, E, φ, D, P — yet they are different systems. A generator table alone provably cannot tell them apart. Concretely: if a tool tries to convert Gaussian's Faraday law to SI by inserting powers of (4πε₀), the linear system is INCONSISTENT — no power of a constant with dimension (−1,−3,4,0,2) yields a pure velocity — and the solver fails. That failure is itself a useful signal: an unsolvable restoration in this family almost always means \"this system carries a hidden factor of c on B.\" An implementation can either (a) store the riders explicitly, or (b) admit c into the restoration basis for systems flagged k_B = c. The two are equivalent for this family, but (a) is safer, because (b) destroys uniqueness in equations where c legitimately appears on its own.\n\nESU / EMU / GAUSSIAN TRIANGLE (all factors are powers of c; everything else is identical):\n  q, ρ, J, I, P, D:  ESU = Gaussian = c × EMU\n  E, φ:              ESU = Gaussian = EMU / c\n  B, A:              EMU = Gaussian = c × ESU\n  H, M:              EMU = Gaussian = ESU / c\nThis is the precise sense in which \"Gaussian takes its electric quantities from ESU and its magnetic quantities from EMU,\" and it is why Gaussian's units are statvolt/statcoulomb (ESU) on the electric side and gauss/oersted/maxwell (EMU) on the magnetic side. Unit checks: 1 abC = c_cgs statC = 2.99792458×10¹⁰ Fr; 1 statvolt = c_cgs abvolt; 1 abA = 10 A; the ESU unit of B is g^(1/2)cm^(−3/2) = c_cgs gauss ≈ 3×10¹⁰ G (verified against the CGS Wikipedia article, which independently gives the ESU B unit as \"c_cgs gauss\").\n\nWHERE THE 4π SITS (rationalization), at a glance:\n  SI:                Coulomb 1/(4πε₀); Gauss ∇·D = ρ;     Ampère ∇×H = J + Ḋ\n  Heaviside–Lorentz: Coulomb 1/(4π);   Gauss ∇·D = ρ;     Ampère ∇×H = (1/c)(J + Ḋ)\n  Gaussian:          Coulomb 1;        Gauss ∇·D = 4πρ;   Ampère ∇×H = (4π/c)J + (1/c)Ḋ\n  ESU:               Coulomb 1;        Gauss ∇·D = 4πρ;   Ampère ∇×H = 4πJ + Ḋ\n  EMU:               Coulomb c²;       Gauss ∇·D = 4πρ;   Ampère ∇×H = 4πJ + Ḋ\nRationalized systems (SI, HL) keep 4π out of Maxwell and put it in Coulomb; unrationalized systems (Gaussian, ESU, EMU) do the reverse. EMU's Coulomb law with an explicit c² is the single most diagnostic equation in the family.\n\nDOWNSTREAM 4π TRAPS THAT COST REAL PAPERS. Susceptibility χ_SI = 4π χ_cgs, with μ_r = 1 + χ_SI versus μ = 1 + 4πχ_cgs. Demagnetizing factors: ΣN = 1 in SI but ΣN = 4π in cgs. Maxwell Lagrangian: −(1/4μ₀)F² (SI), −(1/16π)F² (Gaussian), −(1/4)F² (HL). EM stress tensor: (1/μ₀)(…), (1/4π)(…), or no prefactor at all. Reissner–Nordström with G = c = 1: Q²/r² (Gaussian-geometrized) versus Q²/(4πr²) (HL-geometrized). Fine-structure constant: α = e²/(4πε₀ħc) (SI), e²/(ħc) (Gaussian), e²/(4πħc) (HL) — with the natural-units corollary e ≈ 0.303 in HL versus e ≈ 0.0854 in Gaussian. Bohr magneton: eħ/(2m_e) (SI) versus eħ/(2m_e c) (Gaussian).\n\nPER-DOCUMENT VERSUS PER-EQUATION TAGGING. Jackson 3rd ed. is SI for chapters 1–10 and Gaussian for 11–16 (the 1st and 2nd editions are Gaussian throughout). A units engine that assumes one system per document will be wrong about the most-cited E&M textbook in the field. Support per-section, ideally per-equation, system assignment.\n\nSI BASE-DIMENSION ADVICE. For equation checking, carry (M, L, T, Θ, I). Θ appears only via k_B and only in thermal/statistical equations. mol and cd essentially never matter: N cancels between N_A and k_B (R = N_A k_B) and is a counting factor; cd is photometric. Keep them as inert slots if full SI coverage is wanted, but do not let them enter the restoration solve. Half-integer exponents are mandatory here: Gaussian charge is M^(1/2)L^(3/2)T^(−1), and the SI↔Gaussian conversion factors are themselves square roots — √(4πε₀), √(4π/μ₀), √(4πμ₀), √(μ₀/4π).\n\nIMPLEMENTATION WARNING ON NUMERICS. Those conversion factors are DIMENSIONFUL, so a numeric check must also apply the m/kg/s → cm/g/s base conversion. I verified two cases by hand this way: B_G = √(4π/μ₀) B_SI gives 1 T = 10⁴ G, and M_G = √(μ₀/4π) M_SI gives 1 A/m = 10⁻³ emu/cm³ — both correct, and both would come out wrong by factors of ~3.16 if the mechanical base conversion were skipped. This is a good regression test for the engine.\n\n2019 SI. ε₀ and μ₀ are no longer exact: μ₀ = 4πα ħ/(e²c), so u_r(μ₀) = u_r(ε₀) = u_r(Z₀) = u_r(α) ≈ 1.5×10⁻¹⁰ (CODATA 2022). μ₀ equals 4π×10⁻⁷ N/A² only to about 1.3 parts in 10¹⁰. This never changes an equation's form, but a numeric mode must know which constants are exact in which era.\n\nGENUINE UNCERTAINTIES, FLAGGED RATHER THAN GUESSED. (1) The exact D/H conventions of pre-1950 unrationalized MKS: the headline fact that the 1950 IEC rationalization multiplied μ₀ by 4π (10⁻⁷ → 4π×10⁻⁷) is well sourced, but the auxiliary-field conventions vary between authors, and I would not let a tool auto-translate that system. (2) \"Variant-Gaussian\": one secondary source only (Trapero), no identified textbooks; detect-and-warn, never translate. (3) The QES eleventhgram value is from that same secondary source, not independently verified. (4) The 1.00049 / 0.99985 international-unit ratios are the standard CIPM 1946 figures; my searches confirmed the ampere ratio (1.00015 ≈ 1/0.99985) from BIPM but not the ohm figure directly. NAMING COLLISION to guard against in the data model: \"Kennelly system\" (historical unrationalized MKS with μ₀ = 10⁻⁷) and \"Kennelly convention\" (magnetic polarization J = μ₀M inside ordinary SI, versus the Sommerfeld convention with M in A/m) are entirely different things sharing a name."
+}

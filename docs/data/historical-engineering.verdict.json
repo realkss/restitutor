@@ -1,0 +1,152 @@
+{
+ "family": "historical-engineering",
+ "verdicts": [
+  {
+   "system": "family_notes (scope preamble)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "`μ₀ = 10⁻⁷` (not 4π×10⁻⁷) in a paper is a hard fingerprint for unrationalized MKS (§9), and it silently rescales D, H, ε, μ by 4π while leaving E, B, q untouched.",
+     "problem": "The rescaling directions are not uniform, and μ is stated backwards. Deriving from the unrationalized Maxwell set (∇·D = 4πρ, ∇×H = 4πJ + ∂_t D, ∇×E = −∂_t B): D_unrat = 4π·D_SI, H_unrat = 4π·H_SI, ε_unrat = 4πε₀ — but μ_unrat = μ₀/(4π) = 10⁻⁷, i.e. DIVIDED by 4π. The sentence's own fingerprint number (10⁻⁷ = 4π×10⁻⁷ ÷ 4π) contradicts the 'by 4π' it is attached to. A tool implementing this literally would multiply μ by 4π and land at 1.579×10⁻⁵ instead of 10⁻⁷ — a factor (4π)² = 158 error.",
+     "correction": "'...it silently rescales D, H and ε by 4π and μ by 1/4π, while leaving E, B, q untouched.' Consistency check: μ_unrat·ε_unrat = (μ₀/4π)(4πε₀) = μ₀ε₀ = 1/c², which the 'all by 4π' reading would break.",
+     "confidence": "certain"
+    },
+    {
+     "claim": "The rutherford (10⁶ Bq, §18) is an MTS-family unit (§5) — the historical systems interlock in ways a flat table will miss.",
+     "problem": "This historical linkage appears to be invented. The rutherford was proposed in June 1946 by L. F. Curtiss and E. U. Condon at the US National Bureau of Standards (ratified by the US National Research Council in 1949) as a replacement for the misused curie. It has no connection to the French/Soviet metre–tonne–second system, and no source — including the Wikipedia rutherford article the enumeration otherwise leans on — associates the two. The only link is the numerical coincidence that both involve 10⁶, and MTS's 10⁶ comes from the tonne (10⁶ g), which has nothing to do with a decay rate.",
+     "correction": "Drop the claim, or restate it as what it is: 'the rutherford (10⁶ Bq) is an unrelated US 1946 proposal (Curtiss & Condon, NBS) that happens to share MTS's factor of 10⁶.' It is presented in the notes as one of the entry's headline insights, so it should not survive as-is.",
+     "confidence": "likely"
+    },
+    {
+     "claim": "Imperial, FPS (all three variants), MTS, the gravitational-metric system, the practical/international/conventional electrical unit eras, and the legacy pressure/navigation units absorb NOTHING. They are diagonal rescalings of the *same* dimension algebra as SI: every exponent 5-tuple is identical, every equation is written character-for-character as the SI equation ... Ten of my thirteen out-of-scope calls are this",
+     "problem": "Two internal contradictions, both load-bearing for the scope verdict. (a) The practical units are listed here as writing equations 'character-for-character as the SI equation', but §6's own benchmark_equations give unrationalized EMU forms — F = c²q₁q₂/r² and ∇·D = 4πρ, ∇×H = 4πJ + ∂_t D — which are NOT the SI forms and DO carry absorbed 4π and c factors. §6 is correct; the preamble is wrong. (b) The three electrical-era systems named in this sentence as out-of-scope-because-they-absorb-nothing are in fact all scored scope_tier 'v2', so 'ten of my thirteen out-of-scope calls are this' cannot be true of the set as listed.",
+     "correction": "Remove 'the practical/international/conventional electrical unit eras' from the absorb-nothing list (§6 genuinely carries unrationalized 4π/c content and is therefore not a diagonal rescaling), or reconcile the two. The international (§7) and conventional-1990 (§8) eras ARE pure magnitude offsets and can stay in that list; the 1881 practical/QES system cannot.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "§1 Foot–pound–second, absolute (poundal) system",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "G would have to be quoted as ≈ 3.439×10⁻⁸ ft³·lb⁻¹·s⁻² (with mass in slugs) and c as 9.8357×10⁸ ft/s",
+     "problem": "The unit symbol and the parenthetical contradict each other, and the numeral belongs to the other system. 3.4398×10⁻⁸ is G in ft³·slug⁻¹·s⁻² (British Gravitational, §2), not ft³·lb⁻¹·s⁻². In §1's own units, where mass is the pound, G = 6.67430×10⁻¹¹ × (1/0.3048³) × 0.45359237 = 1.0691×10⁻⁹ ft³·lb⁻¹·s⁻². The two differ by exactly the factor 32.174. This is the very 'lb means lbm or slug' trap that §2's own notes warn about, reproduced inside §1.",
+     "correction": "Either 'G ≈ 1.069×10⁻⁹ ft³·lb⁻¹·s⁻² (mass in pounds, this system's own base)' or 'G ≈ 3.4398×10⁻⁸ ft³·slug⁻¹·s⁻² (mass in slugs, i.e. the §2 system)'. c = 9.83571×10⁸ ft/s is correct as given.",
+     "confidence": "certain"
+    },
+    {
+     "claim": "\"schema_fit\": \"generators_only\"  [with]  \"generators\": []",
+     "problem": "A verdict of 'generators_only' asserts the system is representable by a generator table, but the entry's own finding is that it needs neither generators nor per-symbol rescalings — it is a pure base-unit magnitude change. Labelling it 'generators_only' with an empty array makes it indistinguishable, to any consumer of the field, from a system whose generators simply were not filled in. The same mislabel appears in §2 and §5.",
+     "correction": "The schema_fit value should record 'no restoration content / pure unit-magnitude rescaling', not 'generators_only'. If the enum has no such value, the entry's prose finding and its structured verdict disagree and one of them must move.",
+     "confidence": "speculative"
+    }
+   ]
+  },
+  {
+   "system": "§2 British Gravitational / foot–slug–second system",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "§3 English Engineering system (lbm + lbf with g_c)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "§4 Gravitational metric (technical) system — MKpS/MKfS",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "A CGS-gravitational cousin exists (gram-force, g₀ = 980.665 cm/s²) in a metre–gram-force–second arrangement; it is rarer and shares all the same structure.",
+     "problem": "Self-contradictory naming. A system whose standard gravity is quoted as 980.665 cm/s² is centimetre-based; in a metre-based arrangement the same constant reads 9.80665 m/s². 'CGS-gravitational' and 'metre–gram-force–second' cannot both describe the same system. As written, a tool would build a length scale of 1 m alongside a g₀ expressed per cm, i.e. a 100× error in every derived mechanical unit.",
+     "correction": "'A CGS-gravitational cousin exists (gram-force, g₀ = 980.665 cm/s²) in a centimetre–gram-force–second arrangement', with derived mass unit 1 gf·s²/cm = 0.980665 kg.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "§5 Metre–tonne–second (MTS) system",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "'rutherford' (Rd) as a radioactivity unit — 10⁶ decays/s, the MTS-family activity unit",
+     "problem": "This is a false fingerprint, and it is worse in the fingerprints array than in the notes, because fingerprints are what a classifier keys on. The rutherford originates with Curtiss and Condon at the US NBS in 1946 and is unconnected to MTS. Papers using the rutherford are mid-century Anglo-American nuclear papers written in ordinary SI/CGS with the curie's competitor — not French or Soviet MTS engineering documents. Firing an MTS classification on 'Rd' would misroute exactly the literature the entry says it wants to catch.",
+     "correction": "Remove 'rutherford' from the MTS fingerprint list. The remaining fingerprints (sthène/sn, pièze/pz, sthène-metre, tonne as a base unit, French/Russian 1919–1961 documents) are all sound. All MTS dates and magnitudes in this entry check out: France legal 1919–1961, USSR 1933–1955, 1 sn = 1 kN, 1 pz = 1 kPa, 1 sn·m = 1 kJ.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "§6 Practical electrical units (1881) and the QES absolute system",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "The volt/ampere/ohm/coulomb/farad/henry/joule/watt names all originate here and survive unchanged into SI.",
+     "problem": "Wrong dates for three of the eight, given that the entry's title pins 'here' to the 1881 BAAS/Paris Congress. The 1881 Paris Congress adopted the ohm, volt, ampere, coulomb and farad. The joule and the watt were adopted at the 1889 congress; the henry at the 1893 Chicago congress (in the same resolution that created the international units of §7). Since §7's whole point is that 1893 is a regime boundary, having the henry silently attributed to 1881 undercuts the fingerprint logic.",
+     "correction": "'The ohm, volt, ampere, coulomb and farad were named at the 1881 Paris Congress; the joule and watt at the 1889 congress; the henry at the 1893 Chicago congress.'",
+     "confidence": "certain"
+    },
+    {
+     "claim": "\"generators\": [],  \"gauss_law\": \"Unrationalized throughout: \\nabla\\cdot\\mathbf{D} = 4\\pi\\rho, \\quad \\nabla\\times\\mathbf{H} = 4\\pi\\mathbf{J} + \\partial_t\\mathbf{D}\"",
+     "problem": "The empty generators array contradicts the entry's own benchmark equations. A system whose Gauss law reads ∇·D = 4πρ and whose Coulomb law reads F = c²q₁q₂/r² has absorbed a 4π (rationalization) and a c² relative to SI — that is precisely restorable generator content, and it is the only entry in the delivered set that has any. §1/§2/§5 legitimately have empty arrays because their equations are byte-identical to SI; §6's are not. The entry papers over this by deferring the equation forms to 'the E&M family's table', but then the benchmark_equations field should not be populated with them either — as it stands the same object simultaneously asserts non-SI equation forms and zero absorbed constants.",
+     "correction": "Either populate generators with the 4π (rationalization) and c² (EMU charge-definition) factors, with numeric_factor/emits set accordingly, or blank the benchmark_equations and point to the E&M family. Do not assert both.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "§7 International electrical units (1893/1908, to 1 Jan 1948)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "\"1893 legal ohm\"  [listed among aliases]",
+     "problem": "The 'legal ohm' and the 'international ohm' are two different units from two different conferences, and treating them as aliases injects an error 5× larger than the offset the entry exists to catch. The legal ohm was set by the 1884 Paris conference as a mercury column 106 cm long, 1 mm² section; the international ohm was set by the 1893 Chicago congress at 106.3 cm and 14.4521 g. The 0.3 cm change is about 0.25% — versus the 4.9×10⁻⁴ international-to-absolute offset. A value in legal ohms corrected by 1.00049 is still wrong by ~2.8×10⁻³.",
+     "correction": "Remove '1893 legal ohm' from aliases; if the legal ohm is wanted, it needs its own row: 1884 Paris, 106 cm mercury column, 1 Ω_legal ≈ 0.9977 Ω absolute, in use ~1884–1893, never adopted into national law.",
+     "confidence": "certain"
+    },
+    {
+     "claim": "Giorgi's 1905 'MKSΩ' proposal — m, kg, s plus the international ohm as fourth base unit — is a genuine historical variant",
+     "problem": "Misdated, and it contradicts §6 of this same enumeration, which says 'exactly what Giorgi proposed in 1901'. Giorgi put the four-dimensional MKS-plus-one-electrical-unit system to the Associazione Elettrotecnica Italiana in 1901, with the ohm as his suggested fourth unit; 1901–1905 is the span of the follow-up paper series, not the date of the proposal. The alias field repeats the error as 'Giorgi MKSΩ (1905 variant)'.",
+     "correction": "'Giorgi's 1901 proposal to the AEI (developed in papers through 1905), with the ohm as the fourth base unit.'",
+     "confidence": "likely"
+    },
+    {
+     "claim": "they should be checked against NIST SP 811's conversion tables before shipping",
+     "problem": "SP 811 will not resolve them — its Appendix B conversion tables cover EMU/ESU and other obsolete units but do not list the international electrical units at all. sp811.pdf is nonetheless cited in this entry's sources array as if it backed the numbers. The actual authority for these factors is the CIPM 1948 adoption (mean international) and NBS/NIST's own national values (US international), e.g. NBS Circular 459 and the NIST electrical-units history.",
+     "correction": "Replace the SP 811 pointer with the CIPM 1948 / NBS national-standards references. Substantively the numbers are fine — I verified 1 Ω_int = 1.00049 Ω and 1 V_int = 1.00034 V against the primary reference, and re-derived A_int = 0.99985, W_int = J_int = 1.00019, F_int = 0.99951, H_int = 1.00049, all self-consistent.",
+     "confidence": "likely"
+    },
+    {
+     "claim": "US INTERNATIONAL (NIST/NBS): 1 Ω_int(US) = 1.000 495 Ω; 1 V_int(US) = 1.000 330 V.",
+     "problem": "The US branch is given only for the ohm and volt, while every derived factor in the notes (ampere 0.99985, watt/joule 1.00019, farad 0.99951, henry 1.00049) is the mean-international value. Applying the mean ampere to a US-traceable pre-1948 paper is wrong: A_int(US) = 1.000330/1.000495 = 0.999835, not 0.99985, and the joule/watt follow as 1.000165, not 1.00019. Since the entry's stated use case is NBS-era US precision-electrical papers, this is the branch most likely to be hit.",
+     "correction": "State both branches for the derived units: mean international A = 0.99985, W = J = 1.00019, F = 0.99951, H = 1.00049; US international A = C = 0.999835, W = J = 1.000165, F = 0.999505, H = 1.000495.",
+     "confidence": "likely"
+    },
+    {
+     "claim": "pre-1948 quoted values of the elementary charge are in international coulombs and are off by 1.5×10⁻⁴, which propagates into every constant derived from them",
+     "problem": "Overstated on both halves. Pre-1948 values of e were overwhelmingly quoted in CGS electrostatic units (Millikan's 4.774×10⁻¹⁰ esu and its successors), not in international coulombs; the international-unit issue enters only through Faraday-constant/electrolytic determinations. And the dominant pre-1948 error in e was not 1.5×10⁻⁴ but roughly 0.4%, from Millikan's low value for the viscosity of air — corrected around 1937–1941. A tool that applies a 1.5×10⁻⁴ correction to a 1920s e and calls it reconciled will be wrong by more than an order of magnitude in the residual.",
+     "correction": "Restrict the claim to electrolytically-determined quantities actually quoted in international coulombs, and note that for e specifically the 1930s viscosity-of-air revision dominates the international/absolute offset by ~25×.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "§8 Conventional electrical units of 1990 (V₉₀, Ω₉₀)",
+   "status": "confirmed",
+   "errors": []
+  }
+ ],
+ "missing_systems": [
+  "US survey foot vs international foot — 1200/3937 m vs 0.3048 m exactly, a ratio of 1.000002 (2 ppm). Pervasive in USGS/NGS, State Plane coordinates, and US civil/geodetic engineering literature through 2022; deprecated only on 31 Dec 2022. Also drags the US survey mile and the survey acre. This is exactly the same class of silent numeric landmine as the torr/mmHg split the enumeration does flag, and it is larger (2×10⁻⁶ vs 1.4×10⁻⁷).",
+  "Btu and calorie variant families. The enumeration uses 'Btu_IT' in §3 without ever flagging that Btu_th, Btu_59°F, Btu_mean and Btu_39°F all circulate in the same US engineering literature: §3's own J = 778.169 ft·lbf/Btu_IT becomes 777.649 for Btu_th, a 6.7×10⁻⁴ shift sitting inside a constant the entry treats as fixed. The calorie split matters more in the physics/chemistry literature the tool targets: cal_IT = 4.1868 J, cal_th = 4.184 J (the thermochemistry default), cal_15 = 4.1855 J, plus the dietary Cal = kcal.",
+  "Horsepower variants. §4 gives metric PS = 735.49875 W but nothing anywhere covers mechanical horsepower = 550 ft·lbf/s = 745.6998715822702 W exactly, electric hp = 746 W, or boiler hp = 9809.5 W. 'hp' and 'PS'/'CV'/'ch' co-occur in exactly the automotive and turbomachinery literature §4 claims, and differ by 1.4%.",
+  "Imperial vs US customary divergence, which the family title names but no delivered entry covers: imperial gallon 4.54609 L vs US liquid gallon 3.785411784 L (a 20% error, the single largest silent trap in the family), imperial vs US fluid ounce, imperial vs US pint/quart, long ton (2240 lb) vs short ton (2000 lb) vs tonne, and troy vs avoirdupois ounce and pound.",
+  "The astronomical system of units and the Gaussian gravitational constant k = 0.01720209895, with GM_Sun = k² in AU³·day⁻²·M_Sun⁻¹. This is a genuine absorbed-constant convention — for over a century the AU was *defined* by fixing k rather than measured — and it is the strongest 'problem-normalized' case in the family, with real generator content (unlike the ten diagonal rescalings). It also has a hard regime boundary the tool would want: IAU 2012 redefined the AU as 149 597 870 700 m exactly and retired k, so pre-2012 and post-2012 ephemeris papers mean different things by 'AU'.",
+  "Pre-1990 as-maintained national electrical units (V_NBS, V_BIPM/V₆₉, Ω_NBS, and the 1969/1972 BIPM Josephson conventions). The §8 entry explicitly flags this sub-era as unresearched and excluded; it is the direct predecessor of §8 and covers 1970s–80s precision-electrical papers, which fail in the identical silent way.",
+  "Problem-normalized simulation conventions, which the family title claims ('problem-normalized nondimensional schemes') but which no delivered entry instantiates: astrophysical code units (G = M = R = 1), lattice-Boltzmann lattice units (Δx = Δt = ρ₀ = 1), and normalized plasma/PIC units (ω_pe = c = 1). These do absorb constants and are the one part of the family with genuine restoration work to do.",
+  "Nonlinear/inverted industrial scales in the same outlier class as the affine (§16) and logarithmic (§17) siblings: API gravity = 141.5/SG − 131.5 (a Möbius transform, neither affine nor logarithmic — it fits neither proposed sibling type), degrees Baumé, degrees Brix, and Saybolt Universal seconds.",
+  "Nautical-mile variants: international 1852 m vs US nautical mile 1853.248 m (retired 1954) vs Admiralty/UK 1853.184 m (retired 1970), and the knot built on each. §24 is described as covering 'legacy pressure/navigation units' but only the torr/mmHg pressure half is ever spelled out."
+ ],
+ "overall": "The delivered payload contains 8 systems (§1–§8), not the 24 the family_notes describes, and the tier tally it states (1 v1 / 10 v2 / 13 out of scope) cannot be checked against what is present (0 v1 / 3 v2 / 5 out of scope). Everything from §9 to §24 — including the radian convention it calls its single highest-value finding, the unrationalized-MKS entry its μ₀ fingerprint depends on, and the affine/logarithmic siblings — is referenced but not supplied, so those cannot be verified at all.\n\nOf what IS here, the pure arithmetic is unusually good. I re-derived every mechanical magnitude to full precision and all are exact: poundal 0.138254954376 N, foot-poundal 0.0421401100938048 J, lbf 4.4482216152605 N, slug 14.5939029372064 kg, slug/lb ratio 32.17404855643045, slinch 175.126835246477 kg and 386.0885826771654 lb, g in the inch variant 386.0885826771654 in/s², kgf/kp 9.80665 N, hyl 9.80665 kg, at 98066.5 Pa, PS 735.49875 W, sthène 1 kN, pièze 1 kPa, g_c 32.174049, J 778.169262 ft·lbf/Btu_IT, c 9.83571×10⁸ ft/s. §8 is the standout: I recomputed all six conventional-unit ratios from K_J-90 = 483597.9 GHz/V and R_K-90 = 25812.807 Ω against the exact 2019 values of e and h, and every digit matches, including the sign of each deviation and the reciprocal relation between Ω₉₀/H₉₀ and F₉₀ — a place where it would have been very easy to invert the whole table. §2 and §3 are likewise clean, including the (1,1,−2,0,0,−1) exponent tuple for g_c over the force-extended basis. The torr/mmHg pair (133.322368421… vs 133.322387415 Pa, 1.4×10⁻⁷ apart) is exactly right.\n\nThe failures are concentrated in the historical and structural claims rather than the numbers. Three are serious: the μ₀ statement in family_notes gets the direction of the μ rescaling backwards (μ is divided by 4π, not multiplied — the sentence's own 10⁻⁷ contradicts it); the rutherford-as-MTS-unit claim, offered as a headline insight and planted in §5's fingerprint list, appears to be invented — the unit is a 1946 US NBS proposal by Curtiss and Condon with no MTS connection; and the '1893 legal ohm' alias in §7 conflates two distinct units 0.25% apart, injecting an error five times larger than the international/absolute offset that entry exists to catch. Two more are genuine internal contradictions the entry argues itself into: family_notes asserts the practical units write equations 'character-for-character as the SI equation' while §6's own benchmark equations are unrationalized (∇·D = 4πρ, F = c²q₁q₂/r²), and §6 then carries an empty generators array alongside those non-SI forms — it is the one delivered system with real restorable content and it is scored as having none. Beyond that: §1 mislabels G's units (3.439×10⁻⁸ is per slug, not per lb; per lb it is 1.069×10⁻⁹), §4 calls a system both 'CGS-gravitational' and 'metre–gram-force–second', §6 backdates the henry, joule and watt to 1881 (actually 1893, 1889, 1889), §7 dates Giorgi's proposal to 1905 where §6 correctly says 1901, §7 cites NIST SP 811 for factors SP 811 does not contain, §7 gives the US branch only for ohm and volt while all its derived factors are mean-international (A_int(US) = 0.999835, not 0.99985), and §7 overstates the pre-1948 elementary-charge story, where the 0.4% Millikan viscosity error dwarfs the 1.5×10⁻⁴ unit offset by ~25×.\n\nThe scope reasoning is mostly sound and I would not disturb it, with one exception: §6 does not belong in the 'absorbs nothing' group by the enumeration's own structural test, and the schema_fit value 'generators_only' paired with an empty array (§1, §2, §5) makes a real finding indistinguishable from an unfilled field."
+}

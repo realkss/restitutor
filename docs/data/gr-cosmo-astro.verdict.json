@@ -1,0 +1,270 @@
+{
+ "family": "General relativity, cosmology, and dynamical astronomy (gr-cosmo-astro)",
+ "verdicts": [
+  {
+   "system": "Geometrized units (G = c = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "GM_\\odot/c^3 = 4.9254e-6 s (I computed both this session)",
+     "problem": "Arithmetic slip in the 5th significant figure, and it contradicts the row's own fingerprint and alias list, which give 4.9255e-6 s. With the IAU 2015 B3 nominal GM_sun = 1.3271244e20 m^3 s^-2 and c = 299792458 m/s, GM_sun/c^3 = 4.925491e-6 s, which rounds to 4.9255e-6, not 4.9254e-6.",
+     "correction": "GM_sun/c^3 = 4.9255e-6 s (4.925491e-6). The same wrong value 4.9254e-6 is repeated in the notes of the NR-code-units row and should be fixed there too. GM_sun/c^2 = 1476.625 m is correct.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Geometrized-Gaussian units (G = c = 4\\pi\\varepsilon_0 = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "Numerically \\sqrt{G}/c^2 = 8.617\\times10^{-25} cm/esu, so the electron charge becomes 1.381\\times10^{-34} cm.",
+     "problem": "The conversion factor is wrong by a factor of exactly c/10^10 = 2.998. In cgs, sqrt(G)/c^2 = sqrt(6.6743e-8)/(2.99792458e10)^2 = 2.5834e-4/8.98755e20 = 2.8745e-25 cm/esu. The quoted electron value 1.381e-34 cm is itself correct (4.803204e-10 esu x 2.8745e-25 = 1.3807e-34 cm), so the entry's own two numbers are mutually inconsistent — 4.803204e-10 x 8.617e-25 would give 4.14e-34 cm.",
+     "correction": "sqrt(G)/c^2 = 2.8745e-25 cm/esu (keep the electron charge at 1.3807e-34 cm).",
+     "confidence": "certain"
+    },
+    {
+     "claim": "Curved-space Dirac: \\left(i\\gamma^\\mu(\\nabla_\\mu - iqA_\\mu) - m/\\hbar\\right)\\psi = 0",
+     "problem": "Minimal coupling is missing the 1/hbar that this row explicitly cannot drop (it states hbar = l_P^2 != 1). Dimensionally: in geometrized-Gaussian, q has dimension L, A_mu is dimensionless (since q*phi must be an energy = a length), so qA_mu has dimension L, while \\nabla_\\mu has L^-1 and m/hbar has L/L^2 = L^-1. The gauge term is off by L^2 = hbar.",
+     "correction": "\\left(i\\gamma^\\mu(\\nabla_\\mu - i\\frac{q}{\\hbar}A_\\mu) - m/\\hbar\\right)\\psi = 0. (The Schrodinger form given in the same field, with -i\\hbar\\nabla - q\\mathbf A inside the square, is correct as written.)",
+     "confidence": "certain"
+    },
+    {
+     "claim": "\\mathbf{B}_{\\rm Gaussian} = c\\,\\mathbf{B}_{\\rm SI}",
+     "problem": "Not exact as a Gaussian-vs-SI relation; it omits the sqrt(4 pi eps_0) that accompanies the charge/field rescaling. Taken literally it would make 1 T equal 3e8 gauss instead of 1e4 gauss. The Landau-Lifshitz row states the same relation correctly as B_Gaussian = c B_(SI-quotient), so this row is internally inconsistent with row 12.",
+     "correction": "B_Gaussian = sqrt(4 pi eps_0) c B_SI, i.e. c times the SI value already rescaled by the 4 pi eps_0 = 1 quotient. Write it as B_Gaussian = c B_(SI-quotient), matching the phrasing used in the Gaussian-CGS row.",
+     "confidence": "likely"
+    },
+    {
+     "claim": "The generator 4\\pi\\varepsilon_0 = 1 alone would only rescale units; Gaussian additionally REDEFINES B relative to the plain SI quotient by a factor of c, hence needs_symbol_rescaling.",
+     "problem": "The justification is invalid for THIS row, because c = 1 is itself one of the generators here. Under the generator set {c, G, 4 pi eps_0} the quotient map already delivers q -> q/sqrt(4 pi eps_0), E -> sqrt(4 pi eps_0) E, B -> sqrt(4 pi eps_0) c B — the factor of c is supplied by the c generator, not by any symbol redefinition. Checked numerically: sqrt(4 pi eps_0) c = 3162.3, and the cgs base-unit conversion (kg->g, m->cm) for B's dimension M^1/2 L^-1/2 T^-1 supplies the remaining 3.162, giving exactly 1 T = 1e4 G. So geometrized-Gaussian is a pure quotient of SI. (This is precisely the contrast with row 12, where c is NOT a generator and the factor c IS a genuine extra rescaling — that row's verdict is right.)",
+     "correction": "Either mark this row generators_only, or keep needs_symbol_rescaling on a different and correct basis: rationalization-sensitive DIMENSIONLESS quantities (chi_e, chi_m differ by 4 pi) and the D/H field definitions, which no dimension-driven quotient can produce.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Geometrized Heaviside-Lorentz units (G = c = \\varepsilon_0 = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "schema_fit: needs_symbol_rescaling",
+     "problem": "Same defect as the Gaussian row, and here there is no residual justification at all. Both listed rescalings (q_HL = sqrt(4 pi) q_Gaussian, E_HL = E_Gaussian/sqrt(4 pi)) are stated relative to GAUSSIAN, not to the SI base, and each is exactly the arithmetic consequence of choosing the generator eps_0 = 1 instead of 4 pi eps_0 = 1. Relative to SI, q_HL = q_SI/sqrt(eps_0) and B_HL = sqrt(eps_0) c B_SI are both pure quotient results under {c, G, eps_0}.",
+     "correction": "schema_fit should be generators_only. If the two relations are retained, relabel them as derived cross-system conversions (HL vs Gaussian), not as per-symbol rescalings against the SI base.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Black-hole scale units (G = c = M = 1)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Numerical-relativity code units (G = c = M_\\odot = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "maximum rest-mass densities in code units of order 10^{-3} to 10^{-2} (nuclear density is 8.0\\times10^{-4} here)",
+     "problem": "Wrong by roughly a factor of 2. Using the row's own density unit 6.1758e17 g/cm^3, nuclear saturation density (2.7e14 g/cm^3, from n_sat = 0.16 fm^-3) converts to 2.7e14/6.1758e17 = 4.37e-4. The quoted 8.0e-4 corresponds to 4.94e14 g/cm^3, roughly 1.8 times saturation.",
+     "correction": "Nuclear saturation density is ~4.4e-4 in these code units (4.4e-4 for 2.7e14 g/cm^3; 3.7e-4 if 2.3e14 g/cm^3 is adopted). The 10^-3 to 10^-2 range for maximum densities is fine.",
+     "confidence": "likely"
+    },
+    {
+     "claim": "time unit GM_\\odot/c^3 = 4.9254e-6 s",
+     "problem": "Same 5th-digit slip as the geometrized row; the row's own fingerprint list gives 4.9255e-6 s.",
+     "correction": "4.9255e-6 s (4.925491e-6). Length 1476.6 m, density 6.176e17 g/cm^3 and energy 1.787e54 erg all check out exactly.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "GRMHD code units (G = c = 1, M = 1, sqrt(4pi) absorbed into B)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "generator {tex: 4\\pi\\varepsilon_0, numeric_factor: 4\\pi} together with the rescaling B_{\\rm code} = B_{\\rm Gaussian}/\\sqrt{4\\pi}",
+     "problem": "Internally inconsistent electromagnetic normalization. Absorbing sqrt(4 pi) into B (so that magnetic pressure is b^2/2 and there is no 1/4 pi in T^munu) IS the Heaviside-Lorentz field normalization, which corresponds to the generator eps_0 = 1, numeric_factor 1. Declaring the generator as 4 pi eps_0 (Gaussian) makes charge Gaussian while the fields are Heaviside-Lorentz — a mixture that is not a consistent Maxwell normalization. Note that in ideal MHD E = -v x B scales exactly as B, so the same factor applies to both fields.",
+     "correction": "Set the electromagnetic generator to \\varepsilon_0 with numeric_factor 1 (Heaviside-Lorentz); the sqrt(4 pi) then falls out of the quotient and needs no separate per-symbol entry. The row's needs_symbol_rescaling verdict should then rest solely on the unbound \\mathcal{M}_{unit}, which is a genuine unclosed-generator problem, not a symbol redefinition. The b^2/2, sigma = b^2/rho, beta = 2p/b^2, T^munu form and phi_BH ~ 15 are all correct.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "c = 1 only (relativist's / special-relativity units)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "Planck mass as m_P = G^{-1/2}, Planck length as l_P = \\sqrt{\\hbar G}",
+     "problem": "m_P = G^{-1/2} requires hbar = 1, which this row explicitly does not set. With c = 1 only, [G] = M^-1 L^3 T^-2 = M^-1 L, so [G^{-1/2}] = M^{1/2} L^{-1/2} — not a mass. Listing it as a fingerprint of c = 1 units would misclassify hbar = c = 1 particle-physics papers into this row. (The companion claim l_P = sqrt(hbar G) IS correct here: [hbar] = M L with c = 1, so [hbar G] = L^2.)",
+     "correction": "With c = 1 and hbar retained, m_P = sqrt(hbar/G). Only when hbar = 1 as well does m_P = G^{-1/2}; move that form to the natural-units/Planck rows.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Reduced-Planck cosmology units (hbar = c = k_B = 8 pi G = 1)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Classical \\kappa = 1 units (8 pi G = c = 1, hbar not set)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "\\hbar = 8\\pi\\hbar G/c^3 = 8\\pi l_P^2 = 2.0\\times10^{-69}\\,\\mathrm{m}^2",
+     "problem": "The formula is right but the arithmetic is not: 8 pi has been evaluated as 8. With l_P^2 = hbar G/c^3 = 2.6123e-70 m^2, 8 pi l_P^2 = 6.565e-69 m^2, whereas 8 x 2.612e-70 = 2.09e-69 m^2 — exactly the quoted number.",
+     "correction": "hbar = 8 pi l_P^2 = 6.57e-69 m^2.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Planck units (G = c = hbar = k_B = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "schema_fit: needs_symbol_rescaling ... Marked needs_symbol_rescaling because of the unresolved electromagnetic normalization",
+     "problem": "Mis-verdict, and inconsistent with the enumeration's own treatment of the identical situation. Plain geometrized units (row 1) has exactly the same unfixed E&M pairing — its own coulomb field says so explicitly — and is marked generators_only. An unresolved choice BETWEEN variants is a variant-selection/ambiguity problem, not a per-symbol rescaling, and the row's per_symbol_rescalings list is empty, so the verdict has nothing to point at. All the physics content of the row (S = A/4, T_H = 1/(8 pi M), t_evap = 5120 pi M^3, dM = (kappa/8pi)dA + Omega dJ + Phi dQ, e^2 = alpha = 1/137.036) is correct.",
+     "correction": "Mark generators_only (four generators, all four base dimensions fixed) and carry the Gaussian / Heaviside-Lorentz / e = 1 ambiguity in a separate variant field, the same way row 1 does.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "\\kappa kept symbolic (Einstein's gravitational constant as a named combination)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "Modern: G_{\\mu\\nu} = \\kappa T_{\\mu\\nu}. Einstein 1916: G_{im} = -\\kappa\\left(T_{im} - \\tfrac12 g_{im}T\\right) under \\sqrt{-g} = 1.",
+     "problem": "The two halves use the SAME symbol G for two DIFFERENT tensors, with no warning. In Einstein's notation (Feldgleichungen, 25 Nov 1915, and Grundlage 1916) G_im denotes the RICCI tensor, i.e. modern R_mu_nu. Read with modern symbol meanings, the second equation is flatly false: trace-reversing G_mu_nu = kappa T_mu_nu gives R_mu_nu = kappa(T_mu_nu - 1/2 g_mu_nu T), never G_mu_nu = kappa(T_mu_nu - 1/2 g_mu_nu T). This is precisely the kind of token an engine fingerprints on, so the collision must be annotated.",
+     "correction": "State it as: Einstein's form R_{\\mu\\nu} = -\\kappa(T_{\\mu\\nu} - \\tfrac12 g_{\\mu\\nu}T) (printed as G_{im} in the original, where Einstein's G_{im} IS the Ricci tensor, not the modern Einstein tensor; the minus sign follows his Ricci-sign and signature conventions). Add G_im = Ricci to the alias table alongside kappa. The numeric values kappa = 8 pi G/c^4 = 2.07665e-43 N^-1 and 8 pi G/c^2 = 1.8664e-26 m/kg and all three dimension tuples are correct.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Gaussian-CGS relativistic astrophysics (Landau-Lifshitz style)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Observational cosmology hybrid units (km s^-1 Mpc^-1, Mpc, M_sun, K, eV)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Little-h units (h^-1 Mpc, h^-1 M_sun, h^2 densities)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "M_{\\rm abs}^{(h)} = M_{\\rm abs} + 5\\log_{10}h, written in papers as 'M_r - 5\\log h' ... The logarithmic image of the L \\propto h^{-2} scaling: -2.5\\log_{10}(h^{-2}) = +5\\log_{10}h.",
+     "problem": "Sign error, and self-contradictory: the stated relation (+5 log h) and the paper label quoted in the same breath (M_r - 5 log h) disagree. The row's own convention everywhere else is 'value in h-units = h^exponent x physical value', and for luminosity it correctly gives L_[h^-2 L_sun] = h^{+2} L_[L_sun]. Feeding that h^{+2} through the magnitude definition gives -2.5 log10(h^2 L) = M_phys - 5 log10 h. The derivation quoted uses h^{-2} (the physical scaling) where the h^{+2} numerical-value factor belongs. Cross-check with a real published number: Blanton et al. quote M_* - 5 log h = -20.44 in r; at h = 0.7 the physical M_* = -20.44 + 5 log(0.7) = -21.22, i.e. the h-unit number is the physical magnitude MINUS 5 log h.",
+     "correction": "M_abs^{(h)} = M_abs - 5 log_10 h (equivalently M_abs = M_abs^{(h)} + 5 log_10 h), matching the 'M_r - 5 log h' label. The per-quantity exponent table in the notes must likewise read 'an additive -5 log h for magnitudes'. Every other exponent in this row (-1 length/mass/time, +2 density, +3 number density, +1 wavenumber, -3 P(k), +2 luminosity, 0 velocity) is correct.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Comoving / scale-factor normalization conventions",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Hubble units (H_0 = 1, or H = 1 during inflation)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Henon units (N-body units): G = M = 1, E = -1/4",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "c is NOT 1 here — a genuine mixed-convention hazard, since c has the numerical value \\sqrt{R_{\\rm v}c^2/(GM)} \\sim 10^{3}-10^{4} in Henon units",
+     "problem": "The formula is right but the quoted range is about an order of magnitude too low for the systems this row covers. The velocity unit is sqrt(GM/R_v); for a typical globular cluster (M = 1e5 M_sun, R_v = 3 pc) that is 12 km/s, giving c = 2.5e4; for an open cluster (M = 500 M_sun, R_v = 2 pc) it is 1.0 km/s, giving c = 2.9e5. Only very massive and compact systems (M = 1e6 M_sun, R_v = 0.1 pc) reach ~1.5e3.",
+     "correction": "c ~ 10^4 to 10^5 in Henon units for typical star clusters, dropping toward 10^3 only for very compact massive systems. Everything else in this row (R_v = 1, <v^2> = 1/2, v_rms = 1/sqrt2, t_cr = 2 sqrt 2, the numeric_factor 4 on |E_tot|, gamma ~ 0.11) is verified correct.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Model-scale units (G = M = a = 1; Plummer/King/NFW model units)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Galactic-dynamics units (kpc, M_sun, km s^-1 or Myr)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "galpy / AGAMA normalized units (R_0 = v_c = 1)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Gaussian celestial-mechanics units (au, day, M_sun; Gaussian gravitational constant k)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Astrodynamics canonical units (mu = 1 DU^3/TU^2)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "TU = sqrt(DU^3/\\mu) = sqrt(2.5944e11/398600.44) = sqrt(650879) = 806.77 s, consistent with the quoted 806.8118744 s (the small residual reflects the exact \\mu adopted)",
+     "problem": "The 'verified numerically this session' arithmetic is wrong at every step. 6378.137^3 = 2.59467e11, not 2.5944e11; 2.59467e11/398600.4418 = 650,944, not 650,879; and sqrt of that is 806.811 s, not 806.77 s. The consequence is a false diagnosis: the true agreement with the canonical 806.8118744 s is ~1e-6 relative, not the ~5e-5 discrepancy the entry then rationalizes away as 'the exact mu adopted'.",
+     "correction": "TU_Earth = sqrt(6378.137^3/398600.4418) = 806.811 s, agreeing with the canonical 806.8118744 s to about 1 part in 10^6. VU = DU/TU = 7.90537 km/s, which also equals sqrt(mu/DU) exactly, confirming the triple is self-consistent. The heliocentric numbers (TU = 1/k = 58.132441 d, VU = 29.7847 km/s) check out exactly.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Ephemeris units and the TDB/TCB time-scale rescaling",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Astronomical magnitudes (logarithmic scale)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Radio and millimetre flux units (Jansky family)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Stellar and solar reference units (M_sun, R_sun, L_sun; IAU nominal values)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "family_notes: Cluster A and the trap list",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "All write G_mn + L g_mn = 8 pi T_mn, S = (1/16pi) int R sqrt(-g), ds^2 = -(1-2M/r)dt^2 + ..., T_H = 1/(8 pi M), S_BH = A/4. A gravity-only equation CANNOT distinguish them.",
+     "problem": "The two thermodynamic entries are false for seven of the eight listed cluster members and contradict the enumeration's own rows. S_BH = A/4 and T_H = 1/(8 pi M) hold only when hbar = 1, i.e. only for #10 Planck units. In #1/#2/#3/#4/#5/#6/#8/#9 hbar is not unity (row 1 itself says hbar = l_P^2 = 2.612e-70 m^2), so there S_BH = A/(4 hbar) = A/(4 l_P^2) and T_H = hbar/(8 pi M). This also undercuts the cluster's own claim four lines later that '#10 differs from #1 only once hbar appears' — Hawking temperature and horizon entropy are exactly where it appears.",
+     "correction": "Restrict the Cluster A signature to the purely classical items (G_mn + Lambda g_mn = 8 pi T_mn, the 1/16 pi action prefactor, ds^2 = -(1-2M/r)dt^2 + ...). List T_H = 1/(8 pi M) and S_BH = A/4 as DISCRIMINATORS that single out #10 rather than as shared forms; in the rest of the cluster they read T_H = hbar/(8 pi M) and S = A/(4 l_P^2).",
+     "confidence": "certain"
+    },
+    {
+     "claim": "T1. Little h ... absolute magnitudes +5 log h",
+     "problem": "Same sign error as in the little-h row, propagated into the trap list that a schema designer would read first.",
+     "correction": "absolute magnitudes -5 log h (the h-unit quantity is M_abs - 5 log_10 h).",
+     "confidence": "certain"
+    }
+   ]
+  }
+ ],
+ "missing_systems": [
+  "Unreduced-Planck-mass natural units for cosmology (hbar = c = k_B = 1, G kept as 1/m_Pl^2 with m_Pl = G^-1/2 = 1.22089e19 GeV). This is the Kolb & Turner / older-inflation / much-of-PDG convention, and it is neither #8 (which sets 8 pi G = 1) nor #10 (which sets G = 1): here the Friedmann equation reads H^2 = 8 pi rho/(3 m_Pl^2) and the action prefactor is m_Pl^2/(16 pi). It is the other half of trap T13 — the enumeration names the sqrt(8 pi) error but only tabulates one of the two systems between which the error occurs.",
+  "Plain SI general relativity (all constants explicit, kg / m / s / K / tesla): G_mn + Lambda g_mn = (8 pi G/c^4) T_mn, action c^4/(16 pi G) int R sqrt(-g) dt d^3x. The enumeration includes a zero-generator CGS-Gaussian row (#12) and zero-generator astronomy rows, but never the SI baseline itself, even though the whole restoration engine is defined against the SI basis and relativistic geodesy, GNSS/clock-comparison, and laboratory-gravity literature are written in it.",
+  "k_B = 1 alone (temperature measured in energy units): kT quoted in keV/MeV/eV with lengths and masses left in cgs or SI. Ubiquitous in X-ray astronomy and plasma astrophysics (kT = 6 keV cluster gas), in neutron-star EOS tables (MeV fm^-3 alongside g cm^-3), and in CMB work (T_0 in eV). It is a one-generator convention exactly parallel to the enumeration's #7 (c = 1 only), it collapses Theta into M L^2 T^-2, and no row covers it — #12's row mentions the MeV fm^-3 hybrid only as a fingerprint.",
+  "Cosmological-simulation internal units of the GADGET / AREPO / GIZMO family: UnitLength = 1 kpc/h, UnitMass = 1e10 M_sun/h, UnitVelocity = 1 km/s, with G = 43007.1 in internal units. This is the native unit system of Millennium, IllustrisTNG, EAGLE, Bolshoi and every public halo catalogue built from them. The enumeration has NR code units (#5), GRMHD code units (#6), Henon (#17), model (#18) and galpy (#20), but omits the single most widely distributed set of code units in cosmology — and it is the place where little h (#14) and a code unit system compound, since the 1e10 M_sun/h mass unit carries an h the generator table cannot see.",
+  "16 pi G = 1 (equivalently 2 kappa^2 = 1) and AdS-radius L = 1 conventions of higher-dimensional / holographic GR: action S = int d^D x sqrt(-g)(R - 2 Lambda)/(16 pi G) with the prefactor set to 1, and Lambda = -(D-1)(D-2)/(2 L^2) with L = 1. Standard in black-brane, Lovelock/Gauss-Bonnet, and gauge-gravity papers. It differs from #8/#9 by a factor of 2 in the action prefactor — exactly the kind of dimensionless-factor error the numeric_factor field exists to catch — and the AdS/dS curvature radius set to unity is a normalization of the same class as #16's H = 1.",
+  "Angular and astrometric units: radian and steradian as dimensionless-by-fiat, arcsec / mas / microarcsec, proper motions in mas/yr, and the definitional chain 1 pc = 1 au / 1 arcsec. The family handles a hidden solid angle only inside the Jy/beam refusal (T7) and never gives angle its own treatment, yet Gaia-era astrometry, lensing (shear, Einstein radii in arcsec), and VLBI all live there — and the dimensionless-radian convention is what makes small-angle distance relations silently unit-dependent. The same class includes pulsar dispersion measure in pc cm^-3, a hybrid that mixes two length units in one symbol."
+ ],
+ "overall": "Substantially sound but not clean: 26 system entries, 15 fully confirmed and 11 carrying errors, plus 2 errors in the family_notes clusters/traps. Nearly all the hard physics — dimension tuples (every one of the ~30 generator tuples recomputed and correct), the Einstein/Friedmann/TOV/Kerr/QNM/Regge-Wheeler forms, the Henon virial chain (R_v = 1, <v^2> = 1/2, t_cr = 2 sqrt 2), the Plummer bridge (3 pi/16 and -3 pi/64), the IAU 2015 B3 nominal values, L_B/L_G/L_C/TDB_0, the AB/ST zero points, the Jansky dimension tuple, the c^3-vs-c^4 action prefactor, and the reduced-Planck sector — checks out exactly. The failures cluster into four kinds. (1) Arithmetic slips in numbers the entry claims to have computed this session: sqrt(G)/c^2 off by a factor of c/1e10, hbar = 8 l_P^2 instead of 8 pi l_P^2, the Earth canonical TU computed as 806.77 s instead of 806.811 s (with a spurious explanation attached to the fake residual), nuclear density off by ~2x, and GM_sun/c^3 rounded to 4.9254e-6 in two rows while the fingerprints say 4.9255e-6. (2) One genuine sign error with real downstream consequences: the little-h absolute-magnitude relation is stated as +5 log h while the label quoted in the same sentence says -5 log h; it is repeated in trap T1. (3) Two equations that are wrong once hbar is not 1 — the Cluster A claim that all its members write T_H = 1/(8 pi M) and S_BH = A/4 (true only for Planck units, and it contradicts the enumeration's own hbar discriminator), and the geometrized-Gaussian Dirac equation missing 1/hbar in the minimal coupling. (4) A systematic schema_fit misjudgment: because c = 1 is a generator in rows 2, 3 and 6, Gaussian and Heaviside-Lorentz field normalizations are exact QUOTIENTS there, not per-symbol rescalings — the enumeration imported the justification from row 12, where c is not a generator and the reasoning is valid. Row 10 is likewise marked needs_symbol_rescaling for an ambiguity that row 1 treats as generators_only, and row 6 declares a Gaussian generator while rescaling the field to Heaviside-Lorentz. Separately, the kappa row prints Einstein's G_im without saying it means the Ricci tensor, which turns a faithful historical transcription into a false modern equation. The most damaging items for a translation engine are, in order: the little-h magnitude sign, the Cluster A S_BH/T_H claim, the Einstein G_im ambiguity, and the schema_fit misclassifications, since those change behavior rather than just a printed digit.\""
+}

@@ -1,0 +1,1287 @@
+{
+ "family": "Natural units in high-energy physics, QFT, and string theory (ħ=c=1 and its extensions: k_B, ε₀/4πε₀, G/8πG/16πG, α'/ℓ_s, lattice a, m_e)",
+ "systems": [
+  {
+   "name": "HEP natural units (ħ = c = 1) with Heaviside–Lorentz electromagnetism",
+   "aliases": [
+    "natural units",
+    "particle-physics units",
+    "HEP units",
+    "GeV units",
+    "ħ=c=1",
+    "rationalized natural units",
+    "Heaviside–Lorentz natural units",
+    "rationalized Gaussian + ħ=c=1"
+   ],
+   "used_in": "The default of essentially all modern hep-ph / hep-ex / hep-th: Peskin & Schroeder, Srednicki, Schwartz, Weinberg QFT, Itzykson–Zuber, Bjorken–Drell, Berestetskii–Lifshitz–Pitaevskii (LL4, 'Heaviside units'), the PDG Review of Particle Physics, collider phenomenology, EFT/SMEFT, neutrino physics, axion/dark-matter phenomenology.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "1",
+     "emits": "\\varepsilon_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B}",
+     "relation": "\\mathbf{B}_{\\rm HL} = \\mathbf{B}_{\\rm SI}/\\sqrt{\\mu_0} = c\\,\\sqrt{\\varepsilon_0}\\,\\mathbf{B}_{\\rm SI}",
+     "why": "The plain ε₀-quotient would give √ε₀ B_SI. HL (and every c=1 convention) redefines B so that E and B carry one common dimension, so restoring SI from a natural-units B must emit ONE EXTRA factor of c beyond what the ε₀ generator supplies. Invisible inside the system because c=1."
+    },
+    {
+     "symbol": "\\mathbf{A}",
+     "relation": "\\mathbf{A}_{\\rm HL} = c\\,\\sqrt{\\varepsilon_0}\\,\\mathbf{A}_{\\rm SI}\\quad\\text{while}\\quad \\phi_{\\rm HL} = \\sqrt{\\varepsilon_0}\\,\\phi_{\\rm SI}",
+     "why": "Same extra c as B: the 4-potential A^μ=(φ,A) is only uniform once c=1. The scalar potential is a pure quotient; the 3-vector potential is not."
+    },
+    {
+     "symbol": "q,\\ e",
+     "relation": "q_{\\rm HL} = q_{\\rm SI}/\\sqrt{\\varepsilon_0};\\ e = \\sqrt{4\\pi\\alpha} \\simeq 0.302822",
+     "why": "Pure quotient (listed only so a checker does not double-count it as a rider). Charge becomes DIMENSIONLESS; note the half-power of the ε₀ generator — this is where half-integer exponents enter."
+    }
+   ],
+   "fingerprints": [
+    "\\alpha = e^2/4\\pi \\simeq 1/137 (the single sharpest discriminator vs Gaussian-natural)",
+    "e \\simeq 0.30282 quoted as a numerical coupling",
+    "Maxwell kinetic term written canonically: \\mathcal{L} = -\\tfrac14 F_{\\mu\\nu}F^{\\mu\\nu} (no 1/16\\pi)",
+    "\\partial_\\mu F^{\\mu\\nu} = J^\\nu and \\nabla\\cdot\\mathbf{E} = \\rho (no 4\\pi)",
+    "Explicit phrases: 'we use natural units \\hbar = c = 1', 'units with \\hbar=c=1'",
+    "Every dimensionful quantity quoted in eV/keV/MeV/GeV/TeV or inverse powers; lengths as GeV^{-1} or fm; cross sections as GeV^{-2}/pb/fb; decay rates as GeV",
+    "Conversion constants in an appendix: \\hbar c = 197.3269804\\ \\text{MeV fm}; (\\hbar c)^2 = 0.3893793721\\ \\text{GeV}^2\\text{ mbarn}; 1\\,\\text{GeV}^{-1}=0.1973269804\\ \\text{fm}=6.582119569\\times10^{-25}\\,\\text{s}",
+    "Constants carrying leftover mass dimension: G_F = 1.1663787\\times10^{-5}\\,\\text{GeV}^{-2}, G_N = 6.70883\\times10^{-39}\\,\\text{GeV}^{-2}",
+    "Mass-dimension prose: '[\\phi]=1, [\\psi]=3/2, [A_\\mu]=1', 'dimension-six operator suppressed by \\Lambda^2'",
+    "Total absence of \\varepsilon_0, \\mu_0, k_B, \\hbar, c from the body equations",
+    "arXiv primary class hep-ph / hep-ex / hep-th; PDG-style tables"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1 q_2}{4\\pi r^2},\\qquad V(r) = \\dfrac{q_1 q_2}{4\\pi r};\\qquad \\text{hydrogen: } V(r) = -\\dfrac{e^2}{4\\pi r} = -\\dfrac{\\alpha}{r},\\quad \\alpha \\equiv \\dfrac{e^2}{4\\pi} \\simeq \\dfrac{1}{137.036},\\ e \\simeq 0.302822",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho\\ \\ (\\text{no }4\\pi,\\text{ no }\\varepsilon_0);\\quad \\text{covariantly } \\partial_\\mu F^{\\mu\\nu} = J^\\nu,\\ \\ \\mathcal{L}_{\\rm Max} = -\\tfrac14 F_{\\mu\\nu}F^{\\mu\\nu} - J^\\mu A_\\mu",
+    "einstein_field": "G_{\\mu\\nu} = R_{\\mu\\nu} - \\tfrac12 g_{\\mu\\nu}R = 8\\pi G\\, T_{\\mu\\nu} = \\dfrac{T_{\\mu\\nu}}{\\bar M_{\\rm pl}^{2}},\\qquad S = \\dfrac{1}{16\\pi G}\\int d^4x\\sqrt{-g}\\,R + S_m.\\ \\ G\\ \\textbf{is NOT set to 1 here}: G = 6.70883\\times10^{-39}\\,\\text{GeV}^{-2} = M_{\\rm Pl}^{-2}",
+    "schrodinger_or_dirac": "\\left(i\\gamma^\\mu D_\\mu - m\\right)\\psi = 0,\\quad D_\\mu = \\partial_\\mu + ieA_\\mu;\\qquad \\text{non-rel. limit } i\\partial_t\\psi = \\left(-\\dfrac{\\nabla^2}{2m} - \\dfrac{\\alpha}{r}\\right)\\psi,\\ \\ E_n = -\\dfrac{m\\alpha^2}{2n^2}"
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "RESIDUAL DIMENSION: rank drops from 3 (M,L,T) to 1. The surviving invariant is MASS DIMENSION. Because ε₀ is also a generator, SI current I folds in (via half-powers) and charge is dimensionless; the temperature dimension Θ SURVIVES unless k_B is also set. Honest residual rank of this exact system is 2: (mass, temperature). Most papers silently also set k_B — see the next system.\n\nMASS-DIMENSION TABLE (d=4): [x^\\mu]=-1, [\\partial_\\mu]=+1, [d^4x]=-4, [S]=0, [\\mathcal{L}]=4, [\\phi]=1, [\\psi]=3/2, [A_\\mu]=1, [F_{\\mu\\nu}]=2, [m]=[p]=[E]=[T]=1, [j^\\mu]=3, [\\lambda_{\\phi^4}]=0, [y_{\\rm Yuk}]=0, [g]=0, [\\sigma]=-2, [\\Gamma]=1, [G]=[G_F]=[\\alpha']=-2, [\\rho_{\\rm energy}]=4.\n\nDIM-REG RIDER (schema stressor): in d = 4-2\\epsilon, [\\phi]=(d-2)/2, [\\psi]=(d-1)/2, [A_\\mu]=(d-2)/2, [e]=(4-d)/2=\\epsilon, and couplings are written g\\mu^{\\epsilon}. A checker hardwiring d=4 will report false failures on every dim-reg computation. Same for D≠4 (KK, large extra dimensions), where [\\phi]=(D-2)/2 and [G_D]=2-D.\n\nε₀ IS DETACHABLE: a paper with no charged fields never fixes the E&M convention, and a lab-facing paper may say ħ=c=1 while keeping SI E&M (see the hybrid entry). Do not infer ε₀=1 from the phrase 'natural units'; look for α=e²/4π.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Heaviside%E2%80%93Lorentz_units (SI↔HL conversion table: q_HL = q_SI/√ε₀, E_HL = √ε₀ E_SI, B_HL = B_SI/√μ₀; HL Maxwell equations)",
+    "https://physics.nist.gov/cgi-bin/cuu/Category?view=pdf&Non-SI+units.x=77&Non-SI+units.y=6 (CODATA 2022 non-SI units; ħc = 197.3269804 MeV fm)",
+    "PDG Review of Particle Physics, 'Physical Constants' table (ħc, (ħc)² = 0.3893793721 GeV² mbarn, G_N = 6.70883×10^-39 ħc (GeV/c²)^-2, G_F)",
+    "M. E. Peskin and D. V. Schroeder, An Introduction to Quantum Field Theory (Heaviside–Lorentz + ħ=c=1, α = e²/4π)",
+    "https://github.com/misho104/natural_units (PDG-value natural-units converter; cross-check of conversion factors)"
+   ]
+  },
+  {
+   "name": "HEP natural units with Boltzmann constant (ħ = c = k_B = 1, Heaviside–Lorentz)",
+   "aliases": [
+    "thermal natural units",
+    "ħ=c=k_B=1",
+    "cosmology natural units",
+    "finite-temperature field theory units",
+    "ħ=c=k_B=ε₀=1"
+   ],
+   "used_in": "Thermal/finite-temperature field theory (Kapusta–Gale, Le Bellac), finite-T QCD and the QGP, early-universe cosmology and thermal relic calculations (Kolb & Turner), baryogenesis/leptogenesis, neutrino decoupling and BBN, dark-matter freeze-out. Also the effective default of lattice thermodynamics.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    },
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "1",
+     "emits": "\\varepsilon_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B}",
+     "relation": "\\mathbf{B}_{\\rm HL} = c\\,\\sqrt{\\varepsilon_0}\\,\\mathbf{B}_{\\rm SI}",
+     "why": "Identical extra-c rider as the pure ħ=c=1 system; relevant for primordial-magnetic-field and magnetogenesis papers that quote B in Gauss."
+    },
+    {
+     "symbol": "S,\\ s",
+     "relation": "S_{\\rm nat} = S_{\\rm SI}/k_B (entropy is a pure number; entropy density s has mass dimension 3)",
+     "why": "Pure quotient, but worth recording: 'entropy per comoving volume' being dimensionless is a strong fingerprint and a frequent restoration-error site."
+    }
+   ],
+   "fingerprints": [
+    "Temperature in energy units: T_c \\simeq 155\\ \\text{MeV}, T_{\\rm CMB} = 2.725\\ \\text{K} = 2.35\\times10^{-4}\\ \\text{eV}, T_{\\rm BBN}\\sim 1\\ \\text{MeV}",
+    "Conversion 1\\ \\text{K} = 8.617333262\\times10^{-5}\\ \\text{eV} = 8.617333262\\times10^{-14}\\ \\text{GeV}",
+    "\\beta = 1/T with no k_B; f(E) = \\left[e^{(E-\\mu)/T}\\mp 1\\right]^{-1}",
+    "Matsubara frequencies \\omega_n = 2\\pi n T (bosons), (2n+1)\\pi T (fermions); \\int_0^\\beta d\\tau with \\beta = 1/T",
+    "\\varepsilon = \\dfrac{\\pi^2}{30}g_*T^4,\\ s = \\dfrac{2\\pi^2}{45}g_{*s}T^3,\\ n_\\gamma = \\dfrac{2\\zeta(3)}{\\pi^2}T^3",
+    "H = 1.66\\sqrt{g_*}\\,T^2/M_{\\rm Pl} with H quoted in GeV",
+    "Explicit 'we set \\hbar = c = k_B = 1'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Identical to the ħ=c=1 Heaviside–Lorentz system: V(r) = \\dfrac{q_1q_2}{4\\pi r},\\ \\alpha = \\dfrac{e^2}{4\\pi}. At finite T the Debye-screened form V(r) = \\dfrac{\\alpha}{r}e^{-m_D r}, with m_D^2 = \\dfrac{e^2T^2}{3} for QED with one massless fermion flavour.",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho,\\quad \\partial_\\mu F^{\\mu\\nu} = J^\\nu,\\quad \\mathcal{L} = -\\tfrac14 F_{\\mu\\nu}F^{\\mu\\nu}\\ \\ (\\text{unchanged by } k_B=1)",
+    "einstein_field": "G_{\\mu\\nu} = 8\\pi G\\,T_{\\mu\\nu};\\ \\ \\text{FRW: } H^2 = \\dfrac{8\\pi G}{3}\\rho - \\dfrac{k}{a^2} + \\dfrac{\\Lambda}{3} = \\dfrac{\\rho}{3\\bar M_{\\rm pl}^2} - \\dfrac{k}{a^2} + \\dfrac{\\Lambda}{3}. G remains explicit unless reduced Planck units are also adopted.",
+    "schrodinger_or_dirac": "(i\\gamma^\\mu D_\\mu - m)\\psi = 0 unchanged; the thermal content sits in the Matsubara propagator S(\\tilde\\omega_n,\\mathbf p) with \\tilde\\omega_n = (2n+1)\\pi T, and in \\rho = e^{-H/T}/Z (no k_B)."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "RESIDUAL DIMENSION: rank 1 — pure mass dimension. This is the maximal-collapse system that still permits genuine dimensional checking, and should be treated as the canonical HEP system.\n\nTemperature, energy, mass, momentum, frequency and inverse length are now the SAME dimension, so a checker CANNOT distinguish T from m from H from k. That loss of discriminating power should be surfaced to the user, not hidden.\n\nOverlap warning: cosmology papers very often ALSO set 8πG=1 (reduced Planck units), producing a rank-0 system with no surviving dimensional check. Detect by whether M_pl still appears symbolically in formulae.",
+   "sources": [
+    "https://physics.nist.gov/cgi-bin/cuu/Category?view=pdf&Non-SI+units.x=77&Non-SI+units.y=6 (CODATA: k_B, 1 K in eV)",
+    "PDG Review of Particle Physics, 'Physical Constants' and 'Big-Bang Cosmology' reviews (g_*, ε = π²g_*T⁴/30, H = 1.66√g_* T²/M_Pl)",
+    "J. I. Kapusta and C. Gale, Finite-Temperature Field Theory (Matsubara conventions, β = 1/T)",
+    "E. W. Kolb and M. S. Turner, The Early Universe (ħ=c=k_B=1 throughout)"
+   ]
+  },
+  {
+   "name": "Gaussian natural units (ħ = c = 4πε₀ = 1)",
+   "aliases": [
+    "unrationalized natural units",
+    "Gaussian-natural",
+    "cgs-Gaussian with ħ=c=1",
+    "esu natural units",
+    "α = e² units",
+    "non-rationalized natural units"
+   ],
+   "used_in": "Older QED and nuclear literature (Heitler; much of the pre-1970 QED corpus), atomic-physics-adjacent QED, strong-field QED and heavy-ion papers inheriting Gaussian conventions from plasma/astrophysics, neutron-star and magnetar particle physics, and parts of astro-particle where B is quoted in Gauss. Landau–Lifshitz vols. 2 and 8 are Gaussian (vol. 4, QED, is NOT — it is Heaviside), so 'Landau school' is not a reliable indicator.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B}",
+     "relation": "\\mathbf{B}_{G} = \\sqrt{4\\pi/\\mu_0}\\,\\mathbf{B}_{\\rm SI} = c\\,\\sqrt{4\\pi\\varepsilon_0}\\,\\mathbf{B}_{\\rm SI}",
+     "why": "Extra factor of c beyond the (4πε₀) quotient, exactly as in Heaviside–Lorentz — E and B are made dimensionally identical."
+    },
+    {
+     "symbol": "\\mathbf{A}",
+     "relation": "\\mathbf{A}_{G} = c\\,\\sqrt{4\\pi\\varepsilon_0}\\,\\mathbf{A}_{\\rm SI};\\ \\phi_G = \\sqrt{4\\pi\\varepsilon_0}\\,\\phi_{\\rm SI}",
+     "why": "Same extra c on the 3-vector part only."
+    },
+    {
+     "symbol": "e,\\ A_\\mu,\\ F_{\\mu\\nu}\\ (\\text{relative to Heaviside–Lorentz})",
+     "relation": "e_G = e_{\\rm HL}/\\sqrt{4\\pi} = \\sqrt{\\alpha} \\simeq 0.0854245;\\quad A^G_\\mu = \\sqrt{4\\pi}\\,A^{\\rm HL}_\\mu;\\quad F^G_{\\mu\\nu} = \\sqrt{4\\pi}\\,F^{\\rm HL}_{\\mu\\nu}",
+     "why": "Translating Gaussian-natural → Heaviside–Lorentz is NOT a no-op even though both have ħ=c=1 and dimensionless charge: the photon field is rescaled by √(4π) so the kinetic term goes from -F²/16π to -F²/4. The product eA_μ (hence eE, eB, eF_{μν}, and the whole covariant derivative) is INVARIANT — only α = e² vs e²/4π distinguishes the two."
+    }
+   ],
+   "fingerprints": [
+    "\\alpha = e^2 \\simeq 1/137 with NO 4\\pi (the decisive discriminator)",
+    "e = \\sqrt{\\alpha} \\simeq 0.0854 quoted as a numerical coupling",
+    "Non-canonical Maxwell kinetic term: \\mathcal{L} = -\\dfrac{1}{16\\pi}F_{\\mu\\nu}F^{\\mu\\nu}",
+    "4\\pi's on the SOURCE side: \\partial_\\mu F^{\\mu\\nu} = 4\\pi J^\\nu, \\nabla\\cdot\\mathbf{E} = 4\\pi\\rho, \\nabla\\times\\mathbf{B} = 4\\pi\\mathbf{J} + \\partial_t\\mathbf{E}",
+    "Classical electron radius r_e = e^2/m (Gaussian) rather than e^2/4\\pi m (HL)",
+    "The written form e^2/\\hbar c = 1/137 with \\hbar c explicit",
+    "Magnetic fields in Gauss / electric fields in statvolt cm^{-1} alongside MeV–GeV masses",
+    "Couplings without 4\\pi: \\alpha_s = g^2 rather than g^2/4\\pi",
+    "EM stress tensor carrying 1/4\\pi: T^{\\rm EM}_{\\mu\\nu} = \\tfrac{1}{4\\pi}\\left(F_{\\mu\\alpha}F_\\nu{}^\\alpha - \\tfrac14 g_{\\mu\\nu}F^2\\right)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1q_2}{r^2},\\qquad V(r) = \\dfrac{q_1q_2}{r};\\qquad \\text{hydrogen: } V(r) = -\\dfrac{e^2}{r} = -\\dfrac{\\alpha}{r},\\quad \\alpha \\equiv e^2 \\simeq \\dfrac{1}{137.036},\\ e \\simeq 0.0854245",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = 4\\pi\\rho;\\quad \\partial_\\mu F^{\\mu\\nu} = 4\\pi J^\\nu,\\ \\ \\mathcal{L}_{\\rm Max} = -\\dfrac{1}{16\\pi}F_{\\mu\\nu}F^{\\mu\\nu} - J^\\mu A_\\mu",
+    "einstein_field": "G_{\\mu\\nu} = 8\\pi G\\,T_{\\mu\\nu} (unchanged — the E&M rationalization choice does not touch the gravity sector); T^{\\rm EM}_{\\mu\\nu} = \\dfrac{1}{4\\pi}\\left(F_{\\mu\\alpha}F_\\nu{}^\\alpha - \\tfrac14 g_{\\mu\\nu}F^2\\right) in Gaussian normalization (HL has no 1/4\\pi).",
+    "schrodinger_or_dirac": "\\left(i\\gamma^\\mu(\\partial_\\mu + ieA_\\mu) - m\\right)\\psi = 0 with \\alpha = e^2;\\qquad i\\partial_t\\psi = \\left(-\\dfrac{\\nabla^2}{2m} - \\dfrac{e^2}{r}\\right)\\psi,\\ E_n = -\\dfrac{me^4}{2n^2} = -\\dfrac{m\\alpha^2}{2n^2}"
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "RESIDUAL DIMENSION: identical to the Heaviside–Lorentz case — rank 1 (mass) plus Θ if k_B is not set. Dimensionally the two systems are INDISTINGUISHABLE; they differ only by the invisible 4π. This is the flagship case for storing numeric_factor rather than deriving it.\n\nTranslation rule HL → Gaussian: replace α = e²/4π by α = e², multiply every explicit photon field by √(4π) and every explicit charge by 1/√(4π), move the 4π's from Coulomb's law to Maxwell's source equations.\n\nCONFIDENCE NOTE: textbook attributions in this family are treacherous and I have kept them hedged. VERIFIED this session: LL vol. 4 (Berestetskii–Lifshitz–Pitaevskii, QED) uses Heaviside units with α = e²/4πħc; Heaviside–Lorentz is the dominant modern QFT convention. NOT verified this session: the E&M conventions of Weinberg's QFT, Bjorken–Drell, or Sakurai's Advanced QM. A program should classify from the equations (α = e² vs e²/4π; -F²/16π vs -F²/4), never from the author's name.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Heaviside%E2%80%93Lorentz_units (HL vs Gaussian differ by √(4π) in the definitions of E, B and charge)",
+    "https://arxiv.org/pdf/2411.09568 (Simple methods for converting equations between the SI, Heaviside–Lorentz and Gaussian systems)",
+    "https://arxiv.org/pdf/1506.01951 (Babel of Units: the evolution of unit systems in classical electromagnetism — rationalized vs unrationalized)",
+    "V. B. Berestetskii, E. M. Lifshitz, L. P. Pitaevskii, Quantum Electrodynamics (Landau–Lifshitz vol. 4) — states Heaviside units, α = e²/4πħc",
+    "J. D. Jackson, Classical Electrodynamics, Appendix on units (Gaussian↔SI conversion table)"
+   ]
+  },
+  {
+   "name": "Hybrid: ħ = c = 1 with SI/laboratory electromagnetism retained (ε₀ NOT set)",
+   "aliases": [
+    "lab-hybrid natural units",
+    "ħ=c=1 with SI E&M",
+    "experimentalist's natural units",
+    "haloscope/beam-line hybrid units"
+   ],
+   "used_in": "Axion and dark-photon haloscope papers (ADMX, HAYSTAC, CAPP), light-shining-through-walls, EDM searches, accelerator and beam-line sections of HEP papers, precision-QED experiments, quantum-sensing/HEP interface work. Anywhere a paper writes ħ=c=1 for the field theory but must quote a real magnet, cavity, or voltage.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B},\\ \\mathbf{E}",
+     "relation": "Left in SI (tesla, V/m) while masses and couplings are in GeV; the bridge is 1\\ \\text{T} = 195.353\\ \\text{eV}^2 and 1\\ \\text{V/m} = 6.5157\\times10^{-7}\\ \\text{eV}^2 in Heaviside–Lorentz natural units",
+     "why": "The paper is dimensionally INCONSISTENT as written unless the reader supplies the ε₀ conversion. A translator that assumes ε₀=1 will silently mis-scale every field by powers of √ε₀ (and every quoted B by 195.353)."
+    },
+    {
+     "symbol": "g_{a\\gamma\\gamma}",
+     "relation": "\\mathcal{L} = -\\tfrac14 g_{a\\gamma\\gamma}\\,a\\,F_{\\mu\\nu}\\tilde F^{\\mu\\nu} = g_{a\\gamma\\gamma}\\,a\\,\\mathbf{E}\\cdot\\mathbf{B},\\quad [g_{a\\gamma\\gamma}] = \\text{GeV}^{-1}",
+     "why": "Coupling quoted in GeV^{-1} multiplying a field measured in tesla — the archetypal mixed-unit expression in this literature."
+    }
+   ],
+   "fingerprints": [
+    "A stated '\\hbar = c = 1' coexisting with SI symbols: tesla, volt, watt, kelvin, litre, hertz, ohm",
+    "\\varepsilon_0 or \\mu_0 appearing explicitly in a paper that also uses GeV masses",
+    "Signal-power formulae mixing units: P_{\\rm sig} \\propto g_{a\\gamma\\gamma}^2\\,\\rho_a\\,B_0^2\\,V\\,C\\,Q_L/m_a",
+    "Explicit conversion tables in an appendix: '1 T = 195.35 eV²', '1 V/m = ...'",
+    "Quoted magnet strengths ('8 T solenoid'), cavity volumes in litres, frequencies in GHz, noise temperatures in mK, alongside eV-scale masses"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1q_2}{4\\pi\\varepsilon_0 r^2} (left in SI); \\alpha = \\dfrac{e^2}{4\\pi\\varepsilon_0\\hbar c} with e = 1.602176634\\times10^{-19}\\,\\text{C} — charge is NOT dimensionless in this system.",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho/\\varepsilon_0 (SI form retained) — while the same paper writes \\mathcal{L}\\supset -\\tfrac14 F^2 in its field-theory section. The inconsistency is real and confined to the E&M sector.",
+    "einstein_field": "G_{\\mu\\nu} = 8\\pi G\\,T_{\\mu\\nu} with G in GeV^{-2}; gravity, when present, follows the ordinary ħ=c=1 convention.",
+    "schrodinger_or_dirac": "(i\\gamma^\\mu\\partial_\\mu - m)\\psi = 0 with m in eV, while the interaction with the apparatus field is written with SI B."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "RESIDUAL DIMENSION: rank 3 — (mass, temperature, electric current). Because neither k_B nor ε₀ is set, this system retains MORE dimensional-checking power than pure HEP units, and a checker can catch genuine errors here that are invisible in the fully collapsed systems.\n\nThis entry exists because it is the single most common source of silent factor errors when translating experimental HEP papers. A tool that assumes 'ħ=c=1 ⇒ ε₀=1' will corrupt every equation in this class. Treat the co-occurrence of an SI unit symbol with a GeV mass as a hard signal for this system.\n\nVERIFIED BY COMPUTATION: B_crit = m_e²/e_HL = 8.6229×10^{11} eV², and B_crit = 4.414×10^9 T, hence 1 T = 195.353 eV² (matches the standard quoted 195.35).",
+   "sources": [
+    "Computed in-session from CODATA values: m_e = 0.51099895069 MeV, e_HL = √(4πα) = 0.302822, B_crit = m_e²/e = 4.414×10^9 T ⇒ 1 T = 195.353 eV²",
+    "https://en.wikipedia.org/wiki/Heaviside%E2%80%93Lorentz_units (ε₀ quotient relations used for the bridge)",
+    "PDG Review of Particle Physics, 'Axions and Other Similar Particles' review (g_aγγ in GeV^-1 alongside tesla-valued B fields)"
+   ]
+  },
+  {
+   "name": "CODATA/NIST natural units (ħ = c = m_e = 1)",
+   "aliases": [
+    "n.u.",
+    "natural units (CODATA sense)",
+    "electron-mass natural units",
+    "relativistic units",
+    "Compton units",
+    "m_e = 1 units"
+   ],
+   "used_in": "The CODATA/NIST fundamental-constants tables (which define 'natural unit of length/time/energy/mass/momentum/action'), bound-state QED and Lamb-shift work, electron g−2, Compton and pair-production kinematics, strong-field/laser QED (χ parameters, Schwinger pair production), positronium and muonium spectroscopy.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "m_e",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m_e"
+    },
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "1 (Heaviside–Lorentz flavour) or 4\\pi (Gaussian flavour) — paper-dependent",
+     "emits": "\\varepsilon_0 \\text{ or } (4\\pi\\varepsilon_0)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B},\\ \\mathbf{E}",
+     "relation": "\\mathbf{B}_{\\rm nat} = c\\sqrt{\\varepsilon_0}\\,\\mathbf{B}_{\\rm SI} (HL flavour); critical fields B_{\\rm cr} = m_e^2/e = 4.4140\\times10^{9}\\ \\text{T}, E_{\\rm cr} = m_e^2/e = 1.3233\\times10^{18}\\ \\text{V/m}",
+     "why": "Same extra-c rider as all c=1 E&M; recorded because strong-field-QED papers quote fields as the dimensionless ratio χ = E/E_cr."
+    }
+   ],
+   "fingerprints": [
+    "Masses given 'in units of m_e'; energies in units of m_ec^2 = 0.51099895069\\ \\text{MeV}",
+    "Lengths in reduced Compton wavelengths \\bar\\lambda_C = \\hbar/(m_ec) = 3.8615927\\times10^{-13}\\ \\text{m}; times in \\hbar/(m_ec^2) = 1.288088667\\times10^{-21}\\ \\text{s}",
+    "Dirac equation with unit mass: (i\\gamma^\\mu\\partial_\\mu - 1)\\psi = 0",
+    "Bohr radius appearing as a_0 = 1/\\alpha = 137.035999 (a LARGE number, not 1)",
+    "Strong-field parameters \\chi = E/E_{\\rm cr}, a_0 = eE/(m_e\\omega); 'in units of the Schwinger field'",
+    "NIST/CODATA table headings: 'natural unit of action', 'natural unit of momentum in MeV/c'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "V(r) = -\\dfrac{e^2}{4\\pi r} = -\\dfrac{\\alpha}{r} (HL flavour); Bohr radius a_0 = \\dfrac{1}{m_e\\alpha} = \\dfrac{1}{\\alpha} = 137.035999 n.u. of length.",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho (HL flavour) or 4\\pi\\rho (Gaussian flavour); the choice is orthogonal to m_e=1 and must be read off α = e²/4π vs e².",
+    "einstein_field": "G_{\\mu\\nu} = 8\\pi G\\,T_{\\mu\\nu} with G = (m_e/M_{\\rm Pl})^2 = 1.7518\\times10^{-45} in n.u. — gravity is essentially never used in this system.",
+    "schrodinger_or_dirac": "\\left(i\\gamma^\\mu\\partial_\\mu - 1\\right)\\psi = 0;\\qquad i\\partial_t\\psi = \\left(-\\tfrac12\\nabla^2 - \\dfrac{\\alpha}{r}\\right)\\psi,\\ E_n = -\\dfrac{\\alpha^2}{2n^2} = -\\dfrac{2.6626\\times10^{-5}}{n^2}\\ \\text{(in units of }m_ec^2)"
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "RESIDUAL DIMENSION: rank 0 in mechanics (M, L, T all fixed) — every mechanical quantity is a pure number. Θ survives unless k_B is added; I folds in once ε₀ is chosen.\n\nCRITICAL DISAMBIGUATION FROM ATOMIC UNITS (a different family): atomic/Hartree units set ħ = m_e = e = 4πε₀ = 1, leaving c = 1/α ≈ 137.036 ≠ 1. CODATA natural units set ħ = c = m_e = 1, leaving e = √(4πα) ≈ 0.3028 (or √α ≈ 0.0854) ≠ 1. Instant test: if c = 137 the paper is in atomic units; if the Bohr radius = 137 it is in CODATA natural units. This pair is frequently misclassified.\n\nCODATA values verified against the NIST non-SI-units category: n.u. of length ħ/(m_ec) = 386.159 fm, n.u. of time 1.288088667×10^{-21} s, n.u. of energy 0.510998950 69 MeV.",
+   "sources": [
+    "https://physics.nist.gov/cgi-bin/cuu/Category?view=pdf&Non-SI+units.x=77&Non-SI+units.y=6 (CODATA 2022: natural unit of velocity/action/mass/energy/length/time/momentum)",
+    "https://physics.nist.gov/cgi-bin/cuu/Category?view=html&Non-SI+units.x=87&Non-SI+units.y=18 (index of CODATA n.u. quantities)",
+    "https://www.physics.nist.gov/cuu/pdf/nonsi_2014.pdf (earlier CODATA non-SI unit tables, same definitions)"
+   ]
+  },
+  {
+   "name": "Relativistic units (c = 1 only; ħ retained)",
+   "aliases": [
+    "c=1 units",
+    "MeV/c² → MeV convention",
+    "semi-natural units",
+    "relativistic (but not quantum) natural units"
+   ],
+   "used_in": "Nuclear structure and reaction theory, parts of the heavy-ion literature, relativistic mean-field models, GR-adjacent astrophysics that still tracks ħ, pedagogical special relativity, and neutron-star EOS papers that set c=1 but keep ħ visible in Fermi-momentum formulae.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B}",
+     "relation": "\\mathbf{B}_{c=1} = c\\,\\mathbf{B}_{\\rm SI-like}",
+     "why": "Setting c=1 alone already unifies the E and B dimensions, so the extra c must be re-emitted on restoration even though no ε₀ generator is present."
+    }
+   ],
+   "fingerprints": [
+    "\\hbar visible in the equations (commutators, \\hbar\\omega, \\hbar^2/2m) while masses are quoted in MeV rather than MeV/c^2",
+    "'in units where c=1' with no mention of \\hbar",
+    "Fermi momentum k_F written with \\hbar explicit; densities in fm^{-3} with masses in MeV",
+    "Momenta in MeV and lengths in fm with the \\hbar c factors NOT yet cancelled",
+    "'we drop the c^2 in E = mc^2'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "V(r) = \\dfrac{e^2}{4\\pi r} (HL flavour), with \\alpha = \\dfrac{e^2}{4\\pi\\hbar} — \\hbar survives inside the fine-structure constant.",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho (HL) or 4\\pi\\rho (Gaussian); Maxwell loses its c's: \\nabla\\times\\mathbf{B} = \\mathbf{J} + \\partial_t\\mathbf{E}.",
+    "einstein_field": "G_{\\mu\\nu} = 8\\pi G\\,T_{\\mu\\nu} with G now of dimension length/mass (SI G/c^2): G = 7.426\\times10^{-28}\\ \\text{m/kg}.",
+    "schrodinger_or_dirac": "i\\hbar\\,\\partial_t\\psi = \\left(-\\dfrac{\\hbar^2\\nabla^2}{2m} + V\\right)\\psi;\\qquad \\left(i\\hbar\\gamma^\\mu\\partial_\\mu - m\\right)\\psi = 0"
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "RESIDUAL DIMENSION: rank 2 in mechanics — (M, L) with T ≡ L — plus Θ and I. This is the LEAST collapsed member of the family and therefore the one where dimensional checking is most powerful.\n\nIncluded because 'natural units' in a nuclear or astrophysics paper frequently means only c=1; a tool that force-sets ħ=1 will delete real ħ's from the equations. Detect by the presence of ħ in the body text.",
+   "sources": [
+    "PDG Review of Particle Physics, 'Physical Constants' (ħc and the G/c² = 7.426×10^-28 m/kg conversion)",
+    "https://physics.nist.gov/cgi-bin/cuu/Category?view=pdf&Non-SI+units.x=77&Non-SI+units.y=6 (CODATA values used for the c=1 conversions)"
+   ]
+  },
+  {
+   "name": "Planck units, Gaussian flavour (ħ = c = G = k_B = 4πε₀ = 1)",
+   "aliases": [
+    "Planck units",
+    "Planck scale units",
+    "quantum geometrized units",
+    "absolute units (Planck's 1899 name)",
+    "G=c=ħ=1"
+   ],
+   "used_in": "Quantum gravity (canonical/LQG, asymptotic safety), black-hole thermodynamics and information, semiclassical gravity, quantum cosmology, and any paper quoting results 'in Planck units'. Also the CODATA-tabulated Planck length/mass/time/temperature.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    },
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B},\\ \\mathbf{A}",
+     "relation": "\\mathbf{B}_P = c\\sqrt{4\\pi\\varepsilon_0}\\,\\mathbf{B}_{\\rm SI}",
+     "why": "The usual extra-c rider inherited from the Gaussian/c=1 field definitions."
+    },
+    {
+     "symbol": "h_{\\mu\\nu}",
+     "relation": "g_{\\mu\\nu} = \\eta_{\\mu\\nu} + \\kappa h_{\\mu\\nu} with \\kappa^2 = 32\\pi G (amplitudes/Donoghue) or \\kappa^2 = 8\\pi G (SUGRA/cosmology) or \\kappa = 1 (some canonical-gravity texts)",
+     "why": "Graviton normalization is a definitional choice invisible to dimensional analysis; a factor-of-2 error in κ propagates into every graviton amplitude."
+    }
+   ],
+   "fingerprints": [
+    "Explicit 'in Planck units', '\\ell_P = 1', 'we set G = c = \\hbar = 1'",
+    "Einstein equation carrying a bare 8\\pi: G_{\\mu\\nu} = 8\\pi T_{\\mu\\nu}",
+    "Einstein–Hilbert action with 1/16\\pi: S = \\dfrac{1}{16\\pi}\\int d^4x\\sqrt{-g}\\,R",
+    "Black-hole entropy quoted as S = A/4 (bare, no G)",
+    "r_s = 2M; T_H = 1/(8\\pi M)",
+    "Very large or very small pure numbers with no units: \\Lambda\\sim10^{-122}, M_\\odot\\sim10^{38}, m_e\\simeq4.19\\times10^{-23}",
+    "Planck values in an appendix: \\ell_P = 1.616255\\times10^{-35}\\,\\text{m}, t_P = 5.391247\\times10^{-44}\\,\\text{s}, m_P = 2.176434\\times10^{-8}\\,\\text{kg} = 1.220890\\times10^{19}\\,\\text{GeV}, T_P = 1.416784\\times10^{32}\\,\\text{K}, q_P = \\sqrt{4\\pi\\varepsilon_0\\hbar c} = 1.875545\\times10^{-18}\\,\\text{C}"
+   ],
+   "benchmark_equations": {
+    "coulomb": "V(r) = \\dfrac{q_1q_2}{r}, charges in Planck charges q_P = \\sqrt{4\\pi\\varepsilon_0\\hbar c} = e/\\sqrt{\\alpha}; the electron charge is e = \\sqrt{\\alpha} \\simeq 0.0854245.",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = 4\\pi\\rho;\\quad \\partial_\\mu F^{\\mu\\nu} = 4\\pi J^\\nu;\\ \\ \\text{Reissner–Nordström } f(r) = 1 - \\dfrac{2M}{r} + \\dfrac{Q^2}{r^2}\\ (\\text{Gaussian-Planck normalization})",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi T_{\\mu\\nu};\\qquad S = \\dfrac{1}{16\\pi}\\int d^4x\\sqrt{-g}\\,(R - 2\\Lambda) + S_m;\\qquad S_{\\rm BH} = \\dfrac{A}{4},\\quad T_H = \\dfrac{1}{8\\pi M}",
+    "schrodinger_or_dirac": "(i\\gamma^\\mu\\nabla_\\mu - m)\\psi = 0 with m = M/M_{\\rm Pl};\\ \\ i\\partial_t\\psi = \\left(-\\dfrac{\\nabla^2}{2m} + V\\right)\\psi. For the electron m = 4.1855\\times10^{-23}."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "RESIDUAL DIMENSION: RANK 0. Every quantity is a pure number and NO dimensional consistency check survives. This is the key structural fact: for Planck-unit papers, dimension-checking must be replaced by (a) restoring symbolic constants via the unique exponent solve and (b) order-of-magnitude sanity checks. The tool should SAY so rather than reporting 'dimensionally consistent', which is vacuously true at rank 0.\n\nEven at rank 0 the restoration problem is well-posed and unique: given the mass dimension the quantity is known to have from its role in the equation, the exponents of ħ, c, G are determined. The failure mode is not ambiguity but the need to be told the intended dimension.\n\nThe 4πε₀=1 vs ε₀=1 charge choice is genuinely unsettled and is NOT fixed by the phrase 'Planck units' — see the HL-flavour entry. CODATA tabulates Planck length/mass/time/temperature but no Planck charge, so there is no standards-body ruling to appeal to.\n\nVerified: √(8π) = 5.013257, m_e/M_Pl = 4.1855×10^{-23}, q_P(Gaussian) = e/√α = 1.875545×10^{-18} C.",
+   "sources": [
+    "https://physics.nist.gov/cgi-bin/cuu/Category?view=pdf&Non-SI+units.x=77&Non-SI+units.y=6 (CODATA Planck length, mass, time, temperature)",
+    "https://ipfs.io/ipfs/QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco/wiki/Planck_mass.html (Planck mass and the √(8π) relation to the reduced Planck mass)",
+    "R. M. Wald, General Relativity (G=c=1 conventions, G_μν = 8πT_μν, S = A/4)",
+    "Computed in-session: m_e/M_Pl, q_P = e/√α"
+   ]
+  },
+  {
+   "name": "Planck units, Heaviside–Lorentz flavour (ħ = c = G = k_B = ε₀ = 1)",
+   "aliases": [
+    "rationalized Planck units",
+    "Planck units (HL charge convention)",
+    "Planck units with ε₀ = 1"
+   ],
+   "used_in": "Quantum-gravity and hep-th papers that carry the Heaviside–Lorentz convention over from QFT rather than the Gaussian convention from classical GR; charged-black-hole work written in a field-theory idiom; most string-derived 4d effective actions reduced to Planck units.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    },
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "1",
+     "emits": "\\varepsilon_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B},\\ \\mathbf{A}",
+     "relation": "\\mathbf{B}_{P,\\rm HL} = c\\sqrt{\\varepsilon_0}\\,\\mathbf{B}_{\\rm SI}",
+     "why": "Standard extra-c rider."
+    },
+    {
+     "symbol": "Q\\ (\\text{black-hole charge})",
+     "relation": "Q_{\\rm HL} = \\sqrt{4\\pi}\\,Q_{\\rm Gaussian}, so Reissner–Nordström reads f(r) = 1 - 2M/r + Q^2/(4\\pi r^2)",
+     "why": "The most common concrete place the two Planck flavours visibly disagree: a factor 4π in the charge term of a charged-black-hole metric, and correspondingly in the extremality bound."
+    }
+   ],
+   "fingerprints": [
+    "Gravity sector identical to Gaussian-Planck (8\\pi in the field equation, S = A/4) BUT the E&M sector rationalized: \\nabla\\cdot\\mathbf{E} = \\rho, \\mathcal{L} = -\\tfrac14 F^2",
+    "Electron charge quoted as e = \\sqrt{4\\pi\\alpha} \\simeq 0.302822 rather than 0.0854",
+    "Planck charge given as \\sqrt{\\varepsilon_0\\hbar c} = 5.291\\times10^{-19}\\,\\text{C}",
+    "Reissner–Nordström written with an explicit 1/4\\pi on the Q^2 term, or extremality stated as Q^2/4\\pi = M^2"
+   ],
+   "benchmark_equations": {
+    "coulomb": "V(r) = \\dfrac{q_1q_2}{4\\pi r}; the electron charge is e = \\sqrt{4\\pi\\alpha} \\simeq 0.302822; q_P^{\\rm HL} = \\sqrt{\\varepsilon_0\\hbar c} = 5.2911\\times10^{-19}\\,\\text{C}.",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho;\\quad \\partial_\\mu F^{\\mu\\nu} = J^\\nu;\\quad \\mathcal{L} = -\\tfrac14 F_{\\mu\\nu}F^{\\mu\\nu}",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi T_{\\mu\\nu};\\quad S = \\dfrac{1}{16\\pi}\\int d^4x\\sqrt{-g}(R-2\\Lambda) - \\dfrac14\\int d^4x\\sqrt{-g}\\,F^2;\\quad S_{\\rm BH} = A/4",
+    "schrodinger_or_dirac": "(i\\gamma^\\mu\\nabla_\\mu - m)\\psi = 0 with m = M/M_{\\rm Pl};\\ i\\partial_t\\psi = (-\\nabla^2/2m - \\alpha/r)\\psi with \\alpha = e^2/4\\pi."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "RESIDUAL DIMENSION: rank 0, as for the Gaussian flavour.\n\nThis entry exists purely because 'Planck units' does not fix the charge sector, and the two flavours differ by 4π in every charge-squared. Classify by the E&M equations, never by the phrase. If a Planck-units paper never writes a charge, the flavour is UNDETERMINED and should be reported as such rather than defaulted.\n\nVerified: q_P(HL) = e/√(4πα) = 1.602176634×10^{-19}/0.302822 = 5.2911×10^{-19} C.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Heaviside%E2%80%93Lorentz_units (ε₀=1 rationalization used for the charge sector)",
+    "https://physics.nist.gov/cgi-bin/cuu/Category?view=pdf&Non-SI+units.x=77&Non-SI+units.y=6 (CODATA Planck quantities; note the absence of a tabulated Planck charge)",
+    "Computed in-session: q_P(HL) = e/√(4πα) = 5.2911×10^-19 C"
+   ]
+  },
+  {
+   "name": "Reduced Planck units (ħ = c = k_B = 1, 8πG = 1, M̄_pl = 1)",
+   "aliases": [
+    "reduced Planck units",
+    "M_pl = 1 (reduced)",
+    "κ = 1 units",
+    "8πG = 1",
+    "M_P = 2.435×10^18 GeV convention",
+    "natural units of inflation"
+   ],
+   "used_in": "Inflationary cosmology and cosmological perturbation theory, the effective field theory of inflation, 4d N=1 supergravity and string phenomenology/moduli stabilization, swampland-programme papers, modified-gravity and scalar–tensor model building. The near-universal convention of hep-th/astro-ph.CO model building.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "8\\pi",
+     "emits": "(8\\pi G)"
+    },
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "1",
+     "emits": "\\varepsilon_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "h_{\\mu\\nu}",
+     "relation": "g_{\\mu\\nu} = \\eta_{\\mu\\nu} + \\kappa h_{\\mu\\nu};\\ \\kappa^2 = 8\\pi G = \\bar M_{\\rm pl}^{-2} (SUGRA/cosmology) versus \\kappa^2 = 32\\pi G = 4\\bar M_{\\rm pl}^{-2} (graviton-amplitude literature)",
+     "why": "A factor of 2 in κ, invisible to dimensional analysis, that changes every graviton vertex normalization. Papers in both camps write 'κ = 1'."
+    },
+    {
+     "symbol": "\\bar M_{\\rm pl}\\ \\text{vs}\\ M_{\\rm Pl}",
+     "relation": "\\bar M_{\\rm pl} = M_{\\rm Pl}/\\sqrt{8\\pi} = 2.435323\\times10^{18}\\,\\text{GeV};\\ M_{\\rm Pl} = G^{-1/2} = 1.220890\\times10^{19}\\,\\text{GeV};\\ \\sqrt{8\\pi} = 5.013257",
+     "why": "THE dominant trap of this family. 'M_pl = 1' may mean either. Detect from the Einstein–Hilbert coefficient: (M²/2)R ⇒ reduced; (M²/16π)R or R/16πG ⇒ unreduced. Misreading costs 5.013 in mass, 25.13 in mass²."
+    }
+   ],
+   "fingerprints": [
+    "\\bar M_{\\rm pl} = 2.435\\times10^{18}\\ \\text{GeV} quoted anywhere",
+    "Explicit 'we set 8\\pi G = 1', 'in reduced Planck units', 'M_P^{-2} = 8\\pi G', '\\kappa = 1'",
+    "Einstein equation with NO 8\\pi: G_{\\mu\\nu} = T_{\\mu\\nu}",
+    "Action with a bare one-half: S = \\int d^4x\\sqrt{-g}\\left[\\tfrac12 R + \\mathcal{L}_m\\right] or \\left[\\tfrac{M_{\\rm pl}^2}{2}R - \\tfrac12(\\partial\\phi)^2 - V(\\phi)\\right]",
+    "Friedmann equation H^2 = \\rho/3",
+    "Slow-roll \\epsilon = \\tfrac12(V'/V)^2, \\eta = V''/V with no M_pl^2 factors (or with explicit M_{\\rm pl}^2/2)",
+    "Lyth bound \\Delta\\phi/M_{\\rm pl}\\gtrsim\\mathcal{O}(1); swampland '\\Delta\\phi < \\mathcal{O}(1)M_{\\rm pl}'",
+    "\\mathcal{P}_\\zeta = \\dfrac{H^2}{8\\pi^2\\epsilon M_{\\rm pl}^2} (reduced-Planck coefficient)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Unchanged from Heaviside–Lorentz HEP units: V(r) = -\\alpha/r with \\alpha = e^2/4\\pi. The gravitational rescaling does not touch the E&M sector.",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho;\\ \\partial_\\mu F^{\\mu\\nu} = J^\\nu;\\ \\mathcal{L} = -\\tfrac14 F^2",
+    "einstein_field": "G_{\\mu\\nu} = R_{\\mu\\nu} - \\tfrac12 g_{\\mu\\nu}R = T_{\\mu\\nu}\\ \\ (\\textbf{no }8\\pi);\\qquad S = \\int d^4x\\sqrt{-g}\\left[\\tfrac12 R + \\mathcal{L}_m\\right];\\qquad H^2 = \\dfrac{\\rho}{3};\\qquad \\dot H = -\\tfrac12(\\rho+p)",
+    "schrodinger_or_dirac": "(i\\gamma^\\mu\\nabla_\\mu - m)\\psi = 0 with m in units of \\bar M_{\\rm pl};\\ \\text{Mukhanov–Sasaki: } v_k'' + \\left(k^2 - \\dfrac{z''}{z}\\right)v_k = 0,\\ z = a\\dot\\phi/H"
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "RESIDUAL DIMENSION: RANK 0 — with 8πG=1 on top of ħ=c=k_B=1 everything is dimensionless. In practice most inflation papers keep M_pl SYMBOLIC in formulae and only set it to 1 numerically, which restores rank-1 mass-dimension checking; the tool should detect whether M_pl appears symbolically and, if so, treat the system as rank 1 with M_pl as the mass unit.\n\nThe generator is the COMBINATION 8πG: dimension of G, absorbed numeric factor 8π. Restoration must emit (8πG) — equivalently 1/M̄_pl² — never G alone. This is exactly the case the numeric_factor/emits split was designed for.\n\nVerified by computation: M̄_pl = 1.220890×10^19/√(8π) = 2.435323×10^18 GeV, √(8π) = 5.013257.",
+   "sources": [
+    "https://link.springer.com/article/10.1140/epjc/s10052-015-3411-z (The effective Planck mass and the scale of inflation — reduced Planck mass 2.435×10^18 GeV, M_G = M_Pl/√(8π) = 1/√(8πG))",
+    "https://handwiki.org/wiki/Physics:Planck_mass (reduced Planck energy = 1.22×10^19/√(8π) = 2.4335×10^18 GeV; κ = 8πG in the Einstein–Hilbert action)",
+    "https://arxiv.org/pdf/1508.05335 (Inflation in supergravity with a single superfield — reduced-Planck conventions in practice)",
+    "Computed in-session: M̄_pl = 2.4353232×10^18 GeV, √(8π) = 5.0132565"
+   ]
+  },
+  {
+   "name": "Holographic/SUGRA gravitational units (16πG = 1, equivalently 2κ² = 1)",
+   "aliases": [
+    "16πG_N = 1",
+    "2κ² = 1",
+    "κ² = 1/2",
+    "holographic units",
+    "black-hole-thermodynamics units",
+    "units of the bulk action"
+   ],
+   "used_in": "AdS/CFT and holography (bulk actions, holographic renormalization, fluid/gravity), black-hole thermodynamics and Euclidean gravity, higher-dimensional and gauged supergravity, higher-spin gravity, numerical holography. Extremely common in hep-th abstracts of the form 'we work in units 16πG_N = 1'.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "16\\pi",
+     "emits": "(16\\pi G)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\kappa",
+     "relation": "2\\kappa^2 \\equiv 16\\pi G_N; setting 2\\kappa^2 = 1 gives \\kappa^2 = 1/2, G_N = 1/(16\\pi), 8\\pi G_N = 1/2",
+     "why": "Papers say either '2κ²=1' or '16πG=1' for the SAME system; a third group says 'κ=1', which is a DIFFERENT system (8πG=1, reduced Planck units). The three must not be conflated."
+    },
+    {
+     "symbol": "G_D\\ (\\text{in } D \\text{ dimensions})",
+     "relation": "[G_D] = \\text{mass}^{2-D}; the generator's dimension exponent tuple is D-dependent, not the 4d (-1,3,-2,0,0)",
+     "why": "Holography lives in D = 5, 10, 11 as often as 4. A generator table keyed to fixed SI exponents cannot express G_D without a spacetime-dimension parameter — a genuine schema stressor."
+    }
+   ],
+   "fingerprints": [
+    "Literal 'we set 16\\pi G_N = 1' / '2\\kappa^2 = 1' / 'in units where 16\\pi G = 1'",
+    "Bulk action with unit coefficient: S = \\int d^{D}x\\sqrt{-g}\\,(R - 2\\Lambda) + \\ldots",
+    "Einstein equation with a bare one-half: G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\tfrac12 T_{\\mu\\nu}",
+    "Entropy quoted as S = 4\\pi A (since S = A/4G = 16\\pi A/4)",
+    "Coexistence with L_{\\rm AdS} = 1, \\lambda, N_c, and CFT central charges",
+    "Brown–York / holographic stress tensor written without a 1/16\\pi G prefactor"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: purely gravitational normalization. Bulk Maxwell fields are normalized separately and inconsistently across papers (-\\tfrac14 F^2, -\\tfrac{1}{4g^2}F^2, or -\\tfrac{1}{2\\kappa^2}\\tfrac{L^2}{g_4^2}F^2). The charge convention must be read off the specific action, never inferred from 16\\pi G = 1.",
+    "gauss_law": "\\nabla_\\mu F^{\\mu\\nu} = J^\\nu when the Maxwell term is -\\tfrac14 F^2; but the bulk gauge coupling is an independent, paper-specific normalization. Holographic charge density is read off the subleading falloff A_t = \\mu - \\rho z^{d-2} + \\ldots rather than from a Gauss law.",
+    "einstein_field": "S = \\int d^Dx\\sqrt{-g}\\,(R - 2\\Lambda) + S_m \\Longrightarrow G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\tfrac12 T_{\\mu\\nu};\\qquad S_{\\rm BH} = \\dfrac{A}{4G_N} = 4\\pi A;\\qquad T_H = \\dfrac{\\kappa_{\\rm surf}}{2\\pi}\\ (\\text{unaffected})",
+    "schrodinger_or_dirac": "Bulk Dirac (\\gamma^M D_M - m)\\psi = 0 with m in units of 1/L; holographic dimension relations \\Delta = \\tfrac{d}{2} + |mL| (fermions), \\Delta(\\Delta - d) = m^2L^2 (scalars)."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "RESIDUAL DIMENSION: rank 0 in mechanics once ħ=c=1 accompanies 16πG=1.\n\nVerified arithmetic: 16πG=1 ⇒ G = 1/(16π) ⇒ S_BH = A/(4G) = 4πA (coefficient 4π = 12.566).\n\nDISAMBIGUATION LADDER for gravitational normalizations, all invisible to dimensional analysis:\n  G = 1       ⇒ G_{\\mu\\nu} = 8\\pi T_{\\mu\\nu},   S_EH = (1/16\\pi)\\int R,  S_BH = A/4\n  8\\pi G = 1  ⇒ G_{\\mu\\nu} = T_{\\mu\\nu},        S_EH = (1/2)\\int R,      S_BH = 2\\pi A\n  16\\pi G = 1 ⇒ G_{\\mu\\nu} = \\tfrac12 T_{\\mu\\nu}, S_EH = \\int R,           S_BH = 4\\pi A\nThe R-coefficient together with the entropy coefficient identifies the system uniquely — a robust programmatic test.\n\nA further variant seen in older SUGRA/graviton-perturbation work is κ = √(32πG); if a paper defines κ that way, 'κ = 1' means 32πG = 1, a fourth rung on the ladder.",
+   "sources": [
+    "https://ncatlab.org/nlab/show/Einstein-Hilbert+action (S = (1/2κ²)∫√-g R with κ² = 8πG = 8π/M_p²; and the κ = √(32πG) variant)",
+    "https://arxiv.org/pdf/hep-th/0606075 (Boundary terms in supergravity and supersymmetry — 2κ² normalizations of the bulk action)",
+    "https://arxiv.org/html/2209.15503 (type IIB supergravity conventions using 2κ² normalization)",
+    "Computed in-session: 16πG = 1 ⇒ S_BH = A/(4G) = 4πA"
+   ]
+  },
+  {
+   "name": "String units α' = 1 (with ħ = c = 1)",
+   "aliases": [
+    "string units",
+    "α'=1",
+    "Regge-slope units",
+    "worldsheet units",
+    "M_s = 1 units"
+   ],
+   "used_in": "Perturbative string theory: worldsheet CFT, string amplitudes, α'-expansions, tachyon condensation and string field theory, D-brane physics, string compactification when the string scale is the natural unit. Polchinski, GSW, Becker–Becker–Schwarz, Tong and Kiritsis all keep α' explicit and set it to 1 (or 2, or 1/2) as convenient.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "\\alpha'",
+     "dimension": "(0, 2, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\alpha'"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "g_{\\mu\\nu}\\ (\\text{frame})",
+     "relation": "g^{E}_{\\mu\\nu} = e^{-\\frac{4(\\Phi - \\Phi_0)}{D-2}}\\,g^{s}_{\\mu\\nu}\\ \\ (\\text{string frame}\\to\\text{Einstein frame})",
+     "why": "NOT a unit change: a Weyl rescaling by a dynamical FIELD, outside the dimensional formalism entirely. But it is announced in the same 'conventions' paragraph as the unit choices, and silently mixing frames is a leading source of α'/g_s counting errors."
+    },
+    {
+     "symbol": "g_s",
+     "relation": "g_s = e^{\\Phi_0} = e^{\\langle\\Phi\\rangle} in some papers, g_s = e^{\\Phi} (field-dependent) in others; correspondingly 2\\kappa_{10}^2 = (2\\pi)^7\\alpha'^4 g_s^2 (g_s absorbed) versus 2\\kappa_{10}^2 = (2\\pi)^7\\alpha'^4 (with e^{-2\\Phi} left in the action)",
+     "why": "Whether g_s sits inside κ or in the dilaton prefactor is a per-paper choice with no dimensional signature; it shifts powers of g_s in every derived tension and coupling."
+    }
+   ],
+   "fingerprints": [
+    "The symbols \\alpha', \\ell_s, g_s, M_s appearing at all",
+    "Worldsheet action normalized S = -\\dfrac{1}{4\\pi\\alpha'}\\int d^2\\sigma\\,\\sqrt{-h}\\,h^{ab}\\partial_aX^\\mu\\partial_bX_\\mu",
+    "String tension T = \\dfrac{1}{2\\pi\\alpha'}",
+    "Explicit 'we set \\alpha' = 1' or 'in string units'",
+    "Regge trajectories \\alpha' M^2 = N-1 (open bosonic), \\alpha' M^2/4 = N-1 (closed bosonic)",
+    "OPE \\langle X^\\mu(z)X^\\nu(w)\\rangle = -\\dfrac{\\alpha'}{2}\\eta^{\\mu\\nu}\\ln|z-w|^2",
+    "Veneziano / Virasoro–Shapiro amplitudes with Mandelstams appearing as \\alpha's, \\alpha't, \\alpha'u",
+    "2\\kappa_{10}^2 = (2\\pi)^7\\alpha'^4 g_s^2; D_p tension T_p = \\dfrac{1}{(2\\pi)^p g_s\\,\\alpha'^{(p+1)/2}}",
+    "'\\alpha'-corrections', '\\alpha'^3 R^4 term', 'tree level in \\alpha''"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no Coulomb law is a primitive of the system. Nearest analogue is the D_p worldvolume gauge coupling g_{D_p}^2 = (2\\pi)^{p-2}g_s\\,\\alpha'^{(p-3)/2}, which at \\alpha'=1 reads (2\\pi)^{p-2}g_s; for D3-branes g_{\\rm YM}^2 = 2\\pi g_s (and 4\\pi g_s in the convention with a different trace normalization).",
+    "gauss_law": "N/A in the Maxwell sense. Structural analogues: RR-flux quantization \\int_{S^{8-p}}\\star F_{p+2} = N\\,(2\\kappa_{10}^2)T_p, and the worldsheet Virasoro constraint T_{ab} = 0 playing the role of the constraint equation.",
+    "einstein_field": "S = \\dfrac{1}{2\\kappa_{10}^2}\\int d^{10}x\\sqrt{-G}\\,e^{-2\\Phi}\\left(R + 4(\\partial\\Phi)^2 - \\tfrac{1}{12}H_{\\mu\\nu\\rho}H^{\\mu\\nu\\rho}\\right) + O(\\alpha'), with 2\\kappa_{10}^2 = (2\\pi)^7\\alpha'^4 g_s^2 \\to (2\\pi)^7 g_s^2 at \\alpha'=1. Beta-function equations: R_{\\mu\\nu} + 2\\nabla_\\mu\\nabla_\\nu\\Phi - \\tfrac14 H_{\\mu\\lambda\\rho}H_\\nu{}^{\\lambda\\rho} = O(\\alpha').",
+    "schrodinger_or_dirac": "Worldsheet: \\gamma^a\\partial_a\\psi^\\mu = 0 with \\psi^\\mu dimensionless. The Virasoro condition L_0 - a = 0 plays the role of the wave equation: \\alpha' M^2 = N - 1 \\to M^2 = N-1 (open bosonic); \\alpha' M^2 = 4(N-1) \\to M^2 = 4(N-1) (closed bosonic)."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "RESIDUAL DIMENSION: RANK 0 in mechanics. α' supplies a length², so ħ, c, α' fix M, L, T exactly as ħ, c, G do — a Planck-like system built on the string scale.\n\nα' IS A FOURTH GENERATOR beyond ħ, c, G, with SI dimension L² = (0,2,0,0,0). Derivation I performed: string tension is a force, [T] = MLT^{-2}, and T = ħc/(2πα'), so α' = ħc/(2πT) has dimension (ML³T^{-2})/(MLT^{-2}) = L². I checked that ħ, c, α' are dimensionally independent (3×3 exponent determinant = 2 ≠ 0).\n\nCRUCIAL: with ħ = c = α' = 1, G is NOT 1. In ten dimensions G_10 = κ_10²/8π = (2π)⁷α'⁴g_s²/(16π), so the gravitational and string scales differ by the dimensionless g_s. A tool must not assume 'string units ⇒ Planck units'.\n\nα' has no measured value, so restoration here produces SYMBOLIC α' (or M_s), not numbers. That is a legitimate output but should be labelled as such.\n\nVERIFIED: 2κ₁₀² = (2π)⁷α'⁴ (arXiv:2301.05178 eq. 2, Φ₀ = 0 convention); the g_s² form appears when the dilaton VEV is factored out. T_s = 1/(2πα') confirmed via nLab.",
+   "sources": [
+    "https://ar5iv.labs.arxiv.org/html/2301.05178 (A guide to frames, 2π's, scales and corrections in string compactifications — 2κ₁₀² = (2π)⁷α'⁴; M_s = 1/√α')",
+    "https://ncatlab.org/nlab/show/string+length+scale (T_s = 1/(2πα'))",
+    "https://arxiv.org/pdf/0908.0333 (D. Tong, Lectures on String Theory — Polyakov action normalization, mode expansions, mass formulae)",
+    "J. Polchinski, String Theory Vols. I–II (α' conventions, D-brane tensions, 2κ² = (2π)⁷α'⁴g²)"
+   ]
+  },
+  {
+   "name": "String length units ℓ_s = 1 with α' = ℓ_s²",
+   "aliases": [
+    "ℓ_s = 1",
+    "string-length units (no-2π convention)",
+    "l_s² = α'",
+    "Tong/nLab convention"
+   ],
+   "used_in": "Much of hep-th, especially worldsheet and amplitude work, holography, and lecture notes (Tong's String Theory notes; the nLab entry states α' = ℓ_s², T_s = 1/(2πα') = 1/(2πℓ_s²)). Also common in black-hole/string-star and swampland papers.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "\\alpha'",
+     "dimension": "(0, 2, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\alpha' \\ (=\\ell_s^2)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\ell_s",
+     "relation": "\\ell_s = \\sqrt{\\alpha'};\\ M_s = 1/\\ell_s = 1/\\sqrt{\\alpha'};\\ T = 1/(2\\pi\\ell_s^2) = 1/2\\pi",
+     "why": "Recorded so the tool can convert to the 2π convention below: the SAME symbol ℓ_s denotes lengths differing by 2π ≈ 6.283, hence tensions/masses differing by 2π and κ² by (2π)^8."
+    }
+   ],
+   "fingerprints": [
+    "Explicit statement '\\alpha' = \\ell_s^2' or '\\ell_s = \\sqrt{\\alpha'}'",
+    "M_s = 1/\\ell_s with NO 2\\pi",
+    "T = \\dfrac{1}{2\\pi\\ell_s^2}",
+    "'we set \\ell_s = 1' in a paper whose tension formula carries 1/2\\pi rather than 2\\pi"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A (see the α'=1 entry). D_p gauge coupling g_{D_p}^2 = (2\\pi)^{p-2}g_s\\,\\ell_s^{p-3} \\to (2\\pi)^{p-2}g_s at \\ell_s=1.",
+    "gauss_law": "N/A in the Maxwell sense; flux quantization \\int_{S^{8-p}}\\star F_{p+2} = N as in the α'=1 entry with \\alpha' \\to \\ell_s^2.",
+    "einstein_field": "2\\kappa_{10}^2 = (2\\pi)^7\\ell_s^8 g_s^2 \\to (2\\pi)^7 g_s^2 at \\ell_s = 1;\\ S = \\dfrac{1}{2\\kappa_{10}^2}\\int d^{10}x\\sqrt{-G}\\,e^{-2\\Phi}\\left(R + 4(\\partial\\Phi)^2 - \\tfrac1{12}H^2\\right)",
+    "schrodinger_or_dirac": "\\ell_s^2 M^2 = 4(N-1) (closed bosonic) \\to M^2 = 4(N-1);\\ \\ell_s^2 M^2 = N-1 (open bosonic) \\to M^2 = N-1"
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "RESIDUAL DIMENSION: rank 0 — this system IS α'=1 written with a different symbol. Listed separately only so the tool can pair it against the 2π convention below and refuse to guess when a paper writes ℓ_s without defining it.\n\nVERIFIED: nLab 'string length scale' gives α' = ℓ_s² and T_s = 1/(2πα') = 1/(2πℓ_s²), citing Tong arXiv:0908.0333.",
+   "sources": [
+    "https://ncatlab.org/nlab/show/string+length+scale (α' = ℓ_s²; T_s = 1/(2πα') = 1/(2πℓ_s²))",
+    "https://arxiv.org/pdf/0908.0333 (D. Tong, Lectures on String Theory)",
+    "https://ar5iv.labs.arxiv.org/html/2301.05178 (notes that 'α' = ℓ_s² is sometimes used instead' of the 2π convention)"
+   ]
+  },
+  {
+   "name": "String length units ℓ_s = 1 with ℓ_s = 2π√α' (2π convention)",
+   "aliases": [
+    "ℓ_s = 2π√α'",
+    "string-length units (2π convention)",
+    "ℓ_s² = (2π)²α'",
+    "compactification/pheno string length"
+   ],
+   "used_in": "String compactification and string phenomenology (flux vacua, moduli stabilization, KKLT-descendants, Ibáñez–Uranga-style model building), where volumes are naturally measured in ℓ_s^6 and the 2π's are absorbed into the string length. Explicitly documented in arXiv:2301.05178, 'A guide to frames, 2π's, scales and corrections in string compactifications'.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "\\alpha'",
+     "dimension": "(0, 2, 0, 0, 0)",
+     "numeric_factor": "(2\\pi)^2",
+     "emits": "(2\\pi)^2\\alpha'\\ (=\\ell_s^2)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\ell_s",
+     "relation": "\\ell_s = 2\\pi\\sqrt{\\alpha'} \\iff \\ell_s^2 = (2\\pi)^2\\alpha';\\ M_s = 1/\\sqrt{\\alpha'} = 2\\pi/\\ell_s;\\ T = 1/(2\\pi\\alpha') = 2\\pi/\\ell_s^2",
+     "why": "Setting ℓ_s = 1 here means α' = 1/(4π²) ≈ 0.02533, NOT 1. I verified: T = 1/(2πα') = 2π = 6.2832 and M_s = 1/√α' = 2π, whereas the other convention gives T = 1/2π and M_s = 1."
+    },
+    {
+     "symbol": "\\kappa_{10}",
+     "relation": "2\\kappa_{10}^2 = \\dfrac{g_s^2\\,\\ell_s^8}{2\\pi}\\ (\\Phi_0\\text{-in-}g_s\\text{ convention}),\\qquad 2\\kappa_{10}^2 = \\dfrac{\\ell_s^8}{2\\pi}\\ (\\Phi_0 = 0\\text{ convention})",
+     "why": "Quoted directly from arXiv:2301.05178: the same physical κ takes strikingly different-looking numerical forms in the two ℓ_s conventions, which is the practical reason that paper exists."
+    }
+   ],
+   "fingerprints": [
+    "Explicit '\\ell_s = 2\\pi\\sqrt{\\alpha'}' or '(2\\pi)^2\\alpha' = \\ell_s^2'",
+    "M_s = 2\\pi/\\ell_s (2\\pi in the numerator)",
+    "2\\kappa_{10}^2 = \\ell_s^8/(2\\pi) or g_s^2\\ell_s^8/(2\\pi) — an INVERSE 2\\pi rather than (2\\pi)^7",
+    "Compactification volumes \\mathcal{V} measured in \\ell_s^6, brane tensions T_p = 2\\pi/(g_s\\ell_s^{p+1})",
+    "String-phenomenology context: flux superpotentials, Kähler moduli, orientifolds, LVS"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A. D_p tension in this convention: T_{D_p} = \\dfrac{2\\pi}{g_s\\,\\ell_s^{p+1}} \\to \\dfrac{2\\pi}{g_s} at \\ell_s = 1 (versus T_{D_p} = (2\\pi)^{-p}g_s^{-1}\\alpha'^{-(p+1)/2} in the α' convention).",
+    "gauss_law": "N/A in the Maxwell sense; flux quantization is written \\int_\\Sigma F_p \\in \\ell_s^{p-1}\\mathbb{Z} in this convention rather than with explicit (2\\pi\\sqrt{\\alpha'})^{p-1}.",
+    "einstein_field": "S = \\dfrac{1}{2\\kappa_{10}^2}\\int d^{10}x\\sqrt{-G}\\,e^{-2\\Phi}\\left(R + 4(\\partial\\Phi)^2 - \\tfrac1{12}H^2\\right) with 2\\kappa_{10}^2 = \\dfrac{g_s^2\\ell_s^8}{2\\pi} \\to \\dfrac{g_s^2}{2\\pi} at \\ell_s = 1.",
+    "schrodinger_or_dirac": "The mass formula in terms of \\alpha' is unchanged; expressed in \\ell_s it acquires 2\\pi's: M^2 = (2\\pi)^2(N-1)/\\ell_s^2 \\to (2\\pi)^2(N-1) at \\ell_s = 1 (open bosonic)."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "RESIDUAL DIMENSION: rank 0, identical structure to the previous entry; the ONLY difference is the absorbed numeric factor (2π)² — the purest possible illustration of why numeric_factor must be stored, since no amount of dimensional analysis can recover it.\n\nMAGNITUDE OF THE TRAP: a mass computed as 1 in one ℓ_s convention is 2π ≈ 6.28 in the other; a 10d Newton constant differs by (2π)^8 ≈ 6.1×10^6; a six-dimensional volume in ℓ_s^6 differs by (2π)^6 ≈ 6.1×10^4. Not a rounding error.\n\nVERIFIED: arXiv:2301.05178 eq. (3) states '(2π)²α' = ℓ_s²' is a common convention 'although sometimes α' = ℓ_s² is used instead', and its footnote 4 gives M_s = 1/√α' = 2π/ℓ_s. I independently checked the arithmetic: α' = 1/(4π²) ⇒ T = 1/(2πα') = 2π and M_s = 2π.",
+   "sources": [
+    "https://ar5iv.labs.arxiv.org/html/2301.05178 (eq. 3: (2π)²α' = ℓ_s², 'although sometimes α' = ℓ_s² is used instead'; footnote 4: M_s = 1/√α' = 2π/ℓ_s; 2κ² = g_s²ℓ_s⁸/(2π) and ℓ_s⁸/(2π))",
+    "https://arxiv.org/html/2301.05178 (HTML version of the same conventions guide)",
+    "Computed in-session: ℓ_s = 1 with ℓ_s = 2π√α' ⇒ α' = 1/(4π²), T = 2π, M_s = 2π"
+   ]
+  },
+  {
+   "name": "Worldsheet-convenience convention α' = 2 (closed string)",
+   "aliases": [
+    "α'=2",
+    "closed-string convention",
+    "√(α'/2) = 1 convention"
+   ],
+   "used_in": "Closed-string worldsheet computations where the mode expansion and the X-propagator are made coefficient-free: worldsheet CFT, torus/modular computations, closed-string field theory. Used in closed-string chapters of standard texts.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "\\alpha'",
+     "dimension": "(0, 2, 0, 0, 0)",
+     "numeric_factor": "\\tfrac12",
+     "emits": "(\\alpha'/2)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\alpha_n^\\mu",
+     "relation": "X^\\mu = x^\\mu + \\alpha' p^\\mu\\tau + i\\sqrt{\\tfrac{\\alpha'}{2}}\\sum_{n\\neq0}\\tfrac1n\\left(\\alpha_n^\\mu e^{-in(\\tau-\\sigma)} + \\tilde\\alpha_n^\\mu e^{-in(\\tau+\\sigma)}\\right);\\ \\alpha'=2 \\Rightarrow \\sqrt{\\alpha'/2} = 1,\\ \\alpha' p = 2p",
+     "why": "The point of the choice: it makes the oscillator prefactor unity. It does NOT make the zero-mode term unity — α'p becomes 2p — so careless restoration produces factor-of-2 errors in the momentum sector."
+    }
+   ],
+   "fingerprints": [
+    "Literal 'we set \\alpha' = 2' or 'in units \\alpha' = 2'",
+    "Propagator \\langle X^\\mu(z)X^\\nu(w)\\rangle = -\\eta^{\\mu\\nu}\\ln|z-w|^2 with coefficient exactly 1 (from -\\alpha'/2)",
+    "Mode expansions with unit oscillator coefficients but a factor 2 on the momentum term",
+    "Closed-string context: torus amplitudes, modular invariance, closed SFT",
+    "Mass formula appearing as M^2 = 2(N + \\tilde N - 2) rather than 4(N-1)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: worldsheet convenience convention; no electromagnetic content.",
+    "gauss_law": "N/A: worldsheet convenience convention.",
+    "einstein_field": "Same 10d effective action as the \\alpha'=1 entry with \\alpha' \\to 2: 2\\kappa_{10}^2 = (2\\pi)^7\\cdot 2^4\\cdot g_s^2 = 16(2\\pi)^7 g_s^2.",
+    "schrodinger_or_dirac": "Closed bosonic mass-shell \\dfrac{\\alpha' M^2}{4} = N - 1 \\to M^2 = 2(N-1) at \\alpha'=2; level matching N = \\tilde N; Virasoro L_0 = \\tilde L_0 = 1."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "RESIDUAL DIMENSION: rank 0.\n\nCONFIDENCE FLAG: I am confident about the ARITHMETIC — α'=2 makes √(α'/2)=1 in the standard closed-string mode expansion and makes the X-propagator coefficient −1 — and about α'=2 / α'=1/2 being the two standard 'convenient' choices. I did NOT verify in this session which specific chapters of Polchinski vs GSW use which. A program should classify from the equations (oscillator prefactor, propagator coefficient), not from the author.\n\nThis is the clearest example of a convention chosen PER SECTION of a single document: convention state must be per-equation, not per-document.",
+   "sources": [
+    "https://arxiv.org/pdf/0908.0333 (D. Tong, Lectures on String Theory — closed-string mode expansion with the √(α'/2) prefactor and the -α'/2 log propagator)",
+    "J. Polchinski, String Theory Vol. I (closed-string mode expansions and α' conventions)",
+    "M. B. Green, J. H. Schwarz, E. Witten, Superstring Theory Vol. I (alternative α' normalizations)"
+   ]
+  },
+  {
+   "name": "Worldsheet-convenience convention α' = 1/2 (open string)",
+   "aliases": [
+    "α'=1/2",
+    "open-string convention",
+    "√(2α') = 1 convention",
+    "2α' = 1"
+   ],
+   "used_in": "Open-string worldsheet computations: the open bosonic string and superstring in GSW-lineage treatments, open-string field theory, D-brane worldvolume computations, disc amplitudes.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "\\alpha'",
+     "dimension": "(0, 2, 0, 0, 0)",
+     "numeric_factor": "2",
+     "emits": "(2\\alpha')"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\alpha_n^\\mu",
+     "relation": "X^\\mu = x^\\mu + 2\\alpha' p^\\mu\\tau + i\\sqrt{2\\alpha'}\\sum_{n\\neq0}\\tfrac1n\\alpha_n^\\mu e^{-in\\tau}\\cos n\\sigma;\\ \\alpha'=\\tfrac12 \\Rightarrow \\sqrt{2\\alpha'} = 1,\\ 2\\alpha' p = p",
+     "why": "Here BOTH the oscillator prefactor and the zero-mode coefficient become unity, which is why α'=1/2 is the preferred open-string choice — the mirror image of the α'=2 closed-string choice."
+    }
+   ],
+   "fingerprints": [
+    "Literal 'we set \\alpha' = 1/2' or '2\\alpha' = 1'",
+    "Open-string mode expansion with all coefficients unity",
+    "Open bosonic mass formula written M^2 = 2(N-1) rather than N-1",
+    "Tachyon mass quoted as M^2 = -2 rather than M^2 = -1",
+    "Open-string context: Chan–Paton factors, Dirichlet/Neumann boundary conditions, Veneziano amplitude"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: worldsheet convenience convention. (D-brane gauge couplings acquire the matching powers of 2: g_{D_p}^2 = (2\\pi)^{p-2}g_s\\,2^{-(p-3)/2}.)",
+    "gauss_law": "N/A: worldsheet convenience convention.",
+    "einstein_field": "Same 10d effective action with \\alpha' = 1/2: 2\\kappa_{10}^2 = (2\\pi)^7(1/2)^4 g_s^2 = (2\\pi)^7 g_s^2/16.",
+    "schrodinger_or_dirac": "Open bosonic mass-shell \\alpha' M^2 = N - 1 \\to M^2 = 2(N-1) at \\alpha' = 1/2; tachyon (N=0) has M^2 = -2, massless gauge boson at N=1."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "RESIDUAL DIMENSION: rank 0.\n\nSame confidence flag as the α'=2 entry: the arithmetic is verified by me, the author attributions are not. Note that α'=1/2 and α'=2 form a MATCHED SET, precisely because the open-string mode expansion carries 2α' where the closed-string one carries α'/2 — a document may use both, one per chapter.",
+   "sources": [
+    "https://arxiv.org/pdf/0908.0333 (D. Tong, Lectures on String Theory — open-string mode expansion with 2α'p and √(2α') prefactors)",
+    "M. B. Green, J. H. Schwarz, E. Witten, Superstring Theory Vol. I (open-string α' normalization)",
+    "J. Polchinski, String Theory Vol. I (open-string mode expansions)"
+   ]
+  },
+  {
+   "name": "Eleven-dimensional Planck / M-theory units (ℓ_p = 1, or 2κ₁₁² = 1)",
+   "aliases": [
+    "ℓ_11 = 1",
+    "M-theory units",
+    "11d Planck units",
+    "ℓ_p (eleven-dimensional)",
+    "M_11 = 1"
+   ],
+   "used_in": "M-theory, 11d supergravity, M2/M5-brane physics, matrix theory (BFSS), M-theory compactifications and dualities, AdS4×S7 and AdS7×S4 holography.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "\\ell_p^{(11)}",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\ell_p"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\kappa_{11}",
+     "relation": "2\\kappa_{11}^2 = (2\\pi)^8\\,\\ell_p^9 (Polchinski-lineage); other papers write \\kappa_{11}^2 = \\tfrac12(2\\pi)^8\\ell_p^9 or simply 16\\pi G_{11} = 1",
+     "why": "The 2π power in the 11d relation is convention-dependent in the same way as the 10d string length, and errors compound across dualities."
+    },
+    {
+     "symbol": "\\ell_p \\leftrightarrow \\ell_s,\\ g_s",
+     "relation": "R_{11} = g_s\\,\\ell_s,\\qquad \\ell_p^3 = g_s\\,\\ell_s^3\\ \\ (\\text{in the }\\ell_s^2 = \\alpha'\\text{ convention})",
+     "why": "The IIA/M-theory dictionary. If the ℓ_s convention is the 2π one, these relations pick up 2π's, so an 11d↔10d translation must carry the ℓ_s convention with it."
+    }
+   ],
+   "fingerprints": [
+    "\\ell_p, \\ell_{11}, M_{11}, \\kappa_{11}, or 'eleven-dimensional Planck length'",
+    "2\\kappa_{11}^2 = (2\\pi)^8\\ell_p^9",
+    "M2-brane tension T_{M2} = \\dfrac{1}{(2\\pi)^2\\ell_p^3}; M5-brane tension T_{M5} = \\dfrac{1}{(2\\pi)^5\\ell_p^6}",
+    "11d SUGRA action containing a Chern–Simons term C_3\\wedge F_4\\wedge F_4",
+    "R_{11} = g_s\\ell_s, 'the M-theory circle'",
+    "Matrix-theory/BFSS context, DLCQ, N D0-branes"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: there is no Maxwell field in 11d SUGRA — the bosonic content is g_{MN} and the 3-form C_3 only. The analogue is the M2-brane electric coupling \\int C_3 and its M5 magnetic dual.",
+    "gauss_law": "Flux quantization for the 4-form: \\int_{S^4}F_4 = N(2\\pi\\ell_p)^3 (normalization convention-dependent); M2 charge is measured by \\int_{S^7}\\left(\\star F_4 - \\tfrac12 C_3\\wedge F_4\\right).",
+    "einstein_field": "S_{11} = \\dfrac{1}{2\\kappa_{11}^2}\\int d^{11}x\\sqrt{-g}\\left(R - \\tfrac12|F_4|^2\\right) - \\dfrac{1}{12\\kappa_{11}^2}\\int C_3\\wedge F_4\\wedge F_4, with 2\\kappa_{11}^2 = (2\\pi)^8\\ell_p^9 \\to (2\\pi)^8 at \\ell_p = 1.",
+    "schrodinger_or_dirac": "11d gravitino field equation \\Gamma^{MNP}D_N\\psi_P + (F_4\\text{ terms}) = 0; in matrix theory H = R\\,\\mathrm{Tr}\\left(\\tfrac12 P_i^2 - \\tfrac14[X_i,X_j]^2 + \\ldots\\right) in units \\ell_p = 1."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "RESIDUAL DIMENSION: rank 0.\n\nCONFIDENCE FLAG: I report 2κ₁₁² = (2π)⁸ℓ_p⁹, T_M2 = 1/((2π)²ℓ_p³) and T_M5 = 1/((2π)⁵ℓ_p⁶) from standard (Polchinski-lineage) usage but did NOT verify these exact 2π powers against a primary source in this session — treat as high-probability-but-unverified. The 10d relation 2κ₁₀² = (2π)⁷α'⁴ IS verified. The M-theory/IIA dictionary R₁₁ = g_sℓ_s, ℓ_p³ = g_sℓ_s³ is standard but likewise unverified here.\n\nSTRUCTURAL NOTE: ℓ_p^(11) is dimensionally just a length — the same generator slot as the lattice spacing a or the AdS radius L. What distinguishes them is provenance (fundamental constant vs theory scale vs solution parameter vs regulator), which the current schema does not encode. Consider adding a generator_kind field.",
+   "sources": [
+    "https://ar5iv.labs.arxiv.org/html/2301.05178 (verified the 10d relation 2κ₁₀² = (2π)⁷α'⁴; the paper does NOT give an 11d Planck-length formula)",
+    "J. Polchinski, String Theory Vol. II, ch. 14 (M-theory relations, 2κ₁₁² = (2π)⁸ℓ_p⁹ — cited from standard usage, not re-verified here)",
+    "https://arxiv.org/pdf/hep-th/9910055 (Two loops in eleven dimensions — 11d SUGRA conventions and ℓ_p normalization)"
+   ]
+  },
+  {
+   "name": "AdS radius units (L = 1), usually with 16πG = 1",
+   "aliases": [
+    "L_AdS = 1",
+    "R = 1",
+    "unit AdS radius",
+    "holographic length units",
+    "'we set the AdS radius to one'"
+   ],
+   "used_in": "AdS/CFT and holography of every stripe: holographic renormalization, holographic transport, holographic superconductors, entanglement entropy in AdS, numerical holography, AdS black-hole thermodynamics.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "L_{\\rm AdS}",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "L"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "16\\pi\\ (\\text{when } 16\\pi G = 1 \\text{ is also imposed})",
+     "emits": "(16\\pi G)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "m\\ (\\text{bulk field mass})",
+     "relation": "\\Delta(\\Delta - d) = m^2L^2 \\to m^2 at L=1;\\ \\Delta = \\tfrac{d}{2} + \\sqrt{\\tfrac{d^2}{4} + m^2}",
+     "why": "Bulk masses are only meaningful as the dimensionless mL; L=1 makes m itself the datum. Restoring L requires knowing the boundary dimension d."
+    },
+    {
+     "symbol": "\\Lambda",
+     "relation": "\\Lambda = -\\dfrac{(d-1)(d-2)}{2L^2} \\to -\\dfrac{(d-1)(d-2)}{2} at L=1 (AdS_d, d bulk dimensions)",
+     "why": "The Λ–L relation carries a dimension-dependent integer that a fixed-exponent generator table cannot supply; the tool needs the spacetime dimension as a parameter."
+    },
+    {
+     "symbol": "L \\leftrightarrow \\alpha', g_s, N",
+     "relation": "\\dfrac{L^4}{\\alpha'^2} = 4\\pi g_s N = g_{\\rm YM}^2 N = \\lambda\\ \\ (\\text{AdS}_5\\times S^5)",
+     "why": "L is NOT a constant of nature: it is fixed by the flux N and the coupling. Setting L=1 hides the 't Hooft coupling, and translating an L=1 paper back to string units requires λ."
+    }
+   ],
+   "fingerprints": [
+    "'we set the AdS radius L = 1' / 'R_{\\rm AdS} = 1' / 'in units of the AdS radius'",
+    "Metric ds^2 = \\dfrac{1}{z^2}\\left(dz^2 + \\eta_{\\mu\\nu}dx^\\mu dx^\\nu\\right) with no L^2 prefactor",
+    "\\Delta(\\Delta - d) = m^2 with a bare m^2",
+    "Cosmological constant as a pure integer combination: \\Lambda = -6 for AdS_5, \\Lambda = -3 for AdS_4",
+    "Co-occurrence with 16\\pi G_N = 1, \\lambda = g_{\\rm YM}^2N, N_c, c_{\\rm CFT}",
+    "Blackening factor f(z) = 1 - (z/z_h)^d with unit AdS radius"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A as a fundamental law; the bulk Maxwell sector is normalized per paper (\\mathcal{L} = -\\tfrac{L^2}{4g_4^2}F^2 is common). The holographic 'Coulomb' analogue is \\langle JJ\\rangle read off the near-boundary expansion A_t = \\mu - \\rho z^{d-2} + \\ldots.",
+    "gauss_law": "Bulk Gauss law \\nabla_\\mu F^{\\mu\\nu} = 0, with the conserved boundary charge density \\rho obtained as the subleading falloff of A_t; radial 'Gauss law' constraints are the standard tool of holographic transport.",
+    "einstein_field": "With 16\\pi G = 1 and L = 1: S = \\int d^{d+1}x\\sqrt{-g}\\left(R + d(d-1)\\right) for AdS_{d+1} (\\Lambda = -d(d-1)/2), giving R_{\\mu\\nu} - \\tfrac12 g_{\\mu\\nu}R - \\tfrac{d(d-1)}{2}g_{\\mu\\nu} = \\tfrac12 T_{\\mu\\nu}; pure AdS has R_{\\mu\\nu} = -d\\,g_{\\mu\\nu}.",
+    "schrodinger_or_dirac": "Bulk scalar (\\Box_g - m^2)\\phi = 0 with \\phi \\sim \\phi_0 z^{d-\\Delta} + \\langle\\mathcal{O}\\rangle z^{\\Delta}, \\Delta(\\Delta-d) = m^2; bulk Dirac (\\gamma^M D_M - m)\\psi = 0 with \\Delta = d/2 + |m|."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "RESIDUAL DIMENSION: rank 0.\n\nSCHEMA STRESS: L_AdS is NOT a constant of nature — it is a parameter of a particular solution, fixed by flux quanta and couplings. The generator table assumes universal constants with fixed SI exponents and known values. L needs a per-document custom-generator slot whose value is symbolic or reader-supplied. The same holds for the lattice spacing a and, arguably, for α' (which has no measured value).\n\nSECOND STRESS: nearly every formula carries the SPACETIME DIMENSION d as a symbolic exponent or coefficient. Dimension-checking in holography therefore needs a dimension parameter, not a fixed 5-tuple basis.\n\nThe relation L⁴/α'² = 4πg_sN = g²_YM N = λ for AdS₅×S⁵ is the standard dictionary (consistent with g²_YM = 4πg_s); I did not re-derive it in this session.",
+   "sources": [
+    "https://arxiv.org/html/hep-th/0409033v5 (holographic conventions with 16πG_N normalization and unit AdS radius)",
+    "https://arxiv.org/pdf/1110.5075 (holographic gauge mediation — AdS_5 radius/λ dictionary in use)",
+    "J. M. Maldacena, 'The Large N limit of superconformal field theories and supergravity' (L⁴ = 4πg_sNα'² dictionary — standard, cited from knowledge)",
+    "https://ar5iv.labs.arxiv.org/html/2301.05178 (frame and 2π conventions that must accompany any L↔α' translation)"
+   ]
+  },
+  {
+   "name": "Lattice units (a = 1) on top of ħ = c = 1",
+   "aliases": [
+    "lattice units",
+    "a = 1",
+    "dimensionless lattice fields",
+    "hatted lattice quantities",
+    "lattice-spacing units"
+   ],
+   "used_in": "Lattice QCD and lattice gauge theory universally (Gattringer–Lang, Montvay–Münster, DeGrand–DeTar), lattice scalar field theory, lattice SUSY, tensor-network/Hamiltonian lattice gauge theory, and every lattice-collaboration paper (BMW, RBC/UKQCD, HPQCD, MILC, ETM, Fermilab).",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "a\\ (\\text{lattice spacing})",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "a"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\phi\\ (\\text{scalar})",
+     "relation": "\\hat\\phi = a\\,\\phi\\ (\\text{4d});\\ \\text{generally } \\hat\\phi = a^{(D-2)/2}\\phi",
+     "why": "Fields are rescaled by their mass dimension in powers of a so the lattice action is a dimensionless number. An explicit field redefinition, not a units change."
+    },
+    {
+     "symbol": "\\psi\\ (\\text{fermion})",
+     "relation": "\\hat\\psi = a^{3/2}\\,\\psi\\ (\\text{4d});\\ \\text{generally } \\hat\\psi = a^{(D-1)/2}\\psi",
+     "why": "HALF-INTEGER exponent — a second, independent reason the schema must allow halves (the first being √ε₀ for charge). Verified against standard lattice references."
+    },
+    {
+     "symbol": "A_\\mu \\to U_\\mu(n)",
+     "relation": "U_\\mu(n) = \\exp\\!\\left(i\\,a\\,g_0 A_\\mu(n)\\right) \\to \\exp(ig_0A_\\mu) at a=1; the gauge field is replaced by a GROUP element, not merely rescaled",
+     "why": "The most severe rescaling in the family: the continuum field does not survive as a variable. No dimensional restoration can recover A_μ from U_μ without expanding in a."
+    },
+    {
+     "symbol": "m,\\ p,\\ t,\\ \\sigma",
+     "relation": "\\hat m = a m,\\ \\hat p = a p,\\ \\hat t = t/a,\\ \\hat\\sigma = a^2\\sigma; anisotropic lattices carry two spacings with \\xi = a_s/a_t",
+     "why": "Every quoted lattice number is a dimensionless product; converting to MeV requires the separately determined a^{-1} (scale setting via r_0, w_0, t_0, f_\\pi, or the \\Omega baryon mass)."
+    }
+   ],
+   "fingerprints": [
+    "'in lattice units', 'we set a = 1', 'all quantities are in lattice units'",
+    "Hatted or dimensionless masses: am_\\pi, aM_N, am_q, 'am = 0.0062'",
+    "Inverse lattice spacing quoted: a^{-1} = 2.0\\ \\text{GeV}, a = 0.09\\ \\text{fm}",
+    "Wilson gauge action S_G = \\beta\\sum_P\\left(1 - \\tfrac1N\\mathrm{Re\\,Tr}\\,U_P\\right) with \\beta = 2N/g_0^2 (\\beta = 6/g_0^2 for SU(3))",
+    "Link variables U_\\mu(n), plaquettes, Wilson loops, Polyakov loops",
+    "Scale-setting language: r_0/a, w_0, t_0, 'Sommer scale', 'gradient flow scale'",
+    "Continuum extrapolation 'a\\to0', 'O(a) improvement', 'Symanzik improvement', clover coefficient c_{SW}",
+    "Correlators C(t) \\sim e^{-\\hat m\\hat t}"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A as a fundamental law. The lattice analogue is the static quark–antiquark potential from Wilson loops, in lattice units: \\hat V(\\hat r) = -\\dfrac{\\hat A}{\\hat r} + \\hat\\sigma\\,\\hat r + \\hat V_0, i.e. aV(r/a), with \\hat\\sigma = a^2\\sigma; the Coulomb coefficient is already dimensionless (\\hat A = A = \\tfrac43\\alpha_s in the Cornell form).",
+    "gauss_law": "Hamiltonian lattice gauge theory: physical states satisfy \\hat G^a(n)|\\Psi\\rangle = 0 with \\hat G^a(n) = \\sum_\\mu\\left[E^a_\\mu(n) - E^a_\\mu(n-\\hat\\mu)\\right] - \\rho^a(n). In the Euclidean path-integral formulation there is no Gauss law equation; the dynamics sits entirely in S_G = \\beta\\sum_P(1 - \\tfrac1N\\mathrm{Re\\,Tr}\\,U_P) with \\beta = 2N/g_0^2.",
+    "einstein_field": "N/A: lattice QCD has no gravity. Discrete-gravity programmes (Regge calculus, causal dynamical triangulations) use their own edge-length or simplex units and form a separate convention family.",
+    "schrodinger_or_dirac": "Wilson–Dirac operator in lattice units (a=1, Wilson parameter r, usually r=1): D_W(n|m) = (m_0 + 4r)\\,\\delta_{n,m} - \\dfrac12\\sum_{\\mu=1}^{4}\\left[(r-\\gamma_\\mu)U_\\mu(n)\\,\\delta_{n+\\hat\\mu,m} + (r+\\gamma_\\mu)U_\\mu^\\dagger(n-\\hat\\mu)\\,\\delta_{n-\\hat\\mu,m}\\right]. Restoring a: the same expression with m_0\\to am_0 and an overall 1/a. Staggered and overlap operators have their own a=1 forms."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v1",
+   "notes": "RESIDUAL DIMENSION: RANK 0. Every published lattice number is a pure number; the entire content of 'scale setting' is supplying the one missing number a^{-1} (in MeV) that restores dimensions. A dimension-checker on a lattice paper has nothing to check — but a RESTORER is extremely useful, and is exactly the operation lattice readers perform mentally.\n\nSCHEMA STRESS (two distinct problems):\n1. a is not a constant of nature, and it varies per ensemble WITHIN a single paper (typically 3–5 values, for the continuum extrapolation). A single generator slot with a single value is wrong; a per-ensemble table is needed.\n2. The field rescalings are field redefinitions, not unit conversions, and the gauge-field one is not even a rescaling (A_μ → exp(iagA_μ)). per_symbol_rescalings can record the algebra but cannot invert the link-variable map.\n\nVERIFIED: φ_lat = aφ and ψ_lat = a^{3/2}ψ in 4d, confirmed against lattice-field-theory references; the general-D forms a^{(D-2)/2} and a^{(D-1)/2} follow from the continuum mass dimensions.\n\nAnisotropic lattices (a_s ≠ a_t, ξ = a_s/a_t) require TWO length generators — dimensionally fine in the 5-tuple basis, but it will confuse any rule assuming a single length scale.",
+   "sources": [
+    "https://arxiv.org/html/2512.22368v1 (Introduction to Lattice Field Theory — rescaling to dimensionless lattice fields, a=1 conventions)",
+    "https://arxiv.org/pdf/hep-lat/0609056 (analysis of the hadronic spectrum from lattice QCD — ψ̂_lat = a^{d/2}ψ_phys)",
+    "https://arxiv.org/pdf/hep-lat/9804006 (Introduction to finite-temperature QCD on the lattice — lattice units and β = 2N/g₀²)",
+    "C. Gattringer and C. B. Lang, Quantum Chromodynamics on the Lattice (Wilson gauge action, Wilson–Dirac operator in lattice units)",
+    "https://link.springer.com/chapter/10.1007/978-3-030-38207-0_5 (QCD on the Lattice — am observables, scale setting)"
+   ]
+  },
+  {
+   "name": "Stoney units (c = G = e²/4πε₀ = 1; ħ ≠ 1)",
+   "aliases": [
+    "Stoney units",
+    "G. J. Stoney's natural units (1874/1881)",
+    "electron-charge natural units",
+    "pre-quantum natural units"
+   ],
+   "used_in": "Historical (Stoney 1874/1881, predating Planck's 1899 'absolute units'); today only in history-of-physics discussions, foundations and constants-variation literature, and occasional quantum-gravity essays comparing candidate 'natural' unit choices. Essentially never used for computation.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "\\dfrac{e^2}{4\\pi\\varepsilon_0}",
+     "dimension": "(1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\dfrac{e^2}{4\\pi\\varepsilon_0}"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\hbar",
+     "relation": "\\hbar = 1/\\alpha = 137.035999 in Stoney units (since \\alpha = e^2/(4\\pi\\varepsilon_0\\hbar c))",
+     "why": "THE identifying feature: ħ is a large number rather than 1. Any system with ħ ≠ 1 but c = G = e = 1 is Stoney."
+    }
+   ],
+   "fingerprints": [
+    "e = 1 as a defining choice, with \\hbar appearing as \\approx 137",
+    "Stoney length \\ell_S = \\sqrt{Ge^2/(4\\pi\\varepsilon_0 c^4)} = \\sqrt{\\alpha}\\,\\ell_P = 1.381\\times10^{-36}\\ \\text{m}",
+    "Stoney mass m_S = \\sqrt{\\alpha}\\,m_P = 1.859\\times10^{-9}\\ \\text{kg}",
+    "Explicit mention of 'Stoney units' or 'Stoney scale', usually in a comparison table alongside Planck, Schrödinger and atomic units"
+   ],
+   "benchmark_equations": {
+    "coulomb": "V(r) = \\dfrac{q_1q_2}{r} with charges in units of e, so for two electrons V(r) = 1/r (Gaussian rationalization, since the generator is e^2/4\\pi\\varepsilon_0).",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = 4\\pi\\rho (Gaussian flavour).",
+    "einstein_field": "G_{\\mu\\nu} = 8\\pi T_{\\mu\\nu} — identical in form to Planck units, since c = G = 1 in both.",
+    "schrodinger_or_dirac": "i\\hbar\\,\\partial_t\\psi = \\left(-\\dfrac{\\hbar^2\\nabla^2}{2m} - \\dfrac{1}{r}\\right)\\psi with \\hbar = 137.036 — the equations look conspicuously un-natural, which is why the system was abandoned."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "out_of_scope",
+   "notes": "RESIDUAL DIMENSION: rank 0 in mechanics. I verified the three generators are dimensionally independent (the 3×3 exponent determinant over (M,L,T) is 2 ≠ 0).\n\nIncluded for completeness of the 'natural units' family and because it appears in comparison tables a reader might feed the tool. Recommend out_of_scope for a theoretical-physics reading tool: no modern paper computes in it.\n\nRELATED HISTORICAL VARIANT, mentioned but not given a full entry: SCHRÖDINGER UNITS set ħ = G = e²/4πε₀ = 1, leaving c = 1/α ≈ 137.036 — the mirror image of Stoney. Also essentially unused.",
+   "sources": [
+    "https://arxiv.org/pdf/1305.1291 (Mathematical structure of unit systems — formal treatment of generator sets including Stoney-type systems)",
+    "https://iopscience.iop.org/article/10.1088/2399-6528/ad0090 (From Newton to universal Planck natural units — disentangling the constants of nature; comparison of Stoney, Planck and Schrödinger units)",
+    "https://arxiv.org/pdf/1506.01951 (Babel of Units — historical unit systems)",
+    "Derived in-session: α = e²/(4πε₀ħc) with the three generators = 1 forces ħ = 1/α = 137.036"
+   ]
+  }
+ ],
+ "family_notes": "RANK BOOKKEEPING — THE SINGLE MOST USEFUL THING THE TOOL CAN TRACK\n\nThe SI basis is rank 5: (M, L, T, Θ, I). Each independent generator kills one rank. For this family:\n\n- c = 1 only → residual rank 4 (mass, length, temperature, current)\n- ħ = c = 1, no ε₀ → rank 3 (mass, temperature, current)\n- ħ = c = 1 + HL or Gaussian ε₀ → rank 2 (mass, temperature)\n- ħ = c = k_B = ε₀ = 1 → rank 1: MASS DIMENSION only. This is the canonical HEP system.\n- + G (Planck / reduced Planck / 16πG=1), or + α' (string), or + m_e (CODATA n.u.), or + a (lattice) → RANK 0: nothing survives, no dimensional check exists.\n\nThe product should REPORT residual rank per document and must not claim \"dimensionally consistent\" at rank 0 — that statement is vacuous there. At rank 0 the tool's value is restoration, not checking. Conversely the lab-hybrid system (ħ=c=1 with SI E&M) has HIGHER rank than the standard one and supports genuinely stronger checks than a naive classifier would expect.\n\nRestoration remains a unique linear solve at every rank, provided the intended dimension of the quantity is supplied by its role in the equation. The failure mode at rank 0 is not non-uniqueness but the need for that external input.\n\nTHE INVISIBLE FACTORS, RANKED BY DAMAGE\n\n1. 4π in electromagnetism. α = e²/4π (Heaviside–Lorentz, modern) vs α = e² (Gaussian, older). e = 0.302822 vs 0.085425. Maxwell Lagrangian −F²/4 vs −F²/16π; the 4π sits on Maxwell's source equations vs on Coulomb's law. Crucially, the products eA_μ, eE, eB, eF_μν are INVARIANT between the two, so a paper that only ever writes covariant derivatives never reveals its convention. Detect from α or the F² coefficient; if neither appears, report \"undetermined\" rather than defaulting.\n\n2. 8π / 16π / 32π in gravity. Verified discriminator ladder:\n   - G = 1: G_μν = 8π T_μν, S_EH = (1/16π)∫√−g R, S_BH = A/4\n   - 8πG = 1 (reduced Planck, M̄_pl = 2.435323×10^18 GeV): G_μν = T_μν, S_EH = (1/2)∫√−g R, S_BH = 2πA\n   - 16πG = 1 (holography/SUGRA, \"2κ²=1\"): G_μν = ½T_μν, S_EH = ∫√−g R, S_BH = 4πA\n   The R-coefficient plus the entropy coefficient identify the system uniquely — a robust programmatic test. Separately, the graviton normalization g = η + κh uses κ² = 8πG in SUGRA/cosmology but κ² = 32πG in the graviton-amplitude literature; nLab also records the κ = √(32πG) definition. Papers in all camps write \"κ = 1\". This is a per-symbol rider, not a generator.\n\n3. \"M_pl = 1\" ambiguity. M_Pl = G^{-1/2} = 1.220890×10^19 GeV vs M̄_pl = (8πG)^{-1/2} = 2.435323×10^18 GeV. Ratio √(8π) = 5.013257 in mass, 8π = 25.13 in mass². Inflation/swampland papers almost always mean reduced; black-hole and extra-dimension papers usually mean unreduced. Never guess from the symbol — read the Einstein–Hilbert coefficient.\n\n4. 2π in the string length. ℓ_s = √α' (Tong, nLab, much of hep-th) vs ℓ_s = 2π√α' (string compactification/pheno; arXiv:2301.05178 eq. 3 documents both and calls the latter \"a common convention\"). Setting ℓ_s = 1 means α' = 1 in one and α' = 1/(4π²) = 0.02533 in the other. I verified the downstream arithmetic: tension T = 1/2π vs 2π; M_s = 1 vs 2π; κ₁₀² differs by (2π)^8 ≈ 6.1×10^6; a Calabi–Yau volume in ℓ_s^6 differs by (2π)^6 ≈ 6.1×10^4. The most numerically violent invisible factor in the family.\n\n5. Worldsheet-convenience α' = 2 (closed) and α' = 1/2 (open), chosen so √(α'/2) = 1 and √(2α') = 1 respectively. These can change WITHIN one book at a chapter boundary — convention state must be per-equation, not per-document.\n\n6. 2π in ħ vs h. Rarely a problem in HEP (nobody sets h = 1), but a translator moving toward spectroscopic literature must watch it. ħ = h/2π is a definitional relation, not a unit choice.\n\nWHAT BREAKS OR STRESSES THE GENERATOR-TABLE SCHEMA\n\nA. Generators that are not constants of nature. The lattice spacing a, the AdS radius L, the 11d ℓ_p, and (arguably) α' have no measured universal value; a varies across ensembles WITHIN a single paper. The schema implicitly assumes a generator has both a fixed SI dimension and a known numeric value; these have the first but not the second. RECOMMENDATION: add a generator_kind field — {fundamental_constant, theory_scale, solution_parameter, regulator} — because restoration behaviour differs (symbolic vs numeric output).\n\nB. Spacetime dimension as a live parameter. In d = 4−2ε (dim reg) the mass dimensions are ε-dependent: [φ] = (d−2)/2, [ψ] = (d−1)/2, [A_μ] = (d−2)/2, [e] = ε, with couplings written g μ^ε. In string/holography D = 5, 10, 11 appear, with [G_D] = mass^{2−D} and Λ = −(d−1)(d−2)/(2L²). A fixed SI 5-tuple cannot express an exponent that is itself symbolic. Without a dimension parameter the tool will emit false failures on essentially every loop calculation and every holography paper. THIS IS THE LARGEST SINGLE SCHEMA GAP I FOUND.\n\nC. Field redefinitions masquerading as unit changes. Three kinds appear, only the first genuinely dimensional:\n   - honest rescalings: φ_lat = aφ, ψ_lat = a^{3/2}ψ, q_HL = q_SI/√ε₀;\n   - rescaling by a FIELD, not a constant: the string-frame ↔ Einstein-frame Weyl transformation g^E = e^{−4(Φ−Φ₀)/(D−2)} g^s, outside the dimensional formalism entirely yet always announced in the same \"conventions\" paragraph;\n   - non-invertible replacement: A_μ → U_μ = exp(iagA_μ) on the lattice, where the continuum variable is gone.\n   per_symbol_rescalings handles the first cleanly, describes the second, and cannot invert the third.\n\nD. Half-integer exponents are load-bearing for two independent reasons: charge picks up ε₀^{1/2} whenever ε₀ is a generator (why q is dimensionless in HEP units), and lattice fermions pick up a^{3/2}. Both confirmed. Keep halves.\n\nE. Θ and I are quietly dropped. Most treatments of \"ħ=c=1\" say nothing about temperature or charge, yet the standard HEP system silently sets both k_B and ε₀. A tool modelling only (M,L,T) will mis-handle every thermal and every electromagnetic equation. Keep the full 5-tuple.\n\nDETECTION HEURISTICS AND ANTI-HEURISTICS\n\n- Presence of ħ or c in an equation does NOT mean the paper is not in natural units — authors routinely restore them in a final numerical formula or a conversion appendix. Classify from the body, not from one line.\n- \"Natural units\" in a nuclear/astro paper often means c = 1 only; in hep-ph it means ħ = c = k_B = ε₀ = 1; in quantum gravity it may mean full Planck units. The phrase alone is not a classifier.\n- Display-unit choice (eV vs GeV vs fm vs GeV/c²) is typographic, not a convention change. \"GeV/c²\" in a ħ=c=1 paper is a courtesy, not evidence that c ≠ 1.\n- Metric signature (+−−− vs −+++), the sign in D_μ = ∂_μ ± ieA_μ, and Riemann-tensor sign conventions co-vary with schools but are NOT unit conventions. They need their own orthogonal convention axis — and they matter just as much for reading equations correctly.\n- Strong positive signals worth hard-coding: \"α = e²/4π\" → HL; \"−F²/16π\" or \"∂_μF^{μν} = 4πJ^ν\" → Gaussian; \"G_μν = T_μν\" → 8πG=1; \"S = A/4\" → G=1; \"S = 4πA\" or \"S = ∫√−g(R−2Λ)\" → 16πG=1; \"T = 1/2πα'\" plus \"g_s\" → string units; \"am_π\" or \"β = 6/g₀²\" → lattice; \"Bohr radius = 137\" → CODATA n.u.; \"c = 137\" → ATOMIC units (a different family, frequently misclassified into this one); \"ħ = 137\" → Stoney.\n- Lab-SI unit symbols (T, V/m, K, GHz, litre) co-occurring with GeV masses → the hybrid system, NOT the standard one. Verified bridge: 1 T = 195.353 eV² in Heaviside–Lorentz natural units (from B_crit = m_e²/e = 8.6229×10^11 eV² = 4.414×10^9 T).\n\nREFERENCE NUMBERS COMPUTED OR VERIFIED THIS SESSION\nħc = 197.3269804 MeV·fm; (ħc)² = 0.3893793721 GeV²·mbarn; 1 GeV^{-1} = 0.1973269804 fm = 6.582119569×10^{-25} s; α^{-1} = 137.035999177; e_HL = √(4πα) = 0.30282212; e_G = √α = 0.08542454; M_Pl = 1.220890×10^19 GeV; M̄_pl = 2.4353232×10^18 GeV; √(8π) = 5.0132565; m_e/M_Pl = 4.1855×10^{-23}, (m_e/M_Pl)² = 1.7518×10^{-45}; G_N = 6.70883×10^{-39} GeV^{-2}; G_F = 1.1663787×10^{-5} GeV^{-2}; 1 K = 8.617333262×10^{-14} GeV; ℓ_P = 1.616255×10^{-35} m, t_P = 5.391247×10^{-44} s, T_P = 1.416784×10^{32} K; q_P(Gaussian) = 1.875545×10^{-18} C, q_P(HL) = 5.2911×10^{-19} C; CODATA n.u. of length ħ/m_ec = 3.8615927×10^{-13} m, n.u. of time 1.288088667×10^{-21} s, n.u. of energy 0.51099895069 MeV; 16πG=1 ⇒ S_BH = 4πA; ℓ_s=1 in the 2π convention ⇒ T = M_s = 2π.\n\nEXPLICITLY FLAGGED UNCERTAINTIES (do not silently promote to fact)\n- Textbook E&M attributions: only LL vol. 4 (Heaviside, α = e²/4πħc) was verified this session. Weinberg QFT, Bjorken–Drell and Sakurai's Advanced QM were NOT verified — classify from equations, not authors.\n- The 11d relations 2κ₁₁² = (2π)^8 ℓ_p^9, T_M2 = 1/((2π)²ℓ_p³), T_M5 = 1/((2π)^5 ℓ_p^6), and the IIA dictionary R₁₁ = g_s ℓ_s, ℓ_p³ = g_s ℓ_s³ are reported from standard usage but were not verified against a primary source here. The 10d relation 2κ₁₀² = (2π)^7 α'^4 IS verified.\n- Which chapters of Polchinski vs GSW use α'=2 vs α'=1/2 was not verified; the arithmetic consequences of each choice were.\n- The AdS₅×S⁵ dictionary L⁴/α'² = 4πg_sN = λ is standard but was not re-derived here.\n\nADJACENT SYSTEMS DELIBERATELY NOT CLAIMED AS MINE (hand-off notes)\n- Geometrized units G = c = 1 with ħ ≠ 1 — MTW/Wald GR family. Overlaps my Planck entries; make sure exactly one agent owns it. Its fingerprint is that ħ survives.\n- Atomic/Hartree units (ħ = m_e = e = 4πε₀ = 1, c = 1/α = 137) and Rydberg units (differing from Hartree by the factor of 2: 1 Ha = 2 Ry) — atomic/molecular family. My CODATA-n.u. entry is the one most often confused with these; the discriminator is whether c or the Bohr radius equals 137.\n- Gaussian and Heaviside–Lorentz as CLASSICAL (non-natural) systems — classical-E&M family. My Gaussian-natural and HL-natural entries are those systems with ħ = c = 1 added; the riders (B and the 3-vector A carrying an extra c) are shared and should be stated identically in both families so the tables compose.\n- \"ħ = 1 only\" (condensed-matter/non-relativistic QFT, often with m = 1 too) — real and widely used, but its home is the condensed-matter family.\n- Regge calculus / causal dynamical triangulations use edge-length or simplex units analogous to lattice a — discrete-gravity family.\n- Cosmological \"a₀ = 1\" scale-factor normalization and h-units (Mpc/h, M_⊙/h) behave like unit conventions and cause comparable damage, but they are catalogue conventions rather than constant-setting; they need their own mechanism.\n\nOVERALL RECOMMENDATION\nv1 scope: HEP ħ=c=1 (HL), +k_B, Gaussian-natural, Planck (Gaussian flavour), reduced Planck, 16πG=1, α'=1, both ℓ_s=1 conventions, lattice a=1. That set covers the overwhelming majority of hep-ph / hep-th / hep-lat / astro-ph.CO reading. The two highest-value features beyond the table itself are (a) reporting residual rank honestly, including saying \"no dimensional check is possible here\", and (b) a spacetime-dimension parameter so that dim-reg and higher-dimensional papers do not generate false failures."
+}

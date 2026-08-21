@@ -1,0 +1,1233 @@
+{
+ "family": "Atomic, molecular, condensed-matter and spectroscopy conventions",
+ "systems": [
+  {
+   "name": "Hartree atomic units (SI-based rendering, 4πε₀ = 1)",
+   "aliases": [
+    "atomic units",
+    "a.u.",
+    "au",
+    "Hartree units",
+    "Hartree a.u.",
+    "SI-based atomic units",
+    "quantum-chemistry atomic units"
+   ],
+   "used_in": "Essentially all of quantum chemistry (Gaussian, ORCA, Molpro, Psi4, PySCF, NWChem, Turbomole, Dalton, CFOUR), electronic-structure codes ABINIT/CP2K/BigDFT, AMO theory, attosecond and strong-field physics, ab initio molecular dynamics. This is the default internal unit system of nearly every quantum-chemistry program.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "m_e",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m_e"
+    },
+    {
+     "tex": "e",
+     "dimension": "(0, 0, 1, 0, 1)",
+     "numeric_factor": "1",
+     "emits": "e"
+    },
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    }
+   ],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "Explicit phrase: \"atomic units are used throughout (ħ = m_e = e = 4πε₀ = 1)\" or \"unless otherwise stated, atomic units are used\"",
+    "Electronic Hamiltonian written H = -½ Σ∇_i² - Σ_{iA} Z_A/r_{iA} + Σ_{i<j} 1/r_{ij} + Σ_{A<B} Z_A Z_B/R_AB — note the ½ on the kinetic term and bare 1/r",
+    "Hydrogenic spectrum quoted as E_n = -Z²/(2n²); ground state -0.5",
+    "Total energies with 6-10 decimals and magnitudes ~ -76.24 (H₂O), -1.174 (H₂), -128.9 (Ne)",
+    "Words: hartree, E_h, bohr, a₀, millihartree, mE_h, microhartree, \"chemical accuracy\"",
+    "The conversion numbers 27.211386, 627.5095, 219474.63, 2625.4996, 0.529177, 2.4189e-17",
+    "c appearing numerically as 137.036 or as α⁻¹ in relativistic/Breit-Pauli terms (c is NOT 1)",
+    "Strong-field AMO: field amplitudes like \"E₀ = 0.05 a.u.\", intensity 3.51×10¹⁶ W/cm², \"24 as\" time unit, ponderomotive U_p = I/(4ω²)",
+    "Dipole moments in a.u. converted with 2.541746 D",
+    "Bond lengths ~1.4-3 (bohr) rather than ~0.7-1.6 (Å)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1 q_2}{r^2},\\qquad V(r) = \\dfrac{q_1 q_2}{r};\\quad \\text{electron-nucleus } V(r) = -\\dfrac{Z}{r}. (Setting 4\\pi\\varepsilon_0 = 1 means \\varepsilon_0 = 1/4\\pi, so Coulomb's law is rationalization-free.)",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = 4\\pi\\rho,\\qquad \\oint \\mathbf{E}\\cdot d\\mathbf{A} = 4\\pi Q_{\\rm enc}. The 4\\pi REAPPEARS here even though it vanished from Coulomb's law, because \\varepsilon_0 = 1/(4\\pi) exactly. Poisson: \\nabla^2\\phi = -4\\pi\\rho. Hartree potential: v_H(\\mathbf r) = \\int \\rho(\\mathbf r')/|\\mathbf r-\\mathbf r'|\\,d^3r' solves \\nabla^2 v_H = -4\\pi\\rho.",
+    "einstein_field": "N/A: G is not a generator of this system and gravity never appears. The field equations retain their usual form G_{\\mu\\nu} = 8\\pi G\\,T_{\\mu\\nu} with G carried explicitly; its numerical value in Hartree a.u. is G = 2.4006\\times10^{-43} (i.e. G\\,m_e\\,t_{\\rm au}^2/a_0^3).",
+    "schrodinger_or_dirac": "Schrödinger: i\\dfrac{\\partial\\psi}{\\partial t} = \\left(-\\tfrac{1}{2}\\nabla^2 - \\dfrac{Z}{r}\\right)\\psi,\\qquad E_n = -\\dfrac{Z^2}{2n^2}\\ E_h.\\newline Dirac: \\left[c\\,\\boldsymbol\\alpha\\cdot\\mathbf p + (\\beta-1)c^2 - \\dfrac{Z}{r}\\right]\\psi = E\\psi with c = \\alpha^{-1} = 137.035\\,999\\,177, m_ec^2 = c^2/1 = 18778.87\\ E_h = 510\\,998.95\\ \\mathrm{eV}.\\newline Zeeman (SI-based rendering, no 1/c): \\hat H_Z = \\tfrac{1}{2}(\\hat{\\mathbf L} + g_e\\hat{\\mathbf S})\\cdot\\mathbf B, since \\mu_B = 1/2 a.u."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "THE canonical system of the family; a v1 tool that gets nothing else right must get this right.\n\nCOMPLETE UNIT VALUES (CODATA 2022, from NIST allascii listing): length a₀ = 5.29177210544e-11 m = 0.529177210544 Å; mass m_e = 9.1093837139e-31 kg = 5.485799090441e-4 u; time ħ/E_h = 2.4188843265864e-17 s (24.1888 as); energy E_h = 4.3597447222060e-18 J = 27.211386245981 eV = 219474.6313631 cm⁻¹ = 6579.6839205 THz = 315775.02480 K = 2625.4996395 kJ/mol = 627.5094741 kcal/mol; velocity αc = 2.18769126216e6 m/s; momentum ħ/a₀ = 1.99285191545e-24 kg m/s; force 8.2387235038e-8 N; electric field 5.14220675112e11 V/m; electric potential 27.211386245981 V; electric dipole ea₀ = 8.4783536198e-30 C m = 2.5417464722 D; quadrupole ea₀² = 4.4865515185e-40 C m² = 1.3450343 buckingham; polarizability 1.64877727212e-41 C² m² J⁻¹ = 0.148184711 Å³ (as a polarizability VOLUME); 1st hyperpolarizability 3.2063612996e-53 C³m³J⁻²; 2nd hyperpolarizability 6.2353799735e-65 C⁴m⁴J⁻³; current 6.6236182375082e-3 A; charge density 1.08120238677e12 C m⁻³; permittivity 4πε₀ = 1.11265005620e-10 F/m; magnetic flux density ħ/(ea₀²) = 2.35051757077e5 T; magnetic dipole moment 1.85480201315e-23 J/T = 2μ_B; magnetizability 7.8910365794e-29 J T⁻²; pressure E_h/a₀³ = 2.94210158e13 Pa = 29421.0 GPa = 294.21 Mbar; action ħ = 1.054571817e-34 J s.\n\nTRAP 1 — temperature is NOT fixed. The four generators span only (M, L, T, I); Θ is untouched. A paper writing \"T = 0.001\" in atomic units means 0.001 E_h/k_B = 315.8 K, but many AMO papers quote T in kelvin inside otherwise-atomic-units text. If k_B = 1 is also intended, it must be declared separately (see the k_B = 1 entry).\n\nTRAP 2 — atomic unit of intensity. I₀ = ½ε₀cE_au² = 3.50944553e16 W/cm². A substantial minority of papers omit the ½ and quote 7.019e16 W/cm²; the ratio is a silent factor of 2 in every reported intensity.\n\nTRAP 3 — nuclear masses. m_e = 1, but chemists supply masses in u: 1 u = 1822.888486278 m_e. Getting this wrong scales vibrational frequencies by √1822.9 ≈ 42.7. LAMMPS \"units electron\" is a deliberate HYBRID (hartree energy + bohr length + femtosecond time + amu mass) and is NOT a consistent atomic-unit system — a real detection hazard.\n\nTRAP 4 — magnetism. Everything ELECTRIC above is identical in the Gaussian rendering, but every MAGNETIC quantity differs by a factor of α ≈ 1/137. See the separate Gaussian-based entry; \"1 a.u. of magnetic field\" is genuinely ambiguous between 2.3505e5 T and 1.7153e3 T.\n\nHISTORY — Hartree (Proc. Camb. Phil. Soc. 24, 89 (1928)) defined \"the unit of energy e²/a₀\", which is today's hartree = 2 Ry. Some pre-1960 literature says \"atomic units\" while quoting energies in rydberg; do not trust the phrase alone.\n\nMinor variants worth flagging: relativistic quantum-chemistry codes fix c = 137.0359998 or 137.03599976 (older CODATA); the difference is below any chemical significance but changes 10th-decimal benchmark energies. \"Atomic units\" plus k_B = 1 plus c = 1 is NOT self-consistent — c = 1 forces e = √α (see the relativistic entry).",
+   "sources": [
+    "NIST CODATA 2022 complete listing, https://physics.nist.gov/cuu/Constants/Table/allascii.txt (fetched and parsed directly; all a.u. values above are verbatim from it)",
+    "NIST Fundamental Physical Constants — energy equivalents, https://physics.nist.gov/cuu/Constants/energy.html",
+    "NIST SP 811, Guide for the Use of the International System of Units",
+    "D. R. Hartree, Proc. Cambridge Phil. Soc. 24, 89 (1928) — original definition",
+    "LAMMPS units documentation, https://docs.lammps.org/units.html (for the 'electron' hybrid unit set)",
+    "Derived and dimension-checked in-session: G in a.u., intensity, pressure, dipole/quadrupole conversions"
+   ]
+  },
+  {
+   "name": "Hartree atomic units (Gaussian/cgs-based rendering)",
+   "aliases": [
+    "cgs atomic units",
+    "Gaussian atomic units",
+    "a.u. (Gaussian convention)",
+    "atomic units with explicit 1/c in magnetic terms"
+   ],
+   "used_in": "Atomic-structure and atomic-spectroscopy theory (Cowan's RCN/RCG/RCE, Condon–Shortley and Sobelman lineage, GRASP/MCDHF write-ups), older AMO literature, plasma spectroscopy, much of the Russian-language atomic-physics literature, and any paper that says \"Gaussian units\" or \"cgs\" in the same breath as \"atomic units\".",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "m_e",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m_e"
+    },
+    {
+     "tex": "e",
+     "dimension": "(0.5, 1.5, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "e"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf B (and \\mathbf H, \\mathbf A)",
+     "relation": "B_{\\rm Gauss\\text{-}a.u.} = c\\,B_{\\rm SI\\text{-}a.u.} = \\alpha^{-1} B_{\\rm SI\\text{-}a.u.};\\ \\text{equivalently the Gaussian a.u. of }B\\text{ is }\\alpha\\times 2.35051757077\\times10^{5}\\,\\mathrm{T} = 1.7152555\\times10^{3}\\,\\mathrm{T} = 1.7152555\\times10^{7}\\,\\mathrm{G} = e/a_0^2",
+     "why": "Gaussian electrodynamics puts 1/c in the Lorentz force (F = q(E + v×B/c)), so B carries the same dimension as E. The atomic unit of B is then e/a₀² rather than ħ/(ea₀²), and the two differ by exactly α."
+    },
+    {
+     "symbol": "\\boldsymbol\\mu (magnetic dipole moment, magnetization)",
+     "relation": "\\mu_{\\rm Gauss\\text{-}a.u.} = \\alpha\\,\\mu_{\\rm SI\\text{-}a.u.};\\ \\text{so }\\mu_B = \\dfrac{1}{2c} = 3.6485\\times10^{-3}\\text{ a.u. (Gaussian) vs }\\mu_B = \\tfrac12\\text{ a.u. (SI-based)}",
+     "why": "μ_B = eħ/(2m_e c) in Gaussian vs eħ/(2m_e) in SI. The product μ·B is convention-independent, which is why the two errors cancel in energies but not in reported field or moment values."
+    },
+    {
+     "symbol": "q (charge)",
+     "relation": "q_{\\rm Gaussian} = q_{\\rm SI}/\\sqrt{4\\pi\\varepsilon_0};\\ \\dim q = M^{1/2}L^{3/2}T^{-1} \\Rightarrow (0.5,\\,1.5,\\,-1,\\,0,\\,0)",
+     "why": "There is no independent current dimension; charge is derived from F = q²/r². This is where half-integer exponents enter the family."
+    }
+   ],
+   "fingerprints": [
+    "Explicit 1/c or 1/c² in magnetic and relativistic terms: H_Z = (1/2c)(L + 2S)·B; diamagnetic term (1/8c²)B²(x²+y²); spin-orbit ζ = (1/2c²)(1/r)(dV/dr)",
+    "Minimal coupling written (p + A/c)²/2 rather than (p + A)²/2",
+    "Maxwell equations quoted as ∇×B = (4π/c)J + (1/c)∂E/∂t",
+    "Breit–Pauli operators with 1/c² prefactors where SI-based atomic units would write α²",
+    "Magnetic fields quoted in gauss with the atomic unit stated as 1.7153×10⁷ G or 1715 T",
+    "The phrases \"Gaussian atomic units\", \"cgs atomic units\", or a units table listing both e and c"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1q_2}{r^2},\\qquad V = \\dfrac{q_1q_2}{r};\\quad V_{eN} = -\\dfrac{Z}{r}. Identical to the SI-based rendering — all electric quantities agree exactly.",
+    "gauss_law": "\\nabla\\cdot\\mathbf E = 4\\pi\\rho,\\ \\nabla\\cdot\\mathbf B = 0,\\ \\nabla\\times\\mathbf E = -\\dfrac{1}{c}\\dfrac{\\partial\\mathbf B}{\\partial t},\\ \\nabla\\times\\mathbf B = \\dfrac{4\\pi}{c}\\mathbf J + \\dfrac{1}{c}\\dfrac{\\partial\\mathbf E}{\\partial t},\\quad c = \\alpha^{-1} = 137.036. The explicit 1/c factors in the last two equations are THE textual tell distinguishing this from the SI-based rendering.",
+    "einstein_field": "N/A: same as the SI-based rendering — G is not a generator; G = 2.4006\\times10^{-43} in a.u.",
+    "schrodinger_or_dirac": "Schrödinger identical: i\\partial_t\\psi = (-\\tfrac12\\nabla^2 - Z/r)\\psi.\\newline Dirac identical: [c\\,\\boldsymbol\\alpha\\cdot\\mathbf p + (\\beta-1)c^2 - Z/r]\\psi = E\\psi,\\ c = 137.036.\\newline The DIFFERENCE appears only once a magnetic field is present: \\hat H_Z = \\dfrac{1}{2c}(\\hat{\\mathbf L} + g_e\\hat{\\mathbf S})\\cdot\\mathbf B (Gaussian) vs \\tfrac12(\\hat{\\mathbf L}+g_e\\hat{\\mathbf S})\\cdot\\mathbf B (SI-based)."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "This is not a different unit system in the ordinary sense — it is the SAME system with a different electromagnetic symbol convention grafted on. Every purely electric quantity (energy, length, dipole, polarizability, electric field, potential) has IDENTICAL numerical values in the two renderings. Every magnetic quantity differs by a power of α ≈ 1/137.036.\n\nThe practical consequence for the tool: a bare statement \"in atomic units, B = 0.1\" is UNRESOLVABLE without reading the Hamiltonian. 0.1 a.u. is either 2.35×10⁴ T (SI-based) or 171.5 T (Gaussian-based) — a factor of 137. The only reliable discriminator is whether magnetic terms carry an explicit 1/c. Recommend the tool emit a warning rather than a conversion when a magnetic quantity in \"a.u.\" appears without that evidence.\n\nDimensionally, this rendering has three generators spanning (M, L, T) only, with charge derived as M^½L^{3/2}T⁻¹. Determinant of the generator matrix over (M,L,T) is 1/2 ≠ 0, so the system is well-posed; but the I exponent is identically zero and half-integers appear throughout the electric sector. A tool must support BOTH the 4-generator integer-exponent rendering and this 3-generator half-integer one, and must know they are the same physical system.\n\nA Heaviside–Lorentz-rationalized atomic-unit variant (where ∇·E = ρ and e² = 4πα in relativistic form) is essentially absent from AMO literature; I have not found it used and would not implement it.",
+   "sources": [
+    "NIST CODATA 2022 listing (atomic unit of mag. flux density = 2.35051757077e5 T, SI-based)",
+    "Derived in-session: e/a₀² in Gaussian units = 1.71525554e7 G, and α × 2.35051757e5 T = 1.7152555e3 T — the two agree to 8 figures, confirming the exact factor α",
+    "Wikipedia, \"Hartree atomic units\" — documents the two variants and the α factor in magnetic quantities",
+    "C. D. Lin, Kansas State AMO lecture notes on atomic units; R. Côté, UConn PHY6110 'Atomic Units and their cgs/gaussian equivalents'; I. Deutsch, UNM 'A note on Units' — all three state the SI/Gaussian magnetic ambiguity explicitly",
+    "H. A. Bethe and E. E. Salpeter, Quantum Mechanics of One- and Two-Electron Atoms (Gaussian-atomic-unit conventions)"
+   ]
+  },
+  {
+   "name": "Rydberg atomic units",
+   "aliases": [
+    "Ry a.u.",
+    "Rydberg units",
+    "rydberg atomic units",
+    "Quantum ESPRESSO / PWscf units",
+    "atomic rydberg units"
+   ],
+   "used_in": "Plane-wave pseudopotential DFT (Quantum ESPRESSO/PWscf, older PWSCF-lineage and pseudopotential-generation codes, ELK partially, Abinit's Ry output options), solid-state electronic structure, electron–atom and electron–molecule scattering theory (cross sections in πa₀², energies in Ry), older atomic-physics literature (Bethe–Salpeter era), and the whole \"13.6 eV\" idiom of introductory and solid-state physics.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "m_e",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "2",
+     "emits": "(2m_e)"
+    },
+    {
+     "tex": "e",
+     "dimension": "(0, 0, 1, 0, 1)",
+     "numeric_factor": "1/\\sqrt{2}",
+     "emits": "(e/\\sqrt{2})"
+    },
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 0, 2)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "e (elementary charge)",
+     "relation": "e = \\sqrt{2}\\ \\text{in Ry a.u.};\\ \\text{equivalently } e^2 = 2,\\ e^2/2 = 1.\\ \\text{The Rydberg unit of charge is } e/\\sqrt2 = 1.13288\\times10^{-19}\\ \\mathrm{C}",
+     "why": "Papers literally write \"e² = 2, m = 1/2, ħ = 1\", which reads as a redefinition rather than a unit choice. In the Gaussian rendering only three generators are used (ħ, 2m_e, e²/2) and charge is derived with half-integer exponents (0.5, 1.5, -1, 0, 0)."
+    },
+    {
+     "symbol": "\\mathbf B, \\boldsymbol\\mu (when a Gaussian rendering is used)",
+     "relation": "Same \\alpha-type riders as Gaussian Hartree a.u., but with c = 2/\\alpha = 274.072",
+     "why": "Rydberg-unit atomic-physics literature is usually Gaussian-flavored, so the magnetic ambiguity carries over with c doubled relative to Hartree a.u."
+    }
+   ],
+   "fingerprints": [
+    "The literal triple \"ħ = 1, m = 1/2, e² = 2\" (or \"2m_e = 1, e²/2 = 1\")",
+    "Hydrogen Hamiltonian H = -∇² - 2Z/r — NO factor ½ on the kinetic term, and a 2 on the Coulomb term",
+    "E_n = -Z²/n² (not -Z²/2n²); ground state -1 rather than -0.5",
+    "Energies, cutoffs, forces and stresses quoted in Ry, Ry/bohr, Ry/bohr³: \"ecutwfc = 60\", \"total energy = -123.456 Ry\", \"kinetic-energy cutoff 30 Ry\"",
+    "Quantum ESPRESSO / PWscf output blocks; pseudopotential UPF files",
+    "The number 13.6057 (or 13.6, or 109737.3 cm⁻¹, or 2.1799e-18 J)",
+    "c = 274.072 in relativistic terms (double the Hartree value)",
+    "Scattering cross sections in a₀² or πa₀² with energies in Ry; \"threshold at 0.75 Ry\"",
+    "Length unit is STILL bohr — a paper mixing bohr with Ry is Rydberg units, not Hartree units"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1q_2}{r^2},\\qquad V = \\dfrac{q_1q_2}{r},\\ \\text{with charges measured in units of } e/\\sqrt2. The electron then carries q = -\\sqrt2, so the electron-nucleus interaction reads V(r) = -\\dfrac{2Z}{r}. Equivalently, in the Gaussian rendering e^2 = 2 and V = -Ze^2/r = -2Z/r.",
+    "gauss_law": "\\nabla\\cdot\\mathbf E = 4\\pi\\rho, with \\rho in units of (e/\\sqrt2)\\,a_0^{-3}. Poisson: \\nabla^2\\phi = -4\\pi\\rho. In electronic-structure codes the Hartree term is usually written v_H = 2\\int \\rho(\\mathbf r')/|\\mathbf r - \\mathbf r'|\\,d^3r' with \\rho the ordinary electron density in e/bohr³ — the explicit leading 2 is the Rydberg signature.",
+    "einstein_field": "N/A: G is not a generator. Its numerical value in Rydberg a.u. is G = 1.9205\\times10^{-42} = 8\\times G_{\\rm Hartree\\ a.u.} (mass unit doubled, time unit doubled: G\\,(2m_e)(2t_{\\rm au})^2/a_0^3).",
+    "schrodinger_or_dirac": "Schrödinger: i\\dfrac{\\partial\\psi}{\\partial t} = \\left(-\\nabla^2 - \\dfrac{2Z}{r}\\right)\\psi,\\qquad E_n = -\\dfrac{Z^2}{n^2}\\ \\mathrm{Ry}.\\newline Dirac: \\left[c\\,\\boldsymbol\\alpha\\cdot\\mathbf p + (\\beta-1)\\dfrac{c^2}{2} - \\dfrac{2Z}{r}\\right]\\psi = E\\psi with c = 2/\\alpha = 274.071\\,998, and m_ec^2 = \\tfrac12 c^2 = 37\\,557.730\\ \\mathrm{Ry} = 510\\,998.95\\ \\mathrm{eV} (verified two independent ways)."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "THE most important entry in this family for the tool, because Hartree and Rydberg atomic units are DIMENSIONALLY INDISTINGUISHABLE. E_h and Ry have identical dimension exponents (1, 2, -2, 0, 0); a₀ = 1 in both; ħ = 1 in both. A dimension-checker will validate H = -½∇² - Z/r and H = -∇² - 2Z/r equally happily. Only the recorded numeric factors (2 on the mass, 1/√2 on the charge) distinguish them. This is precisely the case the numeric_factor field exists for.\n\nWHAT AGREES between Hartree and Rydberg a.u.: length (bohr, a₀ = 1 in both) and momentum (ħ/a₀ = 1 in both).\nWHAT DIFFERS: energy (Ry = E_h/2), mass unit (2m_e vs m_e), time (Ry unit = 2 × Hartree unit = 4.8378e-17 s), velocity (Ry unit = ½ × Hartree unit), charge (e/√2 vs e), c (274.072 vs 137.036), and consequently force, pressure (Ry/bohr³ = 14710.51 GPa vs 29421.02 GPa), field strength, etc.\nThis mixed pattern — same length, half energy — is itself a good detector: a paper quoting a bond length in bohr and an energy that looks 2× a known hartree value is in Rydberg units.\n\nCODATA 2022 values: 1 Ry = R_∞hc = 2.1798723611030e-18 J = 13.605693122990 eV = 109737.315681570 cm⁻¹ (this IS the Rydberg constant R_∞ = 10973731.568157 m⁻¹) = 157887.5124 K = 1312.7498197 kJ/mol = 313.7547370 kcal/mol = 3.2898419602500e15 Hz × h.\n\nSPECTROSCOPIC SUBTLETY: R_∞ is the infinite-nuclear-mass Rydberg. Real hydrogen lines follow R_H = R_∞/(1 + m_e/m_p) = 109677.5834 cm⁻¹ (computed in-session from CODATA and matching the tabulated literature value exactly). Papers on hydrogenic spectra may mean either; the difference is 5.4×10⁻⁴ relative, far above modern spectroscopic precision.\n\nMINOR RENDERING NOTE: some sources define Rydberg units in a 3-generator Gaussian form (ħ = 1, 2m_e = 1, e²/2 = 1) with no separate charge dimension; others use the 4-generator SI form above (ħ = 4πε₀ = 1, m = 1/2, e² = 2). Both are in current use; Quantum ESPRESSO documentation uses the latter. The two agree on every electric quantity and differ on magnetic ones exactly as in the Hartree case.",
+   "sources": [
+    "Quantum ESPRESSO / PWscf documentation and community notes stating \"e² = 2, m = 1/2, ħ = 1\" and \"all quantities are in RYDBERG ATOMIC UNITS\" (https://elcorto.github.io/pwtools/written/background/pwscf.html; QE users list)",
+    "NIST CODATA 2022 listing: Rydberg constant, Rydberg constant times hc in eV/J, hartree-electron volt relationship",
+    "Derived and cross-checked in-session: m_ec² = ½(2/α)² Ry = 37557.7301 Ry = 510998.95 eV (agrees with CODATA electron mass energy equivalent to 10 figures); R_H from R_∞ and the proton-electron mass ratio = 109677.5834 cm⁻¹"
+   ]
+  },
+  {
+   "name": "Relativistic (Dirac) atomic units — ħ = m_e = c = 1",
+   "aliases": [
+    "natural units of relativistic quantum mechanics",
+    "electron natural units",
+    "m_e = ħ = c = 1",
+    "relativistic units",
+    "electron-mass units"
+   ],
+   "used_in": "Bound-state QED and Lamb-shift theory, Zα-expansion literature, strong-field QED and pair production, positronium and muonium theory, relativistic atomic structure formal work, high-intensity laser–electron interaction. Also the natural bridge to the particle-physics natural-units family.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "m_e",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m_e"
+    },
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "e (elementary charge)",
+     "relation": "e = \\sqrt{\\alpha} = 0.085\\,424\\,5\\ \\text{(Gaussian rendering, } e^2 = \\alpha\\text{)};\\ \\text{or } e = \\sqrt{4\\pi\\alpha} = 0.302\\,822\\ \\text{(Heaviside-Lorentz rendering, } e^2 = 4\\pi\\alpha\\text{)}",
+     "why": "Once ħ = c = 1, charge is dimensionless and its value is fixed by α. Which of the two values appears depends on whether Maxwell's equations are rationalized. This is the same fork as in the particle-physics family and must be recorded, since e is not a free generator here."
+    }
+   ],
+   "fingerprints": [
+    "\"We use natural units ħ = c = m_e = 1\" or \"units in which ħ = c = 1 and masses are in units of the electron mass\"",
+    "Zα appearing wherever Hartree a.u. would show Z: V = -Zα/r, (Zα)² expansions, \"Zα expansion\", \"all-order in Zα\"",
+    "Energies in units of m_ec² = 511 keV; \"reduced Compton wavelength\" ƛ_C = 386.159 fm as the length unit",
+    "Dirac ground state written E_{1s} = √(1 - (Zα)²) with no prefactor",
+    "Schwinger critical field written E_cr = m²/e = 1/√α, or in SI 1.323×10¹⁸ V/m",
+    "α appearing explicitly in places where Hartree a.u. would have 1"
+   ],
+   "benchmark_equations": {
+    "coulomb": "V(r) = -\\dfrac{Z\\alpha}{r},\\qquad F = \\dfrac{Z\\alpha}{r^2} (Gaussian rendering, e^2 = \\alpha). In the Heaviside-Lorentz rendering V = -\\dfrac{Ze^2}{4\\pi r} with e^2 = 4\\pi\\alpha, which is numerically the same.",
+    "gauss_law": "Gaussian rendering: \\nabla\\cdot\\mathbf E = 4\\pi\\rho. Heaviside-Lorentz rendering (more common in QED papers): \\nabla\\cdot\\mathbf E = \\rho. Both appear in this literature; the tell is whether e^2 = \\alpha or e^2 = 4\\pi\\alpha.",
+    "einstein_field": "N/A as a set convention, but G IS expressible and dimensionless here: G = (m_e/m_{\\rm Pl})^2 = 1.7518\\times10^{-45}, since in \\hbar = c = 1 units G carries dimension (mass)^{-2}. The field equations keep G_{\\mu\\nu} = 8\\pi G\\,T_{\\mu\\nu}.",
+    "schrodinger_or_dirac": "Dirac: \\left[\\boldsymbol\\alpha\\cdot\\mathbf p + \\beta - \\dfrac{Z\\alpha}{r}\\right]\\psi = E\\psi,\\qquad E_{1s} = \\sqrt{1 - (Z\\alpha)^2}\\ (\\text{in units of } m_ec^2).\\newline Nonrelativistic limit: i\\partial_t\\psi = \\left(-\\tfrac12\\nabla^2 - \\dfrac{Z\\alpha}{r}\\right)\\psi,\\ E_n = -\\dfrac{(Z\\alpha)^2}{2n^2}\\ m_ec^2 (which for Z = 1, n = 1 gives -13.606 eV — verified numerically)."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "Unit values: length ƛ_C = ħ/(m_ec) = 3.8615926744e-13 m = 386.159 fm = α·a₀ (verified: ƛ_C/a₀ = 7.2973525644e-3 = α to 9 figures); time ƛ_C/c = 1.28808866644e-21 s = α²·(Hartree a.u. of time); energy m_ec² = 8.1871057880e-14 J = 510998.95069 eV; momentum m_ec = 2.73092453e-22 kg m/s.\n\nRELATION TO HARTREE a.u. — this is the cleanest way to remember it: Hartree a.u. and these units are related by powers of α. Length: L_rel = α L_Ha. Energy: E_rel = α⁻² E_Ha. Time: T_rel = α² T_Ha. So a converter can implement this as an α-scaling rather than a fresh generator solve, which is a useful cross-check on the linear-solve output.\n\nOVERLAP WARNING: this system straddles the boundary with the particle-physics natural-units family (ħ = c = 1). Whichever family owns it, the tool must not register two conflicting entries. The distinguishing feature here is that the mass scale is m_e (not GeV, not m_Pl), so energies come out in units of 511 keV and lengths in fm-scale Compton units — a paper doing atomic/QED bound-state physics rather than collider physics.\n\nNot to be confused with a supposed system \"ħ = m_e = e = c = 1\", which is INCONSISTENT: fixing all four would force α = 1. Any paper claiming it has made an error, or is silently working with a fictitious α.",
+   "sources": [
+    "NIST CODATA 2022 listing: fine-structure constant, reduced Compton wavelength, electron mass energy equivalent, Planck mass",
+    "Derived in-session: ƛ_C/a₀ = α (9-figure agreement); E_n = -(Zα)²/2 × m_ec² reproduces -13.6057 eV for hydrogen; G = (m_e/m_Pl)² = 1.7518e-45",
+    "Standard bound-state QED literature convention (Zα expansion), e.g. Mohr, Plunien & Soff review conventions"
+   ]
+  },
+  {
+   "name": "Effective (excitonic / material) atomic units — m* = 1, ε absorbed",
+   "aliases": [
+    "effective atomic units",
+    "excitonic units",
+    "effective Rydberg units",
+    "donor units",
+    "Ry*/a_B* units",
+    "material atomic units",
+    "effective-mass units"
+   ],
+   "used_in": "Semiconductor physics (shallow donors and acceptors, Wannier–Mott excitons, trions, biexcitons), quantum wells/wires/dots, 2D materials and TMD excitons, quantum Hall and 2DEG physics (via r_s), polaron theory, and by analogy in Rydberg-atom and cold-atom work. Also the muonic-atom and positronium literature, which uses the same reduced-mass rescaling.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "m^{*}",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1 (Hartree-like) or 2 (Rydberg-like)",
+     "emits": "m^{*} \\text{ or } (2m^{*})"
+    },
+    {
+     "tex": "e^2/(4\\pi\\varepsilon_0\\varepsilon_r)",
+     "dimension": "(1, 3, -2, 0, 0)",
+     "numeric_factor": "1 (Hartree-like) or 1/2 (Rydberg-like)",
+     "emits": "\\dfrac{e^2}{4\\pi\\varepsilon_0\\varepsilon_r} \\text{ or } \\dfrac{e^2}{2\\cdot 4\\pi\\varepsilon_0\\varepsilon_r}"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "m (mass)",
+     "relation": "m^{*} = (m^{*}/m_e)\\,m_e,\\ \\text{a material parameter (e.g. } 0.067\\,m_e \\text{ in GaAs)}",
+     "why": "The mass generator is not a universal constant. Which mass is meant — band-edge m*, density-of-states mass, conductivity mass, or the exciton reduced mass μ = (1/m_e* + 1/m_h*)⁻¹ — is frequently left unstated, and the choices differ by factors of 2 or more."
+    },
+    {
+     "symbol": "\\varepsilon_r (dielectric constant)",
+     "relation": "V(r) = -\\dfrac{e^2}{4\\pi\\varepsilon_0\\varepsilon_r r};\\ \\text{Ry}^{*} = \\dfrac{m^{*}/m_e}{\\varepsilon_r^{2}}\\times 13.605\\,693\\ \\mathrm{eV},\\quad a_B^{*} = \\varepsilon_r\\dfrac{m_e}{m^{*}}\\times 0.052\\,917\\,721\\ \\mathrm{nm}",
+     "why": "Whether ε_r is the static ε₀ or the high-frequency ε_∞ changes Ry* by tens of percent (they differ by ~20% in GaAs, far more in polar and 2D materials). In 2D the Coulomb potential is not even 1/r (Rytova–Keldysh), so the rescaling is not a pure constant."
+    }
+   ],
+   "fingerprints": [
+    "Symbols Ry*, R*, Ry_ex, a_B*, a*, a_X written with a star or asterisk",
+    "\"in units of the effective Bohr radius / effective Rydberg\"",
+    "Binding energies of 1–100 meV and radii of 1–20 nm (vs 13.6 eV and 0.053 nm)",
+    "Material parameter statements: \"m* = 0.067 m_e, ε = 12.9\" (GaAs), \"ε = 10, m* = 0.2 m_e\"",
+    "\"Wannier–Mott exciton\", \"shallow donor\", \"hydrogenic impurity\", \"effective-mass approximation\", \"envelope function\"",
+    "r_s = (πn)^(-1/2)/a_B* in 2DEG papers; \"in units of Ry*\" on energy axes",
+    "Reported values like a* = 98 Å and Ry* = 5.5 meV for GaAs/AlGaAs"
+   ],
+   "benchmark_equations": {
+    "coulomb": "V(r) = -\\dfrac{1}{\\varepsilon_r r} in host atomic units, or V(r) = -\\dfrac{1}{r} (Hartree-like effective a.u.) / V(r) = -\\dfrac{2}{r} (Rydberg-like effective a.u.) once \\varepsilon_r and m^{*} are absorbed. In 2D the screened form is the Rytova-Keldysh potential V(r) \\propto [H_0(r/r_0) - Y_0(r/r_0)], which is NOT a rescaled Coulomb law.",
+    "gauss_law": "\\nabla\\cdot(\\varepsilon_r\\mathbf E) = 4\\pi\\rho in host units; \\nabla\\cdot\\mathbf E = 4\\pi\\rho once \\varepsilon_r is absorbed into the unit of charge/field.",
+    "einstein_field": "N/A: gravity is absent from this literature entirely.",
+    "schrodinger_or_dirac": "Envelope-function (effective-mass) equation, Rydberg-like convention (the common one):\\newline \\left(-\\nabla^2 - \\dfrac{2}{r}\\right)F(\\mathbf r) = \\dfrac{E}{\\mathrm{Ry}^{*}}F(\\mathbf r),\\qquad E_n = -\\dfrac{1}{n^2}\\,\\mathrm{Ry}^{*}.\\newline Hartree-like convention: i\\partial_t F = \\left(-\\tfrac12\\nabla^2 - \\dfrac1r\\right)F with energies in \\mathrm{Ha}^{*} = 2\\,\\mathrm{Ry}^{*}.\\newline Worked example (GaAs, m^{*} = 0.067\\,m_e, \\varepsilon_r = 12.9): \\mathrm{Ry}^{*} = 0.067/12.9^2 \\times 13\\,605.7\\ \\mathrm{meV} = 5.48\\ \\mathrm{meV};\\ a_B^{*} = 12.9/0.067 \\times 0.052\\,918\\ \\mathrm{nm} = 10.2\\ \\mathrm{nm}."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v1",
+   "notes": "Two material parameters (m*/m_e and ε_r) must be supplied per paper before ANY conversion is possible. This is the archetype for the 'custom generators' path in the schema: the generator table is structurally identical to Hartree/Rydberg a.u., but two of the constants are material-dependent numbers the tool must accept as user input.\n\nSCALING LAWS (exact, given the two parameters): a_B* = ε_r(m_e/m*) a₀; Ry* = (m*/m_e)ε_r⁻² Ry; effective time unit = (ε_r²m_e/m*) × Rydberg a.u. of time; effective field unit = (m*/m_e)²ε_r⁻³ × a.u. of field.\n\nTRAP — the same factor-2 Hartree/Rydberg fork reappears here, and is even LESS often declared than in the parent systems. \"Effective atomic units\" in one paper means Ha*, in the next Ry*. Since Ry* is the more common (semiconductor papers almost always mean the hydrogenic binding energy), a tool default of Rydberg-like with a loud warning is defensible.\n\nTRAP — which mass. For an exciton the correct scale uses the reduced mass μ; for a donor it uses the electron m*; a paper writing \"effective Rydberg\" for an exciton and then supplying only m_e* is under-determined. For anisotropic bands (Si, Ge) there is no single m* and the Kohn–Luttinger treatment is required.\n\nTRAP — dimensionality. In 2D materials and quantum wells the Coulomb interaction is screened non-locally; \"effective Rydberg\" there is a label, not a solution of a hydrogenic problem. The tool should refuse to convert 2D exciton binding energies via the hydrogenic formula.\n\nRELATED SCALED SYSTEMS handled by the same machinery: muonic atomic units (replace m_e by m_μ or by the muon-nucleus reduced mass; m_μ/m_e = 206.7682827, so lengths shrink and energies grow by ~207); positronium atomic units (reduced mass m_e/2, so all energies halve and lengths double — Ps ground state -6.803 eV, and the same reduced-mass logic explains R_H vs R_∞).",
+   "sources": [
+    "Standard effective-mass/exciton literature: a* = εħ²/(m*e²), Ry* = e²/(2εa*) = ħ²/(2m*a*²) (Springer 'Excitons' handbook chapter; ScienceDirect 'Effective Mass Approximation' overview)",
+    "NIST CODATA 2022 listing: Rydberg constant times hc in eV, Bohr radius, muon-electron mass ratio",
+    "Derived in-session: GaAs numbers reproduced from the scaling laws"
+   ]
+  },
+  {
+   "name": "Quantum-chemistry molar energy conventions (kcal mol⁻¹, kJ mol⁻¹, eV)",
+   "aliases": [
+    "chemist's units",
+    "thermochemical units",
+    "kcal/mol",
+    "kJ/mol",
+    "molar energy units",
+    "chemical accuracy units"
+   ],
+   "used_in": "Computational thermochemistry and kinetics, benchmark databases (G2/G3/G4, W4, GMTKN55, S22/S66, ISO34), force-field and biomolecular simulation, catalysis and surface science (eV and meV/atom), materials informatics (meV/atom), essentially every reported reaction energy, barrier height, binding energy or conformational energy in chemistry.",
+   "generators": [
+    {
+     "tex": "N_A",
+     "dimension": "(0, 0, 0, 0, 0) in the 5-tuple basis — its true SI dimension is N^{-1}, which the 5-tuple cannot express",
+     "numeric_factor": "1",
+     "emits": "N_A"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "E (energy)",
+     "relation": "E[\\mathrm{kJ\\,mol^{-1}}] = E_{\\rm per\\ molecule}[\\mathrm{J}]\\times N_A/10^{3};\\quad E[\\mathrm{kcal\\,mol^{-1}}] = E[\\mathrm{kJ\\,mol^{-1}}]/4.184\\ \\text{(exactly)}",
+     "why": "The reported quantity is energy PER MOLE, not energy. Treating 1 kcal/mol as an energy silently drops a factor of N_A ≈ 6.022×10²³. This is the single largest magnitude error the tool can make in this family."
+    },
+    {
+     "symbol": "cal (calorie)",
+     "relation": "1\\ \\mathrm{cal_{th}} = 4.184\\ \\mathrm{J}\\ \\text{exactly (thermochemical)};\\ 1\\ \\mathrm{cal_{IT}} = 4.1868\\ \\mathrm{J};\\ 1\\ \\mathrm{cal_{15}} = 4.1855\\ \\mathrm{J}",
+     "why": "Chemistry uses the THERMOCHEMICAL calorie universally. The IT calorie (engineering/steam tables) differs by 6.7×10⁻⁴ relative — invisible in most work but enough to shift 10th-of-a-kcal benchmark comparisons. A converter must hard-code 4.184 exactly and never accept 'calorie' unqualified."
+    }
+   ],
+   "fingerprints": [
+    "Units \"kcal/mol\", \"kcal mol⁻¹\", \"kJ/mol\", \"kJ mol⁻¹\", \"eV\", \"meV/atom\", \"kJ mol⁻¹ Å⁻¹\"",
+    "\"chemical accuracy\" (= 1 kcal/mol = 4.184 kJ/mol = 43.4 meV = 350 cm⁻¹)",
+    "\"MAD/MAE/RMSD in kcal/mol\" in benchmark tables",
+    "Total energies in hartree with relative energies converted to kcal/mol in the same table — the classic hybrid",
+    "\"ΔH°_f\", \"ΔG‡\", \"298.15 K\", \"ZPE-corrected\", \"thermal corrections\", \"RRHO\"",
+    "Surface science: adsorption energies in eV; \"eV/atom\", \"meV/atom\" in materials databases",
+    "Force fields: kcal/mol/Å² (CHARMM/AMBER) vs kJ/mol/nm² (GROMACS/OPLS)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: this convention has no electromagnetic content. It is a reporting scale applied to energies computed in atomic units. (Force fields do write Coulomb terms in these units: E = 332.0637\\,q_iq_j/r_{ij} with q in e, r in Å, E in kcal/mol — the constant 332.0637 is e^2N_A/(4\\pi\\varepsilon_0 \\cdot 10^{-10}\\cdot 4184) and is itself a famous magic number.)",
+    "gauss_law": "N/A: no field equations are written in molar energy units.",
+    "einstein_field": "N/A: no gravitational content.",
+    "schrodinger_or_dirac": "N/A: the electronic Schrödinger equation is always solved in atomic units; molar units appear only at the reporting stage. The relevant in-system relations are thermodynamic: \\Delta G^{\\ddagger} = -RT\\ln(k h/k_BT),\\ K = e^{-\\Delta G^{\\circ}/RT},\\ \\text{with } R = 8.314\\,462\\,618\\ \\mathrm{J\\,mol^{-1}K^{-1}} \\text{ exactly and } RT(298.15\\ \\mathrm K) = 2.478\\,96\\ \\mathrm{kJ\\,mol^{-1}} = 0.592\\,48\\ \\mathrm{kcal\\,mol^{-1}}."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v1",
+   "notes": "SCHEMA STRESS — THIS IS THE ENTRY THAT BREAKS THE 5-TUPLE. SI has seven base quantities; the prescribed basis (M, L, T, Θ, I) omits amount of substance N (and luminous intensity J, which is irrelevant here). A molar energy has true SI dimension M L² T⁻² N⁻¹, which cannot be written in the 5-tuple. Two repair options:\n  (a) ADD A SIXTH EXPONENT N. Then kcal/mol = (1, 2, -2, 0, 0, -1) and the generator N_A (dimension (0,0,0,0,0,-1)) collapses it. This is the correct and recommended fix; the cost is one extra integer per dimension vector.\n  (b) DECLARE MOLE DIMENSIONLESS (a pure count, as IUPAP-leaning treatments do). Then kcal/mol is an energy scaled by 1/N_A and the 5-tuple survives. The cost is that the tool cannot warn when someone equates 1 kcal with 1 kcal/mol.\nI recommend (a): the failure mode of (b) — a silent 6.022×10²³ error — is the worst outcome in the whole family, and this family is where it happens.\n\nEXACT CONVERSION CHAIN (CODATA 2022; N_A, e, h, c, k_B all exact, so all of these are exact to the digits shown, computed in-session at 20-digit precision):\n  1 E_h = 2625.499639479 kJ/mol = 627.509474063 kcal/mol\n  1 Ry  = 1312.749819740 kJ/mol = 313.754737031 kcal/mol\n  1 eV  = 96.4853321233 kJ/mol = 23.0605478306 kcal/mol\n  1 kcal/mol = 4.184 kJ/mol (exact) = 0.0433641042418 eV = 349.755088066 cm⁻¹ = 503.219533499 K = 1.59360e-3 E_h\n  1 kJ/mol = 83.5934722911 cm⁻¹ = 0.0103642688 eV = 120.272355043 K\n  1 cm⁻¹ = 11.9626565630 J/mol = 2.85914e-3 kcal/mol\n  R = 8.314462618153 J mol⁻¹ K⁻¹ (exact = N_A k_B); F = 96485.33212 C/mol (exact)\n  RT at 298.15 K = 2.47896 kJ/mol = 0.59248 kcal/mol = 0.0256926 eV = 207.22 cm⁻¹\n\nThe force-field electrostatic prefactor 332.0637 kcal Å mol⁻¹ e⁻² (CHARMM/AMBER) and 1389.35458 kJ nm mol⁻¹ e⁻² (GROMACS) are the same constant in different units; a units engine should recognize them as e²N_A/(4πε₀) and flag papers that hard-code slightly different values (332.0716, 332.05382 all appear in the wild).",
+   "sources": [
+    "NIST CODATA 2022 complete listing (Avogadro constant, molar gas constant, Faraday constant, elementary charge, hartree-electron volt relationship — all exact)",
+    "NIST SP 811 Appendix B (thermochemical calorie = 4.184 J exactly; IT calorie = 4.1868 J)",
+    "All conversion values above computed in-session at 20-significant-figure precision from CODATA exact constants and cross-checked against the CODATA relationship entries"
+   ]
+  },
+  {
+   "name": "k_B = 1 (temperature as energy)",
+   "aliases": [
+    "thermal units",
+    "β = 1/T convention",
+    "temperature in energy units",
+    "energy units for temperature",
+    "statistical-mechanics natural units"
+   ],
+   "used_in": "Statistical mechanics and thermodynamics theory, condensed-matter theory (Hubbard/Heisenberg/Kondo phase diagrams), finite-temperature quantum field theory, cold atoms, quantum information thermodynamics, and — implicitly — every experimental paper that quotes an energy scale in kelvin (Debye temperature, Kondo temperature, superconducting gap, crystal-field splitting, Zeeman splitting).",
+   "generators": [
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "S (entropy)",
+     "relation": "S_{\\rm dimensionless} = S_{\\rm SI}/k_B;\\ S = \\ln\\Omega\\ \\text{rather than } S = k_B\\ln\\Omega",
+     "why": "Entropy becomes dimensionless (a pure number of nats). Reported entropies in J mol⁻¹ K⁻¹ must be divided by R, not k_B, if they are molar. This crosses with the mole-axis problem."
+    },
+    {
+     "symbol": "\\beta",
+     "relation": "\\beta = 1/T\\ \\text{with dimension of inverse energy, not } 1/(k_BT)",
+     "why": "β appears bare in exponentials and imaginary-time integrals; a dimension check on e^{-βH} must know that β carries (−1, −2, 2, 0, 0) in this convention rather than being (0,0,0,−1,0)."
+    }
+   ],
+   "fingerprints": [
+    "\"we set k_B = 1\", \"temperatures are measured in units of energy\", \"β = 1/T\"",
+    "Boltzmann factors written e^{-E/T}, e^{-βE} with no k_B anywhere",
+    "S = ln Ω, F = -T ln Z, C = ∂E/∂T reported as a dimensionless number per site",
+    "Bose/Fermi functions written 1/(e^{(ε-μ)/T} ∓ 1)",
+    "Axis labels \"T/t\", \"T/J\", \"k_BT/E_F\", \"T/T_F\", \"T/T_c\"",
+    "Experimental side: energy scales quoted in kelvin — Θ_D = 428 K, T_K = 12 K, Δ = 1.76 k_BT_c, crystal-field levels \"at 120 K\"",
+    "Magnetism: μ_B/k_B = 0.671713815 K/T, so \"1 T ≈ 0.67 K\" or \"1.34 K for g = 2\""
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: k_B = 1 has no electromagnetic content and is orthogonal to whichever E&M convention is in force. It composes freely with Hartree a.u., Gaussian, SI, or natural units.",
+    "gauss_law": "N/A: unaffected.",
+    "einstein_field": "N/A in this family, though the same generator appears in Planck units where k_B = 1 is one of the four defining constants.",
+    "schrodinger_or_dirac": "N/A: k_B = 1 does not touch the Schrödinger or Dirac equation. The affected relations are statistical: Z = \\sum_i e^{-E_i/T};\\ F = -T\\ln Z;\\ S = -\\sum_i p_i\\ln p_i;\\ \\langle n\\rangle = \\dfrac{1}{e^{(\\epsilon-\\mu)/T}-1};\\ C_V = \\dfrac{\\partial\\langle E\\rangle}{\\partial T}\\ \\text{(dimensionless)};\\ \\text{imaginary-time action } \\int_0^{\\beta}d\\tau."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "This is the ONLY generator in the entire atomic/molecular/condensed-matter family that touches the Θ exponent. Every other system here leaves temperature un-normalized. That makes k_B = 1 an orthogonal MODIFIER rather than a system in its own right, and the tool should model it that way: a composable flag that can be switched on top of Hartree a.u., Rydberg a.u., eV/Å units, model units, or SI.\n\nCorollary: \"atomic units\" ALONE does not set k_B = 1. If an AMO paper writes T = 0.001 with no further qualification it means 0.001 E_h/k_B = 315.8 K; if it writes T = 300 it almost certainly means kelvin. There is no dimensional way to tell. Flag, do not guess.\n\nEXACT ENERGY–TEMPERATURE CHAIN (k_B is exact by SI definition, so all of these are exact):\n  1 E_h = 315775.02480398 K        1 K = 3.1668115634564e-6 E_h\n  1 Ry  = 157887.51240199 K        1 K = 6.3336231269e-6 Ry\n  1 eV  = 11604.518121550 K        1 K = 8.617333262e-5 eV = 86.17333262 μeV\n  1 cm⁻¹ = 1.438776877504 K        1 K = 0.695034800486 cm⁻¹\n  1 THz = 47.9924307 K             1 K = 20.83661912 GHz\n  1 kJ/mol = 120.272355 K          1 K = 8.314462618 J/mol\n  1 meV = 11.6045181 K             μ_B/k_B = 0.671713814720 K/T (nuclear magneton: 3.6582677706e-4 K/T)\n\nPRACTICAL WARNING for condensed matter: a \"kelvin\" on an energy axis and a \"kelvin\" on a thermometer are the same unit but not the same quantity role. A Debye temperature of 428 K is an energy (36.9 meV); a measurement temperature of 428 K is a state variable. Dimensionally identical; semantically different. The tool cannot resolve this and should not try.",
+   "sources": [
+    "NIST CODATA 2022 complete listing (Boltzmann constant exact; electron volt-kelvin, hartree-kelvin, inverse meter-kelvin, Bohr magneton in K/T relationships)",
+    "BIPM SI Brochure 9th ed. (k_B exact by definition since the 2019 redefinition)",
+    "All values above cross-checked in-session against the CODATA relationship entries"
+   ]
+  },
+  {
+   "name": "Spectroscopists' energy equivalences (cm⁻¹, GHz, K, eV, nm)",
+   "aliases": [
+    "wavenumber units",
+    "kayser",
+    "energy equivalents",
+    "spectroscopic units",
+    "term values",
+    "hc = 1 conventions",
+    "\"energy in cm⁻¹\""
+   ],
+   "used_in": "Atomic and molecular spectroscopy across the board — IR, Raman, UV/vis, microwave, THz, photoelectron and photodetachment spectroscopy, astrochemistry and astronomical spectroscopy, laser physics, cold molecules, matrix isolation, vibrational analysis. Also condensed matter (phonons in cm⁻¹, meV or THz; optical conductivity vs cm⁻¹).",
+   "generators": [
+    {
+     "tex": "hc",
+     "dimension": "(1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "(hc)"
+    },
+    {
+     "tex": "h",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "h"
+    },
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1/(2\\pi)",
+     "emits": "(h/2\\pi)"
+    },
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\lambda (wavelength)",
+     "relation": "E = hc/\\lambda\\ \\Longrightarrow\\ \\text{the map energy}\\leftrightarrow\\text{wavelength is RECIPROCAL, not a multiplicative rescaling}.\\ 1\\ \\mathrm{eV} \\leftrightarrow 1239.841\\,984\\,332\\ \\mathrm{nm};\\ \\tilde\\nu[\\mathrm{cm^{-1}}] = 10^{7}/\\lambda[\\mathrm{nm}]",
+     "why": "Every other conversion in this family is y = kx. Wavelength is y = k/x. A generator-based linear solve over dimension exponents CANNOT produce this; the converter needs an explicit reciprocal edge in its energy-equivalence graph."
+    },
+    {
+     "symbol": "\\tilde\\nu\\ vs\\ k (wavenumber vs angular wavenumber)",
+     "relation": "\\tilde\\nu = 1/\\lambda\\ [\\mathrm{cm^{-1}}]\\quad\\text{but}\\quad k = 2\\pi/\\lambda = 2\\pi\\tilde\\nu\\ [\\mathrm{rad\\,cm^{-1}}]",
+     "why": "Both are called 'wavenumber' and both have dimension L⁻¹. The 2π is dimensionally invisible. Spectroscopy means the first; solid-state and optics frequently mean the second."
+    },
+    {
+     "symbol": "\\nu\\ vs\\ \\omega (frequency vs angular frequency)",
+     "relation": "\\omega = 2\\pi\\nu;\\ E = h\\nu = \\hbar\\omega.\\ 1\\ \\mathrm{THz} = 33.356\\,409\\,51\\ \\mathrm{cm^{-1}} = 4.135\\,667\\,696\\ \\mathrm{meV} = 47.992\\,4307\\ \\mathrm{K}",
+     "why": "Same dimension (T⁻¹), factor 2π apart. 'Frequency in rad/s' vs 'frequency in Hz' is the most common silent 2π error in the family."
+    },
+    {
+     "symbol": "\\lambda_{\\rm air}\\ vs\\ \\lambda_{\\rm vac}",
+     "relation": "\\lambda_{\\rm vac} = n_{\\rm air}(\\lambda)\\,\\lambda_{\\rm air},\\ n_{\\rm air}\\approx 1.000\\,277\\ \\text{at 500 nm, 15\\,°C, 101.325 kPa (Edlén/Ciddor)}",
+     "why": "By long convention, atomic-spectroscopy tables (NIST ASD, Moore's tables) give AIR wavelengths above 200 nm and VACUUM wavelengths below. Wavenumbers are ALWAYS vacuum. The correction is wavelength-dependent, so it is not a constant factor and lies outside the dimensional formalism entirely."
+    }
+   ],
+   "fingerprints": [
+    "Units cm⁻¹, \"wavenumbers\", \"kayser\", μm⁻¹, \"reciprocal centimetres\"",
+    "Symbols ν̃ (nu-tilde), T (term value), G(v), F(J), T_e, ω_e, ω_e x_e",
+    "\"1 cm⁻¹ = 29.9792458 GHz\" or \"= 1.4388 K\" or \"= 0.1239842 meV\" appearing as a stated conversion",
+    "Energy axes in eV with the number 8065.54 nearby; nm axes with 1239.84",
+    "MHz/GHz for rotational transitions; THz for phonons and terahertz spectroscopy; meV for neutron scattering and photoemission",
+    "HITRAN (cm⁻¹), JPL/CDMS catalogues (MHz), NIST ASD (both nm and cm⁻¹, air above 200 nm)",
+    "\"Vacuum wavelength\" or \"air wavelength\" stated explicitly — and, more dangerously, not stated"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: this is a conversion-factor convention on energy, with no electromagnetic content of its own.",
+    "gauss_law": "N/A.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "The Schrödinger equation is rewritten as a WAVENUMBER Hamiltonian by dividing through by hc:\\newline \\dfrac{\\hat H}{hc}\\psi = \\tilde\\nu\\,\\psi,\\qquad \\tilde\\nu\\ \\text{in cm}^{-1}.\\newline Example (rigid rotor): E(J)/hc = \\tilde B\\,J(J+1) - \\tilde D\\,J^2(J+1)^2 with \\tilde B = \\dfrac{h}{8\\pi^2cI}\\ [\\mathrm{cm^{-1}}].\\newline In frequency units instead: B = \\dfrac{h}{8\\pi^2 I}\\ [\\mathrm{Hz}]. Numerically \\tilde B[\\mathrm{cm^{-1}}] = 16.857\\,629\\,17/I[\\mathrm{u\\,\\AA^2}] and B[\\mathrm{MHz}] = 505\\,379.008/I[\\mathrm{u\\,\\AA^2}] (both derived in-session)."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "This is not a unit system — it is an EQUIVALENCE GRAPH on a single physical quantity (energy), with h, hc and k_B as the edges. The right implementation is a small graph, not a generator solve. Recommended node set: J, eV, meV, E_h, Ry, cm⁻¹, m⁻¹, Hz, GHz, THz, rad/s, K, kJ/mol, kcal/mol, kg, u, nm (reciprocal edge), μm (reciprocal edge), Å (reciprocal edge).\n\nCOMPLETE FACTOR CHAIN (CODATA 2022; h, c, e, k_B, N_A are exact by SI definition, so every number below is EXACT to the digits shown except those involving m_e or α. Computed in-session at 20 digits and verified against the CODATA relationship table):\n\n  1 eV   = 1.602176634e-19 J = 8065.543937349 cm⁻¹ = 241.798924208 THz = 11604.518121550 K = 1239.841984332 nm = 0.036749322175665 E_h = 96.4853321233 kJ/mol = 23.0605478306 kcal/mol\n  1 cm⁻¹ = 1.986445857e-23 J = 29.9792458 GHz (exact) = 1.438776877504 K = 0.1239841984332 meV = 4.5563352529132e-6 E_h = 11.9626565630 J/mol\n  1 K    = 1.380649e-23 J = 0.695034800486 cm⁻¹ = 20.836619123 GHz = 86.17333262 μeV = 3.1668115635e-6 E_h = 8.314462618 J/mol\n  1 THz  = 33.35640951 cm⁻¹ = 4.135667696 meV = 47.99243073 K\n  1 GHz  = 0.0333564095 cm⁻¹ = 4.135667696 μeV = 0.0479924307 K\n  1 E_h  = 219474.6313631 cm⁻¹ = 6579.6839205 THz = 27.211386245981 eV = 315775.02480 K\n  1 Ry   = 109737.315681570 cm⁻¹ = 13.605693122990 eV = 157887.5124 K   [= R_∞ exactly]\n  R_∞    = 10973731.568157 m⁻¹;  R_∞c = 3.2898419602500e15 Hz;  R_H = 109677.5834 cm⁻¹ (hydrogen, reduced-mass corrected — verified in-session)\n  hc     = 1239.841984332 eV·nm = 1.986445857e-25 J·m (exact)\n\n  Neutron scattering bonus (same graph, different dispersion): E[meV] = 81.804210/λ[Å]², derived in-session — neutrons are non-relativistic so this is quadratic, NOT the photon hc/λ.\n\nTRAP — 'kayser' is the historical name for cm⁻¹; still seen in older IR literature.\nTRAP — some IR literature writes 'μ' for micron and 'mμ' for nanometre (pre-1960).\nTRAP — 'wavenumber' in solid-state physics usually means k = 2π/λ in Å⁻¹, a DIFFERENT quantity by 2π from the spectroscopist's ν̃ in cm⁻¹, and in different length units. Both are L⁻¹.",
+   "sources": [
+    "NIST CODATA 2022 complete listing, https://physics.nist.gov/cuu/Constants/Table/allascii.txt — every 'X-Y relationship' entry used above was read directly from it",
+    "NIST energy-equivalents converter, https://physics.nist.gov/cuu/Constants/energy.html",
+    "NIST Atomic Spectra Database documentation (air vs vacuum wavelength convention, 200 nm boundary)",
+    "Edlén (1966) / Ciddor (1996) air refractive-index formulae",
+    "All chained values recomputed in-session at 20-digit precision and cross-checked against CODATA's own relationship entries (agreement to all printed digits)"
+   ]
+  },
+  {
+   "name": "Molecular-constant conventions (rotational and vibrational spectroscopy)",
+   "aliases": [
+    "Herzberg conventions",
+    "spectroscopic constants",
+    "rotational constants in MHz vs cm⁻¹",
+    "Watson Hamiltonian conventions",
+    "Dunham coefficients"
+   ],
+   "used_in": "Microwave and millimetre-wave rotational spectroscopy, high-resolution IR spectroscopy, astrochemistry (CDMS/JPL line catalogues), molecular structure determination, computational spectroscopy benchmarking (VPT2, anharmonic force fields).",
+   "generators": [
+    {
+     "tex": "hc",
+     "dimension": "(1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "(hc)"
+    },
+    {
+     "tex": "h",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "h"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\omega_e (harmonic vibrational \"frequency\")",
+     "relation": "\\text{In Herzberg notation } \\omega_e\\ \\text{is a WAVENUMBER in cm}^{-1},\\ \\text{i.e. } \\omega_e \\equiv \\tilde\\nu_e = \\nu_e/c,\\ \\text{NOT an angular frequency in rad s}^{-1}",
+     "why": "The symbol ω universally means angular frequency everywhere else in physics. In molecular spectroscopy it means cm⁻¹. A units engine reading ω_e = 2170 will get a nonsense answer if it assumes rad/s. Same for ω_e x_e, ω_e y_e."
+    },
+    {
+     "symbol": "B (rotational constant)",
+     "relation": "\\tilde B = \\dfrac{h}{8\\pi^2 c I}\\ [\\mathrm{cm^{-1}}] = \\dfrac{16.857\\,629\\,17}{I[\\mathrm{u\\,\\AA^2}]};\\qquad B = \\dfrac{h}{8\\pi^2 I}\\ [\\mathrm{Hz}] = \\dfrac{505\\,379.008}{I[\\mathrm{u\\,\\AA^2}]}\\ \\mathrm{MHz}",
+     "why": "Microwave spectroscopy (CDMS, JPL) reports B in MHz; IR spectroscopy (HITRAN, Herzberg) reports B̃ in cm⁻¹. Same symbol B, ratio 29979.2458. Both are 'the rotational constant'."
+    },
+    {
+     "symbol": "D_J, \\Delta_J, d_J (centrifugal distortion)",
+     "relation": "\\text{Watson A-reduced: } \\Delta_J,\\Delta_{JK},\\Delta_K,\\delta_J,\\delta_K;\\ \\text{Watson S-reduced: } D_J,D_{JK},D_K,d_1,d_2.\\ \\text{The two parameter sets are related by a non-trivial linear transformation, not a unit conversion.}",
+     "why": "An A-reduced D_J and an S-reduced D_J are different numbers for the same molecule. This is a Hamiltonian-form convention, not a unit convention, and lies outside any generator formalism — but it looks like a unit issue to a naive reader."
+    }
+   ],
+   "fingerprints": [
+    "Symbols A, B, C (rotational constants), Δ_J/Δ_JK/Δ_K or D_J/D_JK/D_K, δ_J/δ_K or d_1/d_2, χ_aa (nuclear quadrupole)",
+    "\"A-reduced\" / \"S-reduced\" / \"I^r representation\" / \"Watson Hamiltonian\"",
+    "ω_e, ω_e x_e, B_e, α_e, D_e, T_e, G(v), F(J), Y_ij (Dunham)",
+    "Constants in MHz to 6-8 figures (microwave) or cm⁻¹ to 4-6 decimals (IR)",
+    "The magic numbers 505379.0 (MHz u Å²) and 16.85763 (cm⁻¹ u Å²)",
+    "Catalogue provenance: CDMS/JPL = MHz; HITRAN/GEISA = cm⁻¹; Herzberg's tables = cm⁻¹"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no electromagnetic content beyond transition moments (reported in debye — see the cgs-esu molecular property entry).",
+    "gauss_law": "N/A.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "Effective (fitted) Hamiltonians, in wavenumber form:\\newline Vibration: G(v) = \\omega_e\\left(v+\\tfrac12\\right) - \\omega_ex_e\\left(v+\\tfrac12\\right)^2 + \\omega_ey_e\\left(v+\\tfrac12\\right)^3 + \\cdots\\ [\\mathrm{cm^{-1}}]\\newline Rotation: F_v(J) = B_vJ(J+1) - D_vJ^2(J+1)^2 + H_vJ^3(J+1)^3,\\quad B_v = B_e - \\alpha_e\\left(v+\\tfrac12\\right)\\newline Dunham: E(v,J)/hc = \\sum_{i,j} Y_{ij}\\left(v+\\tfrac12\\right)^i\\left[J(J+1)\\right]^j\\newline Harmonic-oscillator link: \\omega_e[\\mathrm{cm^{-1}}] = \\dfrac{1}{2\\pi c}\\sqrt{k/\\mu} — the 1/2\\pi c is where both the 2\\pi and the c hide."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Strictly this is the spectroscopic-equivalence convention (previous entry) plus a set of SYMBOL conventions. It earns a separate row because the symbol conventions are where readers actually get burned, and because a program can detect them.\n\nThe 505379.008 MHz·u·Å² and 16.857629 cm⁻¹·u·Å² constants were derived in-session from h and the atomic mass constant and match the values used throughout the microwave literature.\n\nHARD CASE for the tool: the A-reduced vs S-reduced Watson Hamiltonian distinction is a change of effective operator, not of units. Two papers can report 'D_J' for the same molecule and disagree by more than their quoted uncertainties, legitimately. The tool must NOT offer to convert between them; it should detect the reduction label and refuse.\n\nRelated conventions in the same literature: nuclear quadrupole coupling constants eQq in MHz; Coriolis constants ζ (dimensionless); l-type doubling q in MHz; anharmonic constants x_ij in cm⁻¹; intensities in cm⁻¹/(molecule cm⁻²) (HITRAN) vs km/mol (quantum chemistry) vs Debye²·Å² — a three-way intensity-unit mess that deserves its own converter (1 km/mol relates to HITRAN units through the partition function and is temperature-dependent; I flag this as genuinely unsafe to auto-convert).",
+   "sources": [
+    "G. Herzberg, Molecular Spectra and Molecular Structure I-III (notation ω_e, B_e, α_e as wavenumbers)",
+    "J. K. G. Watson, in Vibrational Spectra and Structure vol. 6 (A- and S-reduced Hamiltonians)",
+    "CDMS (Cologne) and JPL spectral line catalogue documentation (MHz convention); HITRAN documentation (cm⁻¹ convention)",
+    "NIST CODATA 2022 (Planck constant, atomic mass constant) — the 505379.008 and 16.857629 constants derived in-session from these"
+   ]
+  },
+  {
+   "name": "Condensed-matter theory units (ħ = k_B = 1, lattice constant a = 1)",
+   "aliases": [
+    "ħ = 1 units",
+    "lattice units",
+    "natural units of condensed matter",
+    "\"we set ħ = k_B = a = 1\""
+   ],
+   "used_in": "Analytic and numerical condensed-matter theory: band structure, many-body theory, DMFT/DMRG/QMC, topological band theory, quantum Hall, graphene and Dirac-material theory, ultracold lattice gases.",
+   "generators": [
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    },
+    {
+     "tex": "a\\ (\\text{lattice constant})",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "a"
+    },
+    {
+     "tex": "e",
+     "dimension": "(0, 0, 1, 0, 1)",
+     "numeric_factor": "1",
+     "emits": "e"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf k (crystal momentum)",
+     "relation": "k\\in[-\\pi,\\pi]\\ \\text{when } a = 1\\ \\text{and } k = 2\\pi/\\lambda;\\ \\text{but many codes report } \\mathbf k\\ \\text{in \"crystal\" / fractional coordinates } \\mathbf k = \\sum_i f_i\\mathbf b_i\\ \\text{with } f_i\\in[-\\tfrac12,\\tfrac12]\\ \\text{and the } 2\\pi\\ \\text{absorbed into } \\mathbf b_i",
+     "why": "Whether the 2π lives in the Brillouin-zone boundary (π/a) or in the reciprocal lattice vector is a pure convention with no dimensional signature. VASP/QE k-point files, band-structure plots and analytic papers disagree."
+    },
+    {
+     "symbol": "\\ell_B (magnetic length), \\Phi_0 (flux quantum)",
+     "relation": "\\ell_B = \\sqrt{\\hbar/(eB)} = 25.6556\\ \\mathrm{nm}/\\sqrt{B[\\mathrm T]};\\ \\Phi_0^{\\rm sc} = h/2e = 2.067\\,833\\,848\\times10^{-15}\\ \\mathrm{Wb}\\ \\text{(superconducting)}\\ \\text{vs}\\ h/e = 4.135\\,667\\,696\\times10^{-15}\\ \\mathrm{Wb}\\ \\text{(normal-state / Hofstadter)}",
+     "why": "A dimensionally invisible factor of 2 in the flux quantum, decided by whether Cooper pairs are involved. Hofstadter-butterfly and quantum-Hall papers use h/e; SQUID and vortex-lattice papers use h/2e. Both are called 'the flux quantum' and written Φ₀."
+    }
+   ],
+   "fingerprints": [
+    "\"we work in units where ħ = k_B = a = 1\", \"lattice units\", \"we set the lattice constant to unity\"",
+    "Dispersions like ε(k) = -2t(cos k_x + cos k_y), with k dimensionless in [-π, π]",
+    "Conductance quoted in e²/h (= 3.874045865e-5 S) or 2e²/h; resistance in h/e² = 25812.80745 Ω (exact, von Klitzing)",
+    "\"in units of e²/ħ\" vs \"in units of e²/h\" — another silent 2π",
+    "Velocities in units of a t/ħ; times in ħ/t; \"ħ/t = 1\"",
+    "Green's functions G(k, iω_n) with Matsubara ω_n = (2n+1)πT — note T, not k_BT"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Usually SI or Gaussian, unmodified; more often the interaction is written as a Hubbard U on a site or a screened V_{ij}, and the microscopic Coulomb law never appears. When it does: V(r) = e^2/(\\varepsilon r) with e^2 kept explicit or absorbed into a dimensionless coupling r_s.",
+    "gauss_law": "N/A in most of this literature. Where electrodynamics is needed (e.g. axion electrodynamics, plasmonics) the paper reverts to SI or Gaussian explicitly.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "Tight-binding Schrödinger: i\\dfrac{\\partial c_i}{\\partial t} = -t\\sum_{\\langle j\\rangle}c_j + \\varepsilon_i c_i;\\quad \\varepsilon(\\mathbf k) = -2t\\sum_{\\mu}\\cos k_\\mu.\\newline Continuum Dirac (graphene/TI): \\hat H = v_F\\,\\boldsymbol\\sigma\\cdot\\mathbf p\\ \\to\\ \\boldsymbol\\sigma\\cdot\\mathbf k\\ \\text{when } v_F = \\hbar = 1;\\ v_F \\approx 10^6\\ \\mathrm{m/s} \\approx c/300 \\text{ in graphene.}\\newline Landau levels: E_n = \\pm v_F\\sqrt{2\\hbar eB\\,n}\\ \\to\\ \\pm\\sqrt{2n}/\\ell_B."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "The lattice constant a is a MATERIAL parameter, not a universal constant, so this cannot be a fixed generator table — the tool must accept a per-paper value (and a lattice type, since 'a' is ambiguous for non-cubic systems: conventional cell vs primitive cell vs nearest-neighbour distance; graphene's 'a' is 2.46 Å for the lattice constant but 1.42 Å for the C–C bond, and both are written a in the literature).\n\nUseful anchors verified from CODATA 2022: von Klitzing constant h/e² = 25812.80745 Ω (exact); conductance quantum 2e²/h = 7.748091729e-5 S (exact); magnetic flux quantum h/2e = 2.067833848e-15 Wb (exact); ℓ_B = 25.6556 nm/√(B/T).\n\nThis entry composes with the k_B = 1 entry and with the model-Hamiltonian entry (t = 1, J = 1); in practice a condensed-matter paper declares all three at once in a single sentence. The tool should treat them as three independent switches rather than one monolithic system, because papers mix them freely (e.g. ħ = 1 but energies in meV, or t = 1 but temperature in kelvin).",
+   "sources": [
+    "NIST CODATA 2022 complete listing (von Klitzing constant, conductance quantum, magnetic flux quantum — all exact)",
+    "Standard condensed-matter theory conventions; the h/e vs h/2e flux-quantum split is documented in both the quantum-Hall and superconductivity literatures",
+    "Derived in-session: ℓ_B numerical prefactor"
+   ]
+  },
+  {
+   "name": "Model-Hamiltonian units (t = 1, J = 1, U/t)",
+   "aliases": [
+    "tight-binding units",
+    "Hubbard units",
+    "Heisenberg units",
+    "hopping units",
+    "exchange units",
+    "Hückel α/β units",
+    "\"in units of t\""
+   ],
+   "used_in": "Hubbard and extended-Hubbard models, Heisenberg and Kitaev spin models, t-J model, Kondo and Anderson impurity models, DMRG/QMC/exact-diagonalization papers, frustrated magnetism, molecular magnetism (HDVV Hamiltonian), and Hückel/extended-Hückel molecular orbital theory.",
+   "generators": [
+    {
+     "tex": "t\\ (\\text{hopping integral})",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "t"
+    },
+    {
+     "tex": "J\\ (\\text{exchange coupling})",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "1, 2, \\text{ or } -1\\ \\text{depending on the Hamiltonian convention (see rescalings)}",
+     "emits": "J"
+    },
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "J (Heisenberg exchange)",
+     "relation": "\\hat H = -2J\\sum_{\\langle ij\\rangle}\\hat{\\mathbf S}_i\\cdot\\hat{\\mathbf S}_j\\ \\text{(HDVV / molecular magnetism)}\\quad\\text{vs}\\quad \\hat H = -J\\sum_{\\langle ij\\rangle}\\hat{\\mathbf S}_i\\cdot\\hat{\\mathbf S}_j\\quad\\text{vs}\\quad \\hat H = +J\\sum_{\\langle ij\\rangle}\\hat{\\mathbf S}_i\\cdot\\hat{\\mathbf S}_j\\ \\text{(physics convention, } J>0 \\text{ = antiferromagnetic)}.\\ \\text{Also } \\sum_{\\langle ij\\rangle}\\ \\text{(each bond once) vs } \\tfrac12\\sum_{i\\neq j}\\ \\text{(each bond twice)}",
+     "why": "THE canonical dimensionally-invisible disaster of this family. A reported J can differ by a factor of 2 (prefactor), another factor of 2 (double counting), and a sign, between two papers on the same compound. All four combinations appear in the literature. Molecular magnetism (Kahn) overwhelmingly uses -2J with J<0 antiferromagnetic; solid-state physics overwhelmingly uses +J with J>0 antiferromagnetic."
+    },
+    {
+     "symbol": "t (hopping)",
+     "relation": "\\hat H = -t\\sum_{\\langle ij\\rangle\\sigma}(c^{\\dagger}_{i\\sigma}c_{j\\sigma}+\\mathrm{h.c.})\\ \\text{vs}\\ +t\\sum(\\cdots);\\ \\text{and } t\\ \\text{vs } |t|\\ \\text{as the energy unit}",
+     "why": "The sign of t is a gauge choice on a bipartite lattice (removable by a sublattice rotation) but NOT on a frustrated one, where it changes the physics. Papers that 'set t = 1' on a triangular lattice have made a physical choice, not a unit choice."
+    },
+    {
+     "symbol": "\\alpha, \\beta (Hückel parameters)",
+     "relation": "E_k = \\alpha + x_k\\beta;\\ \\beta < 0\\ \\text{by convention};\\ |\\beta|\\approx 2.7\\ \\mathrm{eV}\\ \\text{for graphene/benzene fits, but } \\beta\\ \\text{is a FITTED parameter with no fixed value}",
+     "why": "Hückel energies are quoted as pure numbers times β. Converting them to eV requires a β that is context-dependent (different for excitation energies, resonance energies, and band widths). The tool must refuse to auto-convert."
+    }
+   ],
+   "fingerprints": [
+    "Axis labels and phase-diagram coordinates: U/t, J₂/J₁, T/t, T/J, Δ/t, W/t, J_K/D",
+    "\"we set t = 1\", \"energies are measured in units of J\", \"all energies in units of the hopping\"",
+    "Hamiltonians written with explicit -t, -2J, +J prefactors — read the prefactor, it is the convention",
+    "Hubbard: H = -t Σ c†c + U Σ n↑n↓; t-J: H = P(-t Σ c†c + J Σ (S·S - n n/4))P",
+    "Molecular magnetism: χT plots, \"HDVV Hamiltonian\", \"J = -12 cm⁻¹\" (note: J in cm⁻¹ is standard in that field)",
+    "Hückel: \"α + 2β\", \"delocalization energy 0.472β\"",
+    "Reported t in eV for real materials (graphene t = 2.7 eV; cuprates t = 0.4 eV, U = 8t)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Replaced by an on-site/short-range parametrization: U\\sum_i n_{i\\uparrow}n_{i\\downarrow} + V\\sum_{\\langle ij\\rangle}n_in_j. The long-range Coulomb law is integrated out, so there is no in-system Coulomb equation.",
+    "gauss_law": "N/A: no continuum electrodynamics.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "Hubbard: \\hat H = -t\\sum_{\\langle ij\\rangle\\sigma}\\left(c^{\\dagger}_{i\\sigma}c_{j\\sigma}+\\mathrm{h.c.}\\right) + U\\sum_i n_{i\\uparrow}n_{i\\downarrow} - \\mu\\sum_i n_i.\\newline Heisenberg (physics convention): \\hat H = J\\sum_{\\langle ij\\rangle}\\hat{\\mathbf S}_i\\cdot\\hat{\\mathbf S}_j,\\ J>0\\ \\text{antiferromagnetic}.\\newline Heisenberg (HDVV / molecular-magnetism convention): \\hat H = -2J\\sum_{\\langle ij\\rangle}\\hat{\\mathbf S}_i\\cdot\\hat{\\mathbf S}_j,\\ J<0\\ \\text{antiferromagnetic}.\\newline Strong-coupling link: J = 4t^2/U (in the physics convention) — itself convention-dependent."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "The prompt's instinct is right: these are per-model generators and must be handled as user-declared parameters, not as a fixed table.\n\nBut the deeper problem is that they are not ONLY unit conventions. Setting J = 1 is a unit choice; choosing between -2J Σ S·S and +J Σ S·S is an OPERATOR DEFINITION choice. The generator formalism handles the first and is silent on the second. My recommendation for the schema: the per_symbol_rescalings field can carry the relation (J_HDVV = -J_physics/2) as a string, which is what I have done, but the tool must present it as a warning requiring human confirmation rather than as an automatic transformation — the direction of the mapping depends on which paper you are reading, and there is no dimensional or textual signature that resolves it reliably. The only real evidence is the printed Hamiltonian.\n\nThe -2J vs -J vs +J confusion is well documented as a source of published errors in molecular magnetism (a factor of 2 or 4 in reported exchange constants between experimental and computational papers on the same compound is common). Treat this entry as the family's designated 'do not automate' zone.\n\nHückel theory is included here because α and β are literally energy generators set by fiat, but they are FITTED and non-transferable; there is no correct conversion of a Hückel energy to eV.",
+   "sources": [
+    "Standard Hubbard/Heisenberg model literature conventions",
+    "O. Kahn, Molecular Magnetism (the -2J HDVV convention and its clash with the solid-state +J convention)",
+    "Verified only against convention statements in the literature, not against a single authoritative standard — no standards body has ever adopted a spin-Hamiltonian sign convention. Flagged as genuinely unresolvable without reading each paper's Hamiltonian."
+   ]
+  },
+  {
+   "name": "CGS-emu / Gaussian magnetism (gauss, oersted, emu)",
+   "aliases": [
+    "emu",
+    "cgs magnetic units",
+    "Gaussian magnetism",
+    "electromagnetic units",
+    "SQUID/VSM units",
+    "MPMS units"
+   ],
+   "used_in": "Experimental magnetism worldwide — SQUID and VSM magnetometry (Quantum Design MPMS/PPMS output is in emu), molecular magnetism and coordination chemistry (χ_M T plots in cm³ K mol⁻¹), permanent-magnet and soft-magnet engineering, thin-film magnetism, geomagnetism and rock magnetism, and a large fraction of the condensed-matter magnetism theory literature.",
+   "generators": [
+    {
+     "tex": "\\mu_0",
+     "dimension": "(1, 1, -2, 0, -2)",
+     "numeric_factor": "1 (unrationalized: the 4\\pi is written explicitly in the field equations, not absorbed)",
+     "emits": "\\mu_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "B (magnetic flux density)",
+     "relation": "1\\ \\mathrm{G} = 10^{-4}\\ \\mathrm{T}\\ \\text{(exact)}",
+     "why": "Pure unit scale; the safest conversion in the whole entry."
+    },
+    {
+     "symbol": "H (magnetic field strength)",
+     "relation": "1\\ \\mathrm{Oe} = \\dfrac{10^{3}}{4\\pi}\\ \\mathrm{A\\,m^{-1}} = 79.577\\,471\\,545\\ \\mathrm{A\\,m^{-1}}",
+     "why": "The 4π is dimensionless and enters here because CGS-emu is unrationalized. In vacuum B[G] and H[Oe] are numerically equal, which trains people to treat gauss and oersted as interchangeable — they are not, inside matter."
+    },
+    {
+     "symbol": "M (volume magnetization)",
+     "relation": "1\\ \\mathrm{emu\\,cm^{-3}} = 10^{3}\\ \\mathrm{A\\,m^{-1}};\\ \\text{note } 4\\pi M\\ \\text{is often plotted \"in gauss\" because } B = H + 4\\pi M",
+     "why": "emu/cm³ and gauss get used interchangeably for magnetization because 4πM has field units. The factor 4π must be tracked separately from the 10³."
+    },
+    {
+     "symbol": "m (magnetic moment)",
+     "relation": "1\\ \\mathrm{emu} = 1\\ \\mathrm{erg\\,G^{-1}} = 10^{-3}\\ \\mathrm{A\\,m^{2}} = 10^{-3}\\ \\mathrm{J\\,T^{-1}}",
+     "why": "'emu' is not a unit name in any coherent system — it is an abbreviation for 'electromagnetic unit' used as a placeholder for whatever the emu-subsystem unit of that quantity is. A SQUID reporting '3.2e-4 emu' means 3.2e-7 A m²."
+    },
+    {
+     "symbol": "\\sigma (specific/mass magnetization)",
+     "relation": "1\\ \\mathrm{emu\\,g^{-1}} = 1\\ \\mathrm{A\\,m^{2}\\,kg^{-1}}\\ \\text{(exactly, factor 1)};\\ \\text{but } 1\\ \\mathrm{emu\\,g^{-1}} \\to 4\\pi\\times10^{-7}\\ \\mathrm{Wb\\,m\\,kg^{-1}}\\ \\text{if the Kennelly (polarization) SI form is used}",
+     "why": "Two different SI targets for the same cgs quantity. The factor-1 route (A m²/kg) is the Sommerfeld convention and is the one to default to; several published conversion tables list only the 4π×10⁻⁷ route and mislead readers."
+    },
+    {
+     "symbol": "\\chi (volume susceptibility)",
+     "relation": "\\chi_{\\rm SI} = 4\\pi\\,\\chi_{\\rm cgs}",
+     "why": "Dimensionless in both systems, differing by 4π. This is the single most frequently botched conversion in the magnetism literature."
+    },
+    {
+     "symbol": "\\chi_{\\rho} (mass susceptibility)",
+     "relation": "\\chi_{\\rm SI}[\\mathrm{m^3\\,kg^{-1}}] = 4\\pi\\times10^{-3}\\,\\chi_{\\rm cgs}[\\mathrm{cm^3\\,g^{-1}}]",
+     "why": "4π plus a decade factor."
+    },
+    {
+     "symbol": "\\chi_{M} (molar susceptibility)",
+     "relation": "\\chi_{\\rm SI}[\\mathrm{m^3\\,mol^{-1}}] = 4\\pi\\times10^{-6}\\,\\chi_{\\rm cgs}[\\mathrm{cm^3\\,mol^{-1}}];\\ \\text{the alternative SI target } \\mathrm{H\\,m^2\\,mol^{-1}}\\ \\text{carries } (4\\pi)^2\\times10^{-13}",
+     "why": "Molecular magnetism reports χ_M in 'emu/mol', which means cm³/mol. Note this quantity also carries the mole axis, compounding with the N-dimension problem."
+    },
+    {
+     "symbol": "N (demagnetizing factor)",
+     "relation": "N_{\\rm SI} = N_{\\rm cgs}/4\\pi;\\quad \\sum_i N_i = 4\\pi\\ \\text{(cgs)} \\ \\text{vs}\\ \\sum_i N_i = 1\\ \\text{(SI)};\\ \\text{sphere: } N = 4\\pi/3\\ \\text{vs}\\ 1/3",
+     "why": "Dimensionless in both; differs by 4π. A demagnetizing correction applied with the wrong convention is wrong by 12.57×."
+    },
+    {
+     "symbol": "\\Phi (magnetic flux)",
+     "relation": "1\\ \\mathrm{Mx\\ (maxwell)} = 10^{-8}\\ \\mathrm{Wb}",
+     "why": "Straight scale factor."
+    },
+    {
+     "symbol": "w (energy density, anisotropy constant K)",
+     "relation": "1\\ \\mathrm{erg\\,cm^{-3}} = 0.1\\ \\mathrm{J\\,m^{-3}};\\ \\text{energy product } 1\\ \\mathrm{MGOe} = 7.957\\,747\\ \\mathrm{kJ\\,m^{-3}}",
+     "why": "Anisotropy constants K₁ are reported in erg/cm³ (older) or J/m³ or MJ/m³ (newer); permanent-magnet grades are still quoted in MGOe in the US market."
+    },
+    {
+     "symbol": "\\mu_{\\rm eff} (effective moment)",
+     "relation": "\\mu_{\\rm eff} = 2.827\\,869\\sqrt{\\chi_M T}\\ \\mu_B\\ \\ (\\chi_M\\ \\text{in cm}^3\\mathrm{\\,mol^{-1}})\\qquad\\text{vs}\\qquad \\mu_{\\rm eff} = 797.727\\sqrt{\\chi_M T}\\ \\mu_B\\ \\ (\\chi_M\\ \\text{in m}^3\\mathrm{\\,mol^{-1}})",
+     "why": "Both constants were derived in-session from CODATA; the famous '2.828' (= √8) is cgs-only. Applying it to SI χ_M is a factor-282 error and it does happen in print."
+    }
+   ],
+   "fingerprints": [
+    "Units: G, gauss, Oe, oersted, emu, emu/g, emu/cm³, emu/mol, erg/cm³, Mx, maxwell, gilbert, MGOe",
+    "B = H + 4πM written as the constitutive relation; μ = 1 + 4πχ",
+    "χ_M T plotted vs T in cm³ K mol⁻¹ (molecular magnetism); Curie–Weiss fits with C in cm³ K mol⁻¹",
+    "μ_eff = 2.828 √(χ_M T) appearing as a formula",
+    "μ_B quoted as 9.274e-21 erg/G rather than 9.274e-24 J/T",
+    "Instrument provenance: Quantum Design MPMS/PPMS, 'moment (emu)' column headings",
+    "Fields quoted in kOe (e.g. '50 kOe' = 5 T) rather than tesla",
+    "Demagnetizing factor for a sphere given as 4π/3 rather than 1/3"
+   ],
+   "benchmark_equations": {
+    "coulomb": "In the full Gaussian system: F = \\dfrac{q_1q_2}{r^2}\\ \\text{with } q\\ \\text{in statcoulomb (esu), } F\\ \\text{in dyne, } r\\ \\text{in cm}. In the pure emu subsystem electric quantities are rescaled by c relative to esu and are essentially never used; magnetism papers that need electrostatics silently switch to Gaussian or SI.",
+    "gauss_law": "\\nabla\\cdot\\mathbf E = 4\\pi\\rho;\\quad \\nabla\\cdot\\mathbf B = 0;\\quad \\nabla\\times\\mathbf H = \\dfrac{4\\pi}{c}\\mathbf J + \\dfrac{1}{c}\\dfrac{\\partial\\mathbf D}{\\partial t}.\\newline Constitutive relations (the ones that matter here): \\mathbf B = \\mathbf H + 4\\pi\\mathbf M,\\quad \\mathbf M = \\chi\\mathbf H,\\quad \\mu = 1 + 4\\pi\\chi,\\quad \\mathbf H_{\\rm int} = \\mathbf H_{\\rm app} - N\\mathbf M\\ \\text{with}\\ \\sum N_i = 4\\pi.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "Zeeman Hamiltonian: \\hat H_Z = \\dfrac{\\mu_B}{\\hbar}\\left(\\hat{\\mathbf L} + g_e\\hat{\\mathbf S}\\right)\\cdot\\mathbf B,\\quad \\mu_B = \\dfrac{e\\hbar}{2m_ec} = 9.274\\,010\\,0657\\times10^{-21}\\ \\mathrm{erg\\,G^{-1}},\\ B\\ \\text{in gauss}.\\newline Curie law: \\chi_M = \\dfrac{N_A g^2\\mu_B^2 S(S+1)}{3k_BT} = \\dfrac{C}{T},\\quad C[\\mathrm{cm^3\\,K\\,mol^{-1}}] = \\dfrac{\\mu_{\\rm eff}^2}{7.997}."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "This literature is genuinely confused and the tool will add real value here. Every conversion above is a dimensionless 4π and/or a decade factor riding on top of the cgs↔SI length/mass/time change — exactly the case the schema's numeric_factor and per_symbol_rescalings fields exist for.\n\nWHY IT IS SO CONFUSED: 'emu' is not a unit. In the CGS electromagnetic subsystem the unit of every quantity is 'the emu of <that quantity>', so 'emu' silently means erg/G for a moment, dimensionless for a susceptibility, and cm³ for a molar susceptibility. Instruments print 'emu' as a column heading with no quantity attached. A parser must infer the quantity from context before it can convert.\n\nSECOND-ORDER TRAPS:\n  - χ_M in 'emu/mol' means cm³/mol; χ in 'emu' with no denominator usually means the dimensionless volume susceptibility, but sometimes means moment/field = emu/Oe.\n  - Molar susceptibilities carry BOTH the 4π problem and the mole-axis problem (see the quantum-chemistry entry). This is the one place in the family where two schema gaps compound.\n  - Diamagnetic (Pascal's) constants are tabulated in units of 10⁻⁶ cm³/mol and must be subtracted before μ_eff is extracted; the sign convention (negative values tabulated as positive magnitudes) is inconsistent across tables.\n  - Historical: the Weiss magneton μ_W ≈ μ_B/4.97 ≈ 1.853×10⁻²¹ erg/G appears in pre-1930 magnetism papers; it is an empirical unit with no modern standing.\n  - Fields: 1 kOe = 0.1 T; 10 kOe = 1 T. Older papers use kOe throughout.\n\nAll conversion factors above are from the NIST/Goldfarb–Fickett table (the canonical reference), with the μ_eff constants (2.827869 cgs, 797.727 SI) and the MGOe conversion (7.957747 kJ/m³) derived independently in-session from CODATA 2022 and found to agree.",
+   "sources": [
+    "R. B. Goldfarb and F. R. Fickett, 'Units for Magnetic Properties', NBS Special Publication 696 (1985) — the canonical table; https://www.nist.gov/system/files/documents/pml/electromagnetics/magnetics/magnetic_units.pdf",
+    "Lake Shore Cryotronics, 'Units for Magnetic Properties', https://www.lakeshore.com/resources/magnetic-units (reproduces the NIST table; fetched and read in-session)",
+    "Encyclopedia Magnetica, 'Conversion between CGS or Gaussian to SI magnetic units'",
+    "S. Blundell, Magnetism in Condensed Matter, Appendix on units (Oxford notes, https://users.ox.ac.uk/~sjb/magnetism/units.pdf)",
+    "NIST CODATA 2022 listing (Bohr magneton, Avogadro, Boltzmann); μ_eff prefactors and MGOe derived in-session at 20-digit precision"
+   ]
+  },
+  {
+   "name": "SI magnetism — Sommerfeld vs Kennelly conventions",
+   "aliases": [
+    "rationalized MKSA magnetism",
+    "SI magnetic units",
+    "B–H convention",
+    "magnetic polarization convention",
+    "Kennelly convention",
+    "Sommerfeld convention"
+   ],
+   "used_in": "Modern condensed-matter and materials papers using SI, permanent-magnet and electrical engineering (where Kennelly is common), IEC/ISO standards documents, and IUPAP/ISO-compliant journals. The Sommerfeld form is the one adopted by IUPAP, ISO 80000-6 and NIST.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "M vs J (magnetization vs magnetic polarization)",
+     "relation": "\\textbf{Sommerfeld: } \\mathbf B = \\mu_0(\\mathbf H + \\mathbf M),\\ [M] = \\mathrm{A\\,m^{-1}}.\\qquad \\textbf{Kennelly: } \\mathbf B = \\mu_0\\mathbf H + \\mathbf J,\\ [J] = \\mathrm{T}.\\qquad \\mathbf J = \\mu_0\\mathbf M",
+     "why": "Both are legitimate SI. A magnetization plotted 'in tesla' is a Kennelly J; a magnetization plotted 'in A/m' is a Sommerfeld M. They differ by μ₀ = 4π×10⁻⁷ H/m exactly-by-definition-no-longer (μ₀ = 1.25663706127e-6 H/m, CODATA 2022, no longer exact since the 2019 redefinition)."
+    },
+    {
+     "symbol": "m vs j (magnetic moment vs magnetic dipole moment, Kennelly)",
+     "relation": "\\textbf{Sommerfeld: } m\\ \\text{in A\\,m}^2 = \\mathrm{J\\,T^{-1}}.\\qquad \\textbf{Kennelly: } j = \\mu_0 m\\ \\text{in Wb\\,m}.\\ 1\\ \\mathrm{A\\,m^2} \\to 4\\pi\\times10^{-7}\\ \\mathrm{Wb\\,m}",
+     "why": "Two SI quantities both called 'the magnetic dipole moment', differing by μ₀. Older conversion tables list both SI targets for the same cgs source, which is why the emu tables look internally contradictory."
+    },
+    {
+     "symbol": "\\mu_0",
+     "relation": "\\mu_0 = 1.256\\,637\\,061\\,27\\times10^{-6}\\ \\mathrm{H\\,m^{-1}}\\ \\text{(CODATA 2022, measured with relative uncertainty } 1.6\\times10^{-10}\\text{)};\\ \\text{formerly } 4\\pi\\times10^{-7}\\ \\text{exactly, pre-2019",
+     "why": "Every legacy conversion factor in the magnetism tables was computed with μ₀ = 4π×10⁻⁷ EXACTLY. Since the 2019 SI redefinition μ₀ is a measured quantity. The discrepancy (1.6×10⁻¹⁰ relative) is far below any magnetism measurement, but a units engine claiming exactness must not."
+    }
+   ],
+   "fingerprints": [
+    "'magnetic polarization J' with units of tesla; J–H hysteresis loops alongside B–H loops",
+    "Magnetization axis labelled in T or mT (Kennelly) vs kA/m or MA/m (Sommerfeld)",
+    "'μ₀M' plotted explicitly, which is the tell that the author is aware of the fork",
+    "Permanent-magnet datasheets: B_r in T, H_cJ vs H_cB coercivities (the subscripts J and B name the convention)",
+    "(BH)_max in kJ/m³ (SI) or MGOe (cgs); 1 MGOe = 7.957747 kJ/m³",
+    "ISO 80000-6 or IEC 60050-121 cited"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{1}{4\\pi\\varepsilon_0}\\dfrac{q_1q_2}{r^2} — ordinary rationalized SI, unchanged by the magnetization-convention fork.",
+    "gauss_law": "\\nabla\\cdot\\mathbf E = \\rho/\\varepsilon_0;\\ \\nabla\\cdot\\mathbf B = 0;\\ \\nabla\\times\\mathbf H = \\mathbf J_f + \\partial\\mathbf D/\\partial t.\\newline Constitutive fork: \\mathbf B = \\mu_0(\\mathbf H+\\mathbf M) [Sommerfeld] or \\mathbf B = \\mu_0\\mathbf H + \\mathbf J [Kennelly]; \\ \\mu_r = 1 + \\chi;\\ \\mathbf H_{\\rm int} = \\mathbf H_{\\rm app} - N\\mathbf M\\ \\text{with}\\ \\sum N_i = 1.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "Zeeman: \\hat H_Z = \\dfrac{\\mu_B}{\\hbar}(\\hat{\\mathbf L}+g_e\\hat{\\mathbf S})\\cdot\\mathbf B,\\ \\mu_B = \\dfrac{e\\hbar}{2m_e} = 9.274\\,010\\,0657\\times10^{-24}\\ \\mathrm{J\\,T^{-1}} = 5.788\\,381\\,7982\\times10^{-5}\\ \\mathrm{eV\\,T^{-1}} = 0.671\\,713\\,814\\,72\\ \\mathrm{K\\,T^{-1}} = 46.686\\,447\\,719\\ \\mathrm{m^{-1}T^{-1}} = 13.996\\,244\\,9171\\ \\mathrm{GHz\\,T^{-1}}."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "Listed separately from the cgs-emu entry because the Sommerfeld/Kennelly fork exists ENTIRELY INSIDE SI and is invisible to a cgs↔SI converter. A tool that only knows 'gauss → tesla' will happily hand back a magnetization in tesla and never notice it has silently switched conventions.\n\nThere are no generators here — this is pure SI with a constitutive-relation choice. That is itself informative for the schema: the formalism needs a way to record 'no generators, but the symbol semantics differ', which is what the empty generators array plus populated per_symbol_rescalings expresses. I recommend the tool support exactly this shape rather than treating an empty generator list as an error.\n\nCODATA 2022 anchors used above: μ₀ = 1.25663706127e-6 H/m; Bohr magneton in J/T, eV/T, K/T, m⁻¹/T and Hz/T all read directly from the NIST listing. The MGOe conversion (7.957747 kJ/m³) was derived in-session.",
+   "sources": [
+    "ISO 80000-6:2022, Quantities and units — Electromagnetism (Sommerfeld convention adopted)",
+    "R. B. Goldfarb and F. R. Fickett, NBS SP 696 (1985) — documents both SI targets for each cgs quantity, which is the Sommerfeld/Kennelly fork made explicit",
+    "NIST CODATA 2022 complete listing (vacuum magnetic permeability, Bohr magneton in five different unit pairs)",
+    "BIPM SI Brochure 9th ed. (μ₀ no longer exact after the 2019 redefinition)"
+   ]
+  },
+  {
+   "name": "cgs-esu molecular electric property units (debye, Å³ polarizability, buckingham)",
+   "aliases": [
+    "debye units",
+    "polarizability volume",
+    "esu molecular properties",
+    "Gaussian molecular property units",
+    "\"α in Å³\""
+   ],
+   "used_in": "Physical and computational chemistry (dipole moments, polarizabilities, hyperpolarizabilities), nonlinear optics, intermolecular-force and force-field parametrization, dielectric and solvation studies, molecular spectroscopy transition moments.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mu (electric dipole moment)",
+     "relation": "1\\ \\mathrm{D\\ (debye)} = 10^{-18}\\ \\mathrm{statC\\,cm} = 10^{-21}/c\\ \\mathrm{C\\,m} = 3.335\\,640\\,951\\,98\\times10^{-30}\\ \\mathrm{C\\,m}\\ \\text{(exact, since } c\\ \\text{is exact)};\\quad 1\\ \\mathrm{a.u.} = ea_0 = 8.478\\,353\\,6198\\times10^{-30}\\ \\mathrm{C\\,m} = 2.541\\,746\\,472\\ \\mathrm{D}",
+     "why": "The debye is an esu unit surviving inside otherwise-SI papers. Its exact SI value is 10⁻²¹/c, which is why it looks like an arbitrary decimal."
+    },
+    {
+     "symbol": "\\alpha (dipole polarizability)",
+     "relation": "\\text{Polarizability VOLUME } \\alpha' = \\dfrac{\\alpha_{\\rm SI}}{4\\pi\\varepsilon_0},\\ \\text{reported in \\AA}^3,\\ \\mathrm{cm}^3,\\ \\text{or bohr}^3.\\quad 1\\ \\mathrm{a.u.} = e^2a_0^2/E_h = 1.648\\,777\\,272\\,12\\times10^{-41}\\ \\mathrm{C^2m^2J^{-1}} = 0.148\\,184\\,711\\ \\mathrm{\\AA}^3 = 1\\ \\mathrm{bohr}^3",
+     "why": "THE classic silent error: α in Å³ and α in C²m²J⁻¹ are NOT the same quantity — they differ by 4πε₀, which carries dimensions. A dimension-checker will correctly flag α[Å³] as a volume, which it literally is, and the tool must know that in this literature a 'volume' labelled α is an electric polarizability divided by 4πε₀."
+    },
+    {
+     "symbol": "\\Theta (electric quadrupole moment)",
+     "relation": "1\\ \\mathrm{buckingham} = 1\\ \\mathrm{D\\,\\AA} = 10^{-26}\\ \\mathrm{statC\\,cm^2} = 3.335\\,640\\,952\\times10^{-40}\\ \\mathrm{C\\,m^2};\\quad 1\\ \\mathrm{a.u.} = ea_0^2 = 4.486\\,551\\,5185\\times10^{-40}\\ \\mathrm{C\\,m^2} = 1.345\\,034\\ \\mathrm{buckingham}",
+     "why": "Rarely stated; the buckingham is the natural esu quadrupole unit and appears without definition in intermolecular-force papers. Also, the quadrupole tensor itself has two conventions (traceless Buckingham Θ vs the primitive second moment), differing by a factor of 3/2 and a trace subtraction."
+    },
+    {
+     "symbol": "\\beta, \\gamma (first and second hyperpolarizabilities)",
+     "relation": "\\text{a.u.: } \\beta = 3.206\\,361\\,2996\\times10^{-53}\\ \\mathrm{C^3m^3J^{-2}},\\ \\gamma = 6.235\\,379\\,9735\\times10^{-65}\\ \\mathrm{C^4m^4J^{-3}}.\\ \\text{Convention fork: Taylor-series expansion } \\mu = \\mu_0+\\alpha E+\\tfrac{1}{2!}\\beta E^2+\\tfrac{1}{3!}\\gamma E^3\\ \\text{vs perturbation-series } \\mu = \\mu_0+\\alpha E+\\beta E^2+\\gamma E^3",
+     "why": "A reported β differs by a factor of 2 (and γ by 6) between the two expansion conventions, with no dimensional signature whatsoever. This is a documented, long-standing problem in comparing theoretical and experimental NLO hyperpolarizabilities. Additional forks: 'convention B' vs 'convention T' vs 'convention X'; and degeneracy factors for SHG vs EFISH vs THG."
+    }
+   ],
+   "fingerprints": [
+    "'D' or 'debye' for dipole moments; values 0–5 for small molecules (H₂O = 1.85 D)",
+    "'α in Å³' or 'polarizability volume'; values 0.2–20 Å³",
+    "'a.u.' for polarizability with values 5–200 (H₂O ≈ 9.6 a.u.)",
+    "'buckingham' or 'D Å' for quadrupoles; 'esu' for hyperpolarizabilities (β in 10⁻³⁰ esu)",
+    "'convention B/T/X' or an explicit Taylor-vs-perturbation statement in NLO papers",
+    "The numbers 2.541746 (a.u.→D), 0.1481847 (a.u.→Å³), 1.345034 (a.u.→buckingham)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Underlying system is Gaussian/esu: F = q_1q_2/r^2 with q in statcoulomb. In practice these unit names are used as isolated riders inside SI or atomic-unit papers.",
+    "gauss_law": "\\nabla\\cdot\\mathbf E = 4\\pi\\rho (esu). The polarizability-volume definition \\alpha' = \\alpha_{\\rm SI}/(4\\pi\\varepsilon_0) is precisely the statement that the induced dipole in Gaussian units is p = \\alpha' E with \\alpha' a volume: for a conducting sphere of radius a, \\alpha' = a^3 exactly.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "Response-theory definitions: \\mu_i = \\mu_i^{(0)} + \\alpha_{ij}E_j + \\tfrac{1}{2}\\beta_{ijk}E_jE_k + \\tfrac{1}{6}\\gamma_{ijkl}E_jE_kE_l\\ \\text{(Taylor convention)},\\ \\text{with } \\alpha_{ij} = -\\left.\\dfrac{\\partial^2 E}{\\partial F_i\\partial F_j}\\right|_{F=0} computed in atomic units and converted at the reporting stage."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "No generators — these are unit names and definitional riders that travel independently of any host system. Debye in particular appears inside SI papers, atomic-unit papers, and cgs papers indiscriminately.\n\nThe polarizability-volume issue is the sharpest test of whether a units engine understands this family. α[Å³] has dimension (0, 3, 0, 0, 0) — a pure volume. α[C²m²J⁻¹] has dimension (-1, -2, 4, 0, 2). They describe the same physical property. No dimensional analysis can connect them; only the recorded rider α' = α/(4πε₀) can. A tool that dimension-checks a paper reporting 'α = 1.45 Å³' against a formula containing α_SI will produce a spurious error unless this rider is in the table.\n\nAll numeric values above are CODATA 2022 atomic-unit entries read directly from the NIST listing; the a.u.→D, a.u.→Å³ and a.u.→buckingham ratios were computed in-session at 20-digit precision.\n\nThe hyperpolarizability convention fork is the one item in this entry I would NOT automate. It is a choice of Taylor coefficient, and papers frequently do not state it; the community's own review literature treats it as a persistent source of factor-2 and factor-6 discrepancies.",
+   "sources": [
+    "NIST CODATA 2022 complete listing (atomic unit of electric dipole mom., electric quadrupole mom., electric polarizability, 1st and 2nd hyperpolarizability)",
+    "Debye's exact SI value 10⁻²¹/c derived in-session = 3.33564095198e-30 C m",
+    "A. Willetts, J. E. Rice, D. M. Burland, D. P. Shelton, J. Chem. Phys. 97, 7590 (1992), 'Problems in the comparison of theoretical and experimental hyperpolarizabilities' — the standard reference for the β/γ convention fork (cited from knowledge, not re-verified in-session)",
+    "IUPAC Green Book (Quantities, Units and Symbols in Physical Chemistry) on polarizability volume"
+   ]
+  },
+  {
+   "name": "Solid-state and DFT practical units (eV, Å, meV/atom, GPa, r.l.u.)",
+   "aliases": [
+    "VASP units",
+    "materials-science units",
+    "eV/Å units",
+    "electronvolt–ångström units",
+    "reciprocal lattice units"
+   ],
+   "used_in": "Plane-wave and all-electron DFT for materials (VASP, CASTEP, GPAW, FHI-aims, WIEN2k), high-throughput materials databases (Materials Project, AFLOW, OQMD, NOMAD), phonon and elastic-constant calculations, ARPES and inelastic-scattering experiment papers, high-pressure physics.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "E (energy)",
+     "relation": "\\mathrm{eV},\\ \\mathrm{meV},\\ \\mathrm{meV/atom},\\ \\mathrm{eV/f.u.};\\ 1\\ \\mathrm{eV} = 1.602\\,176\\,634\\times10^{-19}\\ \\mathrm{J}\\ \\text{(exact)} = 0.036\\,749\\,322\\,175\\,665\\ E_h = 0.073\\,498\\,644\\,35\\ \\mathrm{Ry}",
+     "why": "'Per atom' and 'per formula unit' are amount-like divisors that the 5-tuple cannot express, exactly as with kcal/mol — but here the divisor is an integer count specific to the simulation cell, not N_A."
+    },
+    {
+     "symbol": "p (pressure/stress)",
+     "relation": "1\\ \\mathrm{eV\\,\\AA^{-3}} = 160.217\\,6634\\ \\mathrm{GPa};\\ 1\\ \\mathrm{Ry\\,bohr^{-3}} = 14\\,710.508\\ \\mathrm{GPa};\\ 1\\ E_h\\,\\mathrm{bohr^{-3}} = 29\\,421.016\\ \\mathrm{GPa};\\ 1\\ \\mathrm{kbar} = 0.1\\ \\mathrm{GPa}",
+     "why": "VASP prints stress in kbar, Quantum ESPRESSO in both Ry/bohr³ and kbar, and papers report GPa. All three derived in-session; the Ry/bohr³ value is exactly half the a.u. value, which is a useful self-check on Hartree/Rydberg detection."
+    },
+    {
+     "symbol": "\\mathbf k (reciprocal space)",
+     "relation": "\\text{r.l.u.: } \\mathbf k = \\sum_i f_i\\mathbf b_i,\\ f_i\\ \\text{dimensionless};\\ \\text{vs absolute } \\mathbf k\\ \\text{in \\AA}^{-1}\\ \\text{or } 2\\pi/a\\ \\text{units};\\ \\mathbf b_i\\cdot\\mathbf a_j = 2\\pi\\delta_{ij}\\ \\text{(physics)}\\ \\text{vs}\\ \\delta_{ij}\\ \\text{(crystallography)}",
+     "why": "The crystallographic and physics definitions of the reciprocal lattice differ by 2π, and both are in daily use — crystallography software uses the 2π-free convention, band-structure codes use the 2π one. r.l.u. values are additionally material-specific (they depend on the cell), so they are not convertible without the lattice."
+    },
+    {
+     "symbol": "phonon frequency",
+     "relation": "1\\ \\mathrm{THz} = 33.356\\,409\\,51\\ \\mathrm{cm^{-1}} = 4.135\\,667\\,696\\ \\mathrm{meV} = 47.992\\,4307\\ \\mathrm{K};\\ \\text{beware THz vs rad\\,ps}^{-1}\\ (\\text{factor } 2\\pi)",
+     "why": "Phonon codes output in THz, cm⁻¹, meV or rad/ps depending on the tool (phonopy defaults to THz; QE to cm⁻¹). The THz-vs-rad/ps 2π is a common silent error in phonon papers."
+    }
+   ],
+   "fingerprints": [
+    "ENCUT/ecut in eV; 'PREC', 'ISMEAR', OUTCAR/POSCAR/INCAR filenames",
+    "Energies in eV/atom or meV/atom; formation energies in eV/atom",
+    "Lattice constants in Å; forces in eV/Å; stresses in kbar",
+    "Band structures with energy in eV relative to E_F and k along Γ–X–M–Γ labels",
+    "Phonon dispersions in THz (phonopy) or cm⁻¹ (QE/CASTEP)",
+    "'r.l.u.' on scattering-experiment axes; (H, K, L) indices",
+    "Pressures in GPa; 'Mbar' in planetary/high-pressure work (1 Mbar = 100 GPa)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A as a stated convention: the underlying calculation is in Hartree or Rydberg atomic units, and eV/Å is a reporting layer. Ewald summation constants inside the codes are in a.u.",
+    "gauss_law": "N/A at the reporting layer.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "Kohn-Sham equations are solved in a.u.; results are reported here. The only in-system 'equations' are unit-bearing material relations: E_{\\rm gap}\\ [\\mathrm{eV}],\\ \\varepsilon(\\mathbf k)\\ [\\mathrm{eV}],\\ C_{ij}\\ [\\mathrm{GPa}],\\ \\omega(\\mathbf q)\\ [\\mathrm{THz}],\\ \\text{and the free-electron scale } \\dfrac{\\hbar^2k^2}{2m_e} = 3.809\\,982\\ \\mathrm{eV\\,\\AA^2}\\times k^2."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v1",
+   "notes": "Strictly this is a unit SELECTION, not a generator convention — nothing is set to 1. It earns an entry because it is what materials papers actually print, and because the r.l.u. axis genuinely needs per-material input.\n\nThe free-electron constant ħ²/(2m_e) = 3.80998 eV Å² is worth hard-coding: it is the single most useful sanity check in this literature (effective masses, band curvatures, ARPES fits all use it).\n\nCROSS-CHECK VALUE for Hartree/Rydberg detection: a.u. pressure = 29421.016 GPa, Ry/bohr³ = 14710.508 GPa. A code reporting a bulk modulus that is exactly 2× or ½× a literature value has a Hartree/Rydberg confusion, and the pressure unit is often the easiest place to catch it.\n\nThe 2π in the reciprocal lattice is the same class of problem as ν̃ vs k in spectroscopy: dimensionally invisible, community-dependent, and resolvable only from context (crystallographic structure factors vs band-structure Hamiltonians).",
+   "sources": [
+    "NIST CODATA 2022 complete listing (electron volt-joule, electron volt-hartree relationships; Bohr radius; Hartree energy)",
+    "VASP and Quantum ESPRESSO documentation for the printed unit conventions",
+    "phonopy documentation (THz default)",
+    "All pressure and free-electron conversions derived in-session at 20-digit precision"
+   ]
+  },
+  {
+   "name": "Molecular-dynamics simulation unit sets (LAMMPS real/metal/electron, GROMACS, AMBER, reduced LJ)",
+   "aliases": [
+    "units real",
+    "units metal",
+    "units lj",
+    "reduced units",
+    "LJ units",
+    "GROMACS units",
+    "AMBER internal units",
+    "simulation units"
+   ],
+   "used_in": "Classical and ab initio molecular dynamics, coarse-grained and soft-matter simulation, biomolecular simulation, materials MD, statistical-mechanics model studies (LJ fluids, hard spheres, polymer melts).",
+   "generators": [
+    {
+     "tex": "\\varepsilon\\ (\\text{LJ well depth})",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\varepsilon"
+    },
+    {
+     "tex": "\\sigma\\ (\\text{LJ diameter})",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\sigma"
+    },
+    {
+     "tex": "m\\ (\\text{particle mass})",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "m"
+    },
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\tau (reduced time, LJ units)",
+     "relation": "\\tau = \\sigma\\sqrt{m/\\varepsilon};\\ t^{*} = t/\\tau;\\ T^{*} = k_BT/\\varepsilon;\\ \\rho^{*} = \\rho\\sigma^3;\\ P^{*} = P\\sigma^3/\\varepsilon;\\ q^{*} = q/\\sqrt{4\\pi\\varepsilon_0\\sigma\\varepsilon}",
+     "why": "Reduced LJ units are a genuine three-generator system (ε, σ, m) plus k_B, but the generators are per-model parameters. Argon anchors (ε/k_B = 119.8 K, σ = 3.405 Å, m = 39.948 u) are conventional but not universal."
+    },
+    {
+     "symbol": "t (AMBER internal time unit)",
+     "relation": "1\\ \\text{AMBER time unit} = \\sqrt{\\dfrac{1\\,\\mathrm{u}\\cdot 1\\,\\mathrm{\\AA}^2}{1\\,\\mathrm{kcal\\,mol^{-1}}}} = 48.888\\,213\\ \\mathrm{fs} = 1/20.455\\ \\mathrm{ps}",
+     "why": "AMBER's 20.455 is a notorious magic number that appears bare in input files and analysis scripts with no explanation. Derived in-session from the definition; it is exactly the time unit implied by choosing Å, u and kcal/mol as the independent units."
+    },
+    {
+     "symbol": "LAMMPS \"units electron\"",
+     "relation": "\\text{energy in } E_h,\\ \\text{length in bohr},\\ \\text{BUT time in fs, mass in u, pressure in Pa, dipole in D, field in V/cm}",
+     "why": "A deliberately INCONSISTENT hybrid: it looks like Hartree atomic units on two axes and is not on the others. Any tool that pattern-matches 'hartree + bohr' to atomic units will get the time and mass wrong by factors of 41.34 and 1822.9 respectively."
+    }
+   ],
+   "fingerprints": [
+    "'units lj', 'units real', 'units metal', 'units electron' (LAMMPS input scripts)",
+    "T* = 0.85, ρ* = 0.9, reduced-unit phase diagrams; 'in reduced units'",
+    "kcal/mol/Å² force constants (CHARMM/AMBER) vs kJ/mol/nm² (GROMACS/OPLS)",
+    "'dt = 0.002' with ps implied (GROMACS) vs 'dt = 2' with fs implied (NAMD/AMBER)",
+    "GROMACS unit set: nm, ps, kJ/mol, u, e, bar, K",
+    "The number 20.455 or 48.888 in AMBER contexts; 332.0637 in CHARMM/AMBER electrostatics; 1389.35458 in GROMACS"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Force-field form: E_{\\rm elec} = C\\dfrac{q_iq_j}{r_{ij}} with C = 332.063\\,7\\ \\mathrm{kcal\\,\\AA\\,mol^{-1}e^{-2}} (AMBER/CHARMM, r in \\AA) or C = 1389.354\\,58\\ \\mathrm{kJ\\,nm\\,mol^{-1}e^{-2}} (GROMACS, r in nm). Both equal e^2N_A/(4\\pi\\varepsilon_0) in their respective units. In reduced LJ units with the charge rescaling above, E = q_i^{*}q_j^{*}/r^{*}.",
+    "gauss_law": "N/A: MD codes use Ewald/PME rather than differential Maxwell equations. (Ewald splitting parameters carry their own unit conventions: \\alpha in \\AA^{-1} or nm^{-1}.)",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "N/A: classical MD. For ab initio MD the electronic problem is in atomic units and only the nuclear trajectory uses these unit sets — which is exactly where the LAMMPS 'units electron' hybrid bites."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "Two distinct things are bundled here and the tool should keep them separate:\n(1) REDUCED LJ UNITS are a legitimate three-generator system with per-model generators (ε, σ, m). Fully handled by the needs_custom_generators path, exactly like effective atomic units.\n(2) SIMULATION-PACKAGE UNIT SETS (real, metal, electron, GROMACS, AMBER) are arbitrary, sometimes deliberately inconsistent, tuples of independent units. They are not generator systems at all; they are lookup tables. The right implementation is a hard-coded dictionary per package, not a linear solve.\n\nThe LAMMPS 'units electron' set is the sharpest cautionary tale in this family: energy in hartree, length in bohr, time in FEMTOSECONDS, mass in AMU. A reader (or a program) seeing hartree and bohr will conclude 'atomic units' and be wrong about time by 41.34× and mass by 1822.9×. Detection must never rest on two axes agreeing.\n\nThe AMBER 48.888213 fs time unit was derived in-session from √(u·Å²/(kcal/mol)) and matches the documented 1/20.455 ps.\n\nAll LAMMPS unit definitions above were read directly from the current LAMMPS documentation in-session.",
+   "sources": [
+    "LAMMPS units documentation, https://docs.lammps.org/units.html (fetched and read in-session; real/metal/electron/lj sets reproduced above)",
+    "GROMACS reference manual, units chapter",
+    "AMBER reference manual (time unit 1/20.455 ps); derivation reproduced in-session",
+    "NIST CODATA 2022 (Avogadro, elementary charge, vacuum permittivity) for the 332.0637 / 1389.35458 electrostatic constants"
+   ]
+  },
+  {
+   "name": "Magnetic-resonance units (NMR/EPR: ppm, Hz, gauss, MHz/T)",
+   "aliases": [
+    "NMR units",
+    "EPR/ESR units",
+    "chemical shift units",
+    "hyperfine units",
+    "spin-Hamiltonian units"
+   ],
+   "used_in": "NMR and EPR/ESR spectroscopy (experimental and computational), NMR crystallography, paramagnetic resonance in solids, quantum computing with spin qubits, MRI physics.",
+   "generators": [
+    {
+     "tex": "h",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "h"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\delta (chemical shift)",
+     "relation": "\\delta\\ [\\mathrm{ppm}] = \\dfrac{\\nu - \\nu_{\\rm ref}}{\\nu_{\\rm ref}}\\times10^{6};\\ \\text{from calculation: } \\delta = \\sigma_{\\rm ref} - \\sigma\\ \\text{(note the SIGN REVERSAL between shielding } \\sigma\\ \\text{and shift } \\delta)",
+     "why": "Dimensionless, so dimensionally trivial — but the sign flip between the computed shielding σ and the reported shift δ, plus the choice of reference (TMS for ¹H/¹³C/²⁹Si, CFCl₃ for ¹⁹F, nitromethane vs ammonia for ¹⁵N — the last two differ by 380.5 ppm), makes it a real conversion problem the tool can help with."
+    },
+    {
+     "symbol": "A (hyperfine coupling)",
+     "relation": "A[\\mathrm{MHz}] = \\dfrac{g\\mu_B}{h}A[\\mathrm{mT}] = 13.996\\,244\\,917\\,g\\ \\mathrm{MHz\\,mT^{-1}};\\ \\text{for } g_e = 2.002\\,319:\\ 28.024\\,951\\,386\\ \\mathrm{MHz\\,mT^{-1}} = 2.802\\,495\\,139\\ \\mathrm{MHz\\,G^{-1}}.\\ \\text{Also } A[\\mathrm{cm^{-1}}] = A[\\mathrm{MHz}]/29\\,979.2458",
+     "why": "Hyperfine couplings are reported in MHz (modern EPR, and computation), in gauss or mT (older EPR, field-swept spectra), and in cm⁻¹ (optical/magneto-optical work). The MHz↔mT conversion is g-DEPENDENT, so it is not a pure unit conversion — it requires the g-value of the species."
+    },
+    {
+     "symbol": "B (resonance field)",
+     "relation": "h\\nu = g\\mu_B B\\ \\Longrightarrow\\ B[\\mathrm{mT}] = \\dfrac{71.447\\,735\\,2}{g}\\,\\nu[\\mathrm{GHz}];\\ \\text{X-band } \\nu = 9.5\\ \\mathrm{GHz},\\ g=2 \\Rightarrow B = 339.38\\ \\mathrm{mT}",
+     "why": "Field-swept EPR spectra are indexed by B; the conversion to energy requires g. Derived in-session."
+    },
+    {
+     "symbol": "J (scalar/indirect coupling)",
+     "relation": "J\\ \\text{in Hz (field-independent)};\\ \\text{reduced coupling } K_{ij} = \\dfrac{4\\pi^2}{h\\gamma_i\\gamma_j}J_{ij}\\ \\text{in } \\mathrm{T^2\\,J^{-1}}\\ \\text{or } 10^{19}\\,\\mathrm{T^2\\,J^{-1}}",
+     "why": "J is nucleus-pair-dependent; K is the nucleus-independent quantity used for comparing computed couplings across isotopes. Converting between them requires both magnetogyric ratios."
+    },
+    {
+     "symbol": "\\gamma (magnetogyric ratio)",
+     "relation": "\\gamma/2\\pi:\\ {}^1\\mathrm H = 42.577\\,478\\,461\\ \\mathrm{MHz\\,T^{-1}};\\ \\text{electron} = 28\\,024.951\\,3861\\ \\mathrm{MHz\\,T^{-1}};\\ \\text{neutron} = 29.164\\,6935\\ \\mathrm{MHz\\,T^{-1}};\\ \\text{nuclear magneton} = 7.622\\,593\\,2188\\ \\mathrm{MHz\\,T^{-1}}",
+     "why": "γ and γ/2π are both called 'the gyromagnetic ratio' and differ by 2π — dimensionally invisible. CODATA lists both (γ_p = 2.6752218708e8 s⁻¹T⁻¹ vs γ_p/2π = 42.577478461 MHz/T)."
+    }
+   ],
+   "fingerprints": [
+    "'ppm', 'δ (ppm)', 'σ_iso', 'GIAO', 'chemical shielding', 'TMS reference'",
+    "'J (Hz)', 'J_{HH}', '³J', coupling constants of 1–200 Hz",
+    "'X-band', '9.5 GHz', 'Q-band', 'W-band'; fields in mT or G",
+    "'g-tensor', 'g = 2.0023', 'A_iso', 'hyperfine coupling in MHz' or 'in gauss'",
+    "'spin Hamiltonian', 'zero-field splitting D and E' (in cm⁻¹ or GHz — another fork)",
+    "'400 MHz spectrometer' meaning a ¹H Larmor frequency, i.e. B₀ = 9.39 T"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no electrostatic content.",
+    "gauss_law": "N/A. The relevant field relation is the local field at the nucleus, B_{\\rm loc} = B_0(1-\\sigma), with \\sigma the shielding tensor.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "Spin Hamiltonian, written in FREQUENCY units (\\hat H/h in Hz or MHz):\\newline \\dfrac{\\hat H}{h} = \\dfrac{\\mu_B}{h}\\mathbf B\\cdot\\mathbf g\\cdot\\hat{\\mathbf S} + \\hat{\\mathbf S}\\cdot\\mathbf A\\cdot\\hat{\\mathbf I} + \\hat{\\mathbf S}\\cdot\\mathbf D\\cdot\\hat{\\mathbf S} - \\dfrac{g_N\\mu_N}{h}\\mathbf B\\cdot\\hat{\\mathbf I}\\newline NMR: \\nu_i = \\dfrac{\\gamma_i}{2\\pi}B_0(1-\\sigma_i);\\quad \\hat H/h = -\\sum_i \\nu_i\\hat I_{zi} + \\sum_{i<j}J_{ij}\\hat{\\mathbf I}_i\\cdot\\hat{\\mathbf I}_j.\\newline EPR resonance condition: h\\nu = g\\mu_B B."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "The single generator is h = 1 (energies expressed as frequencies), which is shared with the spectroscopic-equivalence entry. What makes this a separate row is that several of the 'conversions' are NOT unit conversions at all — they require a physical parameter (g-value, magnetogyric ratio, reference compound). The tool must model these as parameterized conversions and refuse to run them without the parameter.\n\nSpecifically: MHz ↔ mT for a hyperfine coupling is g-dependent; ppm ↔ Hz is spectrometer-frequency-dependent; J ↔ K is isotope-pair-dependent. A units engine that treats 'MHz to gauss' as a fixed factor will be wrong for every species with g ≠ 2.0023, which includes essentially all transition-metal and lanthanide complexes (g from 1.4 to 10+).\n\nZero-field splitting D and E are reported in cm⁻¹ (chemistry), GHz (physics) or MHz (quantum-computing NV-centre work: D = 2.87 GHz for NV⁻); all three are current.\n\nAll γ/2π values above read directly from the CODATA 2022 listing; the 71.4477/g mT-per-GHz relation and the 2.802495 MHz/G electron value were derived in-session and agree with CODATA's electron gyromagnetic ratio to all printed digits.",
+   "sources": [
+    "NIST CODATA 2022 complete listing (proton, electron, neutron, shielded-proton gyromagnetic ratios in both s⁻¹T⁻¹ and MHz T⁻¹; nuclear magneton in MHz/T; Bohr magneton in Hz/T)",
+    "IUPAC recommendations on NMR chemical-shift referencing (unified Ξ scale)",
+    "Derived in-session: B[mT] = 71.4477/g × ν[GHz]; 28.0249 MHz/mT for g_e"
+   ]
+  },
+  {
+   "name": "Historical X-ray and spectroscopic length units (X unit, kX, ångström star; air vs vacuum wavelengths)",
+   "aliases": [
+    "siegbahn unit",
+    "xu",
+    "kX unit",
+    "Å*",
+    "Bearden scale",
+    "air wavelengths"
+   ],
+   "used_in": "Pre-1950 X-ray crystallography and X-ray spectroscopy (lattice constants and wavelengths in kX), X-ray wavelength metrology up to the 1990s (Å*), and — still today — atomic line lists and astronomical spectroscopy, where wavelengths above 200 nm are conventionally quoted in air.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\lambda\\ (\\text{X unit / kX})",
+     "relation": "1\\ \\mathrm{xu(Cu\\,K\\alpha_1)} = 1.002\\,076\\,97(28)\\times10^{-13}\\ \\mathrm{m};\\ 1\\ \\mathrm{xu(Mo\\,K\\alpha_1)} = 1.002\\,099\\,52(53)\\times10^{-13}\\ \\mathrm{m};\\ 1\\ \\mathrm{kX} = 10^3\\ \\mathrm{xu} \\approx 1.002\\,077\\ \\mathrm{\\AA}",
+     "why": "Siegbahn's 1925 x unit was INTENDED to be exactly 10⁻³ Å but is about 2 parts per 1000 larger. Every pre-1947 crystallographic lattice constant published 'in Å' is really in kX and is therefore ~0.2% too small when read as ångström. There are TWO x units (Cu and Mo anchored), differing from each other by 2.2×10⁻⁵ relative."
+    },
+    {
+     "symbol": "\\lambda\\ (\\text{\\AA ngstr\\\"om star})",
+     "relation": "1\\ \\mathrm{\\AA}^{*} = 1.000\\,014\\,95(90)\\times10^{-10}\\ \\mathrm{m};\\ \\text{defined by } \\lambda(\\mathrm{W\\,K\\alpha_1}) \\equiv 0.209\\,010\\ \\mathrm{\\AA}^{*}\\ \\text{exactly (Bearden 1965)}",
+     "why": "An intermediate practical scale used for X-ray wavelengths from 1965 until direct SI-traceable measurements superseded it. Values on the Å* scale differ from SI ångström in the 5th decimal — irrelevant for structure but not for X-ray metrology."
+    },
+    {
+     "symbol": "\\lambda_{\\rm air}\\ \\text{vs}\\ \\lambda_{\\rm vac}",
+     "relation": "\\lambda_{\\rm vac} = n(\\lambda, T, p, \\text{humidity})\\,\\lambda_{\\rm air};\\ n \\approx 1.000\\,277\\ \\text{at 500 nm, 15\\,°C, 101.325 kPa, dry air (Edl\\'en 1966 / Ciddor 1996)}",
+     "why": "NOT a constant factor: n depends on wavelength, temperature, pressure and humidity. This is genuinely outside a multiplicative-generator formalism and requires a dispersion formula. Convention: NIST ASD and classical line tables give AIR wavelengths above 200 nm and VACUUM below; wavenumbers are always vacuum."
+    },
+    {
+     "symbol": "\\mathrm{\\AA}\\ (\\text{historical})",
+     "relation": "\\text{Pre-1960: } 1\\ \\mathrm{\\AA}\\ \\text{defined via the red Cd line} \\ (\\lambda = 6438.4696\\ \\mathrm{\\AA}\\ \\text{in dry air, 15\\,°C, 760 mmHg}).\\ \\text{Since 1960: } 1\\ \\mathrm{\\AA} \\equiv 10^{-10}\\ \\mathrm{m}\\ \\text{exactly}",
+     "why": "A pre-1960 ångström is not exactly 10⁻¹⁰ m. The difference is ~10⁻⁷ relative, negligible for chemistry, relevant only in metrology archaeology."
+    }
+   ],
+   "fingerprints": [
+    "'kX', 'kX units', 'x units', 'xu', 'Siegbahn scale' — pre-1950 crystallography and X-ray spectroscopy",
+    "'Å*' or 'ångström star' — X-ray wavelength tables 1965–1990s",
+    "Lattice constants quoted to 5 figures in papers dated before ~1947",
+    "'air wavelength' / 'vacuum wavelength' stated explicitly; or a line list crossing 200 nm with a visible discontinuity in convention",
+    "'mμ' for nanometre and 'μ' for micron (pre-1960 IR literature)"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: these are length-unit definitions with no physical-law content.",
+    "gauss_law": "N/A.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "N/A: no dynamical content. The relevant relations are metrological: Bragg's law n\\lambda = 2d\\sin\\theta (unit-agnostic, which is exactly why a kX/\\AA{} confusion propagates silently from \\lambda into d); and \\tilde\\nu = 1/\\lambda_{\\rm vac}."
+   },
+   "schema_fit": "unsupported",
+   "scope_tier": "v2",
+   "notes": "Marked UNSUPPORTED deliberately, and the reason is instructive for the schema.\n\nThe kX/xu/Å* part IS a plain multiplicative rescaling of a length and could be handled as a unit definition (with the caveat that xu comes in Cu- and Mo-anchored flavours). But the air/vacuum wavelength convention is a WAVELENGTH-DEPENDENT, non-multiplicative transform requiring the Edlén or Ciddor dispersion formula plus ambient conditions. No generator table, and no linear system over dimension exponents, can express it. It belongs in a numeric-converter module with an explicit refractive-index model, not in the units formalism.\n\nThis is the family's clearest example of a convention that a dimensional-analysis engine must recognize and REFUSE, rather than approximate. Recommend the tool detect the air-wavelength convention (a spectroscopic wavelength above 200 nm quoted to 4+ decimals, or the phrase 'air wavelength') and emit a warning with the ~0.03% magnitude of the effect rather than silently treating λ_air as λ_vac.\n\nCODATA 2022 values for xu(Cu Kα₁), xu(Mo Kα₁) and Å* read directly from the NIST listing. These are among the few CODATA entries that carry significant uncertainty (2.8e-7 and 9.0e-7 relative), which itself signals that they are legacy conversion factors rather than defined units.\n\nPractical relevance today: reading pre-1950 structural literature (0.2% lattice-constant offsets), and reading atomic line lists (air/vacuum). Both are real, both are v2.",
+   "sources": [
+    "NIST CODATA 2022 complete listing (Copper x unit, Molybdenum x unit, Ångström star — read directly)",
+    "J. A. Bearden, 'X-Ray Wavelengths', Rev. Mod. Phys. 39, 78 (1967) — the Å* scale and W Kα₁ = 0.2090100 Å* definition",
+    "IUPAC Recommendations 1991, Nomenclature system for X-ray spectroscopy (historical unit discussion)",
+    "Wikipedia 'X unit'; sizes.com 'X unit' entry (Siegbahn 1925, calcite (200) spacing definition)",
+    "NIST Atomic Spectra Database documentation (air/vacuum 200 nm convention); Edlén (1966), Ciddor (1996) refractive-index formulae"
+   ]
+  }
+ ],
+ "family_notes": "CROSS-SYSTEM OBSERVATIONS, TRAPS, AND WHERE THE GENERATOR-TABLE SCHEMA BREAKS\n\n=== 1. THE DEFINING PROBLEM OF THIS FAMILY: DIMENSIONALLY INVISIBLE FACTORS OF 2 ===\n\nHartree and Rydberg atomic units are DIMENSIONALLY IDENTICAL. E_h and Ry have the same exponent tuple (1,2,-2,0,0); a₀ = 1 in both; ħ = 1 in both; momentum unit ħ/a₀ = 1 in both. A dimension-checker will validate H = -½∇² - Z/r and H = -∇² - 2Z/r with equal enthusiasm. This is not an edge case — it is the family's central hazard, and it recurs at every level:\n  - Hartree vs Rydberg atomic units (factor 2 in energy)\n  - Hartree-like vs Rydberg-like EFFECTIVE atomic units (same factor 2, even less often declared)\n  - h vs ħ, ν vs ω, ν̃ vs k (factor 2π, four times over)\n  - Flux quantum h/e vs h/2e (factor 2, decided by whether Cooper pairs are involved)\n  - Heisenberg -2J vs -J vs +J, and Σ_<ij> vs ½Σ_{i≠j} (up to factor 4 and a sign)\n  - Hyperpolarizability Taylor vs perturbation expansion (factor 2 in β, 6 in γ)\n  - Atomic unit of intensity with and without the ½ (factor 2)\n  - Susceptibility χ_SI = 4πχ_cgs and demagnetizing N_SI = N_cgs/4π (factor 4π, twice)\nThe numeric_factor and emits fields are not a convenience here — they are the entire information content that distinguishes half these systems.\n\nDiagnostic tip worth building in: Hartree and Rydberg a.u. AGREE on length and momentum and DISAGREE on energy, time, velocity, mass, charge and pressure. That asymmetric signature (bohr present, energy 2× off) is a reliable detector. Concretely: a.u. pressure = 29421.016 GPa vs Ry/bohr³ = 14710.508 GPa; c = 137.036 vs 274.072.\n\n=== 2. WHERE THE 5-TUPLE (M, L, T, Θ, I) IS INSUFFICIENT ===\n\n(a) AMOUNT OF SUBSTANCE IS MISSING. kcal/mol, kJ/mol, cm³/mol, J mol⁻¹K⁻¹, eV/atom, meV/atom, eV/f.u. all carry a per-amount divisor with true SI dimension N⁻¹. Under the 5-tuple, 1 kcal/mol and 1 kcal are indistinguishable — a silent 6.022×10²³ error, the largest available in this family, in the single most-used reporting convention in chemistry. STRONG RECOMMENDATION: add an optional sixth exponent N, with N_A as the generator that collapses it. The 'per atom' and 'per formula unit' divisors are integer cell counts, not N_A, and need a separate slot again.\n\n(b) RECIPROCAL RELATIONS ARE NOT LINEAR RESCALINGS. E = hc/λ maps energy to wavelength by inversion, not multiplication. No linear solve over dimension exponents can produce it. The spectroscopic converter needs an explicit graph with one reciprocal edge (energy ↔ wavelength) alongside the multiplicative ones (energy ↔ cm⁻¹, Hz, K, eV, J/mol).\n\n(c) SOME CONVENTIONS ARE NOT DIMENSIONAL AT ALL. Air-vs-vacuum wavelength is a wavelength-, temperature-, pressure- and humidity-dependent transform (Edlén/Ciddor). Watson A- vs S-reduced Hamiltonians are different effective operators. Hückel α/β are fitted, non-transferable parameters. In each case the correct behaviour is to DETECT and REFUSE, not to approximate. The schema's 'unsupported' value should be used freely here.\n\n(d) MATERIAL PARAMETERS AS GENERATORS. Effective atomic units (m*, ε_r), lattice units (a), model units (t, J), and reduced LJ units (ε, σ, m) all have generator tables that are structurally identical to the universal-constant systems but whose entries are per-paper numbers. The 'needs_custom_generators' path must accept these as user input; there is no default that is not wrong.\n\n=== 3. THE MAGNETIC α AMBIGUITY (worth its own alarm) ===\n\n'Atomic units' is ambiguous by a factor of α ≈ 1/137 in EVERY magnetic quantity, and by nothing at all in every electric one. The SI-based atomic unit of magnetic flux density is ħ/(ea₀²) = 2.35051757077×10⁵ T; the Gaussian-based one is e/a₀² = 1.7152555×10³ T = 1.7152555×10⁷ G. I verified in-session that the ratio is exactly α (α × 2.35051757e5 T = 1715.2555 T, and e/a₀² computed independently in Gaussian units = 1.71525554e7 G — agreement to 8 figures).\n\nThe ONLY reliable textual discriminator is whether magnetic terms carry an explicit 1/c: H_Z = (1/2c)(L+2S)·B (Gaussian) vs H_Z = ½(L+2S)·B (SI-based). A paper stating 'in atomic units, B = 0.1' with no Hamiltonian is unresolvable. Recommend a hard warning rather than a conversion.\n\n=== 4. RATIONALIZATION IS NOT WHERE PEOPLE EXPECT IT ===\n\nSetting 4πε₀ = 1 makes Coulomb's law rationalization-free (F = q₁q₂/r²) but puts 4π BACK into Gauss's law (∇·E = 4πρ, since ε₀ = 1/4π). Both Hartree atomic units and Gaussian units share this. Heaviside–Lorentz atomic units (∇·E = ρ, e² = 4πα) are essentially absent from AMO/quantum-chemistry literature and I would not implement them; they appear only where this family touches QED.\n\nHalf-integer dimension exponents appear exactly where a system is Gaussian-rendered: charge = M^½L^{3/2}T⁻¹ = (0.5, 1.5, -1, 0, 0). Both renderings of the same physical system must be supported and must be known to be the same system — Hartree a.u. is a 4-generator integer-exponent system in its SI rendering and a 3-generator half-integer system in its Gaussian rendering, with identical physics.\n\n=== 5. COMPOSABILITY: THESE ARE NOT MUTUALLY EXCLUSIVE SYSTEMS ===\n\nReal papers stack conventions. A condensed-matter paper may declare ħ = 1, k_B = 1, a = 1, t = 1 in one sentence — four independent switches. A quantum-chemistry paper computes in Hartree a.u., reports energies in kcal/mol, dipoles in debye, polarizabilities in Å³ and temperatures in kelvin, all in the same table. A magnetism paper reports fields in tesla, moments in emu, susceptibilities in cm³/mol and exchange constants in cm⁻¹.\n\nThe tool should therefore model these as COMPOSABLE MODIFIERS, not as a flat list of mutually exclusive systems. In particular k_B = 1 is orthogonal to everything else in the family: it is the only generator here that touches Θ, and no atomic-unit system includes it by default. 'T = 0.001 in atomic units' means 315.8 K; 'T = 300' in the same paper almost certainly means kelvin. Flag, do not guess.\n\n=== 6. HYBRID / DELIBERATELY INCONSISTENT UNIT SETS ===\n\nLAMMPS 'units electron' (hartree + bohr + FEMTOSECOND + AMU) is the cautionary example: two axes look like atomic units and two are not, off by 41.34× in time and 1822.9× in mass. Detection must never rest on two axes agreeing. Simulation-package unit sets (LAMMPS real/metal/electron, GROMACS, AMBER) are lookup tables, not generator systems, and should be hard-coded as such.\n\n=== 7. VERIFICATION METHOD USED ===\n\nI downloaded the NIST CODATA 2022 complete listing (allascii.txt, 366 lines) and read every relevant constant directly rather than from memory. Every derived number in this table was then recomputed in-session at 20-significant-figure precision and cross-checked against CODATA's own relationship entries. Independent checks that all passed:\n  - m_ec² computed as ½(2/α)² Ry = 37557.7301 Ry = 510998.95 eV, matching CODATA's electron mass energy equivalent\n  - ƛ_C/a₀ = 7.2973525644e-3 = α to 9 figures\n  - Gaussian a.u. of B computed two ways (α × SI value, and e/a₀² in cgs) agreeing to 8 figures\n  - R_H = R_∞/(1+m_e/m_p) = 109677.5834 cm⁻¹, matching the tabulated literature value exactly\n  - E_n = -(Zα)²/2 × m_ec² reproducing -13.6057 eV for hydrogen\n  - Rotational-constant magic numbers 505379.008 MHz·u·Å² and 16.857629 cm⁻¹·u·Å² derived from h and m_u\n  - AMBER's 20.455 recovered as √(u·Å²/(kcal/mol))⁻¹ = 48.888213 fs\n  - μ_eff prefactors 2.827869 (cgs) and 797.727 (SI) derived from CODATA\nMagnetism conversion factors were taken from the canonical NIST/Goldfarb–Fickett table (fetched in-session via Lake Shore's reproduction) and spot-checked by independent derivation; note that one commonly-circulated version of that table garbles the specific-magnetization row (1 emu/g = 1 A m²/kg exactly in the Sommerfeld convention; the 4π×10⁻⁷ factor belongs to the Kennelly Wb·m/kg target).\n\n=== 8. ITEMS I AM GENUINELY UNCERTAIN ABOUT ===\n\n  - The exact prevalence of the 3-generator Gaussian vs 4-generator SI rendering of RYDBERG atomic units. Quantum ESPRESSO documents the 4-generator form (ħ = 4πε₀ = 1, m = ½, e² = 2); older atomic-physics literature is Gaussian. I have recorded both but have not established which dominates.\n  - The hyperpolarizability convention fork: I am confident the fork exists and that β differs by 2 and γ by 6 between Taylor and perturbation conventions, and I cite Willetts et al. (1992) from knowledge — I did not re-verify that reference in-session.\n  - The Weiss magneton value (μ_B/4.97) is from memory and was not verified against a primary source; it is historical trivia and low-stakes.\n  - Pre-1960 ångström definition details (Cd red line value) are from memory.\n  - Whether any current literature uses Heaviside–Lorentz atomic units. I found none and believe it is empty, but cannot prove a negative.\n\n=== 9. SCOPE RECOMMENDATION SUMMARY ===\n\nv1 (build first): Hartree a.u. (both renderings), Rydberg a.u., effective/excitonic a.u., quantum-chemistry molar units, k_B = 1, spectroscopic energy equivalences, cgs-emu magnetism, SI magnetism conventions, cgs-esu molecular properties (debye/Å³), solid-state eV–Å units.\nv2 (build second): relativistic ħ = m_e = c = 1, molecular-constant conventions, condensed-matter ħ = k_B = a = 1, model-Hamiltonian units, MD simulation unit sets, magnetic-resonance units, historical X-ray length units.\nNo entry in this family is out of scope for a tool aimed at theoretical-physics reading, but the model-Hamiltonian sign conventions and the air/vacuum wavelength transform should be surfaced as warnings rather than automated conversions."
+}

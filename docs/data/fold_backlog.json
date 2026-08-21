@@ -1,0 +1,182 @@
+[
+ {
+  "batch": "backlog",
+  "name": "Kolb–Turner units (ħ = c = k_B = 1; G retained as m_Pl⁻², m_Pl unreduced)",
+  "status": "confirmed",
+  "magnitude": "m_Pl = G^(−1/2) = 1.2208901×10¹⁹ GeV = 2.1764343×10⁻⁸ kg (recomputed from CODATA-2022 ħ, c, G). M̄_Pl = 2.4353232×10¹⁸ GeV. √(8π) = 5.0132565; 8π = 25.132741. ℓ_P = 1.6162550×10⁻³⁵ m; t_P = 5.3912464×10⁻⁴⁴ s. Radiation-era coefficients recomputed: √(8π³/90) = 1.6601547 (H = 1.66 g_*^{1/2}T²/m_Pl) and 1/(2×1.6601547) = 0.3011768 (t = 0.301 g_*^{−1/2} m_Pl/T²). Cost of reading m_Pl as M̄_Pl: ×5.013 ",
+  "fingerprint": "Literal 'm_pl = 1.22×10¹⁹ GeV' or 'G ≡ m_pl⁻²'. THE DISCRIMINATOR IS THE 8π IN THE FRIEDMANN EQUATION: H² = 8πρ/3m_Pl² (Kolb–Turner) vs H² = ρ/3M̄² (reduced Planck) vs H² = 8πρ/3 (geometrized G=1). Action coefficient m_Pl²/16π (vs M̄²/2 vs 1/16πG). The bare coefficients 1.66 and 0.301. 'g_*' co-occu",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Every number reproduces to the last digit from CODATA-2022: m_Pl = 2.176434342e-8 kg = 1.2208901e19 GeV; M̄_Pl = 2.4353235e18 GeV; √(8π) = 5.0132565; 8π = 25.132741; ℓ_P = 1.6162550e-35 m; t_P = 5.3912464e-44 s; √(8π³/90) = 1.66015466; 1/(2×that) = 0.30117676. Dimension 5-tuples all correct (ħ, c, k_B, ε₀). Rank arithmetic correct: 4 generators, rank 4, residual rank 1 (mass) vs rank 0 for Planck/reduced-Planck — that is the row's real payload and it holds. Not a duplicate: §4 already promises Kolb–Turner as v1 and §8 lists it, so this is the promised enumeration. Two schema notes. (1) `role: "
+ },
+ {
+  "batch": "backlog",
+  "name": "GADGET / AREPO / GIZMO cosmological code units (h⁻¹kpc, 10¹⁰ h⁻¹M_⊙, km s⁻¹; G = 43007.1)",
+  "status": "confirmed",
+  "magnitude": "G_internal = G_cgs·[M][T]²/[L]³ = 6.672×10⁻⁸ × 1.989e43 × (3.085678e16)²/(3.085678e21)³ = 43007.1 — recomputed, and it pins G_cgs = 6.672×10⁻⁸ exactly (1986-era value). With CODATA-2022 G = 6.67430×10⁻⁸ the same triple gives 43021.9, a 3.45×10⁻⁴ numeric-epoch offset baked into every legacy run. [T] = 3.085678×10¹⁶ s = 0.977812 h⁻¹ Gyr. H₀ = 0.1 EXACTLY in internal units (0.1 h km s⁻¹ kpc⁻¹ ÷ h km ",
+  "fingerprint": "Parameter-file tokens UnitLength_in_cm 3.085678e21, UnitMass_in_g 1.989e43, UnitVelocity_in_cm_per_s 1e5, HubbleParam, ComovingIntegrationOn (§6.5 cue vi). The literal constant 43007.1 — treat its exact digits as a code-vintage tag pinning G_cgs. HUBBLE 3.2407789e-18 (= h s⁻¹). Axis labels '[h⁻¹ Mpc",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Arithmetic all verified: G_int = 6.672e-8 × 1.989e43 × (3.085678e16)²/(3.085678e21)³ = 43007.1057 (so the digits do pin G_cgs = 6.672e-8); with CODATA-2022 G the same triple gives 43021.931, offset 3.447e-4 ✓. [T] = 3.085678e16 s = 0.9778109 h⁻¹ Gyr ✓. H₀ = 0.1 exactly ✓. [ρ] = 6.7699112e-22 h² g cm⁻³ ✓. ρ_crit = 0.03/(8π·43007.1) = 2.7754997e-8 code = 277.550 h² M_⊙ kpc⁻³ ✓ (independent closure of the triple). u = 1 (km/s)² ↔ 48.459 K at μ = 0.6 ✓. HUBBLE 3.2407788e-18 = 100 km/s/Mpc in cgs, i.e. per h ✓. The h-exponent map (L,M ∝ h⁻¹; V ∝ h⁰; T ∝ h⁻¹; ρ ∝ h²) and the h-freedom of G (−3+1+2 ="
+ },
+ {
+  "batch": "backlog",
+  "name": "Schrödinger units (ħ = G = e²/4πε₀ = 1 ⇒ c = 1/α = 137.036)",
+  "status": "confirmed",
+  "magnitude": "Recomputed from CODATA 2022: k_e = e²/4πε₀ = 2.3070776×10⁻²⁸ J·m. M_S = √(k_e/G) = 1.8592091×10⁻⁹ kg = 1.0429398×10¹⁸ GeV/c²; m_P/M_S = 11.706238 = α^{−1/2} ✓. L_S = 2.5927575×10⁻³² m = α^{−3/2}ℓ_P (α^{−3/2} = 1604.19) ✓. T_S = 1.1851569×10⁻³⁸ s = α^{−5/2}t_P (α^{−5/2} = 219 831) ✓. Q_S = e = 1.602176634×10⁻¹⁹ C. c in these units = 137.0359990 (verified by dividing c by L_S/T_S). Confusing Schrödi",
+  "fingerprint": "The co-occurrence of c = 137.036 AND G among the declared generators. This completes §6.4's quartet, which should be re-stated as a quintet: c = 137.036 with G ⇒ Schrödinger; c = 137.036 without G ⇒ Hartree a.u.; c = 274.072 = 2/α ⇒ Rydberg a.u.; ħ = 137.036 ⇒ Stoney; a₀ = 137.036 (in ħ/m_ec) ⇒ CODA",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Unit solve re-derived from scratch and it is correct: L_S = ħ²G^{1/2}k_e^{−3/2}, T_S = ħ³G^{1/2}k_e^{−5/2}, M_S = (k_e/G)^{1/2}. Numbers verified: k_e = 2.3070776e-28 J·m; M_S = 1.8592091e-9 kg = 1.0429398e18 GeV/c²; L_S = 2.5927575e-32 m; T_S = 1.1851569e-38 s; c/(L_S/T_S) = 137.03599909 ✓; α^{−1/2} = 11.7062376 ✓; α^{−3/2} = 1604.176 (claim says 1604.19 — fine); α^{−5/2} = 219 830 (claim says 219 831 — off by one in the last digit). Einstein equation reading G_μν = 8πα⁴T_μν verified. Rank 3 over (M,L,T), well-posed, 137 genuinely derived — the rank-lint instruction is right. TWO CORRECTIONS."
+ },
+ {
+  "batch": "backlog",
+  "name": "Physical atomic-mass scale (¹⁶O ≡ 16), pre-1961",
+  "status": "confirmed",
+  "magnitude": "amu_phys = m(¹⁶O)/16 = 15.994914619257 u / 16 = 0.99968216 u, so 1 u = 1.00031794 amu_phys ⇒ +3.17937×10⁻⁴ (317.94 ppm) on every numeric mass read on the wrong scale — recomputed, and it matches the census §5 round-3 figure 3.18×10⁻⁴. On the physical scale N_A = 6.024055×10²³ mol⁻¹ vs 6.02214076×10²³ unified. CORRECTION TO THE CENSUS FINGERPRINT: the census offers 'N_A = 6.0249 vs 6.0225×10²³' as ",
+  "fingerprint": "Publication year ≤ 1961 (physics literature) plus the token 'amu'. STRONGEST TELL: a mass table in which ¹⁶O is printed as exactly 16.000000 and ¹²C is not 12. 'Physical scale' / 'physikalische Skala'. N_A ≈ 6.024×10²³ (weak, see magnitude). ANTI-FINGERPRINT: ¹²C = 12.000000 exactly ⇒ unified scale ",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Core numbers verified: amu_phys = 15.994914619257/16 = 0.9996821637 u; 1 u = 1.0003179373 amu_phys = +317.937 ppm ✓, matching the census's 3.18e-4. N_A(physical) = 6.0240554e23 ✓. m(¹H) = 1.0081455 amu_phys ✓. Two corrections. (1) m(¹²C) = 12.0038152 amu_phys, not 12.00380 as printed. (2) The proposed correction to the census fingerprint is right in its conclusion but wrong in its attribution. Recomputed: the 1950s physical-scale Avogadro value (6.02486e23, Cohen–DuMond lineage) sits ~1.3e-4 above the scale-consistent modern figure 6.024055e23, while the scale offset itself is 3.18e-4. So the "
+ },
+ {
+  "batch": "backlog",
+  "name": "Chemical atomic-mass scale (natural oxygen ≡ 16), pre-1961",
+  "status": "confirmed",
+  "magnitude": "With the historically adopted ratio physical/chemical = 1.000275(5): unified/chemical = 1.00031794/1.000275 = 1.0000429 (42.9 ppm) — reproduces the census's 4.3×10⁻⁵. RECOMPUTED from IUPAC representative oxygen abundances (¹⁶O 0.99757, ¹⁷O 0.00038, ¹⁸O 0.00205): mean m(O) = 15.9994049 u ⇒ amu_chem = 0.99996281 u ⇒ 1 u = 1.0000372 amu_chem (37.2 ppm) and physical/chemical = 1.0002807. The 5.7×10⁻⁶ ",
+  "fingerprint": "Chemistry publication ≤ 1961; the phrase 'atomic weight' with O printed as exactly 16.0000; 'chemical scale'; a table in which OXYGEN, not carbon, is the round number; N_A ≈ 6.0224×10²³ (weak). Lint: never store or emit a bare chemical→unified factor without its uncertainty and the assumed oxygen co",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "The isotopic recomputation is right and is the row's best content: with (0.99757, 0.00038, 0.00205) the mean oxygen mass is 15.9994049 u, amu_chem = 0.99996281 u, 1 u = 1.00003719 amu_chem = 37.19 ppm, and physical/chemical = 1.0002807 against the historically adopted 1.000275 — a 5.7e-6 disagreement, comparable to terrestrial δ¹⁸O spread, which is exactly the argument for storing the factor with an uncertainty and a composition tag. unified/chemical = 1.0000429 ✓ reproduces the census's 4.3e-5. Chemical-scale N_A = 6.0223647e23 ✓. The 'only row whose factor is not a constant of nature' framin"
+ },
+ {
+  "batch": "backlog",
+  "name": "Pre-1990 as-maintained national electrical units (V_NBS / V₆₉ era, Ω_NBS)",
+  "status": "confirmed",
+  "magnitude": "V₉₀/V_NBS = 483597.9/483593.420 = 1 + 9.26398×10⁻⁶ — recomputed; on 1990-01-01 the US representation of the volt INCREASED by 9.264 ppm, so assigned voltage values DECREASED by 9.264 ppm (record the direction explicitly; it is routinely inverted). V₉₀/V₆₉ = 483597.9/483594.0 = 1 + 8.0646×10⁻⁶ (the 483594.0 figure flagged likely). OHM: the US legal ohm INCREASED by 1.69×10⁻⁶ on 1990-01-01 to match ",
+  "fingerprint": "Publication window 1972–1989 plus a Josephson or QHE measurement; explicit tokens V_NBS, V₆₉, V₇₆, Ω_NBS, 'as-maintained', 'US legal volt', 'representation of the volt'; the assigned numbers 483 593.420 or 483 594.0 appearing as a constant. ANTI-FINGERPRINT: an assigned 2e/h quoted with NO uncertain",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Verified against the NIST primary source (J. Res. NIST 94 (1989) 95). NIST used K_J = 483 593.420 GHz/V; most other laboratories used 483 594 GHz/V; K_J-90 = 483 597.9 GHz/V exactly. V₉₀/V_NBS = 1 + 9.26398e-6 ✓; V₉₀/V₆₉ = 1 + 8.06462e-6 ✓. NIST states BOTH US representations INCREASED on 1990-01-01 — volt by ~9.26 ppm, ohm by ~1.69 ppm — with the derived ampere +7.57 ppm and watt +16.84 ppm, which is exactly the row's compounding arithmetic (9.264−1.69 and 2×9.264−1.69) and independently confirms both directions. R_K-90 = 25 812.807 Ω exactly ✓. HARD CORRECTION: the ohm worked example contrad"
+ },
+ {
+  "batch": "backlog",
+  "name": "Legal ohm of 1884 (Paris International Conference of Electricians)",
+  "status": "confirmed",
+  "magnitude": "Legal ohm / international ohm = 106/106.3 = 0.99717780 ⇒ −2.8222×10⁻³ (−0.28222%), recomputed. The census's '0.25%' is the historical literature's rounded description of the same 0.3 cm change and should be replaced. Against the ABSOLUTE (SI) ohm, using 1 Ω_int = 1.00049 Ω: 1 Ω_legal = 0.99766642 Ω ⇒ −0.23336%. BOTH figures must be stored — a converter applying a blanket −0.25% is wrong by 3×10⁻⁴ ",
+  "fingerprint": "Date window 1884–1893 plus the tokens 'legal ohm' / 'ohm légal' / 'ohm of the Paris Congress'; '106 centimetres of mercury'; an explicit contrast with 'B.A. unit' or 'Siemens unit'. ANTI-FINGERPRINT: '106.3 cm' or '14.4521 g' ⇒ international ohm, NOT legal. NEVER alias legal→international (§7 rule; ",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Definitions confirmed from independent sources: the 1884 Paris legal ohm is the mercury column of 106 cm (compromise between the B.A. unit, the Siemens unit and the CGS value); the 1893 Chicago international ohm is 106.300 cm with mass 14.4521 g at 0 °C (confirmed London 1908). The 14.4521 g figure corresponds to 1.00004 mm² at ρ_Hg = 13.5951, so the two definitions share a cross-section basis and the length ratio is the operative conversion. Arithmetic verified: 106/106.3 = 0.99717780 ⇒ −0.282220%; ×1.00049 ⇒ 0.99766642 ⇒ −0.233358%. Siemens unit 100/106.3 = 0.9407338; B.A. unit from 104.7 cm"
+ },
+ {
+  "batch": "backlog",
+  "name": "Weber's electrodynamic charge and current units (the √2 against EMU)",
+  "status": "confirmed",
+  "magnitude": "√2 = 1.4142136. c_W = √2·c = 4.2397056×10⁸ m/s (modern). Weber & Kohlrausch (1856) measured 439 450×10⁶ mm/s = 4.3945×10⁸ m/s — 3.65% high, recomputed. c_W/√2 = 3.107381×10⁸ m/s, which is why that figure LOOKS like c and is precisely the retired anti-fingerprint in §6.6. Cost of a misdirected conversion: ×1.414 on q, ×2 on any energy quadratic in q, ×2 on q²/r² forces — and ×2 in the wrong directi",
+  "fingerprint": "German or German-lineage 1846–1880 electrodynamics; a constant written 'c' with value ≈4.4×10⁸ m/s or 439 450×10⁶ mm/s rather than ≈3×10⁸; the token 'elektrodynamisches Maass'; a force law containing ṙ² and rr̈; Neumann/Grassmann/Riemann comparisons. ANTI-FINGERPRINT (reinforcing §6.6): a quoted '3.",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Numbers verified: √2 = 1.4142136; c_W = √2c = 4.2397056e8 m/s; Weber–Kohlrausch 4.3945e8 m/s is 3.651% high; c_W/√2 = 3.107381e8 m/s, which is the figure §6.6 already retired as an inverted fingerprint — the reinforcement is consistent with the census. The force law as printed matches Weber's Elektrodynamische Maassbestimmungen form. Carving a converter entry (charge/current magnitudes only) out of an already-unsupported parent is the right structural move and matches §8's own framing. Holding the √2 as certain and the exponent sign as open is the correct discipline — do not let this ship gues"
+ },
+ {
+  "batch": "backlog",
+  "name": "Rotating-frame (GFD) scaling — Rossby, Ekman, Burger",
+  "status": "confirmed",
+  "magnitude": "Three invisible ×2-class forks, all definitional: (1) Ek = ν/(fL²) vs ν/(2ΩL²) vs ν/(ΩL²) — since f = 2Ω sinφ this is exactly ×2 (and ×4 wherever Ek appears squared), plus a further ×δ² = (H/L)² between the vertical and horizontal Ekman numbers; (2) Ro = U/(fL) vs U/(2ΩL) — ×2; (3) Bu = (NH/fL)² vs NH/(fL) — a square root, i.e. Bu = 4 and Bu = 2 can denote the same flow. Ekman depth δ_E = √(2ν/f) ",
+  "fingerprint": "'f-plane', 'β-plane', 'quasi-geostrophic', 'shallow water'; a bare Ro⁻¹ or Ek multiplying ẑ×u or ∇²u (§6.5 cue iv: named groups as bare PDE coefficients); declaration sentences of the form 'lengths are scaled by L, depths by H, time by f⁻¹'. Whether the Coriolis term carries an explicit 2 (i.e. 2ẑ×u",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "No overlap with any existing row (§3 has Boussinesq free-fall/diffusive, shearing-box and MHD, none of which carry f); §8 lists it. Physics checks: Ω = 7.2921e-5 s⁻¹ gives f(45°N) = 1.0312587e-4 s⁻¹ ✓; the two pressure scalings ρ₀fUL and ρ₀U² do differ by exactly Ro ✓; δ_E = √(2ν/f) reduces to √(ν/Ω) at f = 2Ω so the coincidence noted is real, and the √(ν/f) variant is the ×√2 fork ✓; Bu = (NH/fL)² vs NH/(fL) is a genuine square-root fork ✓; Ek = ν/(fL²) vs ν/(2ΩL²) is exactly ×2 ✓. Both nondimensional momentum equations are written correctly, including the fact that the advective-time form ca"
+ },
+ {
+  "batch": "backlog",
+  "name": "Geodynamo scalings and the Elsasser magnetic-field normalizations",
+  "status": "confirmed",
+  "magnitude": "Ω vs 2Ω in Λ and E: exactly ×2 (×4 where squared). Ra vs Ra* = Ra·E²/Pr: at E ~ 10⁻⁶ and Pr = 1 that is 10⁻¹², i.e. Ra = 10¹⁰ and Ra* = 10⁻² denote the same simulation — the largest single mislabel risk in the family and far beyond anything a dimensional check can see. Elsasser vs Alfvénic B units differ by √(ηΩ)/U (O(10) in Earth-like models — illustrative, flagged). SI vs Gaussian μ₀: the √(4π) ",
+  "fingerprint": "Co-occurrence of E (or Ek), Ra, Pr, Pm, Λ as bare coefficients; 'shell thickness D'; the aspect ratio r_i/r_o = 0.35 (the standard benchmark value); 'magnetostrophic'; an explicit declaration 'we scale the magnetic field by √(ρμ₀ηΩ)'; presence/absence of the explicit 2 on the Coriolis term. RANK LIN",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Verified. The benchmark momentum equation as printed is the standard Christensen-et-al. form. Ra* = Ra·E²/Pr reduces symbolically to αgΔT/(Ω²D) ✓, so at E = 1e-6, Pr = 1 the factor really is 1e-12 and Ra = 1e10 ↔ Ra* = 1e-2 denote the same run — the largest silent mislabel in the family, correctly identified. Λ_d/Λ = η/(UL) = 1/Rm ✓. The three B-normalizations are dimensionally identical and their ratios are as stated (Elsasser/Alfvénic = √(ηΩ)/U). Dimension tuples check: μ₀ = (1,1,−2,0,−2), B = (1,0,−2,0,−1), and ν, η, κ genuinely share (0,2,−1,0,0), so Pm and Pr are true over-determination r"
+ },
+ {
+  "batch": "backlog",
+  "name": "Kolmogorov (dissipation-range) units — η, u_η, τ_η",
+  "status": "confirmed",
+  "magnitude": "√3 = 1.7321 on velocity, 3 on energy (u′ convention). 18/55 = 0.327273 ⇒ C_K = 1.5 vs C₁ = 0.4909, a ×3.056 fork between two identically named constants (recomputed). Pseudo- vs true dissipation can differ by tens of percent near walls. Practical cost of a wrong Re: L/η = Re^{3/4}, so ×3 in Re is ×2.28 in scale separation and ×11.9 in grid points per direction. Re_η = 1 exactly.",
+  "fingerprint": "'η = (ν³/ε)^{1/4}'; axis labels kη, r/η, t/τ_η; 'wall units', y⁺, u_τ, 'viscous units'; declaration sentences 'we set ν = 1 and force at large scale so that ε ≈ 1'; DNS resolution statements 'k_max η ≈ 1.5' — a numerical resolution criterion, NOT a physical residue; never restore it. RANK LINT: a pa",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Rank and equivalence verified: {ν, ε, ρ} has determinant −4 over (M,L,T), so rank 3 and well-posed, and ν = ε = ρ = 1 is exactly η = u_η = τ_η = 1 ✓. Re_η = u_ηη/ν = 1 identically ✓ — a genuine free class-D property test. 18/55 = 0.327273, C₁ = 0.49091 at C_K = 1.5, ratio 3.0556 ✓. Re_λ = √(15 Re_L) re-derived and correct, including the point that it silently presumes the isotropic λ. L/η = Re^{3/4} ✓. The u′ one-component-vs-total (√3 / 3) and pseudo-vs-true dissipation forks are both real. ONE CORRECTION: '×3 in Re is ×2.28 in scale separation and ×11.9 in grid points per direction' is wrong"
+ },
+ {
+  "batch": "backlog",
+  "name": "Lattice-Boltzmann units (δx = δt = 1, c_s² = 1/3, ν = (τ−½)c_s²)",
+  "status": "confirmed",
+  "magnitude": "c_s² = 1/3 exactly; c_s = 0.5773503. ν = 1/6 at τ = 1; ν = 1/30 at τ = 0.6; ν → 0 as τ → ½ (the stability wall). DROPPING THE −½: at τ = 0.6, 0.2 vs 0.03333 — ×6, i.e. Re wrong by 6; at τ = 1, 1/3 vs 1/6 — ×2. Guo prefactor (1 − 1/(2τ)): 0.5 at τ = 1, 0.1667 at τ = 0.6 — a ×2–6 error on body forces. Diffusive vs acoustic scaling changes the physical time step by a full factor of the resolution.",
+  "fingerprint": "Tokens 'lattice units', lu, ts, mu; D2Q9 / D3Q19 / D3Q27; τ or ω = 1/τ as a bare parameter; ρ₀ = 1; the literal 1/3 or 0.3333 attached to a squared sound speed; 'we set δx = δt = 1'. ANTI-FINGERPRINT: 'c = 1' here is the lattice speed and has nothing to do with c = 1 natural units (§6.4) — an era/do",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "All arithmetic verified: c_s = 0.5773503; ν = (τ−½)/3 gives 1/6 at τ = 1 and 1/30 at τ = 0.6; dropping the −½ gives 1/3 vs 1/6 (×2) at τ = 1 and 0.2 vs 0.03333 (×6) at τ = 0.6; the Guo prefactor (1 − 1/(2τ)) is 0.5 at τ = 1 and 0.16667 at τ = 0.6. The BGK update and the D2Q9-family equilibrium are written correctly. Generators {δx, δt, ρ₀} are rank 3 and well-posed. The two hazards are correctly identified and are the row's real content: c and c_s are lattice constants (properties of the weight set) rather than physical speeds, which makes 'c = 1' here a genuine homograph against §6.4's natura"
+ },
+ {
+  "batch": "backlog",
+  "name": "CR3BP canonical (synodic) units — G(m₁+m₂) = a = n = 1, residue μ",
+  "status": "confirmed",
+  "magnitude": "Recomputed. Earth–Moon: μ = 0.01215058, DU = 384 400 km, TU = 375 699.8 s = 4.348377 d, VU = 1.023157 km/s. Sun–(Earth+Moon): μ = 3.0034806×10⁻⁶ (digits flagged likely), DU = 1.495978707×10⁸ km, TU = 5 022 635.5 s = 58.1323 d, VU = 29.78474 km/s. Jacobi factor-2 fork: quoted C values differ by exactly 2. The μ(1−μ) offset is 0.0120029 for Earth–Moon — comparable to the spread of Jacobi values betw",
+  "fingerprint": "'Synodic frame', 'barycentric rotating frame', 'canonical units'; μ = 0.0121506 or 3.00348×10⁻⁶; the coefficients ±2 on ẏ and ẋ; 'Jacobi constant'; tokens DU/TU/VU; zero-velocity-curve plots. RANK LINT: rank 3 and well-posed; NAME μ as the residue and refuse any request to restore it (§2.10). Whenev",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Structure is right — rank 3, well-posed, μ a genuine non-restorable residue, period 2π not 1, the ±2 Coriolis coefficients, and the Jacobi forks (factor 2 between C = 2Ω − v² and Ω − v²/2, plus the ±½μ(1−μ) additive) are all real and correctly stated. μ(1−μ) = 0.0120029 ✓ and is indeed comparable to the L₁/L₂ Jacobi spread, so it cannot be absorbed. L₄ at (0.4878494, 0.8660254) ✓. TWO NUMERICAL CORRECTIONS. (1) μ = 3.0034806e-6 is the SUN–EARTH mass ratio, not Sun–(Earth+Moon). With GM_⊙ = 1.32712440018e11 and GM_E+GM_M = 403 503.24 km³ s⁻², μ_Sun–EM = 3.0404235e-6 — a 1.2% error in a headline"
+ },
+ {
+  "batch": "backlog",
+  "name": "Lane–Emden polytrope scaling (θ, ξ, α) — and the n-dependent dimension of K",
+  "status": "confirmed",
+  "magnitude": "Recomputed here by RK4 integration of θ″ + (2/ξ)θ′ + θⁿ = 0 (h = 2×10⁻⁵), giving (ξ₁, −ξ₁²θ′₁, ρ_c/ρ̄): n=0 → (2.4494897 = √6, 4.8989795 = 2√6, 1); n=1 → (π = 3.1415927, π, π²/3 = 3.2898681); n=1.5 → (3.6537537, 2.7140551, 5.9907045); n=2 → (4.3528746, 2.4110460, 11.402543); n=3 → (6.8968486, 2.0182360, 54.182481); n=4 → (14.971546, 1.7972299, 622.40788); n=5 → ξ₁ = ∞ (finite mass, infinite radius",
+  "fingerprint": "Symbols θ, ξ, α with 'Lane–Emden', 'polytrope', 'polytropic index n', 'P = Kρ^{1+1/n}' or 'P = Kρ^Γ'; a table of ξ₁ and −ξ₁²θ′₁; 'we set G = ρ_c = α = 1'; the numbers 3.65375 (n = 1.5, fully convective / non-relativistic degenerate) and 6.89685 (n = 3, Eddington standard model / relativistic degener",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "The strongest item in the batch and it holds under recomputation. [K] = M^{−1/n}L^{(2n+3)/n}T^{−2} re-derived independently from P = Kρ^{1+1/n}, and all three checks land (n = 1 → M⁻¹L⁵T⁻²; n = 3 → M^{−1/3}L³T⁻²; n → ∞ → L²T⁻², the isothermal squared sound speed). Every (ξ₁, −ξ₁²θ′₁, ρ_c/ρ̄) triple matches the standard tables: (√6, 2√6, 1), (π, π, π²/3 = 3.2898681), (3.6537537, 2.7140551, 5.9907045), (4.3528746, 2.4110460, 11.402543), (6.8968486, 2.0182360, 54.182481), (14.971546, 1.7972299, 622.40788), and n = 5 with ξ₁ = ∞, θ = (1+ξ²/3)^{−1/2}, finite mass. α, M = 4πα³ρ_c(−ξ²θ′), R = αξ₁ all"
+ },
+ {
+  "batch": "backlog",
+  "name": "Gross–Pitaevskii healing-length units — the ξ = ħ/√(2mgn) vs ħ/√(mgn) √2 fork",
+  "status": "confirmed",
+  "magnitude": "√2 = 1.4142136 on every length; 2 on every area, cross-section and vortex-core density profile; 2√2 = 2.8284 on volumes; 2 on the healing energy ħ²/2mξ²; √2 on any critical (Landau) velocity or vortex-core radius quoted 'in units of ξ'; 8π vs 4π inside the a_s form. Calibrator (recomputed, ⁸⁷Rb at n = 10¹⁴ cm⁻³, a_s = 5.29 nm = 100 a₀): ξ₁ = 1/√(8πn a_s) = 0.2743 μm and ξ₂ = 0.3879 μm. Bogoliubov ",
+  "fingerprint": "The token 'healing length' or 'coherence length' plus THE PRINTED DEFINING EXPRESSION — never infer from the symbol ξ (this is the §2.13(e) parameterized-symbol-family pattern). Decisive tells: the Laplacian coefficient in a dimensionless GPE (1 ⇒ ξ₁, ½ ⇒ ξ₂); 'ξ = ħ/(√2 m c)' ⇒ ξ₁; 'ψ = √n tanh(x/ξ",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Both derivations independently reproduced. Substituting ψ = √n tanh(x/L) into the stationary GPE gives gn(1−T²)T = (ħ²/mL²)(1−T²)T exactly, so L² = ħ²/(mgn) and the dark-soliton width is ξ₂ and never ξ₁ — this really is a clean, hand-verifiable class-A benchmark and should be minuted as such. The Laplacian-coefficient discriminator is confirmed by nondimensionalizing with time unit ħ/μ: ħ²/(2mξ²gn) = 1 for ξ₁ and 1/2 for ξ₂, giving (−∇² + |ψ|²) vs (−½∇² + |ψ|²). ξ₁ = 1/√(8πna_s), ξ₂ = 1/√(4πna_s) ✓; the ⁸⁷Rb calibrator at n = 1e20 m⁻³, a_s = 5.29 nm gives ξ₁ = 0.27425 μm and ξ₂ = 0.38785 μm ✓."
+ },
+ {
+  "batch": "backlog",
+  "name": "Fourier–diffusion scaling (Fo, Bi, Pe, Sc) and the characteristic-length fork",
+  "status": "confirmed",
+  "magnitude": "Sphere L_c fork: ×3 in Bi, ×9 in Fo. Cylinder: ×2 and ×4. Bi↔Nu confusion with k_solid/k_fluid for metal-in-air is 10³–10⁴ (illustrative range, flagged) — the single largest silent error available in the family. Parallel-plate D_h vs gap: ×2 in Re and Nu. The affine θ offset is the full ΔT, order 10²–10³ K in practice, and silently converts an absolute temperature into a normalized one with no dim",
+  "fingerprint": "Fo, Bi, Nu, Pe, Pr, Sc, Le, Sh, Gz as bare PDE or correlation coefficients (§6.5 cue iv); 'lumped capacitance'; 'characteristic length L_c = V/A_s'; θ = (T−T_∞)/(T_i−T_∞) printed explicitly; 'one-term approximation, Fo > 0.2'. LINTS: when Bi and Nu both appear, require their k's to be tagged; when B",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Verified throughout. V/A_s = R/2 for a cylinder and R/3 for a sphere ✓, so Bi differs by 2 or 3 and Fo, being quadratic in L_c, by 4 or 9 ✓ — and the consequence that the 'Fo > 0.2' one-term validity criterion is itself convention-dependent is correct and is the sharpest point in the row. Bi·Fo = hA_st/(ρVc_p) identity verified, confirming that the lumped-capacitance form is only self-consistent with L_c = V/A_s specifically. Bi and Nu genuinely are the same expression hL/k with the solid's and the fluid's conductivity respectively — a textbook §2.13(a) identity case that no dimensional check "
+ },
+ {
+  "batch": "backlog",
+  "name": "Combustion/flame units (δ_L, s_L, Ze, Da, Ka)",
+  "status": "confirmed",
+  "magnitude": "δ_L definition: δ_L⁰/δ_D typically ~2–10 for hydrocarbon–air (order 5 commonly quoted) ⇒ Ka off by ×4–100. σ = ρ_u/ρ_b ≈ 5–8 for stoichiometric hydrocarbon–air ⇒ the same factor on flame speed if the reference state is misread. Ka vs Ka_δ ≈ ×100 for β ≈ 10. Ze typically 8–12 while Ta/T_b ≈ 25–30 — ×~3 for the same symbol β. All ranges are literature typicals, not computed constants, and are flagge",
+  "fingerprint": "Tokens δ_L, s_L (or S_L, S_u, S_b), Ze or β, Da, Ka, Ka_δ, Le, φ, Z; a Borghi/Peters regime diagram; 'laminar flame thickness'; 'unstretched laminar flame speed'; 'thermal thickness'. THE ONLY RELIABLE RESOLVER IS THE PRINTED DEFINING EXPRESSION FOR δ_L — the §2.13(e) parameterized-family pattern ap",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Structure and relations verified: Ze = q·(Ta/T_b) follows from Ze = E_a ΔT/(RT_b²) ✓; Ka = (δ_L/η)² = (u′/s_L)^{3/2}(l_t/δ_L)^{−1/2} ✓; Ka_δ = Ka(δ_r/δ_L)² = Ka/β², so ×100 at β ≈ 10 ✓; the large-activation-energy source term with the Ze²/(2Le) prefactor is the standard form and does encode both the Ze convention and the Le species choice. σ = ρ_u/ρ_b ≈ T_b/T_u ≈ 5–8 for stoichiometric hydrocarbon–air ✓, so S_b = σs_L is a factor-of-several hazard hiding in the words 'flame speed' — correct. Generators {δ_L, s_L, ρ_u, ΔT} are rank 4 with Θ ✓. The row's honest character — generator VALUES defin"
+ },
+ {
+  "batch": "backlog",
+  "name": "Hybrid-code ion-scale units (d_i, Ω_ci⁻¹, v_A, B₀, n₀, m_i)",
+  "status": "confirmed",
+  "magnitude": "√(4π) = 3.5449 on B. √2 = 1.4142 on the ρ_i/d_i relation. Helium correction to v_A: solar-wind α/p ≈ 4–5% by number ⇒ ~16–20% in mass density ⇒ 8–10% in v_A (flagged as a literature typical). 2π on any Ω↔f slip. d_e/d_i = √(m_e/m_i) = 1/42.85 for hydrogen — and codes that set m_i/m_e = 25 or 100 make it 1/5 or 1/10, DELIBERATELY UNPHYSICAL residues that must never be 'corrected' (§2.10). Solar-win",
+  "fingerprint": "Axis labels x/d_i, tΩ_ci, v/v_A, B/B₀, n/n₀; 'hybrid simulation', 'kinetic ions, fluid electrons', 'Alfvén units', 'normalized units'; a stated β_i. Note the ABSENCE OF c from the equations (Darwin/low-frequency approximation, displacement current dropped) — do NOT read that as c = 1; it is a delibe",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Physics verified: d_iΩ_ci = B/√(μ₀m_in) = v_A re-derived symbolically via ε₀c² = 1/μ₀, and numerically at n = 5 cm⁻³, B = 5 nT, hydrogen: d_i = 101 835 m, Ω_ci = 0.4789417 rad/s (f_ci = 0.0762259 Hz), v_A = 48 773.19 m/s, and d_iΩ_ci = 48 773.19 m/s — agreement to 10 digits. d_e/d_i = √(m_e/m_i) = 1/42.850 ✓. ρ_i/d_i = √β or √(β/2) verified from β ≡ 2μ₀nk_BT/B². The 'absence of c is a deliberate Darwin rank reduction, not c = 1' ruling is correct and is a good refusal reason. HARD CORRECTION to the escalated schema finding. The rank lint as written — '5 declarations {m_i, e, B₀, n₀, μ₀}, rank "
+ }
+]

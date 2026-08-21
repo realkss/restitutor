@@ -1,0 +1,1442 @@
+{
+ "family": "General relativity, cosmology, and dynamical astronomy",
+ "family_notes": "SCOPE OF THE FAMILY. This family contains five structurally different things that all get called \"units\" in papers, and an engine that conflates them will be silently wrong.\n\n(1) CONVENTION (true unit system): a dimensionful combination of universal constants is set to 1. Symbols disappear from equations; dimensions collapse. Equation FORMS change. This is what the generator table models. Rows 1-10 here.\n\n(2) UNIT CHOICE: a differently-sized member of an unchanged dimension (kpc vs m, M_sun vs kg, day vs s, Jy vs W m^-2 Hz^-1, erg vs J). Generator set EMPTY. Equation forms byte-identical to SI/CGS; only numbers change; translation is one multiplicative scale per base dimension. Astronomy is dominated by these and they are NOT unit systems. Rows 13, 19, 21, 23, 25, 26 (and the gravity sector of 12).\n\n(3) NORMALIZATION: dimensionally behaves exactly like a generator, but the scale is a property of the SYSTEM UNDER STUDY, not a constant of nature (M_BH, M_total, R_vir, Plummer a, R_0, v_c, H_0, M_unit). The linear-algebra restoration works unchanged, but the numeric value must be bound per-paper from prose. Rows 4, 5, 6, 16, 17, 18, 20, 22.\n\n(4) PARAMETERIZED RESCALING: a DIMENSIONLESS factor hidden in each symbol, with a per-symbol exponent. Invisible to dimensional analysis. Little h (row 14) and the TDB/TCB time-scale rescaling (row 23). These are the strongest argument for the per_symbol_rescalings field: no dimension check recovers them.\n\n(5) LOGARITHMIC SCALE: magnitudes, dex, decibels (row 24). Outside the formalism entirely; must be refused, not approximated.\n\nPapers routinely mix all five in one sentence: \"we set G = c = 1, quote masses in M_sun, distances in Mpc, fluxes in mJy, and the host has M_r = -21.3 + 5 log h.\" The engine must therefore track a convention (generator set) and a display-unit map INDEPENDENTLY, not a single system label.\n\n=== WHICH SYSTEMS ARE MUTUALLY INDISTINGUISHABLE FOR GRAVITY-ONLY CONTENT ===\n\nCLUSTER A - literally identical gravitational equations, always:\n  #1 Geometrized (G=c=1, mass in length); #1-alias Geometrized-second (mass in seconds); #2 Geometrized-Gaussian (gravity sector); #3 Geometrized-Heaviside-Lorentz (gravity sector); #4 Black-hole scale units (G=c=M=1); #5 NR code units (G=c=M_sun=1); #6 GRMHD code units (gravity sector); #10 Planck units (gravity sector).\nAll write G_mn + L g_mn = 8 pi T_mn, S = (1/16pi) int R sqrt(-g), ds^2 = -(1-2M/r)dt^2 + ..., T_H = 1/(8 pi M), S_BH = A/4. A gravity-only equation CANNOT distinguish them. What separates them is never equation form:\n  - #1 vs #1-alias vs #5: only the NUMBERS quoted (1.4766 km vs 4.9255e-6 s vs 1).\n  - #4/#5/#6 differ from #1 only if M (or M_sun) appears explicitly; a paper writing r/M or \"M = 1\" reveals them.\n  - #2 vs #3 vs #1 differ only once charge appears (Q^2/r^2 vs Q^2/(4 pi r^2)).\n  - #10 differs from #1 only once hbar appears (hbar = 1 vs hbar = l_P^2 = 2.612e-70 m^2).\nA classifier must return the whole cluster with a confidence spread, never a single label, when the input is a vacuum metric or a matter-free Einstein equation.\n\nCLUSTER B - identical in VACUUM only (the worst case):\n  Cluster A UNION {#8 reduced-Planck 8piG=c=1, #9 kappa=1 classical, #11 with kappa bound to 1}.\nIn vacuum, R_mn = L g_mn, Schwarzschild, Kerr, geodesics, quasinormal modes, Regge-Wheeler/Teukolsky, and vacuum post-Newtonian expansions are IDENTICAL between geometrized (G=c=1) and reduced-Planck (8piG=c=1). The 8 pi becomes visible only when T_mn, rho, p, an action prefactor, or a Lambda-to-rho_Lambda conversion appears. RECOMMENDED BEHAVIOR: for vacuum-only input, refuse to choose between G=c=1 and 8piG=c=1 and ask; the restored SI form differs by 8 pi in every matter-coupled downstream equation.\n\nCLUSTER C - Newtonian G=1 systems, identical equation forms:\n  #17 Henon/N-body (G=M=1, E=-1/4); #18 Model/Plummer units (G=M=a=1); #20 galpy/AGAMA natural units (R_0=v_c=1); #22 astrodynamics canonical units (mu=1); #21-variant heliocentric canonical with k=1 (time unit 58.132441 d).\nAll write laplacian(Phi) = 4 pi rho and rdotdot_i = -sum_j m_j (r_i-r_j)/|r_i-r_j|^3 with G absent. The third normalization (E=-1/4 vs R_v=1 vs a=1 vs v_c=1 vs DU=R_ref) is stated in PROSE and appears in no equation. Per-equation these are indistinguishable; only the quoted crossing time (2 sqrt 2), the Plummer scale (3 pi/16), the number 806.8 s, or the methods section separates them.\n\nCLUSTER D - zero-generator unit choices, equation forms identical to SI/CGS:\n  #12 (gravity sector), #13, #19, #21 (k-explicit form), #23, #25, #26, and largely #14, #15.\nG and c stay explicit. Classify as \"display units\" and never attempt constant restoration - there is nothing to restore.\n\nDECISION PROCEDURE, priority order:\n  a. Read the Einstein-equation / action prefactor. Most informative single token.\n       G_mn = (8 pi G/c^4) T_mn  -> no generators (SI/CGS)\n       G_mn = (8 pi G/c^2) T_mn  -> no generators, T is a MASS density (Einstein 1916)\n       G_mn = 8 pi G T_mn        -> c = 1 only (#7)\n       G_mn = 8 pi T_mn          -> Cluster A\n       G_mn = T_mn               -> 8 pi G = c = 1 (#8/#9)\n       G_mn = kappa T_mn         -> kappa symbolic (#11); MUST bind kappa per-paper\n       Action prefactor 1/(16 pi G) -> c=1; c^4/(16 pi G) with d^4x = dt d^3x -> SI; c^3/(16 pi G) with d^4x = c dt d^3x -> SI; 1/(16 pi) -> Cluster A; M_Pl^2/2 or 1/2 -> #8.\n  b. If vacuum-only, stop and report Cluster B ambiguity.\n  c. Check whether hbar and k_B appear (separates #10 from #1, #8 from #9).\n  d. Check the Maxwell normalization (-1/(16 pi) F^2 = Gaussian; -1/4 F^2 = Heaviside-Lorentz).\n  e. Check quoted numbers for the residual scale (km / s / M_sun / dimensionless).\n\nTRAPS THAT STRESS OR BREAK THE GENERATOR-TABLE SCHEMA:\n  T1. Little h (#14): a dimensionless per-symbol factor with a DIFFERENT exponent per quantity (lengths h^-1, masses h^-1, densities h^+2, number densities h^+3, P(k) h^-3, luminosities h^-2, absolute magnitudes +5 log h, times h^-1, velocities h^0). No generator table expresses this; it needs a per-quantity exponent map. The clearest needs_symbol_rescaling case in the family.\n  T2. TDB/TCB (#23): two quantities both called \"the second\" and two both called \"the au\", differing by L_B = 1.550519768e-8. Dimensional analysis is blind.\n  T3. Scale-factor dimensions (#15): whether a is dimensionless (a_0 = 1, k has dimension L^-2) or carries length (k = 0, +-1 exactly) changes the DIMENSION of k, of comoving coordinates, and of conformal time. Two identical-looking FRW metrics carry different dimension assignments.\n  T4. kappa as a named combination (#11): not a generator and not a unit choice, but a SYMBOL ALIAS with three literature expansions of DIFFERENT dimension ((-1,-1,2,0,0) for 8piG/c^4 vs (-1,1,0,0,0) for 8piG/c^2 vs (-1,3,-2,0,0) for 8piG). Handle with an alias table plus a dimension-driven disambiguation pass keyed on the declared units of T_00. This is the one place where dimension-checking genuinely DISAMBIGUATES rather than merely validates.\n  T5. Per-object generators (#4,#5,#6,#16,#17,#18,#20,#22): M, M_total, R_vir, a, R_0, v_c, H_0, M_unit are not constants of nature. Restoration emits a SYMBOL, not a number, until bound.\n  T6. Residual free scale: G = c = 1 fixes only 2 of 3 mechanical base dimensions, so one length scale stays free. \"Geometrized units\" determines equation form, NOT numeric conversion. Adding M (or M_sun, or R_vir) closes the system.\n  T7. Logarithmic units (#24) and hybrid instrument units (Jy/beam, K km/s, mag/arcsec^2) that hide a beam solid angle, a line width, or an angular area. Refuse with a specific message.\n  T8. The c^3 vs c^4 Einstein-Hilbert prefactor, depending on whether d^4x means dt d^3x or c dt d^3x. Dimensionally detectable ([S] = M L^2 T^-1) and worth auto-checking.\n  T9. M_sun is not a primitive. IAU 2015 B3 recommends quoting GM_sun (nominal 1.3271244e20 m^3 s^-2, ~1e-10) not M_sun (limited by G to ~2e-5). Store GM_sun as primary; every M_sun-in-kg conversion carries a hidden G dependence.\n  T10. Signature and curvature-sign conventions (MTW's [S1,S2,S3]) and Landau-Lifshitz's k for Newton's constant (colliding with curvature index k, FRW k, and Boltzmann k_B) are not unit issues but wreck naive fingerprinting. Keep sign conventions as an orthogonal field.\n  T11. Gravitational-radius ambiguity: r_g = GM/c^2 in most GR literature but 2GM/c^2 in parts of the accretion-disk/X-ray-binary literature. A factor of 2, invisible dimensionally, changing a quoted ISCO between 6 r_g and 3 r_g.\n  T12. Lambda placement: Lambda (L^-2) vs rho_Lambda = Lambda c^2/(8 pi G) vs Lambda in eV^4 vs dimensionless Omega_Lambda. Four objects, one word.\n  T13. Reduced vs unreduced Planck mass differ by sqrt(8 pi) = 5.013 (2.435e18 GeV vs 1.22089e19 GeV). Purely numeric, dimensionally invisible, the most common single error in inflation-paper translation.",
+ "systems": [
+  {
+   "name": "Geometrized units (G = c = 1)",
+   "aliases": [
+    "geometrized units",
+    "geometric units",
+    "geometrized unit system",
+    "geometrodynamic units",
+    "MTW units",
+    "relativists' units",
+    "natural units of general relativity",
+    "G = c = 1",
+    "geometrized-second variant (mass in seconds)"
+   ],
+   "used_in": "Classical GR textbooks and the bulk of the GR literature: MTW Gravitation, Wald, Hartle, Poisson, Carroll, Chandrasekhar. Black-hole physics, post-Newtonian theory, gravitational-wave source modelling, LIGO/Virgo waveform papers, relativistic astrophysics.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    }
+   ],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi T_{\\mu\\nu} with neither G nor c present",
+    "Einstein-Hilbert action prefactor \\frac{1}{16\\pi}: S = \\frac{1}{16\\pi}\\int d^4x\\sqrt{-g}\\,R",
+    "ds^2 = -(1-2M/r)dt^2 + (1-2M/r)^{-1}dr^2 + r^2d\\Omega^2 — M sits where 2GM/c^2 belongs",
+    "phrases 'we use geometrized units', 'units in which G = c = 1', 'geometric units'",
+    "masses quoted in length or time: 'M_\\odot = 1.4766\\,km', 'M_\\odot = 4.9255\\times10^{-6}\\,s', 'GM_\\odot/c^2'",
+    "Kerr spin parameter a with units of length and the bound |a|\\le M (rather than dimensionless a_*\\le1)",
+    "\\hbar still present in formulas (it would carry dimension of length squared)",
+    "angular momentum J with dimension length-squared; mass, time, length all in cm or km"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Not fixed by G = c = 1 alone — this convention constrains only the mechanical dimensions. MTW pairs it with Gaussian E&M (see Geometrized-Gaussian): F = \\dfrac{q_1q_2}{r^2}, q in cm, F dimensionless. An SI pairing writes F = \\dfrac{q_1q_2}{4\\pi\\varepsilon_0 r^2}.",
+    "gauss_law": "Gaussian pairing: \\nabla\\cdot\\mathbf{E} = 4\\pi\\rho_e. SI pairing: \\nabla\\cdot\\mathbf{E} = \\rho_e/\\varepsilon_0. The choice is orthogonal to G = c = 1 and must be detected separately.",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi T_{\\mu\\nu}; trace-reversed R_{\\mu\\nu} = 8\\pi\\left(T_{\\mu\\nu} - \\tfrac12 Tg_{\\mu\\nu}\\right) + \\Lambda g_{\\mu\\nu}. Friedmann: H^2 = \\tfrac{8\\pi}{3}\\rho - \\tfrac{k}{a^2} + \\tfrac{\\Lambda}{3}; \\ \\ddot a/a = -\\tfrac{4\\pi}{3}(\\rho+3p) + \\tfrac{\\Lambda}{3}.",
+    "schrodinger_or_dirac": "i\\hbar\\,\\partial_t\\psi = -\\dfrac{\\hbar^2}{2m}\\nabla^2\\psi + V\\psi — \\hbar is NOT unity. In geometrized units \\hbar = \\hbar G/c^3 = l_P^2 = 2.612\\times10^{-70}\\,\\mathrm{m}^2. A paper that also sets \\hbar = 1 is using Planck units, a different row."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "Two generators fix only two of the three mechanical base dimensions, so ONE free scale remains — conventionally length. Hence the same convention appears as mass-in-cm (MTW), mass-in-km (neutron-star work), mass-in-seconds (post-Newtonian and GW work, M_\\odot = 4.9255e-6 s) and mass-dimensionless (once M itself is set to 1). All four are the SAME generator set with identical equations; only quoted numbers differ. Conversion: multiply a quantity of SI dimension L^l M^m T^t by c^t (G/c^2)^m; G/c^2 = 7.4261e-28 m/kg, G/c^3 = 2.4771e-36 s/kg. With IAU 2015 B3 nominal GM_\\odot = 1.3271244e20 m^3 s^-2: GM_\\odot/c^2 = 1476.6 m, GM_\\odot/c^3 = 4.9254e-6 s (I computed both this session). The 1/16\\pi action prefactor is the reciprocal of twice the field-equation coefficient, which I checked for consistency rather than quoting.",
+   "sources": [
+    "Misner, Thorne & Wheeler, Gravitation (1973), geometrized-units conventions",
+    "Wikipedia / HandWiki, 'Geometrized unit system' (retrieved 2026-08) — conversion factor c^t (G/c^2)^m confirmed",
+    "Wikipedia, 'Solar mass' (retrieved 2026-08) — GM_sun/c^2 ~ 1.48 km, GM_sun/c^3 ~ 4.93 us",
+    "CODATA 2018 values of G and c",
+    "IAU 2015 Resolution B3 nominal solar mass parameter",
+    "own dimensional derivation and arithmetic this session"
+   ]
+  },
+  {
+   "name": "Geometrized-Gaussian units (G = c = 4\\pi\\varepsilon_0 = 1)",
+   "aliases": [
+    "geometrized Gaussian units",
+    "MTW electromagnetic geometrized units",
+    "geometrized cgs-Gaussian",
+    "charge in centimeters"
+   ],
+   "used_in": "Einstein-Maxwell theory: Reissner-Nordstrom and Kerr-Newman papers, charged black holes, MTW's treatment of electromagnetism in curved spacetime, magnetized neutron-star and pulsar-magnetosphere GR literature.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "4\\pi\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 2, 0)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "q",
+     "relation": "q_{\\rm geom} = \\dfrac{\\sqrt{G}}{c^2}q_{\\rm Gaussian} = \\dfrac{1}{c^2}\\sqrt{\\dfrac{G}{4\\pi\\varepsilon_0}}\\,q_{\\rm SI}",
+     "why": "Charge acquires the dimension of length. Dimension check: (M^{-1/2}L^{3/2}T^{-1})(L^{-2}T^2)(M^{1/2}L^{3/2}T^{-1}) = L. Numerically \\sqrt{G}/c^2 = 8.617\\times10^{-25} cm/esu, so the electron charge becomes 1.381\\times10^{-34} cm."
+    },
+    {
+     "symbol": "\\mathbf{B}",
+     "relation": "\\mathbf{B}_{\\rm Gaussian} = c\\,\\mathbf{B}_{\\rm SI}",
+     "why": "Inherited from Gaussian E&M: E and B are given the same dimension so the Lorentz force reads \\mathbf{F} = q(\\mathbf{E} + \\tfrac{\\mathbf v}{c}\\times\\mathbf{B}) and F^{\\mu\\nu} is dimensionally homogeneous."
+    }
+   ],
+   "fingerprints": [
+    "Reissner-Nordstrom as ds^2 = -\\left(1 - \\dfrac{2M}{r} + \\dfrac{Q^2}{r^2}\\right)dt^2 + \\ldots with no 4\\pi and no \\varepsilon_0",
+    "extremality stated |Q| \\le M (charge and mass both lengths)",
+    "Maxwell Lagrangian normalized -\\dfrac{1}{16\\pi}F_{\\mu\\nu}F^{\\mu\\nu}",
+    "T^{\\mu\\nu} = \\dfrac{1}{4\\pi}\\left(F^{\\mu\\alpha}F^\\nu{}_\\alpha - \\tfrac14 g^{\\mu\\nu}F^2\\right)",
+    "Kerr-Newman with a^2 + Q^2 \\le M^2",
+    "phrase 'geometrized Gaussian units' or 'G = c = 1 with Gaussian units for the electromagnetic field'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1q_2}{r^2}, with q_1, q_2, r in centimeters and F dimensionless (in geometrized units force is dimensionless: MLT^{-2} \\to L\\cdot L\\cdot L^{-2} = 1).",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = 4\\pi\\rho_e with \\rho_e of dimension L^{-2}; covariantly \\nabla_\\mu F^{\\mu\\nu} = 4\\pi J^\\nu.",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi T_{\\mu\\nu}, identical to plain geometrized units. Charged case: G_{\\mu\\nu} = 2\\left(F_{\\mu\\alpha}F_\\nu{}^\\alpha - \\tfrac14 g_{\\mu\\nu}F^2\\right) — the 8\\pi cancels against the 1/4\\pi of the Maxwell stress tensor, leaving a bare 2. That 2 is the single cleanest fingerprint separating this from the Heaviside-Lorentz variant.",
+    "schrodinger_or_dirac": "i\\hbar\\partial_t\\psi = \\dfrac{1}{2m}\\left(-i\\hbar\\nabla - q\\mathbf{A}\\right)^2\\psi + q\\phi\\psi with \\hbar = l_P^2. Curved-space Dirac: \\left(i\\gamma^\\mu(\\nabla_\\mu - iqA_\\mu) - m/\\hbar\\right)\\psi = 0 — note m/\\hbar, since m is a length and \\hbar a length squared."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "The generator 4\\pi\\varepsilon_0 = 1 alone would only rescale units; Gaussian additionally REDEFINES B relative to the plain SI quotient by a factor of c, hence needs_symbol_rescaling. Charge carries half-integer SI-basis exponents (M^{1/2}L^{3/2}T^{-1}) because current is eliminated as a base dimension — exactly the case the schema's half-integer allowance exists for.",
+   "sources": [
+    "Misner, Thorne & Wheeler, Gravitation (1973), electromagnetism in geometrized Gaussian units",
+    "Wikipedia / HandWiki, 'Geometrized unit system' (retrieved 2026-08)",
+    "Jackson, Classical Electrodynamics, appendix on unit systems (Gaussian/SI conversion table)",
+    "own dimensional derivation of the sqrt(G)/c^2 charge conversion and of the factor 2 in the Einstein-Maxwell equation, this session"
+   ]
+  },
+  {
+   "name": "Geometrized Heaviside-Lorentz units (G = c = \\varepsilon_0 = 1)",
+   "aliases": [
+    "geometrized rationalized units",
+    "G = c = \\varepsilon_0 = \\mu_0 = 1",
+    "rationalized geometrized units",
+    "Heaviside-Lorentz geometrized"
+   ],
+   "used_in": "A minority but real convention in numerical relativity of Einstein-Maxwell systems, higher-dimensional charged-black-hole papers, gauge/gravity-duality-adjacent GR, and generally where the author's background is field theory rather than classical astrophysics.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 2, 0)",
+     "numeric_factor": "1",
+     "emits": "\\varepsilon_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "q",
+     "relation": "q_{\\rm HL} = \\sqrt{4\\pi}\\,q_{\\rm Gaussian}, hence q_{\\rm geom,HL} = \\sqrt{4\\pi}\\dfrac{\\sqrt G}{c^2}q_{\\rm Gaussian}",
+     "why": "Rationalization moves the 4\\pi from the field equations into the force law, rescaling charge by \\sqrt{4\\pi}."
+    },
+    {
+     "symbol": "\\mathbf{E}, \\mathbf{B}",
+     "relation": "\\mathbf{E}_{\\rm HL} = \\mathbf{E}_{\\rm Gaussian}/\\sqrt{4\\pi}, \\quad \\mathbf{B}_{\\rm HL} = \\mathbf{B}_{\\rm Gaussian}/\\sqrt{4\\pi}",
+     "why": "Same rationalization, chosen to keep qE invariant."
+    }
+   ],
+   "fingerprints": [
+    "Maxwell Lagrangian normalized -\\tfrac14 F_{\\mu\\nu}F^{\\mu\\nu} rather than -\\tfrac{1}{16\\pi}F^2",
+    "\\nabla_\\mu F^{\\mu\\nu} = J^\\nu with no 4\\pi",
+    "Reissner-Nordstrom with an explicit 4\\pi: ds^2 = -\\left(1 - \\dfrac{2M}{r} + \\dfrac{Q^2}{4\\pi r^2}\\right)dt^2 + \\ldots",
+    "T^{\\mu\\nu} = F^{\\mu\\alpha}F^\\nu{}_\\alpha - \\tfrac14 g^{\\mu\\nu}F^2 with no 1/4\\pi prefactor",
+    "phrases 'Heaviside-Lorentz', 'rationalized units', '\\varepsilon_0 = \\mu_0 = 1'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1q_2}{4\\pi r^2}, all quantities in length units, F dimensionless.",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho_e (no 4\\pi); covariantly \\nabla_\\mu F^{\\mu\\nu} = J^\\nu.",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi T_{\\mu\\nu} — the GRAVITY sector is byte-identical to plain geometrized units. Einstein-Maxwell: G_{\\mu\\nu} = 8\\pi\\left(F_{\\mu\\alpha}F_\\nu{}^\\alpha - \\tfrac14 g_{\\mu\\nu}F^2\\right), coefficient 8\\pi rather than the 2 of the Gaussian-geometrized row.",
+    "schrodinger_or_dirac": "Same form as geometrized-Gaussian; only the numerical value of q differs by \\sqrt{4\\pi}. \\hbar is not unity."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Detection is entirely via the Maxwell normalization (-\\tfrac14 F^2 vs -\\tfrac{1}{16\\pi}F^2) or the presence/absence of 4\\pi in the RN metric. I am moderately but NOT fully confident about this convention's prevalence relative to geometrized-Gaussian in the charged-black-hole literature; safest engine behavior is to require the Maxwell-Lagrangian or Gauss-law fingerprint before committing, and to default a bare Q^2/r^2 in a charged metric to Gaussian (the MTW default and the historical majority).",
+   "sources": [
+    "Misner, Thorne & Wheeler, Gravitation (1973) — for the Gaussian baseline this variant departs from",
+    "Jackson, Classical Electrodynamics, unit-system appendix (Heaviside-Lorentz definitions)",
+    "own dimensional derivation of the Q^2/(4 pi r^2) RN form and the 8 pi Einstein-Maxwell coefficient, this session",
+    "flagged as partly uncertain: prevalence claim not verified against a survey of the charged-BH literature"
+   ]
+  },
+  {
+   "name": "Black-hole scale units (G = c = M = 1; 'in units of M')",
+   "aliases": [
+    "units of M",
+    "G = c = M = 1",
+    "r/M units",
+    "dimensionless black-hole units",
+    "M = 1 units",
+    "gravitational-radius units"
+   ],
+   "used_in": "Black-hole perturbation theory, quasinormal modes, Teukolsky/Regge-Wheeler/Zerilli work, geodesic and ray-tracing studies, black-hole shadow papers (EHT), accretion-flow dynamics, extreme-mass-ratio inspirals.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "M",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "M"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "a",
+     "relation": "a_* \\equiv a/M = \\dfrac{Jc}{GM^2} \\in [-1,1]; \\quad a_{\\rm length} = \\dfrac{J}{Mc}",
+     "why": "The Kerr spin parameter appears both as a length (a \\le M) and as the dimensionless a_*. Papers use the same letter for both, and in M = 1 units they coincide numerically — which is why the ambiguity survives translation."
+    },
+    {
+     "symbol": "r_g",
+     "relation": "r_g = GM/c^2 (majority GR convention) OR r_g = 2GM/c^2 (parts of the accretion-disk and X-ray-binary literature)",
+     "why": "A pure factor of 2, dimensionally invisible; it changes a quoted Schwarzschild ISCO between 6 r_g and 3 r_g. Must be bound per-paper."
+    }
+   ],
+   "fingerprints": [
+    "quantities quoted as ratios: r/M, t/M, \\omega M, \\Omega M, M\\omega",
+    "quasinormal frequencies as dimensionless products, e.g. M\\omega_{220} = 0.3737 - 0.0890\\,i for a = 0",
+    "dimensionless spin written a/M, a_*, or \\chi with range [0,1]",
+    "ds^2 = -\\left(1-\\dfrac{2}{r}\\right)dt^2 + \\left(1-\\dfrac2r\\right)^{-1}dr^2 + r^2d\\Omega^2 — a bare 2, no M",
+    "ISCO at r = 6, photon sphere at r = 3, horizon at r = 2",
+    "'we set G = c = M = 1' or 'we work in units of the black-hole mass'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: normally used for vacuum or uncharged-matter spacetimes. When charge is present the paper additionally adopts geometrized-Gaussian, giving F = q_1q_2/r^2 with Q/M dimensionless and |Q/M| \\le 1.",
+    "gauss_law": "N/A: no electromagnetic sector is fixed by G = c = M = 1. Newtonian-limit gravitational analogue: \\nabla^2\\Phi = 4\\pi\\rho with \\Phi dimensionless.",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi T_{\\mu\\nu}, identical in form to plain geometrized units, with every quantity now dimensionless. Kerr in Boyer-Lindquist: \\Delta = r^2 - 2r + a^2, \\ \\Sigma = r^2 + a^2\\cos^2\\theta, \\ r_\\pm = 1 \\pm \\sqrt{1-a^2}.",
+    "schrodinger_or_dirac": "Wave equations appear in Regge-Wheeler rather than Schrodinger form: \\dfrac{d^2\\psi}{dr_*^2} + \\left(\\omega^2 - V(r)\\right)\\psi = 0 with r_* = r + 2\\ln(r/2 - 1). \\hbar is absent because these are classical field equations; a genuine Schrodinger equation in these units would retain \\hbar = (m_P/M)^2, an astronomically small number."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v1",
+   "notes": "M is the mass of the object under study, not a constant of nature, so the third generator is bound per-paper. Once bound, restoration is a normal linear solve: a value X in these units has SI value X\\,(GM/c^2)^l\\,M^m\\,(GM/c^3)^t for SI dimension L^l M^m T^t. Indistinguishable from plain geometrized units on any equation where M does not appear. The r_g factor-of-2 ambiguity is the most damaging trap in this row.",
+   "sources": [
+    "Chandrasekhar, The Mathematical Theory of Black Holes (1983)",
+    "Berti, Cardoso & Starinets, 'Quasinormal modes of black holes and black branes' (2009) — M\\omega convention for QNM tabulation",
+    "Event Horizon Telescope collaboration papers — r_g usage and shadow radii in units of M",
+    "Bardeen, Press & Teukolsky (1972) — ISCO/photon-sphere radii in M units",
+    "own consistency check of the Kerr horizon and Delta expressions in M = 1 units"
+   ]
+  },
+  {
+   "name": "Numerical-relativity code units (G = c = M_\\odot = 1)",
+   "aliases": [
+    "code units",
+    "NR code units",
+    "Einstein Toolkit units",
+    "Cactus units",
+    "geometrized solar-mass units",
+    "G = c = M_sun = 1"
+   ],
+   "used_in": "Numerical relativity codes and their papers: Einstein Toolkit / Cactus / Carpet, SpEC, BAM, LORENE and Kadath initial data, WhiskyTHC, IllinoisGRMHD. Binary-neutron-star and binary-black-hole simulations, GR core-collapse supernova simulations.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "M_\\odot",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "M_\\odot"
+    }
+   ],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "'we use geometrised units in which G = c = M_\\odot = 1' or 'code units'",
+    "times quoted in 'M' or 'M_\\odot' as a TIME, e.g. 'the merger occurs at t = 1200 M'",
+    "maximum rest-mass densities in code units of order 10^{-3} to 10^{-2} (nuclear density is 8.0\\times10^{-4} here)",
+    "conversion constants in the text: 1.4766 km, 4.9255\\times10^{-6} s, 6.1758\\times10^{17} g/cm^3, 1.7871\\times10^{54} erg",
+    "grid extents in 'M' with M understood as M_\\odot; ADM mass quoted dimensionlessly",
+    "polytropic constant K in code units, e.g. K = 100 for the standard \\Gamma = 2 TOV test"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: pure-GR and GR-hydrodynamics codes have no electromagnetic sector. GRMHD extensions are the next row.",
+    "gauss_law": "N/A for pure GR. The Hamiltonian constraint plays the analogous role: \\mathcal{H} = R + K^2 - K_{ij}K^{ij} - 16\\pi\\rho_{\\rm ADM} = 0.",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi T_{\\mu\\nu}, identical in form to plain geometrized units. In 3+1 form: momentum constraint \\mathcal{M}^i = D_j(K^{ij} - \\gamma^{ij}K) - 8\\pi S^i = 0; evolution \\partial_t K_{ij} = -D_iD_j\\alpha + \\alpha\\left(R_{ij} - 2K_{ik}K^k{}_j + KK_{ij}\\right) - 8\\pi\\alpha\\left(S_{ij} - \\tfrac12\\gamma_{ij}(S-\\rho)\\right).",
+    "schrodinger_or_dirac": "N/A: classical field-equation solvers; \\hbar never appears. Microphysics enters only through a tabulated equation of state whose native units (MeV/fm^3, g/cm^3, MeV) must be converted at the code boundary — a frequent source of unit bugs."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "Fully determined: three generators fix all three mechanical dimensions. Conversion factors, recomputed this session from IAU 2015 B3 nominal GM_\\odot = 1.3271244e20 m^3 s^-2 and CODATA c: length unit GM_\\odot/c^2 = 1476.6 m; time unit GM_\\odot/c^3 = 4.9254e-6 s; density unit M_\\odot/(GM_\\odot/c^2)^3 = 1.9885e30 kg / 3.2195e9 m^3 = 6.176e20 kg/m^3 = 6.176e17 g/cm^3; energy unit M_\\odot c^2 = 1.787e54 erg. Produces equations identical to every other Cluster A member; distinguishable only by numbers or by the stated convention. Note the notational hazard that 'M' names both the ADM mass and the time unit.",
+   "sources": [
+    "Einstein Toolkit documentation and Loeffler et al., 'The Einstein Toolkit' (2012) — c = G = M_sun = 1 confirmed via web search this session",
+    "Baumgarte & Shapiro, Numerical Relativity (2010) — 3+1 constraint and evolution equations",
+    "IAU 2015 Resolution B3 nominal solar mass parameter",
+    "own arithmetic for the length, time, density and energy code units this session"
+   ]
+  },
+  {
+   "name": "GRMHD code units (G = c = 1, M = 1, \\sqrt{4\\pi} absorbed into B)",
+   "aliases": [
+    "HARM units",
+    "Athena++ GRMHD units",
+    "BHAC/KORAL units",
+    "code units with sqrt(4 pi) absorbed",
+    "Lorentz-Heaviside magnetic units in GRMHD"
+   ],
+   "used_in": "General-relativistic magnetohydrodynamics of black-hole accretion: HARM and descendants (iharm3D, KHARMA), BHAC, KORAL, Athena++ GR, IllinoisGRMHD, the Event Horizon Telescope GRMHD image libraries, magnetized-torus and jet-launching studies.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "M_{\\rm BH}",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "M_{\\rm BH}"
+    },
+    {
+     "tex": "4\\pi\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 2, 0)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathbf{B}, b^\\mu",
+     "relation": "B_{\\rm code} = B_{\\rm Gaussian}/\\sqrt{4\\pi}",
+     "why": "So that magnetic pressure is b^2/2 and magnetic energy density b^2/2 with b^2 = b^\\mu b_\\mu, instead of B^2/8\\pi. A genuine redefinition of the symbol, not a change of unit size, and the defining feature of the convention. The factor is 3.545."
+    },
+    {
+     "symbol": "\\rho, p, b^2 (overall mass scale)",
+     "relation": "\\rho_{\\rm cgs} = \\mathcal{M}_{\\rm unit}\\mathcal{L}_{\\rm unit}^{-3}\\rho_{\\rm code}, with \\mathcal{L}_{\\rm unit} = GM_{\\rm BH}/c^2 and \\mathcal{M}_{\\rm unit} a FREE parameter fixed after the run by matching an observed flux",
+     "why": "Ideal MHD is scale-free in density, so GRMHD simulations leave the mass scale unfixed. \\mathcal{M}_{\\rm unit} is not determined by the generator set at all; a translation engine must treat it as an unbound free parameter and refuse to emit cgs densities without it."
+    }
+   ],
+   "fingerprints": [
+    "magnetic pressure written b^2/2 and magnetization \\sigma = b^2/\\rho with no 4\\pi or 8\\pi anywhere",
+    "plasma beta as \\beta = p_{\\rm gas}/p_{\\rm mag} = 2p/b^2",
+    "the sentence 'we absorb a factor of \\sqrt{4\\pi} into the definition of the magnetic field'",
+    "the symbols \\mathcal{M}_{\\rm unit}, \\mathcal{L}_{\\rm unit}, \\mathcal{T}_{\\rm unit} in a scaling section",
+    "MAD/SANE terminology with \\phi_{\\rm BH} = \\Phi_{\\rm BH}/\\sqrt{\\langle\\dot M\\rangle r_g^2 c} saturating near 15",
+    "times in units of r_g/c or GM/c^3; radii in r_g"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: ideal MHD assumes perfect conductivity, so there is no free-charge Coulomb sector. The ideal-MHD condition is u_\\mu F^{\\mu\\nu} = 0, equivalently \\mathbf{E} = -\\mathbf{v}\\times\\mathbf{B}.",
+    "gauss_law": "Magnetic Gauss law only: \\partial_i\\left(\\sqrt{-g}\\,B^i\\right) = 0. The electric Gauss law is not evolved.",
+    "einstein_field": "G_{\\mu\\nu} = 8\\pi T_{\\mu\\nu} for dynamical spacetimes; most GRMHD runs use a FIXED Kerr background, so only \\nabla_\\mu T^{\\mu\\nu} = 0 is solved, with T^{\\mu\\nu} = \\left(\\rho + u + p + b^2\\right)u^\\mu u^\\nu + \\left(p + \\tfrac{b^2}{2}\\right)g^{\\mu\\nu} - b^\\mu b^\\nu. The absence of any 1/4\\pi in this stress tensor is the cleanest single fingerprint.",
+    "schrodinger_or_dirac": "N/A: classical fluid and field equations only."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "This row exists because the \\sqrt{4\\pi} absorption is a per-symbol redefinition no dimensional analysis can detect: B_code and B_Gaussian share a dimension and differ by 3.545. Restoring cgs without applying it is wrong by that factor in B and by 4\\pi in b^2, \\sigma and \\beta. The unbound \\mathcal{M}_{\\rm unit} is a second, independent reason the convention cannot be closed by the generator table. I am confident about the convention in HARM-lineage codes but have not individually verified every code listed, so the engine should require the explicit sentence or the b^2/2 form rather than inferring it from a code name.",
+   "sources": [
+    "Gammie, McKinney & Toth, 'HARM: a numerical scheme for GRMHD' (2003) — b^mu, b^2/2 convention",
+    "Porth et al., 'The Event Horizon Telescope code comparison project' (2019) — unit scaling and M_unit practice",
+    "Event Horizon Telescope Collaboration, M87 Paper V (2019) — M_unit calibration to observed flux",
+    "own note: prevalence across the full alias list not individually verified"
+   ]
+  },
+  {
+   "name": "c = 1 only (relativist's / special-relativity units)",
+   "aliases": [
+    "c = 1",
+    "natural units of relativity",
+    "SR units",
+    "Weinberg-style units",
+    "relativistic units with G explicit"
+   ],
+   "used_in": "Special-relativity texts; relativistic kinetic theory and hydrodynamics; a large fraction of the GR literature that deliberately keeps G visible (Weinberg's Gravitation and Cosmology; much of the modified-gravity and alternative-theories literature, where G's role must stay explicit); classical field theory in curved spacetime.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    }
+   ],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi G\\,T_{\\mu\\nu} — G present, c absent",
+    "action S = \\dfrac{1}{16\\pi G}\\int d^4x\\sqrt{-g}\\,R with no powers of c",
+    "E = m at rest; E^2 = p^2 + m^2; \\beta = v dimensionless with |v| < 1",
+    "Schwarzschild radius written 2GM (not 2GM/c^2 and not 2M)",
+    "Planck mass as m_P = G^{-1/2}, Planck length as l_P = \\sqrt{\\hbar G}",
+    "times and lengths interchangeable but masses still in kg, g, or eV",
+    "'we set c = 1 but retain G'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Not fixed by c = 1 alone. SI pairing: F = \\dfrac{q_1q_2}{4\\pi\\varepsilon_0 r^2}. Gaussian pairing (common in SR texts): F = \\dfrac{q_1q_2}{r^2}. Heaviside-Lorentz pairing (common when the author is a field theorist): F = \\dfrac{q_1q_2}{4\\pi r^2}.",
+    "gauss_law": "SI: \\nabla\\cdot\\mathbf{E} = \\rho_e/\\varepsilon_0. Gaussian: \\nabla\\cdot\\mathbf{E} = 4\\pi\\rho_e. Heaviside-Lorentz: \\nabla\\cdot\\mathbf{E} = \\rho_e. Covariantly \\partial_\\mu F^{\\mu\\nu} = J^\\nu (HL) or 4\\pi J^\\nu (Gaussian) — note that with c = 1 the usual J^\\nu/c and 4\\pi J^\\nu/c forms lose their c.",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi G\\,T_{\\mu\\nu}. Friedmann: H^2 = \\dfrac{8\\pi G}{3}\\rho - \\dfrac{k}{a^2} + \\dfrac{\\Lambda}{3}. Schwarzschild: ds^2 = -(1-2GM/r)dt^2 + (1-2GM/r)^{-1}dr^2 + r^2d\\Omega^2.",
+    "schrodinger_or_dirac": "i\\hbar\\partial_t\\psi = -\\dfrac{\\hbar^2}{2m}\\nabla^2\\psi + V\\psi; Dirac (i\\hbar\\gamma^\\mu\\partial_\\mu - m)\\psi = 0. If the paper also sets \\hbar = 1 while keeping G it has moved to particle-physics natural units (a different family); there the Dirac equation reads (i\\gamma^\\mu\\partial_\\mu - m)\\psi = 0 and G survives as G = 1/m_P^2."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "One generator, so two free mechanical scales remain; this convention barely constrains anything and is the easiest to translate, since restoration inserts powers of c only, uniquely determined by matching T-exponents. Cleanly separated from geometrized units by the presence of G and from SI/CGS by the absence of c. The residual ambiguity is entirely electromagnetic and must be detected independently.",
+   "sources": [
+    "Weinberg, Gravitation and Cosmology (1972)",
+    "Carroll, Spacetime and Geometry (2004)",
+    "Jackson, Classical Electrodynamics, unit-system appendix",
+    "own dimensional derivation of the restoration rule for a single c generator"
+   ]
+  },
+  {
+   "name": "Reduced-Planck cosmology units (\\hbar = c = k_B = 8\\pi G = 1)",
+   "aliases": [
+    "reduced Planck units",
+    "natural units with M_Pl = 1",
+    "cosmologist's units",
+    "8 pi G = 1",
+    "kappa = 1 units",
+    "inflationary units",
+    "M_P = (8 pi G)^{-1/2} = 1"
+   ],
+   "used_in": "Inflation and early-universe cosmology, scalar-field dark energy and quintessence, the effective field theory of inflation, cosmological perturbation theory, modified-gravity model building (f(R), Horndeski, scalar-tensor), supergravity and string cosmology.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "8\\pi G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "8\\pi",
+     "emits": "(8\\pi G)"
+    },
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    }
+   ],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "the definition M_{\\rm Pl} \\equiv (8\\pi G)^{-1/2} stated explicitly, with the value 2.435\\times10^{18}\\,\\mathrm{GeV} (or 2.4\\times10^{18}, or 4.341\\times10^{-6}\\,\\mathrm{g})",
+    "Einstein equation with NO 8\\pi: G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = T_{\\mu\\nu}",
+    "action prefactor 1/2 or M_{\\rm Pl}^2/2: S = \\int d^4x\\sqrt{-g}\\left[\\tfrac{M_{\\rm Pl}^2}{2}R - \\tfrac12(\\partial\\phi)^2 - V(\\phi)\\right]",
+    "Friedmann as 3H^2 = \\rho or H^2 = \\rho/3 — a bare 3, no 8\\pi",
+    "slow-roll parameters \\epsilon_V = \\tfrac{M_{\\rm Pl}^2}{2}(V'/V)^2, \\ \\eta_V = M_{\\rm Pl}^2 V''/V",
+    "field excursions as \\Delta\\phi/M_{\\rm Pl}; the Lyth bound \\Delta\\phi/M_{\\rm Pl} \\gtrsim \\mathcal{O}(1)",
+    "phrases 'reduced Planck units', 'in units of the reduced Planck mass', 'we set M_{\\rm Pl} = 1'",
+    "energies in GeV; T_{\\rm CMB} quoted in eV as well as K"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1q_2}{4\\pi r^2} (Heaviside-Lorentz is the near-universal pairing in this literature), with e^2 = 4\\pi\\alpha and e \\approx 0.3028.",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = \\rho_e; covariantly \\partial_\\mu F^{\\mu\\nu} = J^\\nu.",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = T_{\\mu\\nu}. Friedmann: H^2 = \\dfrac{\\rho}{3} - \\dfrac{k}{a^2} + \\dfrac{\\Lambda}{3}; \\ \\dfrac{\\ddot a}{a} = -\\dfrac16(\\rho + 3p) + \\dfrac{\\Lambda}{3}; \\ \\dot H = -\\tfrac12(\\rho + p). Scalar field: \\ddot\\phi + 3H\\dot\\phi + V'(\\phi) = 0 with H^2 = \\tfrac13\\left(\\tfrac12\\dot\\phi^2 + V\\right).",
+    "schrodinger_or_dirac": "(i\\gamma^\\mu D_\\mu - m)\\psi = 0 with D_\\mu = \\partial_\\mu - ieA_\\mu; in curved space (i\\gamma^\\mu\\nabla_\\mu - m)\\psi = 0 with the spin connection in \\nabla_\\mu. Non-relativistic limit i\\partial_t\\psi = -\\tfrac{1}{2m}\\nabla^2\\psi + V\\psi."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "Verified: M_{\\rm Pl} = (8\\pi G)^{-1/2} = 2.435\\times10^{18} GeV versus the unreduced m_P = G^{-1/2} = 1.22089\\times10^{19} GeV; I checked the ratio numerically as 5.014, matching \\sqrt{8\\pi} = 5.0133. This factor is dimensionally invisible and is the most common translation error in this literature — exactly what numeric_factor exists for. Because 8\\pi G is set to unity AS A UNIT, restoration must emit (8\\pi G) as an inseparable block, never G alone. Indistinguishable from geometrized units on any vacuum equation (Cluster B).",
+   "sources": [
+    "Baumann, TASI Lectures on Inflation (arXiv:0907.5424)",
+    "Trodden & Carroll, TASI Lectures: Introduction to Cosmology — reduced Planck mass convention, retrieved via web search this session",
+    "web search confirming M_Pl = (8 pi G)^{-1/2} = 2.435e18 GeV (multiple cosmology sources, 2026-08)",
+    "Particle Data Group, Reviews of Particle Physics — Planck mass values",
+    "own arithmetic check of the sqrt(8 pi) ratio"
+   ]
+  },
+  {
+   "name": "Classical \\kappa = 1 units (8\\pi G = c = 1, \\hbar not set)",
+   "aliases": [
+    "8 pi G = c = 1",
+    "kappa = 1",
+    "geometrized units with the 8 pi absorbed",
+    "classical reduced-gravity units"
+   ],
+   "used_in": "Purely classical gravity papers that want G_{\\mu\\nu} = T_{\\mu\\nu}: parts of mathematical relativity, classical modified-gravity and scalar-tensor model building, some cosmological-perturbation and dynamical-systems-in-cosmology work, classical energy-condition and singularity-theorem literature.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "8\\pi G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "8\\pi",
+     "emits": "(8\\pi G)"
+    }
+   ],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "G_{\\mu\\nu} = T_{\\mu\\nu} together with '\\kappa = 8\\pi G = 1' or 'we choose units with 8\\pi G = c = 1'",
+    "action S = \\int d^4x\\sqrt{-g}\\left[\\tfrac12 R + \\mathcal{L}_m\\right]",
+    "\\hbar appearing explicitly somewhere, which rules out the reduced-Planck row",
+    "masses quoted in kg or M_\\odot rather than GeV",
+    "no mention of M_{\\rm Pl}, no GeV, no particle content"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Not fixed. With a Gaussian pairing F = q_1q_2/r^2, charge rescaled by \\sqrt{8\\pi} relative to the geometrized-Gaussian row. Most papers here have no electromagnetic content.",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = 4\\pi\\rho_e (Gaussian pairing) or \\rho_e (HL pairing); usually absent.",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = T_{\\mu\\nu}; \\ R_{\\mu\\nu} = T_{\\mu\\nu} - \\tfrac12 Tg_{\\mu\\nu} + \\Lambda g_{\\mu\\nu}. Friedmann: H^2 = \\rho/3 - k/a^2 + \\Lambda/3.",
+    "schrodinger_or_dirac": "i\\hbar\\partial_t\\psi = -\\dfrac{\\hbar^2}{2m}\\nabla^2\\psi + V\\psi with \\hbar retained; in these units \\hbar = 8\\pi\\hbar G/c^3 = 8\\pi l_P^2 = 2.0\\times10^{-69}\\,\\mathrm{m}^2."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "Kept separate from the reduced-Planck row because the generator sets genuinely differ (\\hbar and k_B in or out), which changes what must be restored and which residual scales are free. Here two generators fix two of three mechanical dimensions, leaving one free length scale exactly as in plain geometrized units. Equation-wise this row and the reduced-Planck row are identical in the gravity sector; only \\hbar or GeV separate them.",
+   "sources": [
+    "Wald, General Relativity (1984) — for the geometrized baseline and the action normalization it departs from",
+    "Faraoni & Capozziello, Beyond Einstein Gravity — kappa = 1 usage in modified-gravity model building",
+    "own derivation of the hbar value (8 pi l_P^2) in these units this session"
+   ]
+  },
+  {
+   "name": "Planck units (G = c = \\hbar = k_B = 1)",
+   "aliases": [
+    "Planck units",
+    "absolute units",
+    "natural units of quantum gravity",
+    "G = c = hbar = 1",
+    "Planckian units"
+   ],
+   "used_in": "Black-hole thermodynamics and semiclassical gravity, Hawking radiation, holography and entropy bounds, quantum cosmology, quantum-gravity phenomenology. Overlaps the quantum-gravity family but is squarely in scope for GR because black-hole thermodynamics is written here.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "\\hbar",
+     "dimension": "(1, 2, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\hbar"
+    },
+    {
+     "tex": "k_B",
+     "dimension": "(1, 2, -2, -1, 0)",
+     "numeric_factor": "1",
+     "emits": "k_B"
+    }
+   ],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "S_{\\rm BH} = A/4 with no \\hbar, G, c or k_B anywhere",
+    "T_H = \\dfrac{1}{8\\pi M} (Schwarzschild) or T_H = \\dfrac{\\kappa_{\\rm surf}}{2\\pi}",
+    "Einstein equation retaining the 8\\pi: G_{\\mu\\nu} = 8\\pi T_{\\mu\\nu} — this is what separates it from the reduced-Planck row",
+    "evaporation time t_{\\rm evap} = 5120\\pi M^3",
+    "Planck mass, length and time all equal to 1; quantities quoted 'in Planck units'",
+    "'A/4l_P^2' collapsing to 'A/4'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "Genuinely ambiguous: 'Planck units' does NOT fix the electromagnetic normalization. Gaussian-Planck (4\\pi\\varepsilon_0 = 1): F = q_1q_2/r^2 and e^2 = \\alpha = 1/137.036. Lorentz-Heaviside-Planck (\\varepsilon_0 = 1): F = q_1q_2/(4\\pi r^2) and e^2 = 4\\pi\\alpha. A third variant sets e = 1. All three are called 'Planck units'.",
+    "gauss_law": "Gaussian-Planck: \\nabla\\cdot\\mathbf{E} = 4\\pi\\rho_e. Lorentz-Heaviside-Planck: \\nabla\\cdot\\mathbf{E} = \\rho_e.",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = 8\\pi T_{\\mu\\nu}; action S = \\dfrac{1}{16\\pi}\\int d^4x\\sqrt{-g}\\,R. Semiclassical: G_{\\mu\\nu} = 8\\pi\\langle T_{\\mu\\nu}\\rangle. First law: dM = \\dfrac{\\kappa_{\\rm surf}}{8\\pi}dA + \\Omega_H dJ + \\Phi_H dQ, with S = A/4 and T = \\kappa_{\\rm surf}/2\\pi.",
+    "schrodinger_or_dirac": "i\\partial_t\\psi = -\\dfrac{1}{2m}\\nabla^2\\psi + V\\psi; Dirac (i\\gamma^\\mu\\partial_\\mu - m)\\psi = 0; curved-space (i\\gamma^\\mu\\nabla_\\mu - m)\\psi = 0."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "Gravity sector identical to plain geometrized units (Cluster A). The distinguishing token is \\hbar = 1 — concretely S = A/4 rather than S = k_BAc^3/(4\\hbar G), and T_H = 1/(8\\pi M) rather than \\hbar c^3/(8\\pi GMk_B). Marked needs_symbol_rescaling because of the unresolved electromagnetic normalization: the same label covers Gaussian, Heaviside-Lorentz and e = 1 variants whose charge symbols differ by \\sqrt{4\\pi} and by \\sqrt{\\alpha}. Require an explicit E&M fingerprint before touching any charged quantity in a 'Planck units' paper. \\Theta is fixed only if k_B = 1 is actually declared; black-hole-thermodynamics papers often set it silently, which the engine should default to here but flag.",
+   "sources": [
+    "Wald, Quantum Field Theory in Curved Spacetime and Black Hole Thermodynamics (1994)",
+    "Bardeen, Carter & Hawking, 'The four laws of black hole mechanics' (1973)",
+    "Hawking, 'Particle creation by black holes' (1975)",
+    "CODATA 2018 Planck-unit values",
+    "own note: the E&M-normalization ambiguity within 'Planck units' is my own assessment, not sourced to a single reference"
+   ]
+  },
+  {
+   "name": "\\kappa kept symbolic (Einstein's gravitational constant as a named combination)",
+   "aliases": [
+    "Einstein gravitational constant",
+    "Einstein's constant",
+    "kappa = 8 pi G / c^4",
+    "kappa = 8 pi G / c^2",
+    "chi (Einstein's November 1915 notation)",
+    "coupling constant of gravitation"
+   ],
+   "used_in": "Einstein's own 1915-1916 papers and the German-language tradition following them; older textbooks (Pauli, Eddington, Tolman, Synge, Fock, Adler-Bazin-Schiffer); modern modified-gravity, teleparallel, f(R), f(Q) and f(T) literature, where \\kappa is retained as one symbol so the coupling can be varied or made field-dependent; much of the Lagrangian-formulation GR literature, where the prefactor is written 1/(2\\kappa).",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "T_{\\mu\\nu}",
+     "relation": "T_{\\mu\\nu}^{(\\rm mass\\ density)} = T_{\\mu\\nu}^{(\\rm energy\\ density)}/c^2",
+     "why": "This is the whole substance of the \\kappa = 8\\pi G/c^2 versus \\kappa = 8\\pi G/c^4 split. Einstein's original publication used \\kappa = 8\\pi G/c^2, in which case the stress-energy components carry units of mass density; the modern standard \\kappa = 8\\pi G/c^4 goes with energy-density components. The two \\kappa's have DIFFERENT dimensions, so a dimension check against the paper's own declared units for T_{00} resolves the binding uniquely."
+    },
+    {
+     "symbol": "\\kappa (sign and form)",
+     "relation": "Modern: G_{\\mu\\nu} = \\kappa T_{\\mu\\nu}. Einstein 1916: G_{im} = -\\kappa\\left(T_{im} - \\tfrac12 g_{im}T\\right) under \\sqrt{-g} = 1.",
+     "why": "Einstein's Grundlage wrote the equations with an overall minus sign, in trace-reversed form, under a coordinate condition, and with the opposite metric signature. Modern papers writing \\kappa rarely mean that exact convention. Sign is orthogonal to units but co-occurs with this notation."
+    }
+   ],
+   "fingerprints": [
+    "G_{\\mu\\nu} = \\kappa T_{\\mu\\nu} or R_{\\mu\\nu} - \\tfrac12 Rg_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\kappa T_{\\mu\\nu}",
+    "action prefactor written 1/(2\\kappa): S = \\dfrac{1}{2\\kappa}\\int d^4x\\sqrt{-g}(R - 2\\Lambda) + S_m",
+    "a conventions sentence giving '\\kappa = 8\\pi G/c^4' or '\\kappa = 8\\pi G' or '\\kappa^2 = 8\\pi G'",
+    "the numerical value 2.07665\\times10^{-43}\\,\\mathrm{N}^{-1} (that is \\kappa = 8\\pi G/c^4) or 1.866\\times10^{-26}\\,\\mathrm{m/kg} (that is \\kappa = 8\\pi G/c^2)",
+    "in modified gravity, \\kappa^2 used instead of \\kappa so that \\kappa^2 = 8\\pi G and \\kappa = M_{\\rm Pl}^{-1} — a squared-versus-unsquared ambiguity on top of the c-power ambiguity",
+    "the letter \\chi rather than \\kappa (Einstein, November 1915)",
+    "German-tradition typography: G_{im}, indices i and m, \\sqrt{-g} = 1"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: \\kappa is a gravitational-sector abbreviation and says nothing about electromagnetism; papers using it keep SI or Gaussian E&M unchanged.",
+    "gauss_law": "N/A for the same reason. Newtonian-limit analogue: \\nabla^2\\Phi = 4\\pi G\\rho, which relates to \\kappa differently depending on the binding.",
+    "einstein_field": "Modern standard: R_{\\mu\\nu} - \\tfrac12 Rg_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\kappa T_{\\mu\\nu} with \\kappa = \\dfrac{8\\pi G}{c^4} = 2.07665\\times10^{-43}\\,\\mathrm{N}^{-1}, dimension (-1,-1,2,0,0). Einstein's original: G_{im} = -\\kappa\\left(T_{im} - \\tfrac12 g_{im}T\\right) with \\kappa = \\dfrac{8\\pi G}{c^2}, dimension (-1,1,0,0,0). With c = 1: \\kappa = 8\\pi G, dimension (-1,3,-2,0,0). Squared variant: \\kappa^2 = 8\\pi G/c^4, so \\kappa carries half the exponents.",
+    "schrodinger_or_dirac": "N/A: this notation implies no quantum content."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v1",
+   "notes": "HOW THE TABLE SHOULD TREAT A PAPER THAT KEEPS \\kappa SYMBOLIC — the direct answer. \\kappa is NOT a generator: nothing is set to 1, no dimension collapses, and the paper is dimensionally a full SI or CGS presentation. It is also not a unit choice. It is a SYMBOL ALIAS (a macro) whose expansion belongs in a separate alias table keyed per-paper, with three literature bindings of DIFFERENT dimension. Recommended design: (a) an alias entry {symbol: kappa, candidates: [8 pi G/c^4 dim (-1,-1,2,0,0); 8 pi G/c^2 dim (-1,1,0,0,0); 8 pi G dim (-1,3,-2,0,0) with an implied c=1 generator; kappa^2 = 8 pi G/c^4 with half exponents]}; (b) a disambiguation pass that dimension-checks G_{\\mu\\nu} = \\kappa T_{\\mu\\nu} against the declared units of T_{00} — energy density selects c^4, mass density selects c^2, a declared c = 1 selects 8 pi G; (c) translation is then substitution followed by the normal generator solve. This is the one entry where dimension-checking actively DISAMBIGUATES rather than merely validating, and it is worth implementing explicitly. Note the half-integer exponents that arise in the \\kappa^2 variant.",
+   "sources": [
+    "Wikipedia, 'Einstein gravitational constant' (fetched this session) — confirms kappa = 8 pi G/c^4 = 2.07665e-43 N^-1 as the modern standard and that Einstein's original publication used kappa = 8 pi G/c^2 with mass-density stress-energy components",
+    "web search on Einstein's 1916 'Die Grundlage der allgemeinen Relativitaetstheorie' — confirms the trace-reversed form G_im = -kappa(T_im - 1/2 g_im T) under sqrt(-g) = 1, and chi = 8 pi G as Einstein's November 1915 notation",
+    "own dimensional computation of the two kappa dimension tuples this session"
+   ]
+  },
+  {
+   "name": "Gaussian-CGS relativistic astrophysics (all constants explicit; Landau-Lifshitz style)",
+   "aliases": [
+    "cgs-Gaussian GR",
+    "Landau-Lifshitz units",
+    "classical astrophysics cgs",
+    "8 pi k / c^4 convention",
+    "practical cgs units"
+   ],
+   "used_in": "Landau & Lifshitz Vol. 2 and the Russian-school GR tradition; stellar structure and neutron-star equation-of-state papers; pulsar magnetosphere and magnetar physics; accretion theory (Shakura-Sunyaev and descendants); most observational relativistic astrophysics that must quote laboratory-comparable numbers.",
+   "generators": [
+    {
+     "tex": "4\\pi\\varepsilon_0",
+     "dimension": "(-1, -3, 4, 2, 0)",
+     "numeric_factor": "4\\pi",
+     "emits": "(4\\pi\\varepsilon_0)"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "q",
+     "relation": "q_{\\rm Gaussian} = q_{\\rm SI}/\\sqrt{4\\pi\\varepsilon_0}",
+     "why": "Gaussian charge is not SI charge in different-sized units: it has dimension M^{1/2}L^{3/2}T^{-1} (half-integer SI-basis exponents) because current is eliminated as a base dimension. The electron charge is 4.803204\\times10^{-10} esu."
+    },
+    {
+     "symbol": "\\mathbf{B}",
+     "relation": "B_{\\rm Gaussian} = c\\,B_{\\rm SI-quotient}",
+     "why": "Gaussian gives E and B the same dimension, so the Lorentz force carries an explicit 1/c on the magnetic term. 1 T = 10^4 G."
+    }
+   ],
+   "fingerprints": [
+    "R_{ik} - \\tfrac12 g_{ik}R = \\dfrac{8\\pi k}{c^4}T_{ik} — Landau-Lifshitz uses k for Newton's constant",
+    "Latin indices i, k, l rather than Greek; signature (+,-,-,-); x^0 = ct",
+    "densities in g cm^{-3}, pressures in dyn cm^{-2} or erg cm^{-3}, fields in gauss, luminosities in erg s^{-1}",
+    "nuclear-physics hybrids: pressures and energy densities in MeV fm^{-3} alongside \\rho in g cm^{-3}",
+    "TOV with every constant present: \\dfrac{dP}{dr} = -\\dfrac{G(\\rho + P/c^2)(m + 4\\pi r^3P/c^2)}{r(r - 2Gm/c^2)}",
+    "L_{\\rm Edd} = 4\\pi GMm_pc/\\sigma_T"
+   ],
+   "benchmark_equations": {
+    "coulomb": "F = \\dfrac{q_1q_2}{r^2} with q in esu (statcoulomb), r in cm, F in dyne.",
+    "gauss_law": "\\nabla\\cdot\\mathbf{E} = 4\\pi\\rho_e; \\ \\nabla\\times\\mathbf{B} = \\dfrac{4\\pi}{c}\\mathbf{J} + \\dfrac1c\\dfrac{\\partial\\mathbf{E}}{\\partial t}; covariantly \\partial_k F^{ik} = -\\dfrac{4\\pi}{c}j^i.",
+    "einstein_field": "R_{ik} - \\tfrac12 g_{ik}R = \\dfrac{8\\pi k}{c^4}T_{ik} (Landau-Lifshitz, k = Newton's constant), equivalently R_{\\mu\\nu} - \\tfrac12 Rg_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\dfrac{8\\pi G}{c^4}T_{\\mu\\nu}. Action S = -\\dfrac{c^3}{16\\pi k}\\int R\\sqrt{-g}\\,d^4x with d^4x = dx^0d^3x = c\\,dt\\,d^3x, equivalently \\dfrac{c^4}{16\\pi G}\\int R\\sqrt{-g}\\,dt\\,d^3x. Friedmann: H^2 = \\dfrac{8\\pi G}{3}\\rho - \\dfrac{kc^2}{a^2} + \\dfrac{\\Lambda c^2}{3}.",
+    "schrodinger_or_dirac": "i\\hbar\\partial_t\\psi = -\\dfrac{\\hbar^2}{2m}\\nabla^2\\psi + V\\psi; Dirac (i\\hbar\\gamma^\\mu\\partial_\\mu - mc)\\psi = 0. All constants explicit."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Gravitationally this is a zero-generator system — G and c fully explicit — so its gravitational equations are identical in form to SI, differing only by unit scale (Cluster D). The single generator listed is electromagnetic. Two notational hazards worth encoding: Landau-Lifshitz writes k for Newton's constant, colliding with the curvature index k, the FRW curvature parameter k, and Boltzmann's k; and the Einstein-Hilbert prefactor is c^3/(16\\pi G) when d^4x includes dx^0 = c\\,dt but c^4/(16\\pi G) for the dt\\,d^3x measure. I derived this rather than recalling it: [S] must be ML^2T^{-1}, [R] = L^{-2}, [c^4/G] = MLT^{-2}, and (c^4/G)L^{-2}(TL^3) = ML^2T^{-1} checks out for dt\\,d^3x while c\\,dt\\,d^3x needs c^3/G. Papers get this wrong often enough that an automatic check earns its place.",
+   "sources": [
+    "Landau & Lifshitz, The Classical Theory of Fields, Vol. 2 — 8 pi k / c^4 notation and signature",
+    "Shapiro & Teukolsky, Black Holes, White Dwarfs and Neutron Stars (1983) — TOV in explicit cgs",
+    "Jackson, Classical Electrodynamics, unit-system appendix",
+    "own dimensional derivation of the c^3 vs c^4 action prefactor this session"
+   ]
+  },
+  {
+   "name": "Observational cosmology hybrid units (km s^{-1} Mpc^{-1}, Mpc, M_\\odot, K, eV)",
+   "aliases": [
+    "cosmological units",
+    "CMB units",
+    "Planck/WMAP parameter units",
+    "km/s/Mpc",
+    "practical cosmology units"
+   ],
+   "used_in": "CMB analyses (Planck, WMAP, ACT, SPT), large-scale-structure and galaxy-survey papers, supernova cosmology, BAO, cosmological parameter tables, distance-ladder H_0 measurements.",
+   "generators": [],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "H_0 quoted in km\\,s^{-1}\\,Mpc^{-1} (67.4 \\pm 0.5, or 73.0 \\pm 1.0)",
+    "the derived combinations \\Omega_bh^2, \\Omega_ch^2, \\Omega_mh^2",
+    "T_0 = 2.7255\\,\\mathrm{K}; \\sum m_\\nu in eV; N_{\\rm eff} = 3.044",
+    "comoving wavenumbers k in Mpc^{-1}; pivot scale k_* = 0.05\\,\\mathrm{Mpc}^{-1} (Planck) or 0.002\\,\\mathrm{Mpc}^{-1} (WMAP)",
+    "distances in Mpc or Gpc; masses in M_\\odot; \\sigma_8; A_s \\approx 2.1\\times10^{-9}",
+    "\\rho_c as 1.87847\\times10^{-26}h^2\\,\\mathrm{kg\\,m^{-3}} or 2.77537\\times10^{11}h^2\\,M_\\odot\\,\\mathrm{Mpc^{-3}}"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no electromagnetic sector is specified. Recombination physics inside the underlying Boltzmann codes uses SI or Gaussian internally, invisibly to the paper.",
+    "gauss_law": "N/A. The cosmological Poisson equation appears as \\nabla^2\\Phi = 4\\pi Ga^2\\bar\\rho\\delta, or in Fourier space -k^2\\Phi = 4\\pi Ga^2\\bar\\rho\\delta, with G explicit.",
+    "einstein_field": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\dfrac{8\\pi G}{c^4}T_{\\mu\\nu}. Friedmann: H^2(z) = H_0^2\\left[\\Omega_r(1+z)^4 + \\Omega_m(1+z)^3 + \\Omega_k(1+z)^2 + \\Omega_\\Lambda\\right] with \\Omega_k = -kc^2/(a_0^2H_0^2) and \\sum\\Omega_i = 1. Critical density \\rho_c = \\dfrac{3H_0^2}{8\\pi G}. Comoving distance D_C = \\dfrac{c}{H_0}\\int_0^z\\dfrac{dz'}{E(z')}.",
+    "schrodinger_or_dirac": "N/A: classical perturbation theory. Quantum initial conditions are set in reduced-Planck units and translated in — a real translation boundary the engine should recognize."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v1",
+   "notes": "Zero generators — a pure unit choice (Cluster D); the engine must not attempt constant restoration. Its importance is as the TARGET system for translating nearly every theoretical cosmology result. Conversions I verified arithmetically this session: 1 km s^{-1} Mpc^{-1} = 3.2408\\times10^{-20} s^{-1}; H_0^{-1} = 9.778\\,h^{-1} Gyr (1 Mpc = 3.0856775814913673e19 km divided by 100 km/s gives 3.0857e17 s, divided by the Julian year 3.15576e7 s); c/H_0 = 2997.92458\\,h^{-1} Mpc (exactly c in km/s over 100). Note the dimensional oddity that km s^{-1} Mpc^{-1} is dimensionally T^{-1} written as a velocity per length — a unit whose written form does not match its dimension, which trips naive parsers.",
+   "sources": [
+    "Planck 2018 results VI: Cosmological parameters",
+    "Astropy cosmology units documentation (retrieved this session)",
+    "Hogg, 'Distance measures in cosmology' (astro-ph/9905116)",
+    "own arithmetic for 1 km/s/Mpc in s^-1, the Hubble time, and the Hubble length"
+   ]
+  },
+  {
+   "name": "Little-h units (h^{-1} Mpc, h^{-1} M_\\odot, h^2 densities)",
+   "aliases": [
+    "little h",
+    "h-inverse units",
+    "h^{-1} Mpc",
+    "Hubble-parameter-scaled units",
+    "h-units",
+    "h_70 convention"
+   ],
+   "used_in": "Galaxy surveys and clustering (SDSS, BOSS, eBOSS, DES, 2dF), cosmological N-body and hydrodynamic simulations (Millennium, IllustrisTNG, EAGLE, Bolshoi), halo mass functions and halo catalogues, galaxy luminosity and stellar-mass functions, matter power spectra.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "length / distance / radius",
+     "relation": "x_{[h^{-1}\\mathrm{Mpc}]} = h\\cdot x_{[\\mathrm{Mpc}]}; a value X quoted in h^{-1} Mpc means a physical X/h Mpc",
+     "why": "Distances are inferred from redshifts via D \\sim cz/H_0 and so carry an explicit h^{-1}. Quoting in h^{-1} Mpc removes the H_0 uncertainty from the measurement."
+    },
+    {
+     "symbol": "mass",
+     "relation": "M_{[h^{-1}M_\\odot]} = h\\cdot M_{[M_\\odot]}",
+     "why": "Dynamical and lensing masses scale as M \\sim v^2r/G \\sim h^{-1}, inheriting the distance scaling."
+    },
+    {
+     "symbol": "mass density / number density",
+     "relation": "\\rho_{[h^2M_\\odot\\mathrm{Mpc^{-3}}]} = h^{-2}\\rho_{[M_\\odot\\mathrm{Mpc^{-3}}]}; \\ n_{[h^3\\mathrm{Mpc^{-3}}]} = h^{-3}n_{[\\mathrm{Mpc^{-3}}]}",
+     "why": "Mass density = (h^{-1}M_\\odot)/(h^{-1}Mpc)^3 = h^{+2}M_\\odot Mpc^{-3}; number density carries h^{+3}. The exponent differs from that of mass or length — which is exactly why a single scale factor cannot express the convention."
+    },
+    {
+     "symbol": "wavenumber k",
+     "relation": "k_{[h\\,\\mathrm{Mpc^{-1}}]} = h^{-1}k_{[\\mathrm{Mpc^{-1}}]}",
+     "why": "Reciprocal of a length, so the h exponent flips sign."
+    },
+    {
+     "symbol": "power spectrum P(k)",
+     "relation": "P_{[h^{-3}\\mathrm{Mpc}^3]} = h^3P_{[\\mathrm{Mpc}^3]}",
+     "why": "P(k) has dimensions of volume; the h^3 is the most frequently botched conversion in the clustering literature."
+    },
+    {
+     "symbol": "luminosity",
+     "relation": "L_{[h^{-2}L_\\odot]} = h^2L_{[L_\\odot]}",
+     "why": "L = 4\\pi D_L^2F with D_L \\propto h^{-1}, so L \\propto h^{-2}."
+    },
+    {
+     "symbol": "absolute magnitude",
+     "relation": "M_{\\rm abs}^{(h)} = M_{\\rm abs} + 5\\log_{10}h, written in papers as 'M_r - 5\\log h'",
+     "why": "The logarithmic image of the L \\propto h^{-2} scaling: -2.5\\log_{10}(h^{-2}) = +5\\log_{10}h. A multiplicative rescaling appearing as an ADDITIVE shift because the quantity is logarithmic — the two pathological cases of this family combined in one symbol."
+    },
+    {
+     "symbol": "time / age",
+     "relation": "t_{[h^{-1}\\mathrm{Gyr}]} = h\\,t_{[\\mathrm{Gyr}]}",
+     "why": "Times scale as H_0^{-1} \\propto h^{-1}."
+    },
+    {
+     "symbol": "velocity, redshift, surface brightness, temperature, \\sigma_8",
+     "relation": "h^0 — no scaling",
+     "why": "Velocities are measured directly in km/s and surface brightness is distance-independent. \\sigma_8 is dimensionless and h-free as a NUMBER, but is defined on spheres of radius 8 h^{-1} Mpc, so the SCALE it refers to is h-dependent. That asymmetry is a persistent source of confusion, including in the interpretation of the matter power spectrum normalization."
+    }
+   ],
+   "fingerprints": [
+    "the literal strings h^{-1}\\,\\mathrm{Mpc}, \\mathrm{Mpc}/h, h^{-1}M_\\odot, M_\\odot/h, h\\,\\mathrm{Mpc^{-1}}, h^{-3}\\mathrm{Mpc^3}, h^2M_\\odot\\mathrm{Mpc^{-3}}",
+    "'-5\\log h' appended to an absolute magnitude, e.g. M_r - 5\\log_{10}h = -21.3",
+    "the definition h \\equiv H_0/(100\\,\\mathrm{km\\,s^{-1}\\,Mpc^{-1}})",
+    "'\\sigma_8, the rms density fluctuation in spheres of radius 8 h^{-1} Mpc'",
+    "the h_{70} variant h_{70} \\equiv H_0/(70\\,\\mathrm{km\\,s^{-1}\\,Mpc^{-1}}), common in cluster astrophysics",
+    "simulation box sizes as '500 h^{-1} Mpc' or '75 Mpc/h'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: no electromagnetic content.",
+    "gauss_law": "N/A.",
+    "einstein_field": "Unchanged in form — h-units apply to numerical VALUES, not to equations. The Friedmann equation is written exactly as in the observational-cosmology row. The only equation-level appearance is via \\Omega_ih^2 combinations and via \\rho_c = 2.77537\\times10^{11}h^2M_\\odot\\,\\mathrm{Mpc^{-3}}, which is h-free precisely because the h^2 in the coefficient cancels the h^{-2} implicit in the unit.",
+    "schrodinger_or_dirac": "N/A."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "THE canonical stress case for the schema. h is DIMENSIONLESS (h \\approx 0.674), so no dimension-exponent machinery can see it, and its exponent differs per quantity: -1 for length, mass and time; +2 for mass density; +3 for number density; +1 for wavenumber; -3 for P(k); +2 for luminosity; 0 for velocity and redshift; and an additive +5\\log h for magnitudes. The engine MUST carry a per-quantity h-exponent table alongside the dimension tuple, and must refuse to convert an h-unit number to physical units without a user-supplied h, surfacing which h was used. Note also that h is not a unit at all: it encodes an unknown part of a numerical value, which is why some authors argue against the convention outright.",
+   "sources": [
+    "Croton, 'Damn You, Little h!', PASA 30, e052 (2013) — located via web search this session",
+    "Astropy cosmology units documentation (retrieved this session) — 'little h is NOT a unit; h expresses an unknown part of the numerical value'",
+    "Sanchez, 'Arguments against using h^-1 Mpc units in observational cosmology' (INSPIRE record retrieved this session) — sigma_8 normalization misconception",
+    "own derivation of the per-quantity exponents from the h^{-1} distance scaling"
+   ]
+  },
+  {
+   "name": "Comoving / scale-factor normalization conventions",
+   "aliases": [
+    "a_0 = 1",
+    "comoving coordinates",
+    "k = 0, +-1 convention",
+    "curvature-radius normalization",
+    "conformal-time convention",
+    "cMpc (comoving Mpc)"
+   ],
+   "used_in": "All of FRW cosmology. The two variants split roughly along textbook lines: dimensionless a with a_0 = 1 dominates modern observational cosmology and Boltzmann codes; a-as-curvature-radius with k = 0, \\pm1 appears in mathematical-relativity treatments and older texts.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "a (scale factor)",
+     "relation": "Variant A: a dimensionless with a_0 \\equiv a(t_0) = 1. Variant B: a carries the dimension of LENGTH and equals the curvature radius, with k \\in \\{-1,0,+1\\} exactly. Relation a_A = a_B/R_{\\rm curv,0}.",
+     "why": "A genuine change in the DIMENSION of a symbol, not a change of unit size. Two FRW metrics that look character-for-character identical assign different dimensions to a, to the comoving radial coordinate, and to k."
+    },
+    {
+     "symbol": "k (curvature parameter)",
+     "relation": "Variant A: [k] = L^{-2}, tuple (0,-2,0,0,0), with \\Omega_k = -kc^2/(a_0^2H_0^2). Variant B: k is a dimensionless integer in \\{-1,0,+1\\}.",
+     "why": "Direct consequence of a's dimension. A dimension checker assuming the wrong variant reports a false error on the Friedmann equation, or silently passes an inconsistent one."
+    },
+    {
+     "symbol": "\\eta (conformal time)",
+     "relation": "d\\eta = dt/a. Variant A: \\eta has dimension of time (or length with c = 1). Variant B: \\eta is DIMENSIONLESS.",
+     "why": "Same cascade. In Variant B the metric is ds^2 = a^2(\\eta)\\left[-d\\eta^2 + d\\chi^2 + S_k^2(\\chi)d\\Omega^2\\right] with \\chi and \\eta both dimensionless and all the length carried by a."
+    },
+    {
+     "symbol": "comoving distance",
+     "relation": "D_{\\rm comoving} = D_{\\rm physical}/a = D_{\\rm physical}(1+z) in Variant A with a_0 = 1",
+     "why": "Quoted as 'cMpc' versus 'pMpc'. Same dimension, a factor of (1+z) apart, and papers often omit which they mean."
+    }
+   ],
+   "fingerprints": [
+    "'we normalize a_0 = 1', 'a(t_0) = 1', 'the scale factor today is unity'",
+    "k = 0, \\pm1 written as an exact set (Variant B) versus \\Omega_k as a continuous fitted parameter (Variant A)",
+    "ds^2 = a^2(\\eta)\\left(-d\\eta^2 + \\gamma_{ij}dx^idx^j\\right)",
+    "'cMpc' versus 'pMpc'; 'comoving' versus 'proper'/'physical' attached to a distance or density",
+    "comoving number densities 'per comoving Mpc^3'",
+    "in Variant A, a derived curvature radius R_{\\rm curv} = c/(H_0\\sqrt{|\\Omega_k|})"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A.",
+    "gauss_law": "Cosmological Poisson equation, Variant A: \\nabla^2\\Phi = 4\\pi Ga^2\\bar\\rho\\,\\delta, with \\nabla taken in comoving coordinates and the a^2 exactly the factor that makes the dimensions work. Getting the power of a wrong here is among the most common errors in perturbation-theory translation.",
+    "einstein_field": "Variant A: H^2 = \\dfrac{8\\pi G}{3}\\rho - \\dfrac{kc^2}{a^2} + \\dfrac{\\Lambda c^2}{3} with [k] = L^{-2} and a dimensionless. Variant B: identical-looking, but k \\in \\{-1,0,1\\} and [a] = L. Both sides have the same dimensions either way, which is why the error is silent.",
+    "schrodinger_or_dirac": "N/A, though the Mukhanov-Sasaki equation v_k'' + \\left(c_s^2k^2 - z''/z\\right)v_k = 0 inherits the same ambiguity through z = a\\sqrt{2\\epsilon}M_{\\rm Pl} and through whether k is comoving in Mpc^{-1} or in h Mpc^{-1}."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v1",
+   "notes": "Not a unit system in any conventional sense, but it belongs in the table because it changes the DIMENSION TUPLE assigned to k, \\eta and the comoving coordinates — precisely what a dimension checker consumes. Recommend a per-paper boolean 'scale factor dimensionless (a_0 = 1)', defaulting true for post-1990 observational cosmology and flipped on detecting 'k = \\pm1'. The comoving-versus-proper distinction is a separate per-quantity flag: same dimensions, a factor (1+z)^{\\pm1} or (1+z)^{\\pm3} apart, and again invisible to dimensional analysis.",
+   "sources": [
+    "Weinberg, Cosmology (2008) — k = 0, +-1 convention with a of dimension length",
+    "Dodelson & Schmidt, Modern Cosmology — a_0 = 1 convention and comoving Poisson equation",
+    "Hogg, 'Distance measures in cosmology' (astro-ph/9905116) — Omega_k = -kc^2/(a_0^2 H_0^2)",
+    "Astropy cosmology units documentation (retrieved this session) — comoving Mpc definition"
+   ]
+  },
+  {
+   "name": "Hubble units (H_0 = 1, or H = 1 during inflation)",
+   "aliases": [
+    "units of the Hubble rate",
+    "H_0 = 1",
+    "Hubble time and Hubble length units",
+    "de Sitter units",
+    "H = 1"
+   ],
+   "used_in": "De Sitter space and inflationary mode-function calculations, dynamical-systems analyses of cosmological models, dark-energy phase-space papers, cosmological-perturbation numerics where time is measured in e-folds, and back-of-envelope work in Hubble time or Hubble length.",
+   "generators": [
+    {
+     "tex": "c",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "c"
+    },
+    {
+     "tex": "H_0",
+     "dimension": "(0, 0, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "H_0"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "N (e-folds)",
+     "relation": "N = \\ln a, so dN = H\\,dt; N replaces t as the clock and is dimensionless",
+     "why": "Using e-folds as the time variable is the practical form this convention takes in inflation. It is a coordinate choice layered on the unit choice, but the two travel together and the engine will meet them together."
+    }
+   ],
+   "fingerprints": [
+    "'in units of H_0', 'we set H_0 = 1', 'H = 1'",
+    "a dimensionless time variable \\tau = H_0t or N = \\ln a",
+    "de Sitter mode functions u_k(\\eta) = \\dfrac{1}{\\sqrt{2k}}\\left(1 - \\dfrac{i}{k\\eta}\\right)e^{-ik\\eta} with H absorbed",
+    "the Hubble time 1/H_0 = 9.778\\,h^{-1}\\,\\mathrm{Gyr} and Hubble length c/H_0 = 2997.92458\\,h^{-1}\\,\\mathrm{Mpc} quoted as the unit",
+    "dynamical-systems variables x = \\dot\\phi/(\\sqrt6HM_{\\rm Pl}), y = \\sqrt V/(\\sqrt3HM_{\\rm Pl}) with x^2 + y^2 + \\ldots = 1"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A.",
+    "gauss_law": "N/A.",
+    "einstein_field": "With H_0 = c = 1 the Friedmann equation becomes E^2(z) \\equiv (H/H_0)^2 = \\Omega_m(1+z)^3 + \\Omega_\\Lambda + \\ldots, so H(z=0) = 1 by construction. Exact de Sitter with H = 1: ds^2 = -dt^2 + e^{2t}d\\mathbf{x}^2, or ds^2 = \\dfrac{1}{\\eta^2}\\left(-d\\eta^2 + d\\mathbf{x}^2\\right) with \\eta \\in (-\\infty, 0).",
+    "schrodinger_or_dirac": "N/A in general, but the Mukhanov-Sasaki equation in de Sitter with H = 1 reduces to v_k'' + \\left(k^2 - \\dfrac{2}{\\eta^2}\\right)v_k = 0; the bare 2/\\eta^2 is a good fingerprint."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "H_0 (and the inflationary H) is not a constant of nature and is not even constant in time, so this is a per-paper normalization rather than a convention. It earns a row because papers state it as if it were a unit system and because it removes H from equations in a way a naive restorer will not undo. Note that H = 1 during inflation is only approximately meaningful (H is slowly varying), so restoring H is not an exact operation — the engine should flag this rather than pretend the substitution is invertible.",
+   "sources": [
+    "Baumann, TASI Lectures on Inflation (arXiv:0907.5424) — de Sitter mode functions and e-fold time",
+    "Copeland, Liddle & Wands, 'Exponential potentials and cosmological scaling solutions' (1998) — the x, y dynamical-systems variables",
+    "own arithmetic for c/H_0 = 2997.92458 h^-1 Mpc and 1/H_0 = 9.778 h^-1 Gyr"
+   ]
+  },
+  {
+   "name": "Henon units (N-body units): G = M = 1, E = -1/4",
+   "aliases": [
+    "Henon units",
+    "N-body units",
+    "standard units",
+    "Heggie-Mathieu units",
+    "NBODY units",
+    "G = M = 1 units"
+   ],
+   "used_in": "Collisional stellar dynamics: globular- and open-cluster N-body simulations (NBODY6, NBODY6++GPU, PeTar), Monte Carlo cluster codes (MOCCA, CMC), core-collapse and mass-segregation studies, dynamical binary formation and black-hole subsystem work.",
+   "generators": [
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "M_{\\rm tot}",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "M_{\\rm tot}"
+    },
+    {
+     "tex": "|E_{\\rm tot}|",
+     "dimension": "(1, 2, -2, 0, 0)",
+     "numeric_factor": "4",
+     "emits": "(4|E_{\\rm tot}|)"
+    }
+   ],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "'N-body units', 'Henon units', 'standard units', 'the standard N-body units of Heggie & Mathieu (1986)'",
+    "the explicit triple G = M = 1, E = -1/4",
+    "the number 2\\sqrt2 \\approx 2.83 identified as the crossing time",
+    "virial radius R_{\\rm v} = 1 stated as a normalization",
+    "rms velocity \\langle v^2\\rangle^{1/2} = 1/\\sqrt2 \\approx 0.707, or \\langle v^2\\rangle = 1/2",
+    "half-mass relaxation times in dimensionless N-body time units, with Coulomb logarithm \\ln(\\gamma N), \\gamma \\approx 0.11",
+    "scaling formulae [V] = \\sqrt{GM_c/R_{\\rm v}}, [T] = \\sqrt{R_{\\rm v}^3/(GM_c)}"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: purely gravitational stellar dynamics. The formal analogue is the pairwise potential -m_im_j/r_{ij}, structurally a Coulomb potential with attractive sign and 'charge' equal to mass.",
+    "gauss_law": "N/A (no electromagnetic sector). Gravitational analogue: \\nabla^2\\Phi = 4\\pi\\rho, and \\oint\\mathbf{g}\\cdot d\\mathbf{A} = -4\\pi M_{\\rm enc}.",
+    "einstein_field": "N/A: Newtonian gravity. Post-Newtonian terms, when added for black-hole binaries inside clusters, carry explicit 1/c^n and c is NOT 1 here — a genuine mixed-convention hazard, since c has the numerical value \\sqrt{R_{\\rm v}c^2/(GM)} \\sim 10^{3}-10^{4} in Henon units. Equation of motion: \\ddot{\\mathbf{r}}_i = -\\sum_{j\\ne i}\\dfrac{m_j(\\mathbf{r}_i - \\mathbf{r}_j)}{|\\mathbf{r}_i-\\mathbf{r}_j|^3}, with \\sum_i m_i = 1 and E = T + W = -1/4.",
+    "schrodinger_or_dirac": "N/A: classical dynamics."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "The three normalizations are consistent and I verified the chain rather than quoting it: virial equilibrium gives 2T + W = 0, so E = T + W = W/2; with E = -1/4 this gives W = -1/2 and T = 1/4. The virial radius R_{\\rm v} \\equiv GM^2/(2|W|) = 1/(2\\cdot\\tfrac12) = 1. From T = \\tfrac12 M\\langle v^2\\rangle = \\tfrac14 with M = 1, \\langle v^2\\rangle = 1/2 and v_{\\rm rms} = 1/\\sqrt2. Crossing time t_{\\rm cr} = 2R_{\\rm v}/v_{\\rm rms} = 2\\sqrt2 \\approx 2.83, matching the published value. CAUTION: some papers set E = -1/4 without assuming virial equilibrium, in which case R_{\\rm v} \\ne 1 and the third generator must be read from E, not R; others normalize R_{\\rm v} = 1 and let E float. The two agree only in virial equilibrium; prefer the E = -1/4 binding when both are stated and conflict.",
+   "sources": [
+    "Wikipedia, 'N-body units' (fetched this session) — G, M and virial radius normalized; velocity dispersion (1/2)sqrt(2); crossing time 2 sqrt 2; Henon (1971) origin; Heggie's MODEST14 renaming proposal",
+    "web search confirming G = M = 1, E = -1/4, crossing time 2 sqrt 2, and the [V], [T] scaling formulae (2026-08)",
+    "Heggie & Mathieu (1986), 'Standard units for N-body simulations'",
+    "Henon (1971)",
+    "own derivation of R_v = 1, <v^2> = 1/2 and t_cr = 2 sqrt 2 from E = -1/4 plus the virial theorem"
+   ]
+  },
+  {
+   "name": "Model-scale units (G = M = a = 1; Plummer/King/NFW model units)",
+   "aliases": [
+    "model units",
+    "Plummer units",
+    "G = M = a = 1",
+    "scale-radius units",
+    "N-body model units"
+   ],
+   "used_in": "Analytic and semi-analytic stellar dynamics; initial-condition generators (McLuster, AGAMA, GALIC); collisionless N-body simulations of individual galaxies and haloes; Plummer, Hernquist, Jaffe, King, NFW and Dehnen model papers.",
+   "generators": [
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    },
+    {
+     "tex": "M",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "M"
+    },
+    {
+     "tex": "a",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "a"
+    }
+   ],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "\\Phi(r) = -\\dfrac{1}{\\sqrt{1+r^2}} (Plummer with G = M = a = 1)",
+    "\\rho(r) = \\dfrac{3}{4\\pi}\\left(1+r^2\\right)^{-5/2} (Plummer)",
+    "\\Phi(r) = -\\dfrac{1}{1+r} and \\rho(r) = \\dfrac{1}{2\\pi r(1+r)^3} (Hernquist with G = M = a = 1)",
+    "NFW as \\rho(r) = \\dfrac{1}{4\\pi r(1+r)^2} with r in units of r_s",
+    "the number 3\\pi/16 \\approx 0.5890 as the Plummer scale radius expressed in Henon units",
+    "'model units', 'we set G = M = a = 1', 'units in which the scale radius is unity'",
+    "King models parameterized by W_0 with r_c or r_t set to 1"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: purely gravitational.",
+    "gauss_law": "N/A. Gravitational Poisson equation: \\nabla^2\\Phi = 4\\pi\\rho.",
+    "einstein_field": "N/A: Newtonian. The self-consistent system is \\nabla^2\\Phi = 4\\pi\\rho with \\rho(\\mathbf r) = \\int f(\\mathbf r,\\mathbf v)d^3v, together with the collisionless Boltzmann equation \\dfrac{\\partial f}{\\partial t} + \\mathbf v\\cdot\\nabla f - \\nabla\\Phi\\cdot\\dfrac{\\partial f}{\\partial\\mathbf v} = 0.",
+    "schrodinger_or_dirac": "N/A."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "Equation forms identical to Henon units (Cluster C) — both write \\nabla^2\\Phi = 4\\pi\\rho and the same equations of motion. The distinguishing content lies entirely in the third generator: a scale radius here versus a total energy there. The bridge number is worth storing: a Plummer sphere has R_{\\rm v} = 16a/(3\\pi), so a Plummer model expressed in Henon units has a = 3\\pi/16 = 0.58905, and a Plummer model in model units has E = -3\\pi/64 \\approx -0.1473 (I derived the latter from R_{\\rm v} = GM^2/(2|W|) with W = 2E). A tool translating between the two N-body conventions needs exactly this MODEL-DEPENDENT bridge — an unusual property worth surfacing, since it means these two 'unit systems' are not interconvertible without knowing the density profile.",
+   "sources": [
+    "Binney & Tremaine, Galactic Dynamics, 2nd ed. (2008) — Plummer, Hernquist, King and NFW profiles and the virial-radius relations",
+    "Aarseth, Henon & Wielen (1974) and the McLuster documentation — model-unit initial conditions",
+    "own derivation of a = 3 pi/16 in Henon units and E = -3 pi/64 in Plummer model units"
+   ]
+  },
+  {
+   "name": "Galactic-dynamics units (kpc, M_\\odot, km s^{-1} or Myr)",
+   "aliases": [
+    "galactic units",
+    "kpc-Msun-km/s",
+    "astronomical dynamics units",
+    "G = 4.3e-6 units"
+   ],
+   "used_in": "Milky Way dynamics and orbit integration, galactic potential modelling, stellar streams, Gaia-era phase-space studies, dynamical friction and galaxy mergers, dark-matter halo modelling.",
+   "generators": [],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "G quoted as 4.300917270\\times10^{-6}\\,\\mathrm{kpc}\\,M_\\odot^{-1}(\\mathrm{km/s})^2, or 4.3009\\times10^{-3}\\,\\mathrm{pc}\\,M_\\odot^{-1}(\\mathrm{km/s})^2, or 4.4985\\times10^{-12}\\,\\mathrm{kpc^3}M_\\odot^{-1}\\mathrm{Myr^{-2}}",
+    "lengths in kpc or pc, masses in M_\\odot, velocities in km s^{-1}, times in Myr or Gyr",
+    "surface densities in M_\\odot\\,\\mathrm{pc^{-2}}, volume densities in M_\\odot\\,\\mathrm{pc^{-3}} or GeV cm^{-3} for dark matter",
+    "R_0 = 8.122\\,\\mathrm{kpc}, v_c(R_0) \\approx 229\\,\\mathrm{km\\,s^{-1}}, local dark-matter density \\sim0.01\\,M_\\odot\\,\\mathrm{pc^{-3}}",
+    "the footnote conversion 1\\,\\mathrm{km\\,s^{-1}} = 1.0227\\,\\mathrm{pc\\,Myr^{-1}} = 1.0227\\,\\mathrm{kpc\\,Gyr^{-1}}",
+    "actions in kpc km s^{-1}; angular momenta in kpc km s^{-1}"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A.",
+    "gauss_law": "\\nabla^2\\Phi = 4\\pi G\\rho with G = 4.300917270\\times10^{-6} in kpc M_\\odot^{-1}(km/s)^2. \\Phi then comes out in (km/s)^2, which is how galactic potentials are conventionally tabulated.",
+    "einstein_field": "N/A: Newtonian. Circular speed v_c^2 = R\\,\\partial\\Phi/\\partial R; Jeans equations \\dfrac{\\partial(\\nu\\overline{v_iv_j})}{\\partial x_j} = -\\nu\\dfrac{\\partial\\Phi}{\\partial x_i}.",
+    "schrodinger_or_dirac": "N/A, except in fuzzy/ultralight dark-matter work, where the Schrodinger-Poisson system i\\hbar\\partial_t\\psi = -\\dfrac{\\hbar^2}{2m}\\nabla^2\\psi + m\\Phi\\psi is solved with m in eV and lengths in kpc — a hybrid the engine will encounter."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "Zero generators — a pure unit choice (Cluster D). Its practical importance is the constant G = 4.300917270\\times10^{-6} kpc M_\\odot^{-1}(km/s)^2, which any galactic-dynamics tool must carry. I verified the Myr form by conversion rather than memory: 1 km/s times 3.15576e13 s/Myr = 3.15576e13 km = 1.02271 pc, so (km/s)^2 = 1.04594e-6 kpc^2 Myr^-2 and G = 4.4985e-12 kpc^3 M_\\odot^{-1} Myr^{-2}. Because G here is a five-significant-figure number rather than 1, a paper in this system is trivially distinguishable from every G = 1 system.",
+   "sources": [
+    "web search confirming G ~ 4.30e-6 kpc Msun^-1 (km/s)^2 in galactic dynamics units, including the 'Some useful numbers' and Colossus constants references (2026-08)",
+    "Binney & Tremaine, Galactic Dynamics, 2nd ed. (2008), Appendix A units and constants",
+    "GRAVITY Collaboration R_0 measurement (8.122 kpc)",
+    "own arithmetic converting G into kpc^3 Msun^-1 Myr^-2"
+   ]
+  },
+  {
+   "name": "galpy / AGAMA normalized units (R_0 = v_c = 1)",
+   "aliases": [
+    "galpy natural units",
+    "normalized units",
+    "ro/vo units",
+    "code natural units for galactic dynamics"
+   ],
+   "used_in": "The galpy orbit-integration package and papers using it; AGAMA when configured with a normalized unit system; the general practice of quoting galactic orbits in units of the solar radius and local circular speed.",
+   "generators": [
+    {
+     "tex": "R_0",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "R_0"
+    },
+    {
+     "tex": "v_c(R_0)",
+     "dimension": "(0, 1, -1, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "v_0"
+    },
+    {
+     "tex": "G",
+     "dimension": "(-1, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "G"
+    }
+   ],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\Phi",
+     "relation": "\\Phi_{\\rm natural} = \\Phi/v_0^2; potentials are additionally 'normalized' so their contribution to v_c^2(R_0) equals a specified fraction (galpy's normalize= keyword)",
+     "why": "The normalize argument rescales a potential's amplitude so the total circular speed at R_0 is 1. This is an amplitude convention layered on the unit convention, and it means a potential's quoted parameters are not directly physical."
+    }
+   ],
+   "fingerprints": [
+    "the keywords ro, vo, normalize= in a methods section or code listing",
+    "'natural units' in a galactic-dynamics context — NOT the particle-physics meaning",
+    "radii quoted as R/R_0 near 1, velocities near 1, times in units of R_0/v_0 (about 35 Myr for R_0 = 8 kpc, v_0 = 220 km/s)",
+    "orbital energies and angular momenta quoted dimensionlessly with L_z \\approx 1 for the Sun",
+    "'we use ro = 8.0 kpc and vo = 220 km/s'"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A.",
+    "gauss_law": "\\nabla^2\\Phi = 4\\pi\\rho with G absorbed; equivalently v_c^2(1) = 1 by construction.",
+    "einstein_field": "N/A: Newtonian.",
+    "schrodinger_or_dirac": "N/A."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "R_0 and v_c are properties of the Galaxy as modelled by the author, not constants, and they have drifted historically (R_0 from 8.5 to 8.0 to 8.122 to 8.275 kpc; v_0 from 220 to 229 to 233 km/s). A translation is only as good as the recorded ro/vo pair, and papers that omit them are not translatable — the engine should say so rather than default to 8/220. Equation forms identical to Cluster C. AGAMA differs in that its unit system is user-specified at runtime (commonly 1 M_\\odot, 1 kpc, 1 km/s, giving the G = 4.3e-6 of the previous row rather than G = 1), so 'AGAMA units' is not a fixed convention and must be read from the configuration.",
+   "sources": [
+    "Bovy, 'galpy: A Python library for galactic dynamics' (2015) and the galpy documentation on ro/vo and normalize",
+    "Vasiliev, 'AGAMA: action-based galaxy modelling architecture' (2019) — user-configurable unit system",
+    "own note on the historical drift of R_0 and v_0 values"
+   ]
+  },
+  {
+   "name": "Gaussian celestial-mechanics units (au, day, M_\\odot; Gaussian gravitational constant k)",
+   "aliases": [
+    "astronomical units of length, mass and time",
+    "Gaussian gravitational constant",
+    "IAU (1976) System of Astronomical Constants",
+    "k = 0.01720209895",
+    "classical ephemeris units"
+   ],
+   "used_in": "Classical celestial mechanics and orbit determination; minor-planet and comet orbital elements (MPC, JPL Small-Body Database); pre-2012 ephemeris work; orbital-mechanics textbooks; asteroid and TNO dynamics.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "\\mathrm{au}",
+     "relation": "Pre-2012: the au was DEFINED as the length for which k takes the value 0.01720209895 in units of au, day and M_\\odot, i.e. GM_\\odot = k^2\\,\\mathrm{au^3\\,d^{-2}}. Post-2012 (IAU Resolution B2): au \\equiv 149\\,597\\,870\\,700 m exactly and k is removed from the list of constants.",
+     "why": "A genuine historical redefinition that reverses which quantity is derived. Before 2012 the au was derived from k and the observed GM_\\odot; after 2012 the au is exact and GM_\\odot is measured in SI, unconnected to the au. A tool reading a pre-2012 paper must not assume the modern exact au."
+    }
+   ],
+   "fingerprints": [
+    "the literal constant 0.01720209895 or k^2 = 2.959122082855911\\times10^{-4}",
+    "Kepler's third law as n^2a^3 = k^2(1+m) with n in rad/day, a in au, m in M_\\odot",
+    "equations of motion \\ddot{\\mathbf r} = -k^2(1+m)\\dfrac{\\mathbf r}{r^3}",
+    "the phrase 'Gaussian gravitational constant'",
+    "orbital elements with a in au, mean motion in deg/day or rad/day, epoch in JD or MJD",
+    "'the astronomical unit of time is the day of 86400 s'",
+    "GM_\\odot quoted as 2.9591220828559\\times10^{-4}\\,\\mathrm{au^3\\,d^{-2}}",
+    "c quoted as 173.1446\\,\\mathrm{au/day} in the relativistic-correction section"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: gravitational two-body and N-body dynamics only. Solar radiation pressure and Yarkovsky effects, when included, are parameterized rather than derived from E&M.",
+    "gauss_law": "N/A. Gravitational: \\nabla^2\\Phi = 4\\pi k^2\\rho in these units, though the field form is rarely written; the discrete N-body form dominates.",
+    "einstein_field": "N/A in the classical form. Relativistic corrections enter as parameterized post-Newtonian accelerations with explicit c in au/day (c = 173.1446 au/day), e.g. the 1PN Einstein-Infeld-Hoffmann terms carrying k^2/c^2 — so c is NOT 1 in this system and appears with a memorable value.",
+    "schrodinger_or_dirac": "N/A."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "In its classical form this is a zero-generator unit choice: G is NOT set to 1, it equals k^2 = 2.959122082855911e-4 au^3 d^-2 M_\\odot^-1 (I obtained this by squaring 0.01720209895), and the equations carry k^2 explicitly. There IS a distinct sub-variant taking the time unit as 1/k days = 58.132441 days so that GM_\\odot = 1 — that variant DOES have a generator (GM_\\odot, dimension (0,3,-2,0,0)) and its equations join Cluster C. The engine should treat 'Gaussian units' and 'heliocentric canonical units' as separate rows for exactly this reason.",
+   "sources": [
+    "Wikipedia, 'Gaussian gravitational constant' (retrieved this session)",
+    "web search confirming the IAU 1976 definition (au defined so that k = 0.01720209895) and IAU 2012 Resolution B2 (au = 149597870700 m exactly, k removed from the list of astronomical constants, GM_sun determined observationally in SI)",
+    "Pitjeva, SYRTE Journees 2011 presentation on au, GM_sun and M_sun (retrieved this session) — GM_sun = k^2 au^3 / 86400^2",
+    "own arithmetic for k^2"
+   ]
+  },
+  {
+   "name": "Astrodynamics canonical units (\\mu = 1 DU^3/TU^2)",
+   "aliases": [
+    "canonical units",
+    "DU/TU units",
+    "Earth canonical units",
+    "ER units",
+    "normalized orbital units",
+    "mu = 1"
+   ],
+   "used_in": "Astrodynamics and mission design (Vallado, Bate-Mueller-White, Battin); two-body and restricted three-body analysis; Lambert solvers; orbit-determination software; university orbital-mechanics courses.",
+   "generators": [
+    {
+     "tex": "GM_{\\rm central}",
+     "dimension": "(0, 3, -2, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\mu"
+    },
+    {
+     "tex": "\\mathrm{DU}",
+     "dimension": "(0, 1, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "\\mathrm{DU}"
+    },
+    {
+     "tex": "M_{\\rm central}",
+     "dimension": "(1, 0, 0, 0, 0)",
+     "numeric_factor": "1",
+     "emits": "M_{\\rm central}"
+    }
+   ],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "the symbols DU, TU, VU, ER, AU used as unit names together with \\mu = 1",
+    "'canonical units' stated explicitly",
+    "the numbers 6378.137 km (DU for Earth), 806.8118744 s (TU for Earth), 7.905366 km/s (VU for Earth)",
+    "heliocentric variants DU = 1 au, TU = 58.132441 d, VU = 29.7847 km/s",
+    "circular-orbit period at r = 1 equal to 2\\pi TU",
+    "vis-viva written v^2 = 2/r - 1/a with no \\mu",
+    "restricted three-body problem with mass parameter \\mu = m_2/(m_1+m_2) — NOTE the symbol collision: that \\mu is a mass ratio, not GM"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A.",
+    "gauss_law": "N/A. Gravitational: \\nabla^2\\Phi = 4\\pi\\rho, though point-mass form dominates: \\Phi = -1/r.",
+    "einstein_field": "N/A: Newtonian two-body dynamics. \\ddot{\\mathbf r} = -\\dfrac{\\mathbf r}{r^3}; vis-viva v^2 = \\dfrac2r - \\dfrac1a; Kepler's third law T = 2\\pi a^{3/2}; circular speed v_c = 1/\\sqrt r. Relativistic perihelion precession, when included, requires c restored (c \\approx 173.1446 au/day heliocentric).",
+    "schrodinger_or_dirac": "N/A."
+   },
+   "schema_fit": "needs_custom_generators",
+   "scope_tier": "v2",
+   "notes": "Verified numerically this session rather than recalled: with \\mu_\\oplus = 398600.4418 km^3 s^-2 and DU = 6378.137 km, TU = sqrt(DU^3/\\mu) = sqrt(2.5944e11/398600.44) = sqrt(650879) = 806.77 s, consistent with the quoted 806.8118744 s (the small residual reflects the exact \\mu adopted). VU = DU/TU = 7.9054 km/s. Heliocentric: TU = 1/k = 58.132441 days, and VU = 1.495978707e8 km / (58.132441 x 86400 s) = 29.785 km/s. Equation forms identical to Cluster C. The central body must be bound per-paper (Earth, Sun, Mars, Moon all appear), hence needs_custom_generators. Flag the \\mu symbol collision between the gravitational parameter and the CR3BP mass ratio — both are called \\mu and both are commonly introduced in the same section.",
+   "sources": [
+    "Wikipedia / HandWiki, 'Canonical units' (retrieved this session) — mu = 1 DU^3/TU^2, Earth DU ~ 6378 km and TU ~ 806.8 s, heliocentric DU = 1 au",
+    "Vallado, Fundamentals of Astrodynamics and Applications, section 1.8.1 on canonical units",
+    "Bate, Mueller & White, Fundamentals of Astrodynamics",
+    "AOE astrodynamic constants table (JGM-2 canonical/SI) retrieved this session",
+    "own arithmetic for TU and VU, Earth and heliocentric"
+   ]
+  },
+  {
+   "name": "Ephemeris units and the TDB/TCB time-scale rescaling",
+   "aliases": [
+    "TDB-compatible units",
+    "TCB-compatible units",
+    "ephemeris units",
+    "JPL DE units",
+    "T_eph",
+    "barycentric dynamical time units",
+    "INPOP/EPM units"
+   ],
+   "used_in": "Planetary and lunar ephemerides (JPL DE4xx, INPOP, EPM), pulsar timing (TEMPO2, PINT, IPTA/NANOGrav), spacecraft navigation and radio science, relativistic celestial mechanics, VLBI and reference-frame work.",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "the second (and every quantity built on it)",
+     "relation": "TDB = TCB - L_B(\\mathrm{JD_{TCB}} - T_0)\\times86400 + \\mathrm{TDB_0}, with L_B = 1.550519768\\times10^{-8}. A TDB-compatible quantity is smaller than its TCB-compatible counterpart by the factor (1 - L_B).",
+     "why": "TDB is a linearly rescaled version of TCB, so 'the second' denotes two different intervals in the two scales. A genuine unit rescaling by a dimensionless factor, invisible to dimensional analysis, silently propagating into every derived constant."
+    },
+    {
+     "symbol": "\\mathrm{au}",
+     "relation": "\\mathrm{au_{TDB}} = \\mathrm{au_{TCB}}(1 - L_B)",
+     "why": "Ephemeris length scales inherit the time-scale rescaling. Pre-2012 ephemerides quote a TDB-compatible au differing from the TCB-compatible one in the eighth significant figure."
+    },
+    {
+     "symbol": "GM_\\odot and all planetary GM",
+     "relation": "(GM)_{\\rm TDB} = (GM)_{\\rm TCB}(1 - L_B)",
+     "why": "Same cascade. Mixing a TCB-compatible GM with TDB-compatible positions produces an error of order 1.5e-8, far above modern ephemeris precision."
+    },
+    {
+     "symbol": "the terrestrial analogue",
+     "relation": "TT = TCG - L_G(\\mathrm{JD_{TCG}} - T_0)\\times86400, with L_G = 6.969290134\\times10^{-10} (a defining constant)",
+     "why": "The same structure one level down, relating geocentric coordinate time to terrestrial time; relevant for Earth-orbiting and geodetic applications."
+    }
+   ],
+   "fingerprints": [
+    "the acronyms TDB, TCB, TT, TCG, TAI, T_eph in a constants or conventions table",
+    "the constants L_B = 1.550519768\\times10^{-8}, L_G = 6.969290134\\times10^{-10}, L_C = 1.48082686741\\times10^{-8}, \\mathrm{TDB_0} = -6.55\\times10^{-5}\\,\\mathrm{s}",
+    "'TDB-compatible' or 'TCB-compatible' attached to au, GM or a mass",
+    "'IAU 2006 Resolution B3', 'IAU 1991 Resolution A4'",
+    "ephemeris names DE430, DE440, DE441, INPOP19a, EPM2021",
+    "positions in au or km with time argument in TDB Julian days; GM in au^3 d^{-2}",
+    "in pulsar timing: 'UNITS TDB' or 'UNITS TCB' in a par file"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A.",
+    "gauss_law": "N/A.",
+    "einstein_field": "The relevant equations are the 1PN Einstein-Infeld-Hoffmann barycentric equations of motion, written with all constants explicit and a specified coordinate time: \\ddot{\\mathbf r}_i = \\sum_{j\\ne i}\\dfrac{\\mu_j(\\mathbf r_j - \\mathbf r_i)}{r_{ij}^3}\\left[1 + \\mathcal{O}(c^{-2})\\right] + \\ldots. The choice of time scale changes the numerical value of every \\mu, not the form.",
+    "schrodinger_or_dirac": "N/A."
+   },
+   "schema_fit": "needs_symbol_rescaling",
+   "scope_tier": "v2",
+   "notes": "Included because it is the sharpest example in the family of a rescaling dimensional analysis cannot see: two quantities with identical dimension tuples and identical names differing by 1.55e-8. The engine should carry a 'time scale' tag (TDB / TCB / TT / TCG / TAI / UTC) on every ephemeris-derived constant and refuse to combine mismatched tags. UNCERTAINTY FLAG: I report L_B, L_G, L_C and TDB_0 from memory of IAU 2006 Resolution B3 and the IERS Conventions; these are defining constants where the final digits matter, so re-verify against the current IERS Technical Note before hard-coding them.",
+   "sources": [
+    "IAU 2006 Resolution B3 (definition of TDB) and IAU 1991 Resolution A4 — cited from memory, flagged for re-verification",
+    "IERS Conventions (2010), chapter on time scales — cited from memory, flagged for re-verification",
+    "web search on IAU 2012 Resolution B2 and ephemeris constants (2026-08) — confirms the au/GM_sun decoupling context",
+    "JPL DE440 ephemeris documentation (Park et al. 2021) — TDB-compatible constants"
+   ]
+  },
+  {
+   "name": "Astronomical magnitudes (logarithmic scale)",
+   "aliases": [
+    "magnitudes",
+    "apparent magnitude",
+    "absolute magnitude",
+    "AB magnitude",
+    "Vega magnitude",
+    "ST magnitude",
+    "bolometric magnitude",
+    "distance modulus",
+    "mag/arcsec^2",
+    "dex"
+   ],
+   "used_in": "Essentially all observational astronomy: photometry, colour-magnitude diagrams, luminosity functions, the distance ladder, extinction, surface photometry. Also 'dex' for metallicities ([Fe/H]) and surface gravities (log g).",
+   "generators": [],
+   "per_symbol_rescalings": [],
+   "fingerprints": [
+    "the unit strings 'mag', 'mags', 'mag arcsec^{-2}', 'dex'",
+    "m - M = 5\\log_{10}(d/10\\,\\mathrm{pc})",
+    "-2.5\\log_{10} appearing anywhere",
+    "the zero-point constants 48.60 (AB) or 21.10 (ST)",
+    "band labels U, B, V, R, I, J, H, K, u, g, r, i, z, Y, F160W attached to a magnitude",
+    "colours as differences of magnitudes, e.g. (B-V), (g-r)",
+    "[Fe/H] = -1.5\\,\\mathrm{dex}; \\log g = 4.4 (cgs)",
+    "negative numbers meaning brighter"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A: not a physical unit system at all.",
+    "gauss_law": "N/A.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "N/A. The defining relations, for completeness: m_1 - m_2 = -2.5\\log_{10}(F_1/F_2). AB system: m_{\\rm AB} = -2.5\\log_{10}f_\\nu - 48.60 with f_\\nu in erg s^{-1} cm^{-2} Hz^{-1}, equivalently -2.5\\log_{10}(f_\\nu/3631\\,\\mathrm{Jy}). ST system: m_{\\rm ST} = -2.5\\log_{10}f_\\lambda - 21.10 with f_\\lambda in erg s^{-1} cm^{-2} \\AA^{-1}. Distance modulus \\mu = m - M = 5\\log_{10}(d/\\mathrm{pc}) - 5. Bolometric (IAU 2015 B2): M_{\\rm bol} = 0 corresponds to L = 3.0128\\times10^{28}\\,\\mathrm{W}, and m_{\\rm bol} = 0 to an irradiance of 2.518021002\\times10^{-8}\\,\\mathrm{W\\,m^{-2}}."
+   },
+   "schema_fit": "unsupported",
+   "scope_tier": "out_of_scope",
+   "notes": "PRECISELY WHY THIS IS UNSUPPORTED. (1) A magnitude is the logarithm of a RATIO of fluxes, hence dimensionless, so no meaningful (M,L,T,\\Theta,I) exponent tuple exists — the dimensional formalism has nothing to bite on. (2) The map from flux to magnitude is not linear, so the linear-algebra restoration that defines this engine does not apply: sums of magnitudes are products of fluxes and differences are ratios. (3) Dimensional homogeneity checking is meaningless: m = -2.5\\log_{10}f_\\nu - 48.60 takes the logarithm of a dimensionful quantity, defined only because a zero point has been silently divided out. (4) The zero point is a per-system convention (AB, ST, Vega, plus per-instrument variants), so two magnitudes in the same band are not comparable without it. RECOMMENDED BEHAVIOR: detect 'mag' or 'dex' and refuse dimension-checking with a specific message, then offer a SEPARATE logarithmic-unit converter requiring an explicit zero point and band, converting mag to a flux density with a declared dimension before re-entering the dimensional formalism — the same treatment decibels, pH and Richter magnitudes need. I verified both zero points arithmetically: 3631 Jy = 3.631e-20 erg s^-1 cm^-2 Hz^-1 and -2.5 log10(3.631e-20) = 48.600; f_lambda = 3.631e-9 erg s^-1 cm^-2 A^-1 gives -2.5 log10(3.631e-9) = 21.100. Additional trap: 'dex' means both a unit of a logarithm (a factor of 10) and loosely 'orders of magnitude', and [Fe/H] is a log ratio-of-ratios relative to solar — doubly relative.",
+   "sources": [
+    "Oke & Gunn, 'Secondary standard stars for absolute spectrophotometry' (1983) — AB magnitude definition",
+    "Wikipedia, 'Jansky' and STScI/UKIRT photometric-conversion pages (retrieved this session) — AB zero-point context",
+    "IAU 2015 Resolution B2 — bolometric magnitude zero points (cited from memory, worth re-verification)",
+    "own arithmetic confirming the 48.60 and 21.10 zero points from 3631 Jy and 3.631e-9 erg s^-1 cm^-2 A^-1"
+   ]
+  },
+  {
+   "name": "Radio and millimetre flux units (Jansky family)",
+   "aliases": [
+    "jansky",
+    "Jy",
+    "mJy",
+    "microJy",
+    "Jy/beam",
+    "Jy sr^{-1}",
+    "solar flux unit (SFU)",
+    "brightness temperature",
+    "K km/s"
+   ],
+   "used_in": "Radio, millimetre and submillimetre astronomy (VLA, ALMA, MeerKAT, LOFAR, SKA); infrared photometry (IRAS, Spitzer, Herschel, JWST); pulsar flux densities; CMB experiments; solar radio monitoring (the F10.7 index in SFU).",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "T_b (brightness temperature)",
+     "relation": "Rayleigh-Jeans: I_\\nu = \\dfrac{2k_BT_b\\nu^2}{c^2}, so T_b = \\dfrac{c^2I_\\nu}{2k_B\\nu^2}. Exact: T_b = \\dfrac{h\\nu}{k_B}\\left[\\ln\\left(1 + \\dfrac{2h\\nu^3}{c^2I_\\nu}\\right)\\right]^{-1}.",
+     "why": "A temperature standing in for a specific intensity. The conversion is frequency-dependent and, exactly, nonlinear — so 'K' in radio astronomy is not usefully a temperature for this engine unless \\nu is supplied. The Rayleigh-Jeans and thermodynamic (CMB) temperature scales also differ, which matters at CMB frequencies."
+    },
+    {
+     "symbol": "Jy/beam",
+     "relation": "\\mathrm{Jy/beam} \\to \\mathrm{Jy\\,sr^{-1}} requires the beam solid angle \\Omega_{\\rm beam} = \\dfrac{\\pi\\theta_{\\rm maj}\\theta_{\\rm min}}{4\\ln2}",
+     "why": "Jy/beam is NOT a unit in the dimensional sense: it hides an instrument-dependent solid angle. Two maps in Jy/beam with different restoring beams are not comparable and cannot be converted without the beam parameters."
+    }
+   ],
+   "fingerprints": [
+    "Jy, mJy, \\mu Jy, Jy beam^{-1}, Jy sr^{-1}, MJy sr^{-1} as unit strings",
+    "'1 Jy = 10^{-26}\\,\\mathrm{W\\,m^{-2}\\,Hz^{-1}} = 10^{-23}\\,\\mathrm{erg\\,s^{-1}\\,cm^{-2}\\,Hz^{-1}}'",
+    "spectral indices defined via S_\\nu \\propto \\nu^{\\alpha} or \\nu^{-\\alpha} — the sign convention varies, a separate trap",
+    "brightness temperatures in K with a stated frequency; 'Rayleigh-Jeans temperature'",
+    "integrated line intensities in K km s^{-1}",
+    "1 SFU = 10^4 Jy = 10^{-22}\\,\\mathrm{W\\,m^{-2}\\,Hz^{-1}}; the F10.7 index",
+    "beam sizes quoted alongside a Jy/beam map"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A.",
+    "gauss_law": "N/A.",
+    "einstein_field": "N/A.",
+    "schrodinger_or_dirac": "N/A. Defining relation: 1\\,\\mathrm{Jy} \\equiv 10^{-26}\\,\\mathrm{W\\,m^{-2}\\,Hz^{-1}} exactly, dimension (1,0,-2,0,0) — i.e. MT^{-2}, since W m^{-2} Hz^{-1} = (ML^2T^{-3})(L^{-2})(T)."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "A pure unit choice with an empty generator set — it belongs in the engine's unit-conversion table, not its convention table. I include it because it is the cleanest illustration of the unit-choice / unit-system distinction the brief asks for: adopting janskys changes no equation and sets no constant to 1. Two members need special handling: Jy/beam (hides an instrument solid angle) and K km/s (hides both a Rayleigh-Jeans conversion and a velocity-width integration). Accept Jy and MJy/sr as ordinary units with dimension (1,0,-2,0,0) and (1,0,-2,0,0) per steradian; refuse Jy/beam and K km/s without declared metadata, in the same spirit as the refusal of magnitudes. I derived the dimension tuple rather than quoting it.",
+   "sources": [
+    "Wikipedia, 'Jansky' (retrieved this session) — 1 Jy = 1e-26 W m^-2 Hz^-1 = 1e-23 erg s^-1 cm^-2 Hz^-1",
+    "STScI 'Handy units conversions' and UKIRT zero-mag-flux pages (retrieved this session)",
+    "Condon & Ransom, Essential Radio Astronomy — brightness temperature and beam solid angle relations",
+    "own derivation of the Jy dimension tuple"
+   ]
+  },
+  {
+   "name": "Stellar and solar reference units (M_\\odot, R_\\odot, L_\\odot; IAU nominal values)",
+   "aliases": [
+    "solar units",
+    "M_sun",
+    "R_sun",
+    "L_sun",
+    "IAU 2015 nominal solar values",
+    "Jupiter and Earth units (M_J, R_J, M_earth, R_earth)"
+   ],
+   "used_in": "Stellar structure and evolution, exoplanet characterization, binary-star and asteroseismic work, and as the mass unit inside essentially every other row of this family (geometrized, N-body, galactic, cosmological).",
+   "generators": [],
+   "per_symbol_rescalings": [
+    {
+     "symbol": "M_\\odot",
+     "relation": "M_\\odot = GM_\\odot/G, so any mass quoted in M_\\odot carries an implicit dependence on the adopted value of G",
+     "why": "IAU 2015 Resolution B3 recommends quoting the nominal solar mass PARAMETER GM_\\odot (known to about 1 part in 10^{10}) rather than M_\\odot (limited by the uncertainty in G to about 2 parts in 10^5). Two papers adopting different G values agree on GM_\\odot but disagree on M_\\odot in kilograms. Any M_\\odot-to-kg conversion must record which G was used."
+    }
+   ],
+   "fingerprints": [
+    "M_\\odot, R_\\odot, L_\\odot, T_{\\rm eff,\\odot}, M_{\\rm J}, R_{\\rm J}, M_\\oplus, R_\\oplus as unit suffixes",
+    "'nominal solar values', 'IAU 2015 Resolution B3', the superscript N as in \\mathcal{R}_\\odot^{\\rm N}",
+    "the numbers 1.3271244\\times10^{20}\\,\\mathrm{m^3\\,s^{-2}}, 6.957\\times10^8\\,\\mathrm{m}, 3.828\\times10^{26}\\,\\mathrm{W}, 5772\\,\\mathrm{K}",
+    "the distinction between equatorial and polar nominal radii for Earth and Jupiter",
+    "surface gravities as \\log g in cgs (dex); densities in \\rho_\\odot"
+   ],
+   "benchmark_equations": {
+    "coulomb": "N/A.",
+    "gauss_law": "N/A.",
+    "einstein_field": "N/A. These are reference values, not a system with equations. They appear as the mass generator of the numerical-relativity row (G = c = M_\\odot = 1) and as the display mass unit of nearly every other row.",
+    "schrodinger_or_dirac": "N/A."
+   },
+   "schema_fit": "generators_only",
+   "scope_tier": "v2",
+   "notes": "Zero generators; a reference-value table rather than a system. It earns a row because M_\\odot is the mass unit most of this family's conventions are expressed in, and because the GM_\\odot-versus-M_\\odot distinction is a real precision trap: store GM_\\odot as primary and derive M_\\odot from a recorded G, rather than treating M_\\odot as a primitive. UNCERTAINTY FLAG: the IAU 2015 B3 nominal values I list (GM_\\odot = 1.3271244e20 m^3 s^-2, R_\\odot = 6.957e8 m, L_\\odot = 3.828e26 W, T_eff = 5772 K, GM_earth = 3.986004e14 m^3 s^-2, GM_Jupiter = 1.2668653e17 m^3 s^-2) are reported from memory rather than from a source fetched this session, and should be re-verified against the resolution text before being hard-coded.",
+   "sources": [
+    "IAU 2015 Resolution B3 on nominal solar and planetary conversion constants — cited from memory, flagged for re-verification",
+    "Wikipedia, 'Solar mass' (retrieved this session) — corroborates GM_sun/c^2 and GM_sun/c^3 values used elsewhere in this table",
+    "Prsa et al., 'Nominal values for selected solar and planetary quantities: IAU 2015 Resolution B3' (2016) — cited from memory"
+   ]
+  }
+ ]
+}

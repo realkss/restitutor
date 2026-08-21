@@ -1,0 +1,196 @@
+{
+ "family": "Natural units in high-energy physics, QFT, and string theory (ħ=c=1 and its extensions)",
+ "verdicts": [
+  {
+   "system": "HEP natural units (ħ = c = 1) with Heaviside–Lorentz electromagnetism",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "HEP natural units with Boltzmann constant (ħ = c = k_B = 1, Heaviside–Lorentz)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Gaussian natural units (ħ = c = 4πε₀ = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "used_in: \"Older QED and nuclear literature (Heitler; much of the pre-1970 QED corpus)\"",
+     "problem": "Heitler's *The Quantum Theory of Radiation* announces Heaviside (rationalized) units in its opening section, i.e. α = e²/4πħc — precisely this entry's own Gaussian *anti*-discriminator. The attribution is also asserted unhedged, in direct conflict with the entry's own CONFIDENCE NOTE, which says textbook E&M attributions were not verified and that a program should classify from equations, never author names. I could not confirm the passage online in this session; the claim rests on my recollection of §1 of the 3rd edition.",
+     "correction": "Drop Heitler from the Gaussian-natural used_in list (he belongs with the Heaviside–Lorentz entry, alongside LL vol. 4), or move him into the same explicitly-unverified bucket as Weinberg/Bjorken–Drell/Sakurai rather than presenting him as a confirmed Gaussian exemplar.",
+     "confidence": "likely"
+    },
+    {
+     "claim": "fingerprint: \"Couplings without 4π: α_s = g² rather than g²/4π\"",
+     "problem": "The QCD coupling convention α_s ≡ g²/4π is universal and is fixed independently of the electromagnetic rationalization choice; Gaussian-EM papers still write α_s = g_s²/4π. As a classifier feature this can essentially only misfire — it will never fire on a genuine Gaussian paper, and if it ever fires it will be on a non-standard normalization unrelated to the EM sector.",
+     "correction": "Remove this fingerprint. The valid Gaussian discriminators already listed are sufficient: α = e² (no 4π), L = −F²/16π, ∂_μF^{μν} = 4πJ^ν, ∇·E = 4πρ, r_e = e²/m.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Hybrid: ħ = c = 1 with SI/laboratory electromagnetism retained (ε₀ NOT set)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "\"the bridge is 1 T = 195.353 eV² and 1 V/m = 6.5157×10⁻⁷ eV² in Heaviside–Lorentz natural units\"",
+     "problem": "The tesla bridge is right (I reproduce 195.3528 eV²), but the volt-per-metre bridge is wrong in the 5th significant figure. E_HL² = ε₀E_SI² = 8.8541878×10⁻¹² J/m³; with 1 eV⁴ = 20.8522 J/m³ this gives E_HL² = 4.24614×10⁻¹³ eV⁴, so E_HL = 6.51627×10⁻⁷ eV². Cross-check two independent ways: 195.3528/c = 6.51627×10⁻⁷, and m_e²/e_HL ÷ E_Schwinger = 8.62279×10¹¹ eV² / 1.32328×10¹⁸ V/m = 6.5163×10⁻⁷. Since the entry quotes the tesla figure to six digits, the E-field figure is being presented at a precision it does not have.",
+     "correction": "1 V/m = 6.5163×10⁻⁷ eV² (6.51627×10⁻⁷), not 6.5157×10⁻⁷.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "CODATA/NIST natural units (ħ = c = m_e = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "schema_fit: \"generators_only\"",
+     "problem": "The entry itself carries a per_symbol_rescalings block for B and E whose stated relation, B_nat = c√ε₀ B_SI, contains a factor of c *beyond* what the ε₀ generator quotient supplies — the entry's own 'why' field says so ('Same extra-c rider as all c=1 E&M'). That is by definition not a pure quotient. The three sibling systems with the identical rider (HEP-HL, HEP-HL+k_B, Gaussian-natural) are all classified needs_symbol_rescaling, so this verdict is internally inconsistent with the rest of the table.",
+     "correction": "schema_fit should be needs_symbol_rescaling.",
+     "confidence": "certain"
+    },
+    {
+     "claim": "aliases: \"relativistic units\"",
+     "problem": "'Relativistic units' is simultaneously the *name* of a different system in this same enumeration — 'Relativistic units (c = 1 only; ħ retained)'. A classifier fed that phrase has two contradictory targets inside one table, and the two systems differ by rank 0 vs rank 2 in mechanics, so the misclassification is maximally damaging (it either deletes real ħ's or fails to set m_e = 1).",
+     "correction": "Remove 'relativistic units' from the CODATA n.u. alias list (keep 'Compton units', 'electron-mass natural units', 'n.u.'), or rename the c=1-only entry; the phrase must resolve to exactly one system.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Relativistic units (c = 1 only; ħ retained)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "benchmark coulomb: \"V(r) = e²/(4πr) (HL flavour), with α = e²/(4πħ) — ħ survives inside the fine-structure constant.\"",
+     "problem": "The generator list for this system contains c and nothing else. With ε₀ not absorbed, neither of these forms is correct: Coulomb is V(r) = q₁q₂/(4πε₀r) and α = e²/(4πε₀ħ). The benchmarks silently use a second generator (ε₀, or 4πε₀ for the Gaussian variant) that does not appear in the generators array — the same hidden-generator failure the enumeration explicitly warns against in the hybrid entry ('a tool that assumes ħ=c=1 ⇒ ε₀=1 will corrupt every equation').",
+     "correction": "Either add the E&M generator that the gauss_law line already contemplates ('(HL) or 4πρ (Gaussian)') to the generators array, or write the ε₀-explicit SI forms V = q₁q₂/(4πε₀r) and α = e²/(4πε₀ħ) and mark the E&M sector as unfixed by this system.",
+     "confidence": "certain"
+    },
+    {
+     "claim": "schema_fit: \"generators_only\"",
+     "problem": "Same internal contradiction as the CODATA entry: the block lists B_{c=1} = c·B_{SI-like}, an explicit per-symbol factor of c on top of the generator quotient, with the 'why' stating that 'the extra c must be re-emitted on restoration even though no ε₀ generator is present.' A pure-quotient verdict is inconsistent with a listed non-quotient rider.",
+     "correction": "schema_fit should be needs_symbol_rescaling.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Planck units, Gaussian flavour (ħ = c = G = k_B = 4πε₀ = 1)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Planck units, Heaviside–Lorentz flavour (ħ = c = G = k_B = ε₀ = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "\"q_P(HL) = e/√(4πα) = 1.602176634×10⁻¹⁹/0.302822 = 5.2911×10⁻¹⁹ C\" (repeated in benchmark_equations and in notes as 'Verified')",
+     "problem": "The stated division does not give the stated result. 1.602176634×10⁻¹⁹ / 0.30282212 = 5.29082×10⁻¹⁹. Independent check from the defining expression: √(ε₀ħc) = √(8.8541878128×10⁻¹² × 1.054571817×10⁻³⁴ × 2.99792458×10⁸) = 5.29082×10⁻¹⁹ C. The value is wrong in the 5th significant figure, and it is flagged 'Verified' in the notes, which makes it more dangerous than an unflagged rounding.",
+     "correction": "q_P(HL) = √(ε₀ħc) = 5.2908×10⁻¹⁹ C (5.29082×10⁻¹⁹), not 5.2911×10⁻¹⁹. The 3-digit form '5.291×10⁻¹⁹' in the fingerprints list is fine as written.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Reduced Planck units (ħ = c = k_B = 1, 8πG = 1, M̄_pl = 1)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "per_symbol_rescalings contains only h_μν and M̄_pl-vs-M_Pl; ε₀ is listed as a generator with numeric_factor 1 but no B/A rider is recorded.",
+     "problem": "This system has ε₀ = 1 and c = 1 exactly as the HEP-HL, HEP-HL+k_B, Gaussian-natural, and both Planck entries do, all five of which record the B_HL = c√ε₀ B_SI rider. Its coulomb benchmark even says 'Unchanged from Heaviside–Lorentz HEP units', which imports the rider. Omitting it here means a translator restoring a magnetic field in an inflationary-magnetogenesis or reheating paper (a real and common case) drops one factor of c relative to every sibling system.",
+     "correction": "Add the B/A rider B_HL = c√ε₀ B_SI, A_HL = c√ε₀ A_SI, φ_HL = √ε₀ φ_SI, identically worded to the HEP-HL entry, so the tables compose.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Holographic/SUGRA gravitational units (16πG = 1, equivalently 2κ² = 1)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "String units α' = 1 (with ħ = c = 1)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "String length units ℓ_s = 1 with α' = ℓ_s²",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "String length units ℓ_s = 1 with ℓ_s = 2π√α' (2π convention)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "notes: \"a 10-dimensional Newton constant differs by (2π)^8 ≈ 6.1×10^6\" — and identically in family_notes item 4: \"κ₁₀² differs by (2π)^8 ≈ 6.1×10^6\"",
+     "problem": "(2π)^8 = 2.4291×10^6, not 6.1×10^6. The adjacent figure (2π)^6 ≈ 6.1×10^4 is correct (61529), so the error looks like the sixth-power value with the decimal shifted two places rather than an independent evaluation of the eighth power. The exponent itself is right — κ₁₀² ∝ α'⁴ and α' differs by (2π)², so the ratio is (2π)^8 — only the numeric value is wrong, and it is presented in the section explicitly headed 'MAGNITUDE OF THE TRAP' and again in the 'REFERENCE NUMBERS COMPUTED OR VERIFIED THIS SESSION' framing of family_notes.",
+     "correction": "(2π)^8 ≈ 2.43×10^6. Fix in both the entry notes and family_notes item 4.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Worldsheet-convenience convention α' = 2 (closed string)",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "fingerprint: \"Mass formula appearing as M² = 2(N + Ñ - 2) rather than 4(N-1)\"",
+     "problem": "With level matching N = Ñ, 2(N + Ñ − 2) = 2(2N − 2) = 4(N − 1) identically — the two sides of the stated contrast are the same number, so this cannot discriminate anything. Worse, 2(N + Ñ − 2) is the α' = 1 form, not the α' = 2 form: the general closed-bosonic mass shell is α'M²/4 = N − 1, i.e. M² = (2/α')(N + Ñ − 2), which at α' = 2 gives M² = N + Ñ − 2 = 2(N − 1). The entry's own benchmark_equations line already states the correct result ('α'M²/4 = N − 1 → M² = 2(N−1) at α'=2'), so the fingerprint contradicts the benchmark by a factor of 2 and would make a classifier tag α'=1 papers as α'=2.",
+     "correction": "fingerprint should read: \"Mass formula appearing as M² = N + Ñ − 2 = 2(N−1), rather than the α'=1 form M² = 2(N+Ñ−2) = 4(N−1)\"; tachyon M² = −2, first massive level M² = 2.",
+     "confidence": "certain"
+    }
+   ]
+  },
+  {
+   "system": "Worldsheet-convenience convention α' = 1/2 (open string)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "Eleven-dimensional Planck / M-theory units (ℓ_p = 1, or 2κ₁₁² = 1)",
+   "status": "confirmed",
+   "errors": []
+  },
+  {
+   "system": "AdS radius units (L = 1), usually with 16πG = 1",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "Within one per_symbol_rescalings list: \"Δ(Δ − d) = m²L²… Δ = d/2 + √(d²/4 + m²)\" followed by \"Λ = −(d−1)(d−2)/(2L²) → … (AdS_d, d bulk dimensions)\"",
+     "problem": "The symbol d silently changes meaning between adjacent riders: boundary/CFT dimension in the Δ relations, bulk spacetime dimension in the Λ relation. The benchmark_equations block then reverts to the boundary convention ('S = ∫d^{d+1}x…(R + d(d−1)) for AdS_{d+1}, Λ = −d(d−1)/2'). Each formula is individually correct — AdS₅ gives Λ = −6 either way — but in an entry whose own notes name 'spacetime dimension as a live parameter' the single largest schema gap, shipping the parameter with two meanings in one field is a defect that will produce off-by-one bulk dimensions on restoration.",
+     "correction": "Fix d to the boundary dimension throughout (matching the benchmarks): Λ = −d(d−1)/(2L²) for AdS_{d+1}; if the bulk form is wanted, write it with a distinct symbol, e.g. Λ = −(D−1)(D−2)/(2L²) for AdS_D.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Lattice units (a = 1) on top of ħ = c = 1",
+   "status": "errors_found",
+   "errors": [
+    {
+     "claim": "benchmark gauss_law: \"Ĝ^a(n) = Σ_μ[E^a_μ(n) − E^a_μ(n−μ̂)] − ρ^a(n)\"",
+     "problem": "The colour index a signals a non-abelian theory, but a bare difference of colour components at two different sites is not gauge covariant — the two electric fields live in different (gauge-rotated) copies of the algebra. The Kogut–Susskind Gauss law is built from the left and right electric fields on each link, Ĝ^a(n) = Σ_μ[E^{R,a}_μ(n) + E^{L,a}_μ(n−μ̂)] − ρ^a(n), where E^L and E^R are related by the adjoint action of the link variable. The written form is only correct for U(1), where E^L = −E^R and the colour index is vacuous.",
+     "correction": "Either write the U(1) form without the colour index, or state the non-abelian form with left/right link electric fields; as written the equation is neither.",
+     "confidence": "likely"
+    }
+   ]
+  },
+  {
+   "system": "Stoney units (c = G = e²/4πε₀ = 1; ħ ≠ 1)",
+   "status": "confirmed",
+   "errors": []
+  }
+ ],
+ "missing_systems": [
+  "Gauge-coupling-absorbed field normalization (A_μ → A_μ/g, so L = −(1/4g²)F^a_{μν}F^{aμν} and D_μ = ∂_μ − iA_μ, with the coupling appearing only in the kinetic term and in instanton/'t Hooft counting). This is ubiquitous — lattice gauge theory, instanton calculus, Seiberg–Witten and SUSY gauge theory, holographic bulk Maxwell/Yang–Mills sectors, large-N — and it is a dimensionless rescaling of A_μ and F_{μν} by exactly one power of g, structurally identical to the √(4π) that the enumeration correctly records for HL↔Gaussian. It appears nowhere in the entries and nowhere in the 'INVISIBLE FACTORS, RANKED BY DAMAGE' list, yet a translator that assumes canonically normalized A_μ will misplace every power of g in an action written this way. Note the enumeration's own 16πG=1 entry brushes against it ('−(1/4g²)F², or −(1/2κ²)(L²/g₄²)F²') without naming it as a convention.",
+  "ADD/RS higher-dimensional fundamental-scale conventions (M_D, M_*, M_{Pl(4+n)}). At least three mutually inconsistent definitions of the (4+n)-dimensional Planck scale are in standard hep-ph use — G_D = M_D^{2−D}; the PDG/Giudice–Rattazzi–Wells normalization; and the Han–Lykken–Zhang normalization — differing by factors of (2π)^n and 8π, exactly the M_Pl-vs-M̄_pl trap one dimension up. The enumeration records only the dimensional fact [G_D] = mass^{2−D} (in the dim-reg rider and the 16πG=1 entry) and gives no entry or numeric_factor for the absorbed 2π^n/8π, even though extra-dimension collider bounds are quoted in whichever M_D the authors chose.",
+  "Geometrized units G = c = 1 with ħ ≠ 1 (MTW/Wald). The enumeration hands this off to a 'GR family', but its own scope boundary is inconsistent: it gives a full entry to Stoney units, which likewise keep ħ ≠ 1 and are (by its own admission) 'essentially never used for computation', and a full entry to 'c = 1 only'. Geometrized units are vastly more common than either and overlap both Planck entries directly. Either the ħ ≠ 1 members are in scope or they are not.",
+  "Higgs-vev normalization v = 246 GeV versus v = 174 GeV (= v/√2). A pure dimensionless factor-of-√2 convention of exactly the same class as M_Pl vs M̄_pl and κ² = 8πG vs 32πG: invisible to dimensional analysis, announced (if at all) in one line of a conventions paragraph, and it shifts every Yukawa coupling by √2 and every dimension-five/six Wilson coefficient by √2 or 2. It is arguably the most frequently hit invisible factor in SM/EFT, neutrino-mass and axion phenomenology — the exact literature the v1 scope targets — and it is absent from both the entries and the ranked invisible-factor list.",
+  "Schrödinger units (ħ = G = e²/4πε₀ = 1, leaving c = 1/α ≈ 137.036). Named only in prose inside the Stoney entry's notes, with no entry of its own, while Stoney — equally moribund and equally likely to show up only in a comparison table — gets a full generator/benchmark/fingerprint treatment. Given that the enumeration's stated reason for including Stoney is 'because it appears in comparison tables a reader might feed the tool', the same argument applies verbatim to Schrödinger units, and the 'ħ = 137' vs 'c = 137' vs 'a₀ = 137' discriminator triad is incomplete without it."
+ ],
+ "overall": "Strong enumeration; the physics core is largely sound and I confirmed a great deal of it independently. All 19 generator dimension 5-tuples over (M,L,T,Θ,I) are correct, including the two easy-to-botch ones (ε₀ = (−1,−3,4,0,2), e²/4πε₀ = (1,3,−2,0,0)). Every numeric_factor/emits pair is right: 4πε₀ for Gaussian, 8πG for reduced Planck, 16πG for holography, (2π)²α' for the pheno string length, α'/2 for α'=2, 2α' for α'=1/2. The rank bookkeeping is correct at every level, as is the G=1 / 8πG=1 / 16πG=1 discriminator ladder (I re-derived S_BH = A/4, 2πA, 4πA and the R-coefficients). The extra-c rider on B and the 3-vector A is correctly derived and correctly distinguished from the pure quotient on φ and q, and the half-power structure (q ∝ ε₀^{−1/2}, ψ_lat ∝ a^{3/2}) is right. Most reference numbers check out to the digits quoted: ħc, (ħc)², e_HL = 0.3028221, e_G = 0.0854245, M̄_pl = 2.4353232×10¹⁸ GeV, √(8π) = 5.0132565, m_e/M_Pl = 4.1855×10⁻²³, 1 T = 195.3528 eV², and B_crit = m_e²/e = 8.6228×10¹¹ eV². Two claims the enumeration itself flagged as unverified are in fact correct and can be promoted: the eleven-dimensional set {2κ₁₁² = (2π)⁸ℓ_p⁹, T_M2 = 1/((2π)²ℓ_p³), T_M5 = 1/((2π)⁵ℓ_p⁶)} satisfies Dirac quantization exactly (2κ₁₁²·T_M2·T_M5 = 2π), and it reduces consistently to the verified 10d relation via 2κ₁₁² = 2πR₁₁·2κ₁₀² with R₁₁ = g_sℓ_s and ℓ_p³ = g_sℓ_s³. I found ten defects across eight of the nineteen systems. Three are hard numerical errors, all in figures the document presents as computed or verified: (2π)⁸ ≈ 6.1×10⁶ should be 2.43×10⁶ (in both the ℓ_s = 2π√α' entry and family_notes); q_P(HL) = 5.2911×10⁻¹⁹ C should be 5.2908×10⁻¹⁹; 1 V/m = 6.5157×10⁻⁷ eV² should be 6.5163×10⁻⁷. One is a physics error that a classifier would act on: the α'=2 fingerprint 'M² = 2(N + Ñ − 2) rather than 4(N−1)' contrasts two identical expressions and states the α'=1 form, contradicting that same entry's own benchmark by a factor of 2. Four are schema/self-consistency failures — the CODATA and c=1-only entries are marked generators_only while each lists a non-quotient extra-c rider; the c=1-only benchmarks use an ε₀ generator absent from the generator list; and 'relativistic units' is an alias of one system and the name of another. The remainder are a non-covariant non-abelian lattice Gauss law, a d-symbol collision inside the AdS entry, an unhedged Heitler attribution that likely belongs on the Heaviside side, an α_s = g² fingerprint that can only misfire, and a missing B rider in the reduced-Planck entry. On completeness, the omission that matters most for the stated v1 scope is the g-absorbed gauge-field normalization: it is a dimensionless rescaling of A_μ of exactly the same character as the HL↔Gaussian √(4π) that the enumeration handles well, it is everywhere in lattice, SUSY and holography, and it appears in neither the entries nor the ranked invisible-factor list."
+}

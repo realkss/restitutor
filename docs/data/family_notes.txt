@@ -1,0 +1,328 @@
+
+==========================================================================================
+FAMILY NOTES: si-cgs-em (8084 chars)
+==========================================================================================
+ACID TEST — THE ANSWER. Gaussian units are NOT a pure quotient of SI by 4πε₀ = 1. They are that quotient PLUS a definitional rescaling of B by one factor of c (and correspondingly A by c, H by 1/c, M by 1/c). schema_fit for Gaussian is needs_symbol_rescaling, and the same holds for Heaviside–Lorentz.
+
+The derivation, done independently and then cross-checked: setting 4πε₀ = 1 forces ε₀ = 1/4π and hence μ₀ = 1/(ε₀c²) = 4π/c². Substituting those into the SI Maxwell equations term by term gives ∇·E = 4πρ, ∇×E = −∂B/∂t, and ∇×B − c⁻²∂E/∂t = 4πc⁻²J. The first is Gaussian's; the second and third are NOT — they are exactly CGS-ESU's. Gaussian is that same ESU set under B → cB. The dimension algebra says the same thing: 4πε₀ = 1 collapses the SI current dimension to I = M^(1/2)L^(3/2)T^(−2), whereupon [E]_SI = M L T^(−3) I^(−1) → M^(1/2)L^(−1/2)T^(−1) while [B]_SI = M T^(−2) I^(−1) → M^(1/2)L^(−3/2). Those differ by exactly one power of velocity, so the quotient alone can never deliver Gaussian's defining property [E] = [B]. Independent confirmation: the four-parameter table in Trapero's "Babel of Units" lists k_B = c for Gaussian and Heaviside–Lorentz and k_B = 1 for SI, ESU and EMU; and Wikipedia's Gaussian-units article states that E and B sharing a dimension "amounts to a factor of c between how B is defined in the two unit systems."
+
+CLEAN STRUCTURAL RESULT — A 2×2 CLASSIFICATION. Two independent riders sit on top of a single generator choice and generate the whole family:
+  (i) the c-rider ("symmetric/relativistic B"): B → cB, A → cA, H → H/c, M → M/c. Present in Gaussian and Heaviside–Lorentz; absent in SI, ESU, EMU.
+  (ii) the 4π-rider ("unrationalized"): D → 4πD, H → 4πH, so D = E + 4πP, H = B − 4πM, and the 4π moves out of Coulomb into Gauss. Present in Gaussian, ESU, EMU and unrationalized MKS; absent in SI and Heaviside–Lorentz.
+So SI = (no, no); Heaviside–Lorentz = (yes, no); ESU/EMU = (no, yes); Gaussian = (yes, yes). Note M picks up the c-rider but NOT the 4π-rider, while H picks up both — I verified this from H = B − 4πM in each system. Both riders are invisible to the linear dimension solve (4π is dimensionless; c is a dimension that ε₀ or μ₀ alone cannot supply), which is exactly why numeric_factor and per-symbol riders must be stored separately from the generator table.
+
+WHAT THIS BREAKS IN A GENERATOR-ONLY SCHEMA. CGS-ESU and CGS-Gaussian have the IDENTICAL generator (4πε₀ = 1, numeric factor 4π), the identical Coulomb law F = q₁q₂/r², the identical ∇·E = 4πρ, and identical q, ρ, J, E, φ, D, P — yet they are different systems. A generator table alone provably cannot tell them apart. Concretely: if a tool tries to convert Gaussian's Faraday law to SI by inserting powers of (4πε₀), the linear system is INCONSISTENT — no power of a constant with dimension (−1,−3,4,0,2) yields a pure velocity — and the solver fails. That failure is itself a useful signal: an unsolvable restoration in this family almost always means "this system carries a hidden factor of c on B." An implementation can either (a) store the riders explicitly, or (b) admit c into the restoration basis for systems flagged k_B = c. The two are equivalent for this family, but (a) is safer, because (b) destroys uniqueness in equations where c legitimately appears on its own.
+
+ESU / EMU / GAUSSIAN TRIANGLE (all factors are powers of c; everything else is identical):
+  q, ρ, J, I, P, D:  ESU = Gaussian = c × EMU
+  E, φ:              ESU = Gaussian = EMU / c
+  B, A:              EMU = Gaussian = c × ESU
+  H, M:              EMU = Gaussian = ESU / c
+This is the precise sense in which "Gaussian takes its electric quantities from ESU and its magnetic quantities from EMU," and it is why Gaussian's units are statvolt/statcoulomb (ESU) on the electric side and gauss/oersted/maxwell (EMU) on the magnetic side. Unit checks: 1 abC = c_cgs statC = 2.99792458×10¹⁰ Fr; 1 statvolt = c_cgs abvolt; 1 abA = 10 A; the ESU unit of B is g^(1/2)cm^(−3/2) = c_cgs gauss ≈ 3×10¹⁰ G (verified against the CGS Wikipedia article, which independently gives the ESU B unit as "c_cgs gauss").
+
+WHERE THE 4π SITS (rationalization), at a glance:
+  SI:                Coulomb 1/(4πε₀); Gauss ∇·D = ρ;     Ampère ∇×H = J + Ḋ
+  Heaviside–Lorentz: Coulomb 1/(4π);   Gauss ∇·D = ρ;     Ampère ∇×H = (1/c)(J + Ḋ)
+  Gaussian:          Coulomb 1;        Gauss ∇·D = 4πρ;   Ampère ∇×H = (4π/c)J + (1/c)Ḋ
+  ESU:               Coulomb 1;        Gauss ∇·D = 4πρ;   Ampère ∇×H = 4πJ + Ḋ
+  EMU:               Coulomb c²;       Gauss ∇·D = 4πρ;   Ampère ∇×H = 4πJ + Ḋ
+Rationalized systems (SI, HL) keep 4π out of Maxwell and put it in Coulomb; unrationalized systems (Gaussian, ESU, EMU) do the reverse. EMU's Coulomb law with an explicit c² is the single most diagnostic equation in the family.
+
+DOWNSTREAM 4π TRAPS THAT COST REAL PAPERS. Susceptibility χ_SI = 4π χ_cgs, with μ_r = 1 + χ_SI versus μ = 1 + 4πχ_cgs. Demagnetizing factors: ΣN = 1 in SI but ΣN = 4π in cgs. Maxwell Lagrangian: −(1/4μ₀)F² (SI), −(1/16π)F² (Gaussian), −(1/4)F² (HL). EM stress tensor: (1/μ₀)(…), (1/4π)(…), or no prefactor at all. Reissner–Nordström with G = c = 1: Q²/r² (Gaussian-geometrized) versus Q²/(4πr²) (HL-geometrized). Fine-structure constant: α = e²/(4πε₀ħc) (SI), e²/(ħc) (Gaussian), e²/(4πħc) (HL) — with the natural-units corollary e ≈ 0.303 in HL versus e ≈ 0.0854 in Gaussian. Bohr magneton: eħ/(2m_e) (SI) versus eħ/(2m_e c) (Gaussian).
+
+PER-DOCUMENT VERSUS PER-EQUATION TAGGING. Jackson 3rd ed. is SI for chapters 1–10 and Gaussian for 11–16 (the 1st and 2nd editions are Gaussian throughout). A units engine that assumes one system per document will be wrong about the most-cited E&M textbook in the field. Support per-section, ideally per-equation, system assignment.
+
+SI BASE-DIMENSION ADVICE. For equation checking, carry (M, L, T, Θ, I). Θ appears only via k_B and only in thermal/statistical equations. mol and cd essentially never matter: N cancels between N_A and k_B (R = N_A k_B) and is a counting factor; cd is photometric. Keep them as inert slots if full SI coverage is wanted, but do not let them enter the restoration solve. Half-integer exponents are mandatory here: Gaussian charge is M^(1/2)L^(3/2)T^(−1), and the SI↔Gaussian conversion factors are themselves square roots — √(4πε₀), √(4π/μ₀), √(4πμ₀), √(μ₀/4π).
+
+IMPLEMENTATION WARNING ON NUMERICS. Those conversion factors are DIMENSIONFUL, so a numeric check must also apply the m/kg/s → cm/g/s base conversion. I verified two cases by hand this way: B_G = √(4π/μ₀) B_SI gives 1 T = 10⁴ G, and M_G = √(μ₀/4π) M_SI gives 1 A/m = 10⁻³ emu/cm³ — both correct, and both would come out wrong by factors of ~3.16 if the mechanical base conversion were skipped. This is a good regression test for the engine.
+
+2019 SI. ε₀ and μ₀ are no longer exact: μ₀ = 4πα ħ/(e²c), so u_r(μ₀) = u_r(ε₀) = u_r(Z₀) = u_r(α) ≈ 1.5×10⁻¹⁰ (CODATA 2022). μ₀ equals 4π×10⁻⁷ N/A² only to about 1.3 parts in 10¹⁰. This never changes an equation's form, but a numeric mode must know which constants are exact in which era.
+
+GENUINE UNCERTAINTIES, FLAGGED RATHER THAN GUESSED. (1) The exact D/H conventions of pre-1950 unrationalized MKS: the headline fact that the 1950 IEC rationalization multiplied μ₀ by 4π (10⁻⁷ → 4π×10⁻⁷) is well sourced, but the auxiliary-field conventions vary between authors, and I would not let a tool auto-translate that system. (2) "Variant-Gaussian": one secondary source only (Trapero), no identified textbooks; detect-and-warn, never translate. (3) The QES eleventhgram value is from that same secondary source, not independently verified. (4) The 1.00049 / 0.99985 international-unit ratios are the standard CIPM 1946 figures; my searches confirmed the ampere ratio (1.00015 ≈ 1/0.99985) from BIPM but not the ohm figure directly. NAMING COLLISION to guard against in the data model: "Kennelly system" (historical unrationalized MKS with μ₀ = 10⁻⁷) and "Kennelly convention" (magnetic polarization J = μ₀M inside ordinary SI, versus the Sommerfeld convention with M in A/m) are entirely different things sharing a name.
+
+==========================================================================================
+FAMILY NOTES: hep-natural (10909 chars)
+==========================================================================================
+RANK BOOKKEEPING — THE SINGLE MOST USEFUL THING THE TOOL CAN TRACK
+
+The SI basis is rank 5: (M, L, T, Θ, I). Each independent generator kills one rank. For this family:
+
+- c = 1 only → residual rank 4 (mass, length, temperature, current)
+- ħ = c = 1, no ε₀ → rank 3 (mass, temperature, current)
+- ħ = c = 1 + HL or Gaussian ε₀ → rank 2 (mass, temperature)
+- ħ = c = k_B = ε₀ = 1 → rank 1: MASS DIMENSION only. This is the canonical HEP system.
+- + G (Planck / reduced Planck / 16πG=1), or + α' (string), or + m_e (CODATA n.u.), or + a (lattice) → RANK 0: nothing survives, no dimensional check exists.
+
+The product should REPORT residual rank per document and must not claim "dimensionally consistent" at rank 0 — that statement is vacuous there. At rank 0 the tool's value is restoration, not checking. Conversely the lab-hybrid system (ħ=c=1 with SI E&M) has HIGHER rank than the standard one and supports genuinely stronger checks than a naive classifier would expect.
+
+Restoration remains a unique linear solve at every rank, provided the intended dimension of the quantity is supplied by its role in the equation. The failure mode at rank 0 is not non-uniqueness but the need for that external input.
+
+THE INVISIBLE FACTORS, RANKED BY DAMAGE
+
+1. 4π in electromagnetism. α = e²/4π (Heaviside–Lorentz, modern) vs α = e² (Gaussian, older). e = 0.302822 vs 0.085425. Maxwell Lagrangian −F²/4 vs −F²/16π; the 4π sits on Maxwell's source equations vs on Coulomb's law. Crucially, the products eA_μ, eE, eB, eF_μν are INVARIANT between the two, so a paper that only ever writes covariant derivatives never reveals its convention. Detect from α or the F² coefficient; if neither appears, report "undetermined" rather than defaulting.
+
+2. 8π / 16π / 32π in gravity. Verified discriminator ladder:
+   - G = 1: G_μν = 8π T_μν, S_EH = (1/16π)∫√−g R, S_BH = A/4
+   - 8πG = 1 (reduced Planck, M̄_pl = 2.435323×10^18 GeV): G_μν = T_μν, S_EH = (1/2)∫√−g R, S_BH = 2πA
+   - 16πG = 1 (holography/SUGRA, "2κ²=1"): G_μν = ½T_μν, S_EH = ∫√−g R, S_BH = 4πA
+   The R-coefficient plus the entropy coefficient identify the system uniquely — a robust programmatic test. Separately, the graviton normalization g = η + κh uses κ² = 8πG in SUGRA/cosmology but κ² = 32πG in the graviton-amplitude literature; nLab also records the κ = √(32πG) definition. Papers in all camps write "κ = 1". This is a per-symbol rider, not a generator.
+
+3. "M_pl = 1" ambiguity. M_Pl = G^{-1/2} = 1.220890×10^19 GeV vs M̄_pl = (8πG)^{-1/2} = 2.435323×10^18 GeV. Ratio √(8π) = 5.013257 in mass, 8π = 25.13 in mass². Inflation/swampland papers almost always mean reduced; black-hole and extra-dimension papers usually mean unreduced. Never guess from the symbol — read the Einstein–Hilbert coefficient.
+
+4. 2π in the string length. ℓ_s = √α' (Tong, nLab, much of hep-th) vs ℓ_s = 2π√α' (string compactification/pheno; arXiv:2301.05178 eq. 3 documents both and calls the latter "a common convention"). Setting ℓ_s = 1 means α' = 1 in one and α' = 1/(4π²) = 0.02533 in the other. I verified the downstream arithmetic: tension T = 1/2π vs 2π; M_s = 1 vs 2π; κ₁₀² differs by (2π)^8 ≈ 6.1×10^6; a Calabi–Yau volume in ℓ_s^6 differs by (2π)^6 ≈ 6.1×10^4. The most numerically violent invisible factor in the family.
+
+5. Worldsheet-convenience α' = 2 (closed) and α' = 1/2 (open), chosen so √(α'/2) = 1 and √(2α') = 1 respectively. These can change WITHIN one book at a chapter boundary — convention state must be per-equation, not per-document.
+
+6. 2π in ħ vs h. Rarely a problem in HEP (nobody sets h = 1), but a translator moving toward spectroscopic literature must watch it. ħ = h/2π is a definitional relation, not a unit choice.
+
+WHAT BREAKS OR STRESSES THE GENERATOR-TABLE SCHEMA
+
+A. Generators that are not constants of nature. The lattice spacing a, the AdS radius L, the 11d ℓ_p, and (arguably) α' have no measured universal value; a varies across ensembles WITHIN a single paper. The schema implicitly assumes a generator has both a fixed SI dimension and a known numeric value; these have the first but not the second. RECOMMENDATION: add a generator_kind field — {fundamental_constant, theory_scale, solution_parameter, regulator} — because restoration behaviour differs (symbolic vs numeric output).
+
+B. Spacetime dimension as a live parameter. In d = 4−2ε (dim reg) the mass dimensions are ε-dependent: [φ] = (d−2)/2, [ψ] = (d−1)/2, [A_μ] = (d−2)/2, [e] = ε, with couplings written g μ^ε. In string/holography D = 5, 10, 11 appear, with [G_D] = mass^{2−D} and Λ = −(d−1)(d−2)/(2L²). A fixed SI 5-tuple cannot express an exponent that is itself symbolic. Without a dimension parameter the tool will emit false failures on essentially every loop calculation and every holography paper. THIS IS THE LARGEST SINGLE SCHEMA GAP I FOUND.
+
+C. Field redefinitions masquerading as unit changes. Three kinds appear, only the first genuinely dimensional:
+   - honest rescalings: φ_lat = aφ, ψ_lat = a^{3/2}ψ, q_HL = q_SI/√ε₀;
+   - rescaling by a FIELD, not a constant: the string-frame ↔ Einstein-frame Weyl transformation g^E = e^{−4(Φ−Φ₀)/(D−2)} g^s, outside the dimensional formalism entirely yet always announced in the same "conventions" paragraph;
+   - non-invertible replacement: A_μ → U_μ = exp(iagA_μ) on the lattice, where the continuum variable is gone.
+   per_symbol_rescalings handles the first cleanly, describes the second, and cannot invert the third.
+
+D. Half-integer exponents are load-bearing for two independent reasons: charge picks up ε₀^{1/2} whenever ε₀ is a generator (why q is dimensionless in HEP units), and lattice fermions pick up a^{3/2}. Both confirmed. Keep halves.
+
+E. Θ and I are quietly dropped. Most treatments of "ħ=c=1" say nothing about temperature or charge, yet the standard HEP system silently sets both k_B and ε₀. A tool modelling only (M,L,T) will mis-handle every thermal and every electromagnetic equation. Keep the full 5-tuple.
+
+DETECTION HEURISTICS AND ANTI-HEURISTICS
+
+- Presence of ħ or c in an equation does NOT mean the paper is not in natural units — authors routinely restore them in a final numerical formula or a conversion appendix. Classify from the body, not from one line.
+- "Natural units" in a nuclear/astro paper often means c = 1 only; in hep-ph it means ħ = c = k_B = ε₀ = 1; in quantum gravity it may mean full Planck units. The phrase alone is not a classifier.
+- Display-unit choice (eV vs GeV vs fm vs GeV/c²) is typographic, not a convention change. "GeV/c²" in a ħ=c=1 paper is a courtesy, not evidence that c ≠ 1.
+- Metric signature (+−−− vs −+++), the sign in D_μ = ∂_μ ± ieA_μ, and Riemann-tensor sign conventions co-vary with schools but are NOT unit conventions. They need their own orthogonal convention axis — and they matter just as much for reading equations correctly.
+- Strong positive signals worth hard-coding: "α = e²/4π" → HL; "−F²/16π" or "∂_μF^{μν} = 4πJ^ν" → Gaussian; "G_μν = T_μν" → 8πG=1; "S = A/4" → G=1; "S = 4πA" or "S = ∫√−g(R−2Λ)" → 16πG=1; "T = 1/2πα'" plus "g_s" → string units; "am_π" or "β = 6/g₀²" → lattice; "Bohr radius = 137" → CODATA n.u.; "c = 137" → ATOMIC units (a different family, frequently misclassified into this one); "ħ = 137" → Stoney.
+- Lab-SI unit symbols (T, V/m, K, GHz, litre) co-occurring with GeV masses → the hybrid system, NOT the standard one. Verified bridge: 1 T = 195.353 eV² in Heaviside–Lorentz natural units (from B_crit = m_e²/e = 8.6229×10^11 eV² = 4.414×10^9 T).
+
+REFERENCE NUMBERS COMPUTED OR VERIFIED THIS SESSION
+ħc = 197.3269804 MeV·fm; (ħc)² = 0.3893793721 GeV²·mbarn; 1 GeV^{-1} = 0.1973269804 fm = 6.582119569×10^{-25} s; α^{-1} = 137.035999177; e_HL = √(4πα) = 0.30282212; e_G = √α = 0.08542454; M_Pl = 1.220890×10^19 GeV; M̄_pl = 2.4353232×10^18 GeV; √(8π) = 5.0132565; m_e/M_Pl = 4.1855×10^{-23}, (m_e/M_Pl)² = 1.7518×10^{-45}; G_N = 6.70883×10^{-39} GeV^{-2}; G_F = 1.1663787×10^{-5} GeV^{-2}; 1 K = 8.617333262×10^{-14} GeV; ℓ_P = 1.616255×10^{-35} m, t_P = 5.391247×10^{-44} s, T_P = 1.416784×10^{32} K; q_P(Gaussian) = 1.875545×10^{-18} C, q_P(HL) = 5.2911×10^{-19} C; CODATA n.u. of length ħ/m_ec = 3.8615927×10^{-13} m, n.u. of time 1.288088667×10^{-21} s, n.u. of energy 0.51099895069 MeV; 16πG=1 ⇒ S_BH = 4πA; ℓ_s=1 in the 2π convention ⇒ T = M_s = 2π.
+
+EXPLICITLY FLAGGED UNCERTAINTIES (do not silently promote to fact)
+- Textbook E&M attributions: only LL vol. 4 (Heaviside, α = e²/4πħc) was verified this session. Weinberg QFT, Bjorken–Drell and Sakurai's Advanced QM were NOT verified — classify from equations, not authors.
+- The 11d relations 2κ₁₁² = (2π)^8 ℓ_p^9, T_M2 = 1/((2π)²ℓ_p³), T_M5 = 1/((2π)^5 ℓ_p^6), and the IIA dictionary R₁₁ = g_s ℓ_s, ℓ_p³ = g_s ℓ_s³ are reported from standard usage but were not verified against a primary source here. The 10d relation 2κ₁₀² = (2π)^7 α'^4 IS verified.
+- Which chapters of Polchinski vs GSW use α'=2 vs α'=1/2 was not verified; the arithmetic consequences of each choice were.
+- The AdS₅×S⁵ dictionary L⁴/α'² = 4πg_sN = λ is standard but was not re-derived here.
+
+ADJACENT SYSTEMS DELIBERATELY NOT CLAIMED AS MINE (hand-off notes)
+- Geometrized units G = c = 1 with ħ ≠ 1 — MTW/Wald GR family. Overlaps my Planck entries; make sure exactly one agent owns it. Its fingerprint is that ħ survives.
+- Atomic/Hartree units (ħ = m_e = e = 4πε₀ = 1, c = 1/α = 137) and Rydberg units (differing from Hartree by the factor of 2: 1 Ha = 2 Ry) — atomic/molecular family. My CODATA-n.u. entry is the one most often confused with these; the discriminator is whether c or the Bohr radius equals 137.
+- Gaussian and Heaviside–Lorentz as CLASSICAL (non-natural) systems — classical-E&M family. My Gaussian-natural and HL-natural entries are those systems with ħ = c = 1 added; the riders (B and the 3-vector A carrying an extra c) are shared and should be stated identically in both families so the tables compose.
+- "ħ = 1 only" (condensed-matter/non-relativistic QFT, often with m = 1 too) — real and widely used, but its home is the condensed-matter family.
+- Regge calculus / causal dynamical triangulations use edge-length or simplex units analogous to lattice a — discrete-gravity family.
+- Cosmological "a₀ = 1" scale-factor normalization and h-units (Mpc/h, M_⊙/h) behave like unit conventions and cause comparable damage, but they are catalogue conventions rather than constant-setting; they need their own mechanism.
+
+OVERALL RECOMMENDATION
+v1 scope: HEP ħ=c=1 (HL), +k_B, Gaussian-natural, Planck (Gaussian flavour), reduced Planck, 16πG=1, α'=1, both ℓ_s=1 conventions, lattice a=1. That set covers the overwhelming majority of hep-ph / hep-th / hep-lat / astro-ph.CO reading. The two highest-value features beyond the table itself are (a) reporting residual rank honestly, including saying "no dimensional check is possible here", and (b) a spacetime-dimension parameter so that dim-reg and higher-dimensional papers do not generate false failures.
+
+==========================================================================================
+FAMILY NOTES: gr-cosmo-astro (8912 chars)
+==========================================================================================
+SCOPE OF THE FAMILY. This family contains five structurally different things that all get called "units" in papers, and an engine that conflates them will be silently wrong.
+
+(1) CONVENTION (true unit system): a dimensionful combination of universal constants is set to 1. Symbols disappear from equations; dimensions collapse. Equation FORMS change. This is what the generator table models. Rows 1-10 here.
+
+(2) UNIT CHOICE: a differently-sized member of an unchanged dimension (kpc vs m, M_sun vs kg, day vs s, Jy vs W m^-2 Hz^-1, erg vs J). Generator set EMPTY. Equation forms byte-identical to SI/CGS; only numbers change; translation is one multiplicative scale per base dimension. Astronomy is dominated by these and they are NOT unit systems. Rows 13, 19, 21, 23, 25, 26 (and the gravity sector of 12).
+
+(3) NORMALIZATION: dimensionally behaves exactly like a generator, but the scale is a property of the SYSTEM UNDER STUDY, not a constant of nature (M_BH, M_total, R_vir, Plummer a, R_0, v_c, H_0, M_unit). The linear-algebra restoration works unchanged, but the numeric value must be bound per-paper from prose. Rows 4, 5, 6, 16, 17, 18, 20, 22.
+
+(4) PARAMETERIZED RESCALING: a DIMENSIONLESS factor hidden in each symbol, with a per-symbol exponent. Invisible to dimensional analysis. Little h (row 14) and the TDB/TCB time-scale rescaling (row 23). These are the strongest argument for the per_symbol_rescalings field: no dimension check recovers them.
+
+(5) LOGARITHMIC SCALE: magnitudes, dex, decibels (row 24). Outside the formalism entirely; must be refused, not approximated.
+
+Papers routinely mix all five in one sentence: "we set G = c = 1, quote masses in M_sun, distances in Mpc, fluxes in mJy, and the host has M_r = -21.3 + 5 log h." The engine must therefore track a convention (generator set) and a display-unit map INDEPENDENTLY, not a single system label.
+
+=== WHICH SYSTEMS ARE MUTUALLY INDISTINGUISHABLE FOR GRAVITY-ONLY CONTENT ===
+
+CLUSTER A - literally identical gravitational equations, always:
+  #1 Geometrized (G=c=1, mass in length); #1-alias Geometrized-second (mass in seconds); #2 Geometrized-Gaussian (gravity sector); #3 Geometrized-Heaviside-Lorentz (gravity sector); #4 Black-hole scale units (G=c=M=1); #5 NR code units (G=c=M_sun=1); #6 GRMHD code units (gravity sector); #10 Planck units (gravity sector).
+All write G_mn + L g_mn = 8 pi T_mn, S = (1/16pi) int R sqrt(-g), ds^2 = -(1-2M/r)dt^2 + ..., T_H = 1/(8 pi M), S_BH = A/4. A gravity-only equation CANNOT distinguish them. What separates them is never equation form:
+  - #1 vs #1-alias vs #5: only the NUMBERS quoted (1.4766 km vs 4.9255e-6 s vs 1).
+  - #4/#5/#6 differ from #1 only if M (or M_sun) appears explicitly; a paper writing r/M or "M = 1" reveals them.
+  - #2 vs #3 vs #1 differ only once charge appears (Q^2/r^2 vs Q^2/(4 pi r^2)).
+  - #10 differs from #1 only once hbar appears (hbar = 1 vs hbar = l_P^2 = 2.612e-70 m^2).
+A classifier must return the whole cluster with a confidence spread, never a single label, when the input is a vacuum metric or a matter-free Einstein equation.
+
+CLUSTER B - identical in VACUUM only (the worst case):
+  Cluster A UNION {#8 reduced-Planck 8piG=c=1, #9 kappa=1 classical, #11 with kappa bound to 1}.
+In vacuum, R_mn = L g_mn, Schwarzschild, Kerr, geodesics, quasinormal modes, Regge-Wheeler/Teukolsky, and vacuum post-Newtonian expansions are IDENTICAL between geometrized (G=c=1) and reduced-Planck (8piG=c=1). The 8 pi becomes visible only when T_mn, rho, p, an action prefactor, or a Lambda-to-rho_Lambda conversion appears. RECOMMENDED BEHAVIOR: for vacuum-only input, refuse to choose between G=c=1 and 8piG=c=1 and ask; the restored SI form differs by 8 pi in every matter-coupled downstream equation.
+
+CLUSTER C - Newtonian G=1 systems, identical equation forms:
+  #17 Henon/N-body (G=M=1, E=-1/4); #18 Model/Plummer units (G=M=a=1); #20 galpy/AGAMA natural units (R_0=v_c=1); #22 astrodynamics canonical units (mu=1); #21-variant heliocentric canonical with k=1 (time unit 58.132441 d).
+All write laplacian(Phi) = 4 pi rho and rdotdot_i = -sum_j m_j (r_i-r_j)/|r_i-r_j|^3 with G absent. The third normalization (E=-1/4 vs R_v=1 vs a=1 vs v_c=1 vs DU=R_ref) is stated in PROSE and appears in no equation. Per-equation these are indistinguishable; only the quoted crossing time (2 sqrt 2), the Plummer scale (3 pi/16), the number 806.8 s, or the methods section separates them.
+
+CLUSTER D - zero-generator unit choices, equation forms identical to SI/CGS:
+  #12 (gravity sector), #13, #19, #21 (k-explicit form), #23, #25, #26, and largely #14, #15.
+G and c stay explicit. Classify as "display units" and never attempt constant restoration - there is nothing to restore.
+
+DECISION PROCEDURE, priority order:
+  a. Read the Einstein-equation / action prefactor. Most informative single token.
+       G_mn = (8 pi G/c^4) T_mn  -> no generators (SI/CGS)
+       G_mn = (8 pi G/c^2) T_mn  -> no generators, T is a MASS density (Einstein 1916)
+       G_mn = 8 pi G T_mn        -> c = 1 only (#7)
+       G_mn = 8 pi T_mn          -> Cluster A
+       G_mn = T_mn               -> 8 pi G = c = 1 (#8/#9)
+       G_mn = kappa T_mn         -> kappa symbolic (#11); MUST bind kappa per-paper
+       Action prefactor 1/(16 pi G) -> c=1; c^4/(16 pi G) with d^4x = dt d^3x -> SI; c^3/(16 pi G) with d^4x = c dt d^3x -> SI; 1/(16 pi) -> Cluster A; M_Pl^2/2 or 1/2 -> #8.
+  b. If vacuum-only, stop and report Cluster B ambiguity.
+  c. Check whether hbar and k_B appear (separates #10 from #1, #8 from #9).
+  d. Check the Maxwell normalization (-1/(16 pi) F^2 = Gaussian; -1/4 F^2 = Heaviside-Lorentz).
+  e. Check quoted numbers for the residual scale (km / s / M_sun / dimensionless).
+
+TRAPS THAT STRESS OR BREAK THE GENERATOR-TABLE SCHEMA:
+  T1. Little h (#14): a dimensionless per-symbol factor with a DIFFERENT exponent per quantity (lengths h^-1, masses h^-1, densities h^+2, number densities h^+3, P(k) h^-3, luminosities h^-2, absolute magnitudes +5 log h, times h^-1, velocities h^0). No generator table expresses this; it needs a per-quantity exponent map. The clearest needs_symbol_rescaling case in the family.
+  T2. TDB/TCB (#23): two quantities both called "the second" and two both called "the au", differing by L_B = 1.550519768e-8. Dimensional analysis is blind.
+  T3. Scale-factor dimensions (#15): whether a is dimensionless (a_0 = 1, k has dimension L^-2) or carries length (k = 0, +-1 exactly) changes the DIMENSION of k, of comoving coordinates, and of conformal time. Two identical-looking FRW metrics carry different dimension assignments.
+  T4. kappa as a named combination (#11): not a generator and not a unit choice, but a SYMBOL ALIAS with three literature expansions of DIFFERENT dimension ((-1,-1,2,0,0) for 8piG/c^4 vs (-1,1,0,0,0) for 8piG/c^2 vs (-1,3,-2,0,0) for 8piG). Handle with an alias table plus a dimension-driven disambiguation pass keyed on the declared units of T_00. This is the one place where dimension-checking genuinely DISAMBIGUATES rather than merely validates.
+  T5. Per-object generators (#4,#5,#6,#16,#17,#18,#20,#22): M, M_total, R_vir, a, R_0, v_c, H_0, M_unit are not constants of nature. Restoration emits a SYMBOL, not a number, until bound.
+  T6. Residual free scale: G = c = 1 fixes only 2 of 3 mechanical base dimensions, so one length scale stays free. "Geometrized units" determines equation form, NOT numeric conversion. Adding M (or M_sun, or R_vir) closes the system.
+  T7. Logarithmic units (#24) and hybrid instrument units (Jy/beam, K km/s, mag/arcsec^2) that hide a beam solid angle, a line width, or an angular area. Refuse with a specific message.
+  T8. The c^3 vs c^4 Einstein-Hilbert prefactor, depending on whether d^4x means dt d^3x or c dt d^3x. Dimensionally detectable ([S] = M L^2 T^-1) and worth auto-checking.
+  T9. M_sun is not a primitive. IAU 2015 B3 recommends quoting GM_sun (nominal 1.3271244e20 m^3 s^-2, ~1e-10) not M_sun (limited by G to ~2e-5). Store GM_sun as primary; every M_sun-in-kg conversion carries a hidden G dependence.
+  T10. Signature and curvature-sign conventions (MTW's [S1,S2,S3]) and Landau-Lifshitz's k for Newton's constant (colliding with curvature index k, FRW k, and Boltzmann k_B) are not unit issues but wreck naive fingerprinting. Keep sign conventions as an orthogonal field.
+  T11. Gravitational-radius ambiguity: r_g = GM/c^2 in most GR literature but 2GM/c^2 in parts of the accretion-disk/X-ray-binary literature. A factor of 2, invisible dimensionally, changing a quoted ISCO between 6 r_g and 3 r_g.
+  T12. Lambda placement: Lambda (L^-2) vs rho_Lambda = Lambda c^2/(8 pi G) vs Lambda in eV^4 vs dimensionless Omega_Lambda. Four objects, one word.
+  T13. Reduced vs unreduced Planck mass differ by sqrt(8 pi) = 5.013 (2.435e18 GeV vs 1.22089e19 GeV). Purely numeric, dimensionally invisible, the most common single error in inflation-paper translation.
+
+==========================================================================================
+FAMILY NOTES: atomic-cm (9562 chars)
+==========================================================================================
+CROSS-SYSTEM OBSERVATIONS, TRAPS, AND WHERE THE GENERATOR-TABLE SCHEMA BREAKS
+
+=== 1. THE DEFINING PROBLEM OF THIS FAMILY: DIMENSIONALLY INVISIBLE FACTORS OF 2 ===
+
+Hartree and Rydberg atomic units are DIMENSIONALLY IDENTICAL. E_h and Ry have the same exponent tuple (1,2,-2,0,0); a₀ = 1 in both; ħ = 1 in both; momentum unit ħ/a₀ = 1 in both. A dimension-checker will validate H = -½∇² - Z/r and H = -∇² - 2Z/r with equal enthusiasm. This is not an edge case — it is the family's central hazard, and it recurs at every level:
+  - Hartree vs Rydberg atomic units (factor 2 in energy)
+  - Hartree-like vs Rydberg-like EFFECTIVE atomic units (same factor 2, even less often declared)
+  - h vs ħ, ν vs ω, ν̃ vs k (factor 2π, four times over)
+  - Flux quantum h/e vs h/2e (factor 2, decided by whether Cooper pairs are involved)
+  - Heisenberg -2J vs -J vs +J, and Σ_<ij> vs ½Σ_{i≠j} (up to factor 4 and a sign)
+  - Hyperpolarizability Taylor vs perturbation expansion (factor 2 in β, 6 in γ)
+  - Atomic unit of intensity with and without the ½ (factor 2)
+  - Susceptibility χ_SI = 4πχ_cgs and demagnetizing N_SI = N_cgs/4π (factor 4π, twice)
+The numeric_factor and emits fields are not a convenience here — they are the entire information content that distinguishes half these systems.
+
+Diagnostic tip worth building in: Hartree and Rydberg a.u. AGREE on length and momentum and DISAGREE on energy, time, velocity, mass, charge and pressure. That asymmetric signature (bohr present, energy 2× off) is a reliable detector. Concretely: a.u. pressure = 29421.016 GPa vs Ry/bohr³ = 14710.508 GPa; c = 137.036 vs 274.072.
+
+=== 2. WHERE THE 5-TUPLE (M, L, T, Θ, I) IS INSUFFICIENT ===
+
+(a) AMOUNT OF SUBSTANCE IS MISSING. kcal/mol, kJ/mol, cm³/mol, J mol⁻¹K⁻¹, eV/atom, meV/atom, eV/f.u. all carry a per-amount divisor with true SI dimension N⁻¹. Under the 5-tuple, 1 kcal/mol and 1 kcal are indistinguishable — a silent 6.022×10²³ error, the largest available in this family, in the single most-used reporting convention in chemistry. STRONG RECOMMENDATION: add an optional sixth exponent N, with N_A as the generator that collapses it. The 'per atom' and 'per formula unit' divisors are integer cell counts, not N_A, and need a separate slot again.
+
+(b) RECIPROCAL RELATIONS ARE NOT LINEAR RESCALINGS. E = hc/λ maps energy to wavelength by inversion, not multiplication. No linear solve over dimension exponents can produce it. The spectroscopic converter needs an explicit graph with one reciprocal edge (energy ↔ wavelength) alongside the multiplicative ones (energy ↔ cm⁻¹, Hz, K, eV, J/mol).
+
+(c) SOME CONVENTIONS ARE NOT DIMENSIONAL AT ALL. Air-vs-vacuum wavelength is a wavelength-, temperature-, pressure- and humidity-dependent transform (Edlén/Ciddor). Watson A- vs S-reduced Hamiltonians are different effective operators. Hückel α/β are fitted, non-transferable parameters. In each case the correct behaviour is to DETECT and REFUSE, not to approximate. The schema's 'unsupported' value should be used freely here.
+
+(d) MATERIAL PARAMETERS AS GENERATORS. Effective atomic units (m*, ε_r), lattice units (a), model units (t, J), and reduced LJ units (ε, σ, m) all have generator tables that are structurally identical to the universal-constant systems but whose entries are per-paper numbers. The 'needs_custom_generators' path must accept these as user input; there is no default that is not wrong.
+
+=== 3. THE MAGNETIC α AMBIGUITY (worth its own alarm) ===
+
+'Atomic units' is ambiguous by a factor of α ≈ 1/137 in EVERY magnetic quantity, and by nothing at all in every electric one. The SI-based atomic unit of magnetic flux density is ħ/(ea₀²) = 2.35051757077×10⁵ T; the Gaussian-based one is e/a₀² = 1.7152555×10³ T = 1.7152555×10⁷ G. I verified in-session that the ratio is exactly α (α × 2.35051757e5 T = 1715.2555 T, and e/a₀² computed independently in Gaussian units = 1.71525554e7 G — agreement to 8 figures).
+
+The ONLY reliable textual discriminator is whether magnetic terms carry an explicit 1/c: H_Z = (1/2c)(L+2S)·B (Gaussian) vs H_Z = ½(L+2S)·B (SI-based). A paper stating 'in atomic units, B = 0.1' with no Hamiltonian is unresolvable. Recommend a hard warning rather than a conversion.
+
+=== 4. RATIONALIZATION IS NOT WHERE PEOPLE EXPECT IT ===
+
+Setting 4πε₀ = 1 makes Coulomb's law rationalization-free (F = q₁q₂/r²) but puts 4π BACK into Gauss's law (∇·E = 4πρ, since ε₀ = 1/4π). Both Hartree atomic units and Gaussian units share this. Heaviside–Lorentz atomic units (∇·E = ρ, e² = 4πα) are essentially absent from AMO/quantum-chemistry literature and I would not implement them; they appear only where this family touches QED.
+
+Half-integer dimension exponents appear exactly where a system is Gaussian-rendered: charge = M^½L^{3/2}T⁻¹ = (0.5, 1.5, -1, 0, 0). Both renderings of the same physical system must be supported and must be known to be the same system — Hartree a.u. is a 4-generator integer-exponent system in its SI rendering and a 3-generator half-integer system in its Gaussian rendering, with identical physics.
+
+=== 5. COMPOSABILITY: THESE ARE NOT MUTUALLY EXCLUSIVE SYSTEMS ===
+
+Real papers stack conventions. A condensed-matter paper may declare ħ = 1, k_B = 1, a = 1, t = 1 in one sentence — four independent switches. A quantum-chemistry paper computes in Hartree a.u., reports energies in kcal/mol, dipoles in debye, polarizabilities in Å³ and temperatures in kelvin, all in the same table. A magnetism paper reports fields in tesla, moments in emu, susceptibilities in cm³/mol and exchange constants in cm⁻¹.
+
+The tool should therefore model these as COMPOSABLE MODIFIERS, not as a flat list of mutually exclusive systems. In particular k_B = 1 is orthogonal to everything else in the family: it is the only generator here that touches Θ, and no atomic-unit system includes it by default. 'T = 0.001 in atomic units' means 315.8 K; 'T = 300' in the same paper almost certainly means kelvin. Flag, do not guess.
+
+=== 6. HYBRID / DELIBERATELY INCONSISTENT UNIT SETS ===
+
+LAMMPS 'units electron' (hartree + bohr + FEMTOSECOND + AMU) is the cautionary example: two axes look like atomic units and two are not, off by 41.34× in time and 1822.9× in mass. Detection must never rest on two axes agreeing. Simulation-package unit sets (LAMMPS real/metal/electron, GROMACS, AMBER) are lookup tables, not generator systems, and should be hard-coded as such.
+
+=== 7. VERIFICATION METHOD USED ===
+
+I downloaded the NIST CODATA 2022 complete listing (allascii.txt, 366 lines) and read every relevant constant directly rather than from memory. Every derived number in this table was then recomputed in-session at 20-significant-figure precision and cross-checked against CODATA's own relationship entries. Independent checks that all passed:
+  - m_ec² computed as ½(2/α)² Ry = 37557.7301 Ry = 510998.95 eV, matching CODATA's electron mass energy equivalent
+  - ƛ_C/a₀ = 7.2973525644e-3 = α to 9 figures
+  - Gaussian a.u. of B computed two ways (α × SI value, and e/a₀² in cgs) agreeing to 8 figures
+  - R_H = R_∞/(1+m_e/m_p) = 109677.5834 cm⁻¹, matching the tabulated literature value exactly
+  - E_n = -(Zα)²/2 × m_ec² reproducing -13.6057 eV for hydrogen
+  - Rotational-constant magic numbers 505379.008 MHz·u·Å² and 16.857629 cm⁻¹·u·Å² derived from h and m_u
+  - AMBER's 20.455 recovered as √(u·Å²/(kcal/mol))⁻¹ = 48.888213 fs
+  - μ_eff prefactors 2.827869 (cgs) and 797.727 (SI) derived from CODATA
+Magnetism conversion factors were taken from the canonical NIST/Goldfarb–Fickett table (fetched in-session via Lake Shore's reproduction) and spot-checked by independent derivation; note that one commonly-circulated version of that table garbles the specific-magnetization row (1 emu/g = 1 A m²/kg exactly in the Sommerfeld convention; the 4π×10⁻⁷ factor belongs to the Kennelly Wb·m/kg target).
+
+=== 8. ITEMS I AM GENUINELY UNCERTAIN ABOUT ===
+
+  - The exact prevalence of the 3-generator Gaussian vs 4-generator SI rendering of RYDBERG atomic units. Quantum ESPRESSO documents the 4-generator form (ħ = 4πε₀ = 1, m = ½, e² = 2); older atomic-physics literature is Gaussian. I have recorded both but have not established which dominates.
+  - The hyperpolarizability convention fork: I am confident the fork exists and that β differs by 2 and γ by 6 between Taylor and perturbation conventions, and I cite Willetts et al. (1992) from knowledge — I did not re-verify that reference in-session.
+  - The Weiss magneton value (μ_B/4.97) is from memory and was not verified against a primary source; it is historical trivia and low-stakes.
+  - Pre-1960 ångström definition details (Cd red line value) are from memory.
+  - Whether any current literature uses Heaviside–Lorentz atomic units. I found none and believe it is empty, but cannot prove a negative.
+
+=== 9. SCOPE RECOMMENDATION SUMMARY ===
+
+v1 (build first): Hartree a.u. (both renderings), Rydberg a.u., effective/excitonic a.u., quantum-chemistry molar units, k_B = 1, spectroscopic energy equivalences, cgs-emu magnetism, SI magnetism conventions, cgs-esu molecular properties (debye/Å³), solid-state eV–Å units.
+v2 (build second): relativistic ħ = m_e = c = 1, molecular-constant conventions, condensed-matter ħ = k_B = a = 1, model-Hamiltonian units, MD simulation unit sets, magnetic-resonance units, historical X-ray length units.
+No entry in this family is out of scope for a tool aimed at theoretical-physics reading, but the model-Hamiltonian sign conventions and the air/vacuum wavelength transform should be surfaced as warnings rather than automated conversions.
+
+==========================================================================================
+FAMILY NOTES: historical-engineering (5847 chars)
+==========================================================================================
+SCOPE VERDICT UP FRONT. Of the 24 systems below, exactly one is v1, ten are v2, and thirteen are out of scope. The boundary is not drawn by "how obscure" but by a structural test I applied uniformly:
+
+**The load-bearing distinction: unit-magnitude systems vs. convention systems.** A generator table exists to restore constants that a convention ABSORBED. Imperial, FPS (all three variants), MTS, the gravitational-metric system, the practical/international/conventional electrical unit eras, and the legacy pressure/navigation units absorb NOTHING. They are diagonal rescalings of the *same* dimension algebra as SI: every exponent 5-tuple is identical, every equation is written character-for-character as the SI equation, and translation is a per-base-dimension numeric scale factor. Ten of my thirteen out-of-scope calls are this: **there is nothing for a restoration engine to restore.** They need a units *converter* (a much simpler, separate subsystem the tool probably wants anyway for numeric evaluation), not a units *translator*. Reporting them with empty `generators` arrays is not a data gap — the empty array IS the finding.
+
+**Four structural stresses on the schema, in descending severity:**
+
+1. **The schema assumes conventions REMOVE constants; non-coherent engineering systems ADD them.** English Engineering (`F = ma/g_c`) and pre-SI engineering thermodynamics (`du = δq − (1/J)p dv`) are the mirror image of a natural-unit system: they take a constant that equals 1 in every coherent system and force it to be written with a value ≠ 1. `numeric_factor` cannot hold this — 32.174049 and 778.169 are not dimensionless absorbed factors like 8π, they are dimensionful in the source system's own algebra. I encoded them as generators with explanatory `numeric_factor` strings, but a v2 schema should carry a signed `role` field (`absorbed` | `inserted`).
+
+2. **The (M, L, T, Θ, I) basis is too small in two directions at once.** It is missing SI's own J (luminous intensity) and N (amount of substance) — photometry (§23) and everything with mol⁻¹ cannot be typed at all. And the most valuable system in my entire family (§12/§13, the radian convention) needs a *sixth, non-SI* exponent A for plane angle. So the basis needs to be both completed to 7 and extended to 8. I recommend the tuple become `(M, L, T, Θ, I, N, J, A)` with A defaulting to 0 and only ever nonzero under the angle-dimension flag.
+
+3. **Affine and logarithmic quantities are not in the multiplicative group at all.** °C, °F, psig, atü (§16) are affine (y = ax + b); dB, Np, magnitude, pH (§17) are logarithms of ratios. Neither has a dimension exponent vector, and both are *common in the target literature* (noise temperature in dB, astronomical magnitudes). They must live in a sibling type — `affine(scale, offset, base_dimension)` and `level(reference_value, log_base, field_or_power)` — never in the generator table. Forcing them in produces silent nonsense: the tool would happily "check" `T = 20 °C` against a Kelvin-typed slot.
+
+4. **Same dimension, different quantity, dimensionless weighting factor in between.** Gray vs. sievert (§18) both type as J/kg and differ by the radiation weighting factor w_R; radiometric vs. photometric flux (§23) differ by V(λ) and K_cd; magnetization M vs. 4πM (§11) differ by 4π; C_p carries a hidden ½ (§19). Dimension checking is structurally blind to all four. This is the strongest argument in my family for the `numeric_factor`/`emits` split the schema already has — and evidence it should be extended to cover *quantity-kind tags*, not just numbers.
+
+**The one genuinely high-value system I found.** §12, the radian convention (1 rad = 1), is the most widely instantiated and most completely invisible convention in physics, and it lives in my family only because nobody thinks of it as a unit system. It is the direct structural cause of the ħ-vs-h factor of 2π that the task brief names as a core case: under Quincey's formalism ħ (angular momentum, J·s·rad⁻¹) and ħ̸ (action, J·s) are *different physical quantities* that the radian convention collapses onto one symbol, and the ν-vs-ω, f-vs-ω, Hz-ambiguity, and Strouhal-number traps are all the same collapse. I recommend v1 for the convention itself plus the 2π riders, and v2 for the optional angle-dimension lint mode (§13).
+
+**Cross-system traps worth encoding regardless of tier:**
+- `μ₀ = 10⁻⁷` (not 4π×10⁻⁷) in a paper is a hard fingerprint for unrationalized MKS (§9), and it silently rescales D, H, ε, μ by 4π while leaving E, B, q untouched. Verified against Goldfarb's NIST/IEEE review, which quotes the IEC's 1935 dual recommendation directly.
+- "MKS", "MKSA", "MKSQ", "Giorgi system", "rationalized MKS" in a 1935–1960 paper all mean SI (§10). This is a pure alias mapping, near-zero cost, and prevents the tool from treating a Stratton-style paper as an unknown system.
+- Any pre-1948 paper quoting Ω/V/A means *international* units, off absolute by ~5×10⁻⁴ (§7); any 1990–2019 precision-electrical paper may mean conventional units, off by ~10⁻⁷ (§8). Both are invisible to dimension checking and both matter exactly where precision matters.
+- torr ≠ mmHg (133.322368421… vs 133.322387415 Pa exactly) — they differ at 1.4×10⁻⁷ relative, and both appear in the same vacuum-physics papers (§24).
+- The rutherford (10⁶ Bq, §18) is an MTS-family unit (§5) — the historical systems interlock in ways a flat table will miss.
+
+**Adjacent families I deliberately did not claim:** CGS-ESU/EMU/Gaussian/Heaviside–Lorentz equation forms (I only claim the *decimal-scaling* relationship of the practical units to EMU, §6); atomic/Hartree/Rydberg units and the factor-of-2 between them; particle-physics natural units. Where my §6, §9, §10, and §11 touch EM equation forms, they should be reconciled against the E&M family's table rather than duplicated.
+
+==========================================================================================
+FAMILY NOTES: nondimensionalization (9753 chars)
+==========================================================================================
+VERDICT. The generator-table formalism does extend to per-paper nondimensionalization, but only after four schema additions; without them the extension is unsound rather than merely incomplete.
+
+(1) Generators must be allowed to be FREE SYMBOLS, not constants of nature. A user/mined generator is a triple (tex, dimension 5-tuple, optional SI value). The dimension tuple is what the restoration linear system needs and is always known symbolically from the declaration sentence ("lengths are scaled by L", "velocities by U"); the SI value is needed only for round-tripping to physical numbers and is frequently absent from the paper entirely (scale-free simulations: ideal GRMHD, vacuum NR, LJ MD). So the tool must support restoration WITHOUT numeric values — emitting "L", "U", "\\rho_0" symbolically — and treat numeric values as an optional overlay. Roughly half the systems above are published without them.
+
+(2) A RANK CHECK is mandatory and is the single highest-value new feature. In fixed systems (ħ=c=G=1) the generators are known-independent. In per-paper scaling they very often are not. Three distinct outcomes must be distinguished: (a) rank = number of active base dimensions and generator count equals rank — well-posed, unique restoration (LJ units, NS inertial scaling, Hénon units, trap units); (b) generator count exceeds rank — OVER-DETERMINED, and the excess declarations are physical restrictions disguised as unit choices ("L = U = ν = 1" secretly means Re = 1; "m_i = 1 for all i" means equal masses; "a = ħ = t = v_F = 1" in Dirac-material papers is a rank violation). The tool should compute the null-space combination that has been silently set to 1 and name it; (c) generator count is below rank — PARTIAL nondimensionalization, leaving residual dimensional freedom, which is common and legitimate (nuclear matter in ħ=c=1 with k_F still in fm^-1). Note the important exception in the GRMHD entry: two same-dimension mass generators are consistent there only because ideal GRMHD has an exact density-scaling symmetry, so the rank check must be overridable with a flag "generator exploits an equation symmetry" rather than hard-failing.
+
+(3) BASIS REDUCTION must be modeled explicitly. Several declarations do not scale a dimension, they delete it: k_B = 1 removes Θ (LJ, gyrokinetics, lattice models), μ0 = 1 or absorption into the Bjerrum length removes I (MHD codes, soft matter), c = 1 merges L and T. The active-basis state is therefore part of the convention record, and translating between two conventions with different active bases (e.g. a compressible-CFD paper with Θ live and an MD paper with Θ dead) requires re-inflating the basis, not just multiplying quotients.
+
+(4) RESIDUES must be a first-class output, and must never be restored. The defining feature of this family, versus fixed unit systems, is that the surviving dimensionless groups — Re, Pr, Ra, Ma, Ek, Ro, St, Pe, Sc, S, Pr_m, β, ρ*, ν*, σ, N (soliton order), U/t, ℓ_B/σ, 1/k_F a, s = V0/E_R, C = g²/κγ, m_i/m_e — are physics, not units. A restoration engine that treats them as absorbable constants produces nonsense. The correct output of the engine on a per-paper convention is: {generator list} + {Buckingham Π basis of the null space, labeled against a registry of named groups}. A curated residue registry (name, definition, field) is a modest, high-value data asset.
+
+UI / DATA THE TOOL NEEDS. A per-document "scale declaration" panel with one row per declared scale: TeX symbol; dimension 5-tuple (entered directly, or inferred from a defining expression like sqrt(g α ΔT H), which the tool can dimension-check); numeric factor (the 2π, √2, 1/2, 4π, −1/4 that dimensional analysis cannot see); optional SI value; and a three-way classifier {unit generator | symmetry parameter | physical restriction}. Plus: an active-basis widget showing which of (M,L,T,Θ,I) survive; a computed rank/nullity readout with the Π-basis named; a per-symbol rider table for definitional rescalings (B_code = B/√(4π); v_th = √(2T/m) vs √(T/m); ψ normalized to 1 vs N; T_FWHM vs T_0); and a convention-to-convention translator that composes two per-paper tables and reports the answer as powers of named residues (the RBC free-fall ↔ diffusive map is exactly a power of √(Ra Pr)). Preset library: the named conventions above, shipped as editable templates, since most papers use a standard one with one or two switches flipped (GENE with L_ref = a vs R_0; Boussinesq free-fall vs diffusive; recoil energy at λ vs λ/2).
+
+FINGERPRINTING THE DECLARATION SENTENCE. High-precision cues, roughly in order of reliability: (i) a normalization TABLE in the methods section, two columns, rows like "length | L_ref", "time | L_ref/c_ref" — this is the single strongest signal and is machine-extractable; (ii) explicit declarative templates — /we (work|shall work|will work) in units (in )?(which|where)/, /we set ([^.]{1,80}) = 1/, /(all )?(lengths|times|energies|velocities|frequencies|masses) are (measured |given |expressed )?in units of/, /normalized (to|by)/, /we adopt the following normali[sz]ation/, /(reduced|code|internal|natural|dimensionless) units/, /for convenience( we| ,)/, /henceforth/, /unless otherwise (stated|noted)/; (iii) decorated variables plus a legend — /(hats?|tildes?|primes?|asterisks?|stars?) denote (the )?(dimensionless|normali[sz]ed|reduced)/, followed later by /we drop the (hats|tildes|primes)/, which is the point after which every subsequent equation is in-system; (iv) named dimensionless groups appearing as bare coefficients on displayed PDE terms; (v) a restoration appendix — /to convert to (physical|cgs|SI) units/, /multiplying by/, a table of unit values; (vi) code-specific keyword leakage ("units lj", "UnitLength_in_cm", "M_unit", "tprim/fprim", "\\Omega = 1"). A useful two-stage extractor: regex-locate the declaration paragraph, then LLM-parse it into (symbol, defining expression, dimension) triples, then dimension-CHECK each defining expression against the claimed role and show the user any mismatch before committing the convention.
+
+FAILURE MODES TO FLAG (ranked by how often they actually bite).
+- Partial nondimensionalization. "We set c = ħ = 1 but quote lengths in fm"; "energies in eV, lengths in lattice units". Very common, entirely legitimate, and fatal to any engine that assumes a declaration is total. Detect by rank < basis size and warn rather than fail.
+- Inconsistent / over-declared scales. Papers that list more unit-fixing statements than there are dimensions. Almost always the author means "and additionally the relevant dimensionless group equals 1", which is a physical claim. Compute and display the implied group.
+- Section-local conventions. A single paper using linear theory in ω_ce units, simulations in code units, and observations in SI, with no explicit switch marker. Neutron-star papers routinely combine Fermi units (EOS) with geometrized units (TOV) in adjacent equations. The tool's convention state must be scoped to a text span, not to a document.
+- Silent per-symbol redefinition. The symbol looks the same, the dimension is the same, the meaning is not: B → B/√(4π), v_th with or without √2, ψ normalized to 1 or N, g vs Ω/2, κ vs κ/2, J for s=±1 vs S=±1/2, hopping t vs bandwidth W. Dimension checking is blind to all of these; only the numeric_factor/rider tables catch them.
+- The 2π/ln2 class. Box side 1 vs 2π, period vs angular frequency, orbits vs Ω^-1, e-folding vs doubling times, "g/2π = 100 MHz". Same dimension, different number.
+- Dimensionless "units". Little-h, "units where Re = 1", α = 1, ħ_eff. No dimensional trace exists; restoration is impossible in principle. Detect and annotate; do not attempt.
+- Equations with no dimensional preimage. Standard map, logistic map, coupled-map lattices, abstract dynamical systems: rank 0, nothing to restore. Say so rather than inventing units.
+- Non-multiplicative "normalizations" announced alongside real ones. Additive temperature offsets θ = (T − T_ref)/ΔT in Boussinesq; co-moving/retarded frames in NLS; rotating frames in quantum optics; comoving-vs-physical coordinates with a time-dependent a(t) in cosmological codes. These are affine or time-dependent transformations, outside the multiplicative generator group entirely; the tool must recognize and refuse them rather than mis-modeling them.
+- Scales that are not actually free. "M = 1" is a genuine symmetry in vacuum NR and a mere reported number in BNS/matter NR; "density is scale-free" holds in ideal GRMHD but not once radiative cooling fixes a density. A warning triggered by the co-presence of a fixed-scale ingredient (an EOS, a cooling function, a real collision frequency) alongside a claimed free scale would catch a real class of physics errors.
+- Deliberately unphysical residues. Reduced ion-to-electron mass ratios (25, 64, 100), reduced speed of light, inflated resistivity. Dimensionally invisible, and a restoration engine must never "correct" them to physical values.
+
+SCOPE RECOMMENDATION. v1: the custom-generator engine itself (symbolic generators, rank check, residue extraction, basis reduction) plus presets for the handful of conventions a theoretical-physics reader meets constantly — NS inertial scaling, LJ reduced units, m=ω=ħ=1 Hamiltonian/chaos, NR G=c=M=1, lattice a=ħ=t=1, trap units. v2: the domain presets (Boussinesq ×2, Alfvénic MHD, both gyrokinetic families, PIC, shearing box, Hénon, recoil, Fermi, NLS, code-unit triples, GRMHD) plus the convention-to-convention translator and the named-residue registry. Out of scope for restoration, in scope for detection-and-warning: dimensionless-generator declarations (h-units and friends), affine/rotating-frame transformations, and models with no dimensional preimage.

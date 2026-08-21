@@ -1,0 +1,512 @@
+[
+ {
+  "batch": "nuclear",
+  "name": "Scattering-length sign fork, and Coulomb-modified vs Coulomb-subtracted a_pp as different quantities",
+  "status": "confirmed",
+  "magnitude": "Sign fork: exact sign inversion on every scattering length (a(np,¹S₀) = −23.74 fm vs +23.74 fm). Coulomb identity: a_pp = −7.81 fm vs a_pp^N = −17.3 fm, a factor 2.22 on the same symbol — larger than the entire charge-symmetry-breaking effect (a_nn − a_pp^N ≈ 1.6 fm) it is used to measure.",
+  "fingerprint": "The printed ERE line itself (sign in front of 1/a); the sign of the quoted a(np,¹S₀) — |23.7| with a plus sign means variant B; r₀ is sign-invariant, so a ±23.7/±5.4 pair with an unchanged +2.75 fm effective range identifies the fork unambiguously. Coulomb branch: tokens 'Coulomb-modified' / 'Coulom",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Numbers all check. a_t(np,3S1)=+5.424 fm, a_s(np,1S0)=-23.74 fm, r_0s=2.75 fm (lit. 2.73-2.77), a_pp^C=-7.806 fm, a_pp^N≈-17.3 fm, a_nn=-18.9 fm, so a_nn-a_pp^N≈-1.6 fm and 17.3/7.81=2.215 ('2.22' ok). r_0 sign-invariance under a→-a is correct (only the 1/a term flips). Not in the census: no scattering-length row anywhere; §5 rows 1-21 and the round-3 table have nothing adjacent. TWO CORRECTIONS. (i) 'older (still-used)' overstates variant B: k·cot δ0 = +1/a is essentially confined to pre-1960 literature (Blatt-Weisskopf-era texts and their descendants); post-1960 nuclear and all cold-atom wor"
+ },
+ {
+  "batch": "nuclear",
+  "name": "Atomic mass vs nuclear mass vs mass excess — the electron bookkeeping in every Q-value",
+  "status": "confirmed",
+  "magnitude": "Z·m_e c² − B_e: 13.25 MeV for ⁵⁶Fe (Z = 26: 13.286 MeV of electron rest mass minus ≈0.035 MeV electron binding), ≈46 MeV for ²³⁸U (Z = 92). Compare the total nuclear binding energy of ⁵⁶Fe, 492.3 MeV, and B/A = 8.79 MeV — the electron term is 1.5 nucleons' worth of binding. On β⁺/EC Q-values the error is exactly 2m_e c² = 1.02200 MeV, on reaction Q-values of order 1–10 MeV.",
+  "fingerprint": "Token co-occurrence 'mass excess' / 'Δ' / 'keV' with a mass-number-sized integer offset; AME/NUBASE/ENSDF citation ⇒ atomic; an explicit 'Zm_e' or 'atomic masses are used, electron binding neglected' sentence; the presence or absence of a 2m_e c² term next to a β⁺ Q-value; a mass quoted in u with 6+",
+  "treatment": "identity_tag",
+  "tier": "v1",
+  "verifier_notes": "Real, uncovered, and correctly slotted as identity_tag/v1. Recomputed: Z·m_e c²(Fe,Z=26)=26×0.51099895=13.2860 MeV; Thomas-Fermi electron binding B_e(26)=14.4381·26^2.39 + 1.55468e-6·26^5.35 = 34.81+0.06 keV = 0.0349 MeV, so Zm_e c² - B_e = 13.251 MeV ✓; U(Z=92): 47.012 - 0.762 = 46.25 MeV ✓ ('≈46'). B(56Fe)=492.25 MeV, B/A=8.790 ✓. M_nuc = 55.934937 - 13.251/931.4941 = 55.920712 u ✓. 2m_e c² = 1.02200 MeV ✓. TWO ERRORS TO FIX BEFORE THIS SHIPS. (1) Mass excess arithmetic: (55.9349375-56)×931.49410 = -60.6054 MeV, not -60.601 MeV (AME2020 gives -60605.4 keV). The claim's own cross-check lint w"
+ },
+ {
+  "batch": "nuclear",
+  "name": "Nuclear-matter energy: rest-mass reference (m_n vs u vs excluded) and the saturation-density normalization",
+  "status": "confirmed",
+  "magnitude": "m_n c² − u c² = 939.5654 − 931.4941 = 8.0713 MeV per baryon, versus a saturation binding energy of −16.0 MeV — a 50% error on E/A, and −16.0 MeV vs −7.93 MeV as the quoted saturation point. Rest-mass inclusion: ε = +147.7 MeV/fm³ vs −2.56 MeV/fm³ at saturation, a sign flip and a factor 58. n₀ fork: 6.25% on every n/n₀ abscissa, and ρ₀ = 2.66 vs 2.83 ×10¹⁴ g/cm³.",
+  "fingerprint": "'e/(n_B m_n) − 1' or a CompOSE/EOS-table citation ⇒ m_n reference; 'energy per baryon' near 930–940 MeV ⇒ rest mass included, near ±20 MeV ⇒ excluded; an explicit 'n₀ = 0.16 fm⁻³' declaration line; unit MeV/fm³ with a negative value ⇒ internal. Consistency lint: the quoted saturation E/A and the quo",
+  "treatment": "identity_tag",
+  "tier": "v1",
+  "verifier_notes": "All arithmetic verified. m_n c² - u c² = 939.56542 - 931.49410 = 8.07132 MeV ✓. ε_total = 0.16×(939.565-16.0) = 147.77 MeV/fm³ ✓; ε_int = 0.16×(-16.0) = -2.56 MeV/fm³ ✓; ratio 57.7 ('factor 58' ok) with a genuine sign flip. -16.0+8.07 = -7.93 MeV ✓. n0 fork 0.17/0.16 = 1.0625 = 6.25% ✓. ρ0 = 0.16 fm⁻³ × 1.66054e-24 g × 1e39 fm³/cm³ = 2.657e14 g/cm³, and 2.823e14 at 0.17 ✓. CompOSE does reference the scaled energy to m_n. Correctly distinguished from the §2.1 per-formula-unit divisor slot — that slot holds exact integer counts, this is an additive reference, and the census has no additive-refer"
+ },
+ {
+  "batch": "nuclear",
+  "name": "B(EL) transition direction — the (2J_i+1) that makes B(E2)↑ ≠ B(E2)↓",
+  "status": "confirmed",
+  "magnitude": "(2J_f+1)/(2J_i+1). For the ubiquitous 0⁺ ↔ 2⁺₁ case, exactly 5. For 2⁺→4⁺, 9/5 = 1.8. Propagates as √5 = 2.24 into any deformation β₂ extracted from B(E2), and as a factor 5 into any comparison with a calculated matrix element.",
+  "fingerprint": "Explicit ↑/↓ arrows or the ordering inside 'B(E2; 0⁺→2⁺)'; method tokens — 'Coulomb excitation', 'reorientation', 'intermediate-energy Coulex' ⇒ ↑; 'lifetime', 'DSAM', 'RDDS', 'plunger', 'τ(2⁺₁)' ⇒ ↓; an NNDC/'Raman' B(E2) table citation ⇒ ↑. Cross-check lint against a quoted τ or transition rate: T",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Physics confirmed. B(EL;i→f)=|⟨f‖M‖i⟩|²/(2J_i+1) gives B(i→f)=[(2J_f+1)/(2J_i+1)]B(f→i); 0⁺↔2⁺ → exactly 5 ✓; 2⁺→4⁺ → 9/5 = 1.8 ✓; 0.1000/5 = 0.0200 ✓; β2 ∝ Q0 ∝ √B(E2)↑ so √5 = 2.236 ✓. Correctly distinguished from the round-3 'Wigner–Eckart reduced-element convention' row (§5, v2): that fork is the √(2j+1) placement inside ⟨‖ ‖⟩ and cancels in the ratio; the direction asymmetry survives it. Raman/NNDC tabulate ↑ ✓. ERROR IN THE CROSS-CHECK LINT — must be fixed or the lint mis-recovers direction by 10⁴. The constant 1.225×10⁹ pairs with B(E2) in e²fm⁴, NOT e²b². Derivation: T(E2) = [8π(L+1)/("
+ },
+ {
+  "batch": "nuclear",
+  "name": "Weisskopf / single-particle units — a dimensionless 'unit' whose conversion factor depends on A, on the multipolarity, and on whether the transition is electric or magnetic",
+  "status": "overstated",
+  "magnitude": "1 W.u.(E2) = 5.940×10⁻⁶ A^(4/3) e²b² — ranging over a factor 6.35 between A = 40 and A = 160 alone (4^(4/3) = 6.3496). 1 W.u.(M1) = 1.790 μ_N², A-independent. Radius sub-fork, if present: (1.4/1.2)^(2L) = 1.361 (E1), 1.853 (E2), 2.521 (E3).",
+  "fingerprint": "Tokens 'W.u.', 'Weisskopf unit', 's.p.u.', 'single-particle unit'; an evaluated-data-file (ENSDF) 'RI/BEL' column. Converter keys required: A (from the nuclide label in the same sentence or table caption), L and E/M (from the transition label E1/E2/M1/M3). Refuse the conversion, do not guess, when A",
+  "treatment": "converter_entry",
+  "tier": "v1",
+  "verifier_notes": "The gap is real and converter_entry/v1 is the right home; the arithmetic is right; but the central characterization of the E/M asymmetry is false and would produce exactly the wrong converter. VERIFIED: B_W(EL) = (1/4π)[3/(L+3)]²R^{2L}e² with R = 1.2A^{1/3} fm gives, for L=2, (1/4π)(0.36)(2.0736)A^{4/3} = 0.0594045 A^{4/3} e²fm⁴ = 5.940×10⁻⁶ A^{4/3} e²b² ✓. 160^{4/3} = 868.6 → 0.5159 e²b²; 40^{4/3} = 136.80 → 0.08126 e²b²; ratio 4^{4/3} = 6.3496 ✓. B_W(M1) = (10/π)(3/4)² = 1.7905 μ_N² ✓, A-independent ✓; 0.30 W.u. = 0.537 μ_N² ✓. Radius sub-fork (1.4/1.2)^{2L}: 1.3611 (E1), 1.8530 (E2), 2.5220"
+ },
+ {
+  "batch": "nuclear",
+  "name": "g_A: sign of λ = g_A/g_V, quenching, and whether g_A is absorbed into the nuclear matrix element",
+  "status": "wrong_treatment",
+  "magnitude": "Sign: exact inversion on every g_A-linear (interference) term. Quenching: T_{1/2}^{0ν} ∝ g_A⁻⁴, so g_A = 1.269 → 1.0 is a factor 1.269⁴ = 2.593 in half-life and √2.593 = 1.610 in an extracted ⟨m_ββ⟩ limit. Absorption: M^0ν and M'^0ν differ by (g_A/1.27)² = 0.620 at g_A^eff = 1.0.",
+  "fingerprint": "The printed sign of λ, or the symbol choice λ vs g_A; 'quenched' / 'unquenched' / 'g_A^eff' / 'quenching factor q'; whether the phase-space factor G^0ν is stated to carry g_A⁴ (units of the tabulated G^0ν: yr⁻¹ with vs without g_A⁴ absorbed); a 1.27 or 1.269 appearing inside a ratio ⇒ the (g_A/1.27)",
+  "treatment": "identity_tag",
+  "tier": "v1",
+  "verifier_notes": "Every number checks and nothing in the census covers g_A, but the single identity_tag treatment is wrong for two of the three switches. VERIFIED: PDG λ = g_A/g_V = -1.2756(13) vs hadronic/nuclear +1.2756 ✓; A_β = -2λ(λ+1)/(1+3λ²) = -0.1196 at λ = -1.2756, consistent with the measured -0.1173 once recoil/radiative corrections are applied ✓; rate ∝ (g_V²+3g_A²) ✓. Quenching: 1.269⁴ = 2.5933 ✓, √2.5933 = 1.6104 ✓; B(GT) pair 0.45×(1.0/1.269)² = 0.279 ≈ 0.28 ✓ (this is operator quenching q² = 0.62, correctly applied). Absorption: (1.0/1.27)² = 0.6200 ✓; 3.20×0.620 = 1.984 ≈ 1.98 ✓; T_1/2 ∝ g_A⁻⁴ ✓"
+ },
+ {
+  "batch": "nuclear",
+  "name": "Heavy-ion collision energy: √s_NN vs √s, kinetic vs total, and the asymmetric-system case where the per-nucleon divisor is not one integer",
+  "status": "confirmed",
+  "magnitude": "√s vs √s_NN: factor A — 197 for Au+Au (√s_NN = 200 GeV ⇔ √s = 39.4 TeV). Kinetic vs total: 1.938/1.000 = 1.94 at 1 GeV/u. Asymmetric p+Pb: the Pb beam is at 1.577 TeV/nucleon while the proton beam is at 4.00 TeV, and the CM frame is displaced by Δy = ½ln(4000/1577) = 0.465 rapidity units.",
+  "fingerprint": "Subscript NN on √s; tokens 'AGeV', 'MeV/u', 'GeV/nucleon', 'per nucleon'; an asymmetric species pair (p+Pb, d+Au, ³He+Au) ⇒ demand the rapidity shift and refuse a single-integer divisor; 'kinetic energy' vs 'beam energy' in a nuclear-reaction context ⇒ kinetic by default, HEP context ⇒ total. Cross-",
+  "treatment": "identity_tag",
+  "tier": "v1",
+  "verifier_notes": "Arithmetic verified. Au+Au: 197×200 GeV = 39.4 TeV ✓. Kinetic vs total at 1 GeV/u: 1+0.9389 = 1.9389, ratio 1.94 ✓ (note the divisor subtlety: 'GeV/u' strictly divides by A, so the additive term is u c² = 0.9315 GeV if the contract is literally per unified mass unit and m_N c² ≈ 0.9389 GeV if it is per nucleon — a residual ~0.8% the entry does not mention, and worth a line since it interacts with the claim-2 atomic/nuclear mass axis). p+Pb: Z/A(²⁰⁸Pb) = 82/208 = 0.39423, 4000×0.39423 = 1576.9 GeV/nucleon ✓; 2√(4000×1576.9) = 2×2511.5 = 5023 GeV ✓; Δy = ½ln(4000/1576.9) = ½(0.9310) = 0.4655 ✓ —"
+ },
+ {
+  "batch": "nuclear",
+  "name": "Isospin projection sign: T_z = (N−Z)/2 (nuclear) vs T_3(p) = +1/2 (particle)",
+  "status": "wrong_treatment",
+  "magnitude": "Sign inversion on all T_z-odd quantities: the IMME b coefficient, isovector densities and currents, mirror-transition CG ratios. T_z-even quantities (IMME c, isotensor terms) are invariant — hence the delayed failure.",
+  "fingerprint": "An explicit 'T_z = (N−Z)/2' or 'T_z = (Z−N)/2' definition line; the T_z assigned to a named neutron-rich or proton-rich nuclide; the isospin raising/lowering operator's stated action on |p⟩; school prior — nuclear-structure and IMME literature take the neutron-positive convention, hadronic and latti",
+  "treatment": "new_axis",
+  "tier": "v1",
+  "verifier_notes": "Physics fully confirmed and not in the census: t_z(n) = +1/2 with T_z = (N-Z)/2 in nuclear-structure/IMME practice vs I_3(p) = +1/2 with T_z = (Z-N)/2 in particle/lattice practice; ¹⁴C has T_z = +1 (nuclear) / -1 (particle) and ¹⁴O the reverse ✓; under the flip the IMME M = a + bT_z + cT_z² keeps a and c and sends b → -b ✓; T_z-odd objects (isovector densities and currents, mirror-transition CG ratios) invert while T_z-even objects (c, isotensor operators) are invariant ✓. THE TREATMENT FIELD CONTRADICTS THE CLAIM'S OWN BODY. The body states, correctly, 'This is a new entry on the existing sig"
+ },
+ {
+  "batch": "nuclear",
+  "name": "Chiral-EFT regulator identity: the scheme tag needs a functional field, not a scalar scale",
+  "status": "confirmed",
+  "magnitude": "LECs are not transportable across regulator families: values of c_D reported at nominally the same order and cutoff span the better part of an order of magnitude and change sign between protocols. The naive cutoff bridge ħc/R₀ misstates the effective momentum cutoff by roughly a factor of two. SRG: λ = 2.0 fm⁻¹ ⇔ s = 0.0625 fm⁴; λ = 1.8 fm⁻¹ ⇔ s = 0.09526 fm⁴ — a 10% change in λ is a 52% change in",
+  "fingerprint": "The printed regulator expression itself (exponent n, momentum vs coordinate argument); tokens 'non-local'/'semi-local'/'local regulator', 'SFR'/'spectral-function regularization', 'R₀ = … fm' vs 'Λ = … MeV'; 'Λ_χ = 700 MeV' next to c_D; 'λ_SRG' in fm⁻¹ vs 's' or 'α' in fm⁴. Lint trigger: two LEC val",
+  "treatment": "schema_feature",
+  "tier": "v2",
+  "verifier_notes": "The schema argument is sound and the SRG numbers are exact: s = λ⁻⁴ gives λ = 2.0 fm⁻¹ → 1/16 = 0.0625 fm⁴ ✓; λ = 1.8 → 1/10.4976 = 0.095260 fm⁴ ✓; 0.09526/0.0625 = 1.524, so a 10% change in λ is a 52% change in s ✓. This is a legitimate new converter edge: §2.9 already carries one reciprocal edge (E = hc/λ) and explicitly says no linear exponent solve produces it; s = λ⁻⁴ is the same family with exponent -4, so file the SRG leg as a converter edge, not inside the schema feature. The regulator-form argument stands: the census's running-coupling tag (scheme, μ, n_f, loop) holds a label plus a s"
+ },
+ {
+  "batch": "nuclear",
+  "name": "R-matrix parameters: formal vs observed, and the undeclared channel radius inside every reduced width",
+  "status": "confirmed",
+  "magnitude": "θ² scales as a_c⁻² at fixed γ². For α + ¹²C (μ c² = 2794.5 MeV), γ_W² = 3(ħc)²/(2μc² a_c²) = 20.90 MeV·fm² / a_c², i.e. 0.836 MeV at a_c = 5.0 fm and 0.4947 MeV at a_c = 6.5 fm — a factor 1.69 on the same physical state. Formal-vs-observed differences for broad and subthreshold levels routinely reach tens of percent to factors of a few.",
+  "fingerprint": "An explicit 'channel radius a_c = … fm' or 'a = 1.25 A^(1/3) fm' declaration; tokens 'formal parameters', 'observed parameters', 'boundary condition B_c', 'Wigner limit', 'dimensionless reduced width θ²'; ENSDF/experimental provenance ⇒ observed. Lint: a θ² or γ² printed with no a_c anywhere in the ",
+  "treatment": "declaration_layer",
+  "tier": "v2",
+  "verifier_notes": "Verified end to end and correctly slotted in the declaration layer (§2.13(f)) at v2 — structurally identical to the census's EPR row, which resolves field-unit parameters by lifting the paper's own fitted g as a custom generator; here the channel radius a_c is the lifted per-paper generator. Recomputed the Wigner limit: μ(α+¹²C) = 3.0000 u (claim's value) = 2794.48 MeV/c², and γ_W² = 3(ħc)²/(2μc²a_c²) = 3×38937.9/(2×2794.48) = 20.901 MeV·fm²/a_c² ✓ ('20.90'). At a_c = 5.0 fm: 0.83605 MeV ✓; at 6.5 fm: 0.49470 MeV ✓; ratio (6.5/5)² = 1.69 ✓. θ² = 0.300/0.836 = 0.3589 ✓ and 0.300/0.4947 = 0.6064"
+ },
+ {
+  "batch": "nuclear",
+  "name": "Shell-model two-body matrix elements: normalized vs unnormalized antisymmetrized, plus the interaction's own mass scaling",
+  "status": "confirmed",
+  "magnitude": "Normalization: exactly 2 for a = b and c = d; √2 when only one pair is identical; 1 otherwise — so the error is selective, corrupting pairing matrix elements while leaving others untouched. Mass scaling: (18/40)^0.3 = 0.787, a uniform 21% reduction of every TBME going from the A = 18 reference to A = 40.",
+  "fingerprint": "The .int header line carrying (n_TBME, SPEs…, A_ref, A_core, exponent) — a trailing triple like '18 0.3' is the mass-scaling declaration; code-specific tokens 'NuShellX', 'KSHELL', 'ANTOINE', 'BIGSTICK', 'USDB'; a stated 'matrix elements are normalized and antisymmetrized' sentence. Cross-check lint",
+  "treatment": "declaration_layer",
+  "tier": "v2",
+  "verifier_notes": "Both switches are real, correctly separated, and uncovered. Normalization factor (1+δ_ab)^{1/2}(1+δ_cd)^{1/2} = 2 when a=b and c=d, √2 when one pair is identical, 1 otherwise ✓ — and the selectivity point is right: it corrupts the J=0,T=1 pairing diagonal while leaving off-diagonal entries like ⟨d5/2 s1/2|V|d3/2 s1/2⟩ untouched, so the error is invisible to any uniform-scaling check. Mass scaling: (18/40)^0.3 = exp(0.3·ln0.45) = exp(-0.239552) = 0.786983 ✓ ('0.787'), and -2.00×0.786983 = -1.5740 ✓. The .int header trailing pair '18 0.3' is the correct fingerprint for the USD family. Correctly "
+ },
+ {
+  "batch": "nuclear",
+  "name": "Spectroscopic vs intrinsic quadrupole moment — same symbol Q, same unit, opposite sign",
+  "status": "confirmed",
+  "magnitude": "Q_s(J) = [3K² − J(J+1)] / [(J+1)(2J+3)] × Q₀. For the 2⁺ member of a K = 0 band this is −6/21 = −2/7 = −0.2857 — a sign inversion and a factor 3.5 in magnitude. Propagating into β₂ (which goes as Q₀) the error is the same factor 3.5 plus a prolate/oblate misidentification.",
+  "fingerprint": "The words 'spectroscopic' or 'intrinsic' next to Q; sign of Q for a known-prolate 2⁺ state (negative ⇒ spectroscopic); measurement-method tokens ('reorientation', 'hyperfine', 'muonic X-ray', 'laser spectroscopy' ⇒ spectroscopic; 'from B(E2)', 'rotational model' ⇒ intrinsic); co-occurrence with β₂ o",
+  "treatment": "identity_tag",
+  "tier": "v2",
+  "verifier_notes": "Clean. Q_s(J) = [3K²-J(J+1)]/[(J+1)(2J+3)]·Q₀; for K = 0, J = 2 this is [0-6]/[3·7] = -6/21 = -2/7 = -0.285714 ✓; -0.285714×7.600 = -2.1714 b ✓ ('-2.171'); 1/0.285714 = 3.5 and β₂ ∝ Q₀ linearly, so the propagated error is a factor 3.5 plus a prolate→oblate misidentification ✓. β₂ = √(5π)Q₀/(3ZR²) is the correct inversion of Q₀ = (3/√(5π))ZR²β₂ ✓. identity_tag is the right slot (§2.13(a): same symbol, same dimension, different quantity, with a J- and K-dependent conversion) and v2 is right. The entry's own exclusion note is correct and worth keeping: the e·b vs b rider is §5 round-3 'Units embe"
+ },
+ {
+  "batch": "neutrino",
+  "name": "The atmospheric-splitting label family: Δm²₃₁ / Δm²₃₂ / Δm²₃ℓ / Δm²_ee / Δm²_μμ / Δm²_atm, plus the ordering sign",
+  "status": "confirmed",
+  "magnitude": "Δm²₃₁ − Δm²₃₂ = Δm²₂₁ = 7.41×10⁻⁵ eV² = 2.95% of 2.514×10⁻³ eV². Δm²_ee = Δm²₃₁ − sin²θ₁₂Δm²₂₁ = 2.4913×10⁻³ eV², 0.90% below Δm²₃₁. Δm²_μμ = Δm²₃₁ − (cos²θ₁₂ − cos δ sinθ₁₃ sin2θ₁₂ tanθ₂₃)Δm²₂₁ = 2.4538×10⁻³ eV² at δ = 222°, 2.39% below Δm²₃₁ — and it swings 2.4508→2.4745×10⁻³ eV² (0.96%) as cos δ runs −1→+1, so it is not even a fixed relabel. Sign: ×(−1) between orderings. For scale, T2K/NOvA no",
+  "fingerprint": "Subscript token on Δm²: {31, 32, 3ℓ, 3l, ee, μμ, atm, 23}. Hard tells: the string 'Δm²₃ℓ' or a footnote 'ℓ = 1 for NO, ℓ = 2 for IO'; an absolute value '|Δm²₃₂|' (positive-definite convention, ordering stripped); the defining line 'cos²θ₁₂Δm²₃₁ + sin²θ₁₂Δm²₃₂'; experiment class as prior (reactor θ₁₃",
+  "treatment": "identity_tag",
+  "tier": "v1",
+  "verifier_notes": "Every number reproduces. Δm²₂₁/Δm²₃₁ = 2.947%; Δm²_ee = 2.4913×10⁻³ eV² (0.905% below Δm²₃₁); Δm²_μμ(δ=222°) = 2.45384×10⁻³ eV² (2.393% below), swinging 2.45079→2.47450×10⁻³ (0.967%) over cosδ ∈ [−1,+1]. The Nunokawa–Parke–Zukanovich form Δm²_μμ = Δm²₃₁ − (cos²θ₁₂ − cosδ sinθ₁₃ sin2θ₁₂ tanθ₂₃)Δm²₂₁ is correctly transcribed. Δm²₃ℓ with the ℓ=1(NO)/ℓ=2(IO) footnote is verbatim NuFIT table practice. Not in the census: §5 (rounds 1–3) has no Δm² row and §2.13(a) covers only the class. PROVENANCE ERROR: the parameter set is NOT NuFIT 6.0. NuFIT 6.0 (NO, w/o SK) is sin²θ₁₂=0.308, sin²θ₁₃=0.02215, si"
+ },
+ {
+  "batch": "neutrino",
+  "name": "Mixing-amplitude parameterization: sin²2θ vs sin²θ vs |U_αi|², and the two-valued θ₂₃ octant inversion",
+  "status": "wrong_treatment",
+  "magnitude": "sin²2θ₁₃ = 0.0851 (Daya Bay) ↔ sin²θ₁₃ = 0.02174 — ratio 3.91. sin²2θ₂₃ = 0.9787 ↔ sin²θ₂₃ = 0.573 **or** 0.427 (two roots, ratio 1.34 between them, i.e. a 34% spread in any θ₂₃-derived quantity plus the octant flip). Sterile 3+1: sin²2θ_μe = 4|U_e4|²|U_μ4|² = ¼ sin²2θ_ee sin²2θ_μμ in the small-angle limit — a factor 4 between the appearance amplitude and the naive product of the two disappearance",
+  "fingerprint": "Token form: 'sin^2 2\\theta' / 'sin^{2}2\\theta_{13}' vs 'sin^2\\theta'. Magnitude prior is decisive and cheap: a quoted θ₁₃ amplitude near 0.085 is sin²2θ, near 0.022 is sin²θ; a θ₂₃ amplitude ≳0.9 is sin²2θ, near 0.45–0.58 is sin²θ. Also 'maximal mixing' means sin²2θ = 1 vs sin²θ = 0.5. In sterile pa",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Physics and numbers correct: sin²2θ₁₃ = 0.0851 (Daya Bay final, ±0.0024) inverts to sin²θ₁₃ = 0.021748, ratio 3.9130; sin²2θ₂₃ = 0.97868 at sin²θ₂₃ = 0.573, roots {0.427, 0.573}, ratio 1.3419; sin²2θ_μe = 4|U_e4|²|U_μ4|² = ¼ sin²2θ_ee sin²2θ_μμ in the small-angle limit is right. Belongs in §2.13(e) parameterized symbol families (symbol family + parameterization tag + conversion resolved from the printed definition — the beam-size/pulse-duration shape), NOT the §5 dimensionless registry: registry rows are fixed invertible factors, and here the map is sin²2θ = 4sin²θ(1−sin²θ), whose ratio is 4(1"
+ },
+ {
+  "batch": "neutrino",
+  "name": "δ_CP is parameterization-dependent, not just branch-dependent; the Jarlskog invariant is the only convention-free carrier",
+  "status": "wrong_treatment",
+  "magnitude": "Sign flip on sin δ: δ = 222° gives sin δ = −0.669, δ → −δ = 138° gives +0.669 — the CP-asymmetry observable changes sign. J = (1/8)cosθ₁₃ sin2θ₁₂ sin2θ₂₃ sin2θ₁₃ sin δ inherits the flip; |J| ≈ 0.0215 at NuFIT 6.0 central values, so the swing is 2|J| ≈ 0.043 in the invariant. Additional parameterization-to-parameterization offsets in δ itself are O(θ₁₃) and small in magnitude but can move a quoted ",
+  "fingerprint": "Extract the printed mixing matrix and read the sign of the exponent on the (1,3) element; failing that, the printed Jarlskog definition, the printed sign of the CP asymmetry A_CP = (P(νμ→νe) − P(ν̄μ→ν̄e))/(sum), or the phrase 'we adopt the PDG parameterization'. Papers that quote both δ and J are se",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "The gap is real and correctly distinguished from the §2.13(c) branch duplicate (which they properly withheld). NUMERIC CORRECTION: J = s₁₂c₁₂s₂₃c₂₃s₁₃c²₁₃ sinδ gives J_max = 0.033389 and |J| = 0.022342 at δ=222°, not 0.0215; the swing is 2|J| = 0.04468, not 0.043. (The printed formula J = ⅛cosθ₁₃ sin2θ₁₂ sin2θ₂₃ sin2θ₁₃ sinδ is algebraically correct — the error is in evaluation.) SLOT: this is a sign fork, and the census routes every sign fork to the §2.12/§2.13(d) sign axis (Stokes-V handedness, spinor-helicity phases, charge sign in D_μ, Fourier e^(∓iωt)), not to the §5 magnitude registry. I"
+ },
+ {
+  "batch": "neutrino",
+  "name": "Majorana-phase halving: diag(1, e^(iα₂₁/2), e^(iα₃₁/2)) vs diag(1, e^(iα₂), e^(iα₃)), and two-phase vs three-phase forms",
+  "status": "confirmed",
+  "magnitude": "Factor 2 in the quoted phase. Propagated into m_ββ for the inverted ordering at m_lightest → 0 (m₁ = 0.049233 eV, m₂ = 0.049980 eV): m_ββ = 0.048354 eV at α₂₁ = 0 and 0.018353 eV at α₂₁ = π — a factor 2.635 across the range. Reading a paper's 'α = π' under the wrong halving gives an effective π/2 and m_ββ = 0.036571 eV instead of 0.018353 eV, a factor 1.99. In the normal ordering the error is unbo",
+  "fingerprint": "Read the printed diagonal phase matrix and count the ½ in the exponent; equivalently read the printed m_ββ expression and check whether the exponents are e^(iα) or e^(2iα). Symbol names correlate but do not decide: α₂₁/α₃₁ usually implies the halved form, α/β or φ₂/φ₃ usually the unhalved. Range sta",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "All numbers reproduce exactly. IO, m₃=0: m₁ = 0.0492331 eV, m₂ = 0.0499800 eV; m_ββ = 0.0483540 eV (α₂₁=0), 0.0365717 (π/2), 0.0183540 (π); ratios 2.6347 across the range and 1.9926 for a mis-halved 'α = π'. The PDG m_ββ expression with e^(iα₂₁) and e^(i(α₃₁−2δ)) is correctly transcribed, and the NO-funnel unboundedness argument is sound. registry_entry, v1 is the right treatment (a factor-2 definitional fork resolved from the printed defining expression, with a refuse when only a bare number is printed). One overreach to strike from the row: 'attach the phase matrix on the left rather than th"
+ },
+ {
+  "batch": "neutrino",
+  "name": "0νββ: where g_A⁴ lives in T₁/₂⁻¹ = G⁰ᵛ|M⁰ᵛ|²(m_ββ/m_e)², and which g_A value is baked in",
+  "status": "confirmed",
+  "magnitude": "Double-counting or omitting g_A⁴ is a factor g_A⁴ = 2.601 (at g_A = 1.27) in the rate, hence 1.613 in the extracted m_ββ limit. The quenching fork alone, g_A = 1.27 → 1.0, is the same 2.601 in rate / 1.613 in m_ββ. The g_A vintage fork 1.269 vs 1.25 is (1.0152)⁴ = 1.062 in rate, 3.1% in m_ββ. These sit on top of, and are routinely confused with, the genuine ~×2–3 NME model spread.",
+  "fingerprint": "Look for an explicit g_A⁴ (or g_A²) between G and M in the printed rate formula — its presence means G is g_A-free. Otherwise look for the phase-space table's own statement ('the G_i do not depend on the axial-vector constant' vs 'G contains (g_A²/R)²') and for the quoted numeric g_A (1.0 / 1.25 / 1",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Confirmed against the phase-space literature: tabulations exist in which G⁰ᵛ contains (g_A²/R_nucl)² with g_A = 1.25 baked in, and the standard practice of re-scaling matrix elements by (g_A/1.25)² rather than touching G is exactly the double-count hazard described. Arithmetic: g_A⁴ = 2.60145 (√ = 1.6129); (1.269/1.25)⁴ = 1.06220, i.e. 3.06% in m_ββ. One split the row needs before encoding: the PLACEMENT fork (G g_A-free vs g_A-inclusive) is a genuine definitional convention and belongs in the §5 registry as claimed; the QUENCHING fork (g_A = 1.27 → g_A^eff ≈ 1.0) is not a convention at all — "
+ },
+ {
+  "batch": "neutrino",
+  "name": "0νββ: the nuclear-radius convention r₀ that makes M⁰ᵛ dimensionless must match between the M source and the G source",
+  "status": "confirmed",
+  "magnitude": "(1.2/1.1)² = 1.190 in the rate — 19% — and exactly 1.2/1.1 = 9.1% in the extracted m_ββ. Compounded with a g_A mismatch, 2.601 × 1.190 = 3.10 in rate.",
+  "fingerprint": "Grep the methods section for 'R = r₀A^{1/3}' / 'nuclear radius' with a numeric 1.1 or 1.2 fm, in both the NME paper and the phase-space reference it cites. The pairing is what matters, not either value alone: emit a lint only when the two cited sources disagree. Secondary tell: the phase-space table",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Independently confirmed: G ∝ 1/R², M ∝ R = r₀A^(1/3), and cross-pairing r₀ = 1.2 fm against r₀ = 1.1 fm inflates the rate by (1.2/1.1)² = 1.1901 and deflates m_ββ by 1.0909 (9.1%) — the same ~1.19 rescale factor the phase-space literature itself instructs users to apply. Compounded with g_A: 2.601 × 1.190 = 3.095. Tier v2 and the pair-only lint ('emit only when the two cited sources disagree') are correctly scoped. ENCODING CORRECTION: r₀ and g_A are not independent switches — the circulating tabulations bundle them (r₀ = 1.1 fm WITH g_A = 1.25 in the older set), so this and the previous row m"
+ },
+ {
+  "batch": "neutrino",
+  "name": "0νββ exposure and background-index denominators: compound mass vs isotope mass, and per-keV vs per-ROI",
+  "status": "confirmed",
+  "magnitude": "Natural TeO₂ → ¹³⁰Te: molar mass 159.598 g/mol, ¹³⁰Te molar abundance 0.34167, so the ¹³⁰Te mass fraction is 0.34167 × 129.906 / 159.598 = 0.2781 — a factor **3.596** between 'kg·yr of TeO₂' and 'kg·yr of ¹³⁰Te' (CUORE's 372.5 kg·yr TeO₂ is 103.6 kg·yr of ¹³⁰Te). For 87%-enriched Ge the same factor is only ≈1.14, so the discrepancy is isotope-specific and cannot be a constant. Per-keV → per-ROI: F",
+  "fingerprint": "The unit string never carries the basis; extract it from the neighbouring prose: 'TeO₂ exposure' / 'exposure of enriched germanium' / 'kg·yr of ¹³⁶Xe' / 'isotope exposure' / 'ton·year of isotope'. Required lift: chemical formula + enrichment fraction + isotope mass number, all normally present in th",
+  "treatment": "declaration_layer",
+  "tier": "v1",
+  "verifier_notes": "Numbers verified: TeO₂ molar mass 159.598 g/mol; ¹³⁰Te mass fraction 0.34167 × 129.906/159.598 = 0.27810, so ×3.5958 between TeO₂ and ¹³⁰Te bases; 372.5 kg·yr TeO₂ → 103.59 kg·yr ¹³⁰Te and 1.38×10⁻² → 4.962×10⁻² counts/(keV·kg·yr) — and CUORE's published 372.5 kg·yr with BI = (1.38±0.07)×10⁻² is the real pairing. 87%-enriched Ge mass fraction 0.8744 (×1.1437), correctly noted as isotope-specific so no constant exists. FWHM spread ≈3 keV (HPGe) / 7.8 keV (TeO₂) / ~200+ keV (loaded LS) supports the >30× claim. declaration_layer is the right slot (chemical formula + enrichment + A lifted from the"
+ },
+ {
+  "batch": "neutrino",
+  "name": "Three eV-dimension neutrino-mass observables (m_β, m_ββ, Σm_ν) with no invertible map, and signed fitted mass-squared parameters",
+  "status": "confirmed",
+  "magnitude": "At one physical point (NO, m₁ = 0): Σm_ν = 58.7 meV, m_β = 8.86 meV, m_ββ = 1.46–3.71 meV depending on the Majorana phases. Σ/m_β = 6.6, m_β/m_ββ up to 6.1, Σ/m_ββ up to 40. Current limits as printed look mutually incompatible for the same reason: m_β < 0.45 eV (KATRIN, with m_β² = −0.13 eV²), Σm_ν < 0.064 eV (DESI DR2 + CMB, ΛCDM), m_ββ < 28–122 meV (KamLAND-Zen, NME-range).",
+  "fingerprint": "Symbol and subscript: m_β / m_ν(effective) / ⟨m_νe⟩ vs m_ββ / ⟨m_ββ⟩ / ⟨m⟩ / m_ee vs Σm_ν / Mν / Σ. Context priors are strong and cheap: tritium/endpoint/KATRIN ⇒ m_β; double-beta/half-life/NME ⇒ m_ββ; CMB/BAO/ΛCDM ⇒ Σ. The printed defining sum (|U_ei|²mᵢ² under a root vs U_ei²mᵢ inside a modulus vs",
+  "treatment": "identity_tag",
+  "tier": "v1",
+  "verifier_notes": "All reproduce at NO, m₁ = 0: Σ = 58.75 meV, m_β = 8.864 meV, m_ββ ∈ [1.4598, 3.7071] meV; Σ/m_β = 6.63, m_β/m_ββ^min = 6.07, Σ/m_ββ^min = 40.2. The non-invertibility and non-monotonicity argument is correct (m_ββ has exact NO-funnel zeros at fixed m_β, Σ). Not a duplicate: §2.13(a) supplies the class, but no census row carries a refuse-the-inverse-map edge for a same-dimension observable triple, and that edge — not the tag — is the deliverable. CORRECTION: KATRIN's central value is m_β² = −0.14 (+0.13/−0.15) eV² from the 259-day dataset, not −0.13; the 0.45 eV 90% CL limit is right. The signed"
+ },
+ {
+  "batch": "neutrino",
+  "name": "Unit-contract prefactors whose constant basis exceeds (ħ, c, e) — and whose value encodes a physics convention the verifier cannot adjudicate",
+  "status": "confirmed",
+  "magnitude": "Matter potential: A ≡ 2√2 G_F n_e E = 1.5266×10⁻⁴ Y_e ρ[g/cm³] E[GeV] eV², i.e. 7.633×10⁻⁵ ρE at the conventional Y_e = 0.5 — recomputed from G_F = 1.1663787×10⁻⁵ GeV⁻², N_A = 6.02214×10²³, ħc = 1.97327×10⁻¹⁴ GeV·cm; the Y_e = 0.5 is a hidden composition convention worth ~0.6% for real Earth matter (Y_e ≈ 0.497 crust/mantle) and more for stellar/solar profiles. Cosmology bridge: Ω_ν h² = Σm_ν/(93.",
+  "fingerprint": "Same surface detection as §2.13(b) — bracketed units plus a bare decimal — but extend the verifier's constant basis to {ħ, c, e, G_F, N_A, m_e, m_p, k_B} and allow a declared composition/thermal parameter (Y_e, N_eff) as a free slot. When the prefactor closes only after fixing such a parameter, reco",
+  "treatment": "schema_feature",
+  "tier": "v1",
+  "verifier_notes": "The schema request is right and the anchor checks: 1/(4ħc) in the [eV², km, GeV] contract = 1.26693, closing on (ħ,c) alone as §2.13(b) requires; A = 2√2 G_F n_e E recomputes to 1.52649×10⁻⁴ Y_e ρ[g/cm³] E[GeV] eV² from G_F = 1.1663787×10⁻⁵ GeV⁻², N_A, ħc = 1.97327×10⁻¹⁴ GeV·cm — matching the PDG-quoted 1.52×10⁻⁴ and demonstrating that the stated basis genuinely fails to close. CORRECTION to the worked example: the pair '7.633×10⁻⁵ vs 7.56×10⁻¹⁴' is NOT a Y_e-explicitness fork. √2 G_F n_e per unit Y_e ρ is 7.6325×10⁻¹⁴ eV when n_e = Y_e ρ N_A (mass unit = 1 u), and 7.567×10⁻¹⁴ when n_e = Y_e ρ"
+ },
+ {
+  "batch": "neutrino",
+  "name": "Neutrino cross-section and rate normalization basis: per nucleon / per neutron / per nucleus / per molecule, plus flux-averaged vs energy-differential",
+  "status": "confirmed",
+  "magnitude": "Per nucleon vs per nucleus: ×12 for ¹²C, ×16 for ¹⁶O, ×40 for ⁴⁰Ar, ×56 for ⁵⁶Fe. Per nucleon vs per neutron (CCQE): 12/6 = ×2.00 for carbon, 18/8 = ×2.25 for water, 40/22 = ×1.82 for argon. Per nucleon of CH vs per carbon nucleus: ×13. Flux-averaging vs evaluation at the mean energy is typically a tens-of-percent effect on a steeply varying σ(E) and is not a constant at all.",
+  "fingerprint": "Caption and axis-label tokens: 'per nucleon', 'per neutron', 'per target nucleus', 'per ¹²C', '/nucleon', 'cm²/GeV/nucleon'. Required lift from the detector section: target chemical formula and, for neutron-basis results, its neutron count. Flux-averaging tell: 'flux-averaged', 'flux-integrated', '⟨",
+  "treatment": "declaration_layer",
+  "tier": "v2",
+  "verifier_notes": "Counts check: A/N = 12/6 = 2.00 (C), 18/8 = 2.25 (H₂O), 40/22 = 1.818 (Ar); CH carries 13 nucleons per carbon, so ×13; ν CC-inclusive σ/E ≈ 0.7×10⁻³⁸ cm²/GeV/nucleon is the right sanity anchor. Two scope notes before encoding. (i) This is an instance, not a structure: the per-X denominator slot already exists (§2.1's 'per atom / per formula unit divisors are integer cell counts, a separate slot again' and the §5 DOS per-spin/valley/f.u. row), so it earns a row for its magnitudes and its detector-section lift, not a schema change — tier v2 is right for that reason. (ii) The row must be split: t"
+ },
+ {
+  "batch": "neutrino",
+  "name": "Half-life vs mean lifetime across decay literature (T₁/₂ vs τ = T₁/₂/ln 2)",
+  "status": "overstated",
+  "magnitude": "τ = T₁/₂/ln 2 = 1.4427 T₁/₂; equivalently T₁/₂ = 0.6931 τ. A 44.3% error on any limit or rate, and it enters squared (factor 2.08) in anything that goes as the rate squared.",
+  "fingerprint": "Symbol form T₁/₂ / T_{1/2} / t_{1/2} vs τ / τ/B / τ/m. Decay-law tells: 'N = N₀e^(−t/τ)' vs 'N = N₀2^(−t/T₁/₂)'; a printed 'ln 2' in the rate-to-limit conversion. Subfield priors: ββ decay and nuclear tables ⇒ T₁/₂; proton decay, DM decay, neutrino radiative decay ⇒ τ. Cross-check: a limit quoted al",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "The fork is real and uncovered (τ/T₁/₂ = 1.442695; 3.8×10²⁶ yr → 5.482×10²⁶ yr checks), but two parts of the claim do not survive. (1) 'It enters squared (factor 2.08) in anything that goes as the rate squared' is unsupported — no observable in the cited literature scales as rate². The actual downstream propagation runs the other way: m_ββ ∝ T₁/₂^(−1/2), so the error in any extracted m_ββ is √1.4427 = 1.2011, i.e. 20.1%, not 44.3% and not 108%. Corrected claim: '44.3% on the time constant itself; 20.1% on any mass or coupling extracted from it; no exhibited quantity scales as rate².' (2) Slot:"
+ },
+ {
+  "batch": "neutrino",
+  "name": "The Solar Neutrino Unit (SNU): a hidden 10⁻³⁶ and a per-target-atom denominator, with a non-convertible edge to flux",
+  "status": "overstated",
+  "magnitude": "The prefactor itself is 10³⁶. The SNU→flux edge has no fixed factor: the ³⁷Cl and ⁷¹Ga experiments report comparable SNU values while integrating quite different portions of the solar spectrum, so any single conversion constant is wrong for one of them.",
+  "fingerprint": "The literal token 'SNU' (and 'solar neutrino unit'); co-occurrence with ³⁷Cl / ⁷¹Ga / Homestake / GALLEX / GNO / SAGE. Add SNU = 10⁻³⁶ s⁻¹ (per target atom) as a converter-graph node; mark the SNU↔flux edge as refuse-with-reason ('requires an energy-dependent capture cross section and an assumed sou",
+  "treatment": "converter_entry",
+  "tier": "v2",
+  "verifier_notes": "The converter node (SNU = 10⁻³⁶ s⁻¹ per target atom, dimension s⁻¹) and the refused SNU→flux edge are correct and correctly analogized to the census's Jy/beam refuse-class, and Homestake's 2.56 SNU (0.16 stat ⊕ 0.16 syst = 0.23) and Φ(⁸B) = 5.25×10⁶ cm⁻²s⁻¹ are the right anchors. But the magnitude field is factually wrong: '³⁷Cl and ⁷¹Ga experiments report comparable SNU values' is false — Homestake measured ≈2.56 SNU while GALLEX/GNO and SAGE measured ≈65–74 SNU, a factor ≈26, precisely because the gallium threshold (233 keV) admits the pp flux while chlorine (814 keV) does not. Corrected cla"
+ },
+ {
+  "batch": "quantum-info",
+  "name": "Entropy/information log base (bits vs nats vs dits) as a unit, not a factor",
+  "status": "confirmed",
+  "magnitude": "1 nat = 1/ln2 = 1.442695 bits; ln 2 = 0.693147. Through k_B: 1 bit of entropy = k_B ln2 = 9.5699e-24 J/K, and Landauer's k_B T ln 2 at 300 K = 2.8710e-21 J = 17.92 meV. Errors are per unit of entropy, so they scale with system size: an 8-qubit maximally mixed state is 8 bits or 5.545 nats.",
+  "fingerprint": "The base printed on the log in the defining equation (log vs log2 vs ln vs lg — many papers write bare 'log' and fix it in one sentence of prose); the unit token on the axis or in the abstract (bits, nats, qubits, ebits, dits, bits/s, bits per channel use); an n-qubit maximally mixed entropy quoted ",
+  "treatment": "new_axis",
+  "tier": "v1",
+  "verifier_notes": "Not in the census: grep confirms zero information-entropy content in §5 (both tables), §2.13, §6, §7. The only 'entropy' tokens are the black-hole S=A/4 coefficient in registry #2 and Cluster A — a different quantity, not a log-base fork. Registry #20 (decadic vs Napierian, ln10) is correctly identified as the nearest neighbour and is genuinely distinct (dimensionful coefficient, one subfield). All arithmetic recomputed and correct: 1/ln2 = 1.4426950, ln2 = 0.6931472, k_B ln2 = 9.56993e-24 J/K, k_B T ln2 at 300 K = 2.870979e-21 J = 17.9192 meV, 8 bits = 5.5452 nats, log2(10) = 3.3219. BSC exam"
+ },
+ {
+  "batch": "quantum-info",
+  "name": "Fidelity F vs F-squared (Uhlmann/Nielsen–Chuang vs Jozsa/Wilde)",
+  "status": "confirmed",
+  "magnitude": "Not a constant: near unity 1 - F^2 = 2(1-F) - (1-F)^2, i.e. infidelities differ by a factor of exactly 2 in the regime where every gate benchmark is quoted; a '99.9 % fidelity' gate has infidelity 1.0e-3 or 2.0e-3. At mid-range the absolute gap is large: F = 0.5 vs F^2 = 0.25.",
+  "fingerprint": "The printed defining expression (presence or absence of the outer square); the pure-state reduction F(psi,phi) = |<psi|phi>| vs |<psi|phi>|^2; the Bures relation printed as d_B^2 = 2(1-F) vs 2(1-sqrt(F)); the appearance of a separate named symbol 'fidelity amplitude' or sqrt(F) (which pins the other",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Both definitions verified as live and lineage attribution is right (N&C/Watrous unsquared; Jozsa original and Wilde squared; CV-Gaussian literature predominantly squared). Not in the census anywhere. Algebra recomputed: 1 - F^2 = (1-F)(1+F) = 2(1-F) - (1-F)^2, so infidelities differ by ~2 near unity — exact, not approximate. Worked example checks: F = 0.995 unsquared -> infidelity 5.0e-3; F^2 = 0.990025 -> infidelity 9.975e-3 ≈ 1.0e-2. Both Fuchs–van de Graaf branches are correctly stated: 1-F <= D <= sqrt(1-F^2) for unsquared, 1-sqrt(F) <= D <= sqrt(1-F) for squared. Both Bures forms correct:"
+ },
+ {
+  "batch": "quantum-info",
+  "name": "Exactly-invertible power reparameterizations of dimensionless figures of merit",
+  "status": "overstated",
+  "magnitude": "Quantity-dependent by construction, not a factor: same-symbol values map 0.9 <-> 0.81, 0.6 <-> 0.36, 0.1 <-> 0.01. Near unity the induced error on the complement (infidelity, 1 - purity) is exactly 2; near zero the discrepancy is the value itself.",
+  "fingerprint": "Two published defining expressions for one name differing by an outer square; a sqrt of a named quantity promoted to its own name ('fidelity amplitude', 'concurrence' vs 'tangle'); both renderings lie in [0,1] and both look plausible, so the fingerprint is *always* the printed definition or a stated",
+  "treatment": "schema_feature",
+  "tier": "v1",
+  "verifier_notes": "The class is real but thinner than claimed, and one of its three instances is misclassified. Instance (iii) is wrong: normalized vs unnormalized linear entropy, S_L = (d/(d-1))(1 - tr rho^2) vs 1 - tr rho^2, is a plain multiplicative factor d/(d-1) — an ordinary numeric_factor, already representable — and its relation to purity is affine (S_L = 1 - P), not a power map. The 'squaring' in tr(rho^2) is inside the definition of the quantity, not a reparameterization of a figure of merit. (Numbers themselves check: qubit maximally mixed gives purity 0.5, S_L = 0.5 unnormalized, 1.0 normalized.) Cor"
+ },
+ {
+  "batch": "quantum-info",
+  "name": "Trace-norm one-half conventions: trace distance, negativity, diamond distance",
+  "status": "confirmed",
+  "magnitude": "Exactly x2 per quantity, and the errors are independent across the three, so a chained argument (diamond distance -> trace distance -> failure probability) can be off by 4.",
+  "fingerprint": "The printed defining expression; the stated maximum of the measure (1 vs 2); the phrase 'trace distance' vs 'trace norm'/'trace-norm distance'; for negativity, a co-printed logarithmic negativity E_N = log2||rho^Gamma||_1 pins it (E_N = 1 ebit alongside N = 0.5 is Vidal–Werner); for the diamond norm",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Uncovered by the census. All numbers verified independently: PT of |Phi+> has spectrum {1/2, 1/2, 1/2, -1/2}, so ||rho^{T_A}||_1 = 2, Vidal–Werner N = (2-1)/2 = 0.5, unhalved N = 1, and the co-printed E_N = log2(2) = 1 ebit is a correct and clean pinning fingerprint. Orthogonal pure states: ||rho-sigma||_1 = 2, D = 1. Diamond: both ||N - id||_diamond and its half circulate as 'diamond error'. Scope correction: the three legs are not equally contested. The 1/2 on trace distance is close to universal inside QI (the unhalved appears mainly in operator-theory-flavoured and some many-body work), so"
+ },
+ {
+  "batch": "quantum-info",
+  "name": "Average gate fidelity vs entanglement/process fidelity vs RB decay parameter",
+  "status": "wrong_treatment",
+  "magnitude": "1 - F_avg = (d/(d+1))(1 - F_e): process infidelity is 3/2 x average infidelity at d = 2, 5/4 at d = 4. RB: r = (1-p)(d-1)/d, so quoting (1-p) as 'the error' overstates by exactly 2 for one qubit and 4/3 for two. Error-per-Clifford vs error-per-gate adds the compilation count (~1.875 physical gates per Clifford in the common single-qubit decomposition).",
+  "fingerprint": "'average gate fidelity'/'F_avg' vs 'process fidelity'/'entanglement fidelity'/'F_pro'/'F_e'; the printed conversion (dF+1)/(d+1); an RB fit of the form A p^m + B together with whether the reported error is r or 1-p; 'error per Clifford' vs 'error per gate'; the dimension d or qubit number must be re",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Physics is right and uncovered; the worked example is internally inconsistent and the slot is wrong. Relations verified: F_avg = (d F_e + 1)/(d+1), hence 1 - F_avg = (d/(d+1))(1 - F_e) — ratio 3/2 at d=2, 5/4 at d=4, both as claimed; RB r = (1-p)(d-1)/d, so (1-p) overstates r by exactly 2 at d=2 and 4/3 at d=4. Example error: F_e = 0.9970 gives F_avg = 0.99800 (correct) and therefore r = 2.0e-3 and p = 1 - 2r = 0.996 — NOT p = 0.998. The claim's 'the same experiment's RB fit p = 0.99800' describes a different channel (p = 0.998 => r = 1.0e-3 => F_avg = 0.999 => F_e = 0.9985). Repaired three-nu"
+ },
+ {
+  "batch": "quantum-info",
+  "name": "Depolarizing-channel parameterization (uniform-mixing p vs per-Pauli p)",
+  "status": "confirmed",
+  "magnitude": "Exactly 4/3 for a qubit: p_uniform = (4/3) p_Pauli, equivalently p_Pauli = (3/4) p_uniform. General qudit: p_Pauli = p_uniform (d^2-1)/d^2 — 15/16 for two qubits. A '1 % threshold' is a 0.75 % threshold in the other convention.",
+  "fingerprint": "The printed channel form — 'p * I/d' or 'p * 1/2' uniform-mixing vs '(p/3) sum_P P rho P' Kraus form; the identity coefficient printed as (1-p) vs (1 - 3p/4); two-qubit p/15 (total p) vs p/16 (from uniform mixing); and a code-vs-paper trap worth encoding: Cirq's depolarize(p) and PennyLane's Depolar",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Fully verified, including the code trap. Algebra recomputed: (1-p)rho + p I/2 = (1 - 3p/4)rho + (p/4)(XrhoX + YrhoY + ZrhoZ), so total non-identity weight q = 3p/4; p = 0.0100 <-> q = 0.0075 exactly as claimed. Qudit generalization confirmed: I/d = (1/d^2) sum over all d^2 Paulis, giving q = p(d^2-1)/d^2 = 15/16 at d = 4 with p/16 per Pauli. Simulator claims check out against current docs: Qiskit Aer depolarizing_error uses E(rho) = (1-lambda)rho + lambda Tr[rho] I/2^n (uniform mixing), while Cirq depolarize(p) and PennyLane DepolarizingChannel(p) put p/3 on each non-identity Pauli — lambda = "
+ },
+ {
+  "batch": "quantum-info",
+  "name": "Noise-model / denominator tag on error rates and thresholds",
+  "status": "confirmed",
+  "magnitude": "Same code, same symbol p_th: ~10.3 % (code capacity, independent X/Z, MWPM decoder) vs ~2.9 % (phenomenological, measurement errors added) vs ~0.5–1 % (circuit-level depolarizing) — a factor 10–20. Optimal-decoder code-capacity values run higher still (~10.9 % at the Nishimori point, ~18.9 % under depolarizing noise), so the decoder alone moves the number by ~2x. Logical error rate 'per round' vs ",
+  "fingerprint": "Noise-model tokens in the methods ('code capacity', 'phenomenological', 'circuit-level', 'SI1000', 'erasure', 'biased-noise eta'); presence or absence of measurement-error and two-qubit-gate error terms in the model definition; decoder name (MWPM, union-find, BP-OSD, tensor-network, neural); denomin",
+  "treatment": "identity_tag",
+  "tier": "v1",
+  "verifier_notes": "Real, uncovered, and correctly slotted in the §2.13(a) identity layer — it is the same 'same symbol, same dimension, different quantity' shape as the running-coupling (scheme, mu, n_f, loop) row, so it should ship as a §5 round-3 row of slot 'identity', not as a structural change. Threshold spread verified against the literature: code capacity with independent X/Z and MWPM ~10.3%, optimal decoder ~10.9% (Nishimori point), optimal under depolarizing ~18.9%, phenomenological with MWPM ~2.9% (Wang–Harrington–Preskill), circuit-level 0.5–0.75% (Raussendorf–Harrington 0.75%). Two small corrections:"
+ },
+ {
+  "batch": "quantum-info",
+  "name": "CV quadrature normalization: hbar = 1 vs hbar = 2, vacuum variance 1/2 vs 1",
+  "status": "confirmed",
+  "magnitude": "x2 on every covariance-matrix entry. PPT/Simon symplectic-eigenvalue bound: nu_tilde >= 1/2 (hbar = 1) vs nu_tilde >= 1 (hbar = 2). Duan–Simon summed-variance inseparability threshold 2 vs 4. Squeezing-operator fork S(xi) = exp[(1/2)(xi* a^2 - xi a-dagger^2)] vs exp[xi* a^2 - xi a-dagger^2] gives variance e^{-2r} vs e^{-4r} — a factor 2 in every quoted r.",
+  "fingerprint": "An explicit 'we set hbar = 2' or 'hbar = 1' line; the printed commutator; the vacuum variance stated as 1/2 or 1 ('shot-noise unit', 'vacuum unit'); the PPT bound value (1/2 vs 1) is the cleanest calibrator because it is a stated constant, not a measurement; x = (a + a-dagger)/sqrt(2) vs a + a-dagge",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Uncovered (the census's cold-atom/harmonic-trap and cavity-QED rows carry no quadrature normalization) and every number checks. Verified: x = (a+a^dag)/sqrt(2) gives [x,p] = i and Var_vac = 1/2; x = a + a^dag gives [x,p] = 2i and Var_vac = 1; Simon/PPT symplectic bound nu_tilde >= 1/2 vs >= 1; Duan summed-variance threshold 2 vs 4 (vacuum product state gives Var(x1-x2) + Var(p1+p2) = 1 + 1 = 2 in the hbar=1 convention); squeezing operator with and without the 1/2 giving e^{-2r} vs e^{-4r}; 3 dB squeezing = V 0.25 vs 0.50. The observation that the factor lands in the *numeric bounds* of separab"
+ },
+ {
+  "batch": "quantum-info",
+  "name": "Channel-representation normalizations: Choi, chi-matrix, PTM, vectorization stacking",
+  "status": "confirmed",
+  "magnitude": "xd on Choi/chi-derived fidelities (2, 4, 16, ...). The stacking convention is not a magnitude at all but a wrong channel unless the channel is self-transpose — for an amplitude-damping channel the transpose is a physically different map.",
+  "fingerprint": "The trace of the printed Choi/chi matrix (1 vs d); whether the maximally entangled vector in the definition is (1/sqrt(d)) sum |ii> or the unnormalized sum |ii>; PTM entry R_00 = 1 for a trace-preserving map is an integrality-style calibrator; the printed vec identity — vec(AXB) = (B^T tensor A) vec",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Verified. Unnormalized Choi J(N) = sum_ij |i><j| tensor N(|i><j|) has tr J = d for TP maps; for the qubit identity channel J = 2|Phi+><Phi+|, so <Phi+|J|Phi+> = 2 and <Phi+|J/2|Phi+> = 1 — the claim's numbers are exactly right, and the entanglement fidelity is the normalized one. chi with tr chi = 1 vs d, PTM with and without the 1/d and with P/sqrt(d) normalization, and R_00 = 1 as a TP calibrator all check. vec identities correct: vec(AXB) = (B^T tensor A)vec(X) is column-stacking, (A tensor B^T) row-stacking. One precision correction: the stacking swap does not substitute 'N^T' for N — it t"
+ },
+ {
+  "batch": "quantum-info",
+  "name": "Bell-inequality normalization (CHSH S vs S/2 vs CH form)",
+  "status": "overstated",
+  "magnitude": "x2 between the S and S/2 forms. Tsirelson bound 2*sqrt(2) = 2.8284 vs sqrt(2) = 1.4142. Multipartite Mermin-type inequalities carry a further 2^{floor((n-1)/2)} depending on whether the inequality is written in its normalized form.",
+  "fingerprint": "The printed classical bound (2 vs 1 vs 0) and the quoted quantum maximum (2.8284 vs 1.4142) — the *stated bound is the calibrator*, the same trick the census uses for topological-density integrality; +/-1-valued observables vs a probability (CH/Eberhard) expression; the presence of a 1/2 or 1/4 in t",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Two of the three legs are one kind of thing and the third is not. The S vs S/2 leg is a clean x2 registry fork and is correct as stated: classical bound 2 vs 1, Tsirelson 2*sqrt(2) = 2.8284271 vs sqrt(2) = 1.4142136, 'violation by 0.40' vs 0.20 — and the stated-bound-as-calibrator move is a good reuse of the integrality-lint idea. But the CH/Eberhard leg is NOT a rescaling: under no-signaling the two are linearly but *affinely* related, S = 4*CH + 2 (equivalently CH = (S-2)/4), confirmed by literature. That routes it to the §2.13(f) tag-and-restrict affine class, not to a multiplicative regist"
+ },
+ {
+  "batch": "quantum-info",
+  "name": "Quantum Fisher information vs Bures/Fubini–Study metric (factor 4)",
+  "status": "confirmed",
+  "magnitude": "x4 on F_Q, hence x2 on every quoted precision bound and on any 'metrological gain over the standard quantum limit' figure.",
+  "fingerprint": "The explicit factor 4 in the pure-state formula; whether the CRB is printed as 1/sqrt(nu F) or 1/(2 sqrt(nu g)); the words 'Bures metric', 'quantum geometric tensor', 'Fubini–Study' versus 'quantum Fisher information'; the GHZ benchmark F_Q = N^2 (Heisenberg limit delta-theta = 1/N) is a clean calib",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Verified end to end and uncovered. For |psi(theta)> = (|0> + e^{i theta}|1>)/sqrt(2) I recomputed <dpsi|dpsi> = 1/2 and |<psi|dpsi>|^2 = 1/4, so g = 0.25 and F_Q = 4g = 1 — the claim's numbers are exact. Cross-check via the generator: theta is generated by |1><1| with variance 1/4 and F_Q = 4 Var = 1, consistent. GHZ calibrator correct: F_Q = 4 Var(J_z) = 4(N/2)^2 = N^2 with Heisenberg limit 1/N, and N^2/4 under the Bures normalization. Both QCRB renderings are stated correctly. The observation that it compounds with the fidelity fork through the Bures distance is right and is the most useful "
+ },
+ {
+  "batch": "thermo-statmech",
+  "name": "Thermodynamic sign block (first-law work sign and its co-varying siblings)",
+  "status": "wrong_treatment",
+  "magnitude": "Exact sign flip on W, η, W_ext, W_diss. Ideal-gas isothermal doubling of volume at 300 K: |W| = RT ln 2 = 8.314 × 300 × 0.693147 = 1728.9 J/mol, quoted as +1.729 kJ/mol or −1.729 kJ/mol. Adsorption/formation-energy sibling: sign flip on numbers of order 0.1–5 eV. Electrode-potential sibling: sign flip on every tabulated E° (Zn²⁺/Zn = −0.76 V vs +0.76 V).",
+  "fingerprint": "The printed first law and the phrase \"work done by/on the system\"; đW = −p dV vs +p dV in the paper's own definition line; W entering an efficiency as η = W/Q_H (by-system convention); for the siblings, the printed defining expression for E_ads/E_f and whether \"exothermic\" is attached to a positive ",
+  "treatment": "new_axis",
+  "tier": "v1",
+  "verifier_notes": "PHYSICS AND NUMBERS: all correct. RT ln 2 at 300 K = 8.31446 x 300 x 0.693147 = 1728.94 J/mol = 1.729 kJ/mol (recomputed). Zn2+/Zn = -0.76 V (Stockholm/IUPAC 1953) vs +0.76 V (Latimer oxidation potentials) is a real historical fork. A = -sum(nu_i mu_i) is the standard De Donder sign and the opposite sign is published. The cross-check is right: W_max = -Delta A under Q-W becomes W_min = +Delta A under Q+W. The best observation in the entry is genuine and not obvious: dU = TdS - pdV is character-identical in both conventions, so the fork is invisible except where W appears as a named symbol -- t"
+ },
+ {
+  "batch": "thermo-statmech",
+  "name": "Stochastic-calculus discretization prescription (Itô / Stratonovich / Hänggi–Klimontovich), and the fork in the interpretation parameter's own naming",
+  "status": "confirmed",
+  "magnitude": "Zero-flux steady state obeys p_ss ∝ D(x)^(α−1): uniform under Hänggi–Klimontovich (isothermal/anti-Itô), ∝ D^(−1/2) under Stratonovich, ∝ D^(−1) under Itô. Diffusivity varying by 3× across the domain ⇒ predicted densities in ratio 1 : 1.73 : 3. Adjacent prescriptions differ by a spurious drift of (1/2)∂_x D.",
+  "fingerprint": "The ∘ symbol on the noise/heat integral; an explicit \"interpreted in the … sense\"; the presence or absence of a drift term containing ∂_x D or D′/2 — its presence IS the prescription, not an extra physical force; the tokens \"spurious drift\", \"noise-induced drift\", \"kinetic/isothermal/backward-Itô/an",
+  "treatment": "schema_feature",
+  "tier": "v1",
+  "verifier_notes": "PHYSICS RECHECKED FROM SCRATCH AND CORRECT. For dx = sqrt(2D(x)) dW under discretization parameter alpha (evaluation at x_t + alpha*Delta x), the Fokker-Planck equation is d_t p = d_x [ D^alpha d_x ( D^(1-alpha) p ) ]. alpha=0 gives d_x^2(Dp) (Ito), alpha=1/2 gives d_x(sqrt(D) d_x(sqrt(D) p)) (Stratonovich), alpha=1 gives d_x(D d_x p) (Hanggi-Klimontovich). Zero-flux steady state: D^(1-alpha) p = const, so p_ss prop D^(alpha-1) -- exactly as claimed, and the three readings map correctly onto uniform / D^(-1/2) / D^(-1). A 3x diffusivity variation gives 1 : 3^(1/2) = 1.732 : 3, so '1 : 1.73 : 3"
+ },
+ {
+  "batch": "thermo-statmech",
+  "name": "Which work/heat functional: inclusive (Jarzynski) vs exclusive (Bochkov–Kuzovlev), and the housekeeping/excess split",
+  "status": "overstated",
+  "magnitude": "⟨e^(−βW_incl)⟩ = e^(−βΔF) versus ⟨e^(−βW_excl)⟩ = 1. Mistaking one for the other biases the extracted free energy by the entire ΔF: 10–100 k_BT in typical single-molecule pulling, i.e. 25–250 kJ/mol at 300 K where k_BT = 2.494 kJ/mol. The two work definitions differ by the endpoint change of the coupling/perturbation energy V(x_τ,λ_τ) − V(x_0,λ_0), of order the trap energy (tens of k_BT for a stif",
+  "fingerprint": "The words inclusive/exclusive; whether the trap or coupling potential appears inside the printed H; which relation is quoted (=1 versus =e^(−βΔF)); whether ΔF is defined with respect to H₀ or H₀+V; \"housekeeping\", \"excess\", \"adiabatic/non-adiabatic\" entropy production; Hatano–Sasa versus Speck–Seife",
+  "treatment": "identity_tag",
+  "tier": "v2",
+  "verifier_notes": "THE ROW IS REAL; THE SCHEMA ARGUMENT IS FALSE.\n\nWhat holds: <exp(-beta W_incl)> = exp(-beta Delta F) versus <exp(-beta W_excl)> = 1 is the correct pair of exact relations, and the two works differ by the endpoint change of the coupling energy V(x_tau,lambda_tau) - V(x_0,lambda_0). Numbers verified: k_B T at 300 K = 2.4943 kJ/mol; 40 k_BT = 99.77 kJ/mol (claim says 100, fine); 10-100 k_BT = 24.9-249 kJ/mol (claim '25-250', fine). Feeding BK-convention data to a Jarzynski estimator does return Delta F = 0. Not covered anywhere in the census.\n\nWHAT IS OVERSTATED: 'the Sec 2.13(a) tag vector has n"
+ },
+ {
+  "batch": "thermo-statmech",
+  "name": "Entropy and information log base: nats vs bits, and its collision with the k_B = 1 generator",
+  "status": "confirmed",
+  "magnitude": "ln 2 = 0.693147 per unit entropy (inverse 1.442695). k_B ln 2 = 9.5697×10⁻²⁴ J/K against k_B = 1.380649×10⁻²³ J/K; R ln 2 = 5.763 J mol⁻¹ K⁻¹ against R = 8.314. Landauer quantum k_BT ln 2 = 2.8710×10⁻²¹ J = 17.92 meV = 1.729 kJ/mol at 300 K, against k_BT = 25.85 meV = 2.494 kJ/mol — a 31% error in extractable work.",
+  "fingerprint": "log₂, lg, \"bits\", \"Sh\", \"shannon\" in the entropy or mutual-information definition; an explicit ln 2 inside the paper's own efficiency or Landauer bound (its presence means the surrounding counts are bits); an entropy production quoted in \"bits per second\"; mixed-basis figures in information-thermody",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "EVERY NUMBER RECOMPUTED AND CORRECT. ln 2 = 0.6931472, 1/ln 2 = 1.4426950. k_B ln 2 = 9.56993e-24 J/K against k_B = 1.380649e-23. R ln 2 = 5.76315 J/mol/K against R = 8.31446. k_B T ln 2 at 300 K = 2.87098e-21 J = 17.9192 meV = 1728.94 J/mol = 1.729 kJ/mol; k_B T = 25.852 meV = 2.4943 kJ/mol. Ratio 25.852/17.919 = 1.4427, i.e. the stated '31% error in extractable work' (17.92 is 30.7% below 25.85) is right.\n\nNOT A DUPLICATE. Sec 5 #20 is decadic-vs-Napierian absorbance (ln 10, spectroscopy) -- different factor, different symbol family, different literature. Sec 5 #10 (the radian collapse) is 2"
+ },
+ {
+  "batch": "thermo-statmech",
+  "name": "Master-equation rate-matrix index order and generator sign (w_ij meaning i→j vs j→i)",
+  "status": "wrong_treatment",
+  "magnitude": "Not a factor but an inversion: an occupancy ratio w_+/w_− becomes w_−/w_+. For a two-state pair w = 10 s⁻¹ and 1 s⁻¹, the stationary ratio is 10 under one reading and 0.1 under the other — a factor 100 — and the associated free-energy difference ΔG = −k_BT ln(w_+/w_−) = ∓5.74 kJ/mol at 300 K (k_BT ln 10 = 2.4942 × 2.302585) flips sign. In a driven cycle the affinity, the net current, and the predi",
+  "fingerprint": "Which index of the printed matrix sums to zero (Σ_i w_ij = 0 ⇒ columns ⇒ j→i; Σ_j w_ij = 0 ⇒ rows ⇒ i→j); whether the equation is written ṗ = Wp or ṗᵀ = pᵀQ; the tokens \"Q-matrix\" and \"infinitesimal generator\" (probability-theory usage: rows, i→j) versus \"transition rate matrix W\" (physics usage: co",
+  "treatment": "identity_tag",
+  "tier": "v2",
+  "verifier_notes": "PHYSICS AND NUMBERS CORRECT. Van Kampen's master equation d_t p_i = sum_j [w_ij p_j - w_ji p_i] with w_ij the j->i rate does give a column-sum-zero generator and pdot = W p; the probabilists' Q-matrix has q_ij = i->j, rows summing to zero, and pdot^T = p^T Q; chemical kinetics k_ij is i->j. Stationary ratio 10 vs 0.1 is a factor 100. k_B T ln 10 at 300 K = 2.49434 x 2.302585 = 5.7434 kJ/mol -- the claimed 5.74 kJ/mol, recomputed. The decisive fingerprint is also correct as stated: detailed balance w_ij p_j^eq = w_ji p_i^eq with w_ij = (j->i) gives w_ij/w_ji = exp[beta(E_j - E_i)], so the print"
+ },
+ {
+  "batch": "thermo-statmech",
+  "name": "Chemical potential: which μ (total vs excess vs intrinsic) and which zero",
+  "status": "NO-VERDICT",
+  "magnitude": "μ − μ_ex = k_BT ln(ρΛ³). Liquid argon at 100 K, n = 2.10×10²⁸ m⁻³: Λ = h/√(2πm k_BT) = 6.626×10⁻³⁴/2.399×10⁻²³ = 2.762×10⁻¹¹ m = 0.2762 Å, nΛ³ = 4.43×10⁻⁴, so the shift is −7.72 k_BT = −6.42 kJ/mol = −1.53 kcal/mol = −66.5 meV per particle — over 1.5× the 1 kcal/mol \"chemical accuracy\" such papers claim. Electronic-structure zero shifts (VBM vs vacuum vs the code's internal zero) are 4–6 eV; the e",
+  "fingerprint": "\"Excess chemical potential\", \"Widom insertion\", μ_ex, or the engineering EOS term \"residual\"; presence or absence of a thermal wavelength Λ or a ln(ρΛ³) term anywhere in the paper; for electronic structure, an explicit statement of whether E_F is relative to VBM, vacuum, or the code zero, and whethe",
+  "treatment": "identity_tag",
+  "tier": "v1",
+  "verifier_notes": ""
+ },
+ {
+  "batch": "thermo-statmech",
+  "name": "Free-energy profiles: which measure (Jacobian/metric correction on the reaction coordinate)",
+  "status": "confirmed",
+  "magnitude": "2k_BT ln(r₂/r₁). From 3 Å to 10 Å at 300 K: 2 × 2.4942 × ln(3.333) = 6.01 kJ/mol = 1.44 kcal/mol = 62.2 meV. It is coordinate-dependent, so it changes the profile's SHAPE, moving barrier positions and removing or creating the large-r plateau; propagated to a binding constant it is e^(6.01/2.4942) = 11× in K_eq.",
+  "fingerprint": "Whether the reported profile plateaus at large separation (measure-corrected) or trends logarithmically (raw histogram); the tokens \"Jacobian correction\", \"entropic/volume-entropy term\", \"−2k_BT ln r\", \"sin θ weighting\", \"mass-metric tensor\", \"Fixman potential\"; umbrella sampling / WHAM / metadynami",
+  "treatment": "identity_tag",
+  "tier": "v2",
+  "verifier_notes": "NUMBERS RECOMPUTED AND CORRECT. 2 k_B T ln(10/3) at 300 K = 2 x 2.49434 x 1.203973 = 6.0062 kJ/mol = 1.4355 kcal/mol = 62.25 meV -- the claimed 6.01 / 1.44 / 62.2. The binding-constant factor is exactly (r2/r1)^2 = (10/3)^2 = 11.11, so '11x' is right (and worth stating as the exact square rather than as exp(6.01/2.4942), which is the same number by a longer route). The identity F(r) = -k_BT ln P(r) = W(r) - 2 k_BT ln r + const follows from P(r) = 4 pi r^2 rho g(r), and the angular sibling differing by k_BT ln sin(theta) is correct. The fork is genuinely published in both forms in the umbrella-"
+ },
+ {
+  "batch": "thermo-statmech",
+  "name": "Partition-function combinatorial normalization: the 1/N! Gibbs factor (with a verdict on the seed's h^{3N})",
+  "status": "confirmed",
+  "magnitude": "F shifts by −k_BT ln N!, μ by −k_BT ln N. At N = 100, 300 K: ln 100! = 363.74 ⇒ 907 kJ/mol in F; ln 100 = 4.605 ⇒ 11.49 kJ/mol = 2.75 kcal/mol in μ. The extreme published instance is the Lothe–Pound translation–rotation normalization of the cluster partition function in classical nucleation theory, worth ~10¹⁷ in the predicted nucleation rate.",
+  "fingerprint": "The printed Z, or more reliably the printed ideal-gas free energy: ln(V/N) versus ln V — the N inside the logarithm IS the 1/N!; the tokens \"Gibbs factor\", \"indistinguishability\", \"replacement free energy\", \"Lothe–Pound\", \"translational–rotational contribution of the cluster\"; any lattice or polymer",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "THE SPLIT VERDICT IS CORRECT AND WELL MADE. h^{3N} genuinely is a Sec 2.13(f) instance -- omitting it makes the log argument of ln Z dimensionful, which that rule already classifies as a convention rather than an error -- so declining to resubmit it is right. 1/N! is dimensionless, is not a symmetry number (so the round-3 TST sigma row does not reach it), and IS a live subfield-dependent choice: lattice and polymer field theories label sites and omit it by construction while continuum treatments include it.\n\nNUMBERS RECOMPUTED AND CORRECT. ln(100!) = 363.7394 (lgamma(101)); x 2.49434 kJ/mol = "
+ },
+ {
+  "batch": "acoustics-eng",
+  "name": "The level record: dB is a dimensioned, reference-tagged quantity, not a refusable logarithmic scalar",
+  "status": "confirmed",
+  "magnitude": "Dimension-level, i.e. unbounded. A single airgun-exposure table prints '224 dB' (peak SPL re 1 μPa) and '183 dB' (SEL re 1 μPa²·s) for one shot; the 41 dB gap is not a conversion at all because the quantities differ in dimension. Under the current model both are 'dimensionless dB' and the check is vacuous.",
+  "fingerprint": "The token 're' / 'ref.' / 'rel.' followed by a dimensioned quantity ('re 1 μPa', 're 20 μPa', 're 1 pW', 're 1 V/μPa', 're 1 μm/s²'); parenthesised suffixes dBA/dBZ/dBi/dBm/dBu/dBV/dBc. Ratio-dB tells: gain, loss, attenuation, insertion/transmission loss, SNR, ripple, margin, directivity index, dyna",
+  "treatment": "schema_feature",
+  "tier": "v1",
+  "verifier_notes": "Arithmetic reproduces: 10^(12/10)=15.849, 10^(12/20)=3.9811; 20 uPa x 3.9811 = 79.62 uPa = 7.962e-5 Pa; calibrator self-checks 94 dB re 20 uPa = 1.0024 Pa and 114 dB = 10.024 Pa. Dimension of uPa^2*s = M^2 L^-2 T^-3 as claimed. Not a duplicate: SS2.11 does list dB in the blanket logarithmic refuse class and SS7 inherits it, while SS5's round-3 table already prints dB-valued forks (neper 8.686/4.343 dB/Np; phase noise L(f)=1/2 S_phi at 3.01 dB; dBc/Hz) and SS10.1's class-C refusal covers only *magnitude arithmetic* -- the internal tension the claim names is real. TWO CORRECTIONS. (a) The propos"
+ },
+ {
+  "batch": "acoustics-eng",
+  "name": "Level-reference registry keyed by medium, era and discipline (20 μPa / 1 μPa / 1 μbar; ISO 1683 vibration references; dBi–dBd, dBu–dBV)",
+  "status": "confirmed",
+  "magnitude": "100.0 dB exactly (μbar → μPa vintage, ×10⁵ in pressure); 26.02 dB (20 μPa → 1 μPa, ×20 in pressure, ×400 in intensity); 61.5 dB for air↔water intensity equivalence (26.0 reference + 35.5 impedance, using ρc = 413 Pa·s/m air vs 1.48×10⁶ Pa·s/m water; ×1.4×10⁶ in intensity); 20 dB (vibration acceleration and velocity, ISO 1683 preferred vs alternative reference); 10 dB (sound power 1 pW vs 10⁻¹³ W);",
+  "fingerprint": "Reference tokens 're 1 μPa' / 're 20 μPa' / 're 0.0002 dyn/cm²' / 're 1 μbar' / 're 1 dyn/cm²' / 're 1 μm/s²' / 're 10⁻⁵ m/s²' / 're 1 pW' / 're 10⁻¹³ W'; dBi, dBd, dBu, dBV, dBm + a stated or unstated Ω. Era gate: underwater + pre-1970 ⇒ μbar suspect. Magnitude gates: an ambient-noise number near 6",
+  "treatment": "converter_entry",
+  "tier": "v1",
+  "verifier_notes": "Every magnitude verified except one. 1 ubar = 1 dyn/cm^2 = 0.1 Pa: 20 log10(1e5) = 100.0 dB exactly. 20 log10(20) = 26.0206 dB. Impedance term 10 log10(1.48e6/413) = 35.543 dB; total 61.564 dB, intensity ratio 1.433e6 (claim's 61.5 dB and 1.4e6 correct). dBi-dBd = 10 log10(1.64) = 2.1484. dBV-dBu = 20 log10(1/0.7746) = 2.2185. 0 dBm: 0.22361 V (50 ohm) vs 0.77460 V (600 ohm) = 10.7918 dB. Worked example checks: 100 dB re 20 uPa -> p = 2.00 Pa, I = p^2/rho-c = 9.685 mW/m^2, = 126.02 dB re 1 uPa (pressure) and 161.56 dB re 1 uPa (intensity), p_water = 119.7 Pa. Sound power 1 pW vs 1e-13 W = 10 d"
+ },
+ {
+  "batch": "acoustics-eng",
+  "name": "Amplitude statistic (rms / 0-peak / peak-to-peak / average-responding) as a mandatory tag, with a refusal branch",
+  "status": "confirmed",
+  "magnitude": "Pure sinusoid: peak/rms = √2 = 1.4142 (3.010 dB); peak-to-peak/rms = 2√2 = 2.8284 (9.031 dB). Against the ISO 20816 zone boundaries (4.5 and 7.1 mm/s rms) a factor 1.41 moves a machine across a whole severity zone; a factor 2.83 moves it across two. For non-sinusoidal signals the error is unbounded and one-directional.",
+  "fingerprint": "Tokens rms/RMS/r.m.s., 0-pk, 0-peak, pk-pk, p-p, 'peak-to-peak', 'amplitude', 'severity', 'true-RMS', 'crest factor'; ISO 20816/10816/13373 context implies velocity rms over 10–1000 Hz; a bare mm/s or g with no statistic must warn, never default. Presence of a stated crest factor ≠ 1.414 is a hard s",
+  "treatment": "registry_entry",
+  "tier": "v1",
+  "verifier_notes": "Verified: sqrt(2) = 1.41421 (3.0103 dB), 2 sqrt(2) = 2.82843 (9.0309 dB); 7.1 rms -> 10.041 pk / 20.082 pp; 7.1 pk -> 5.020 rms / 14.2 pp; sine form factor (1/sqrt2)/(2/pi) = 1.11072 exactly as claimed. ISO 10816-3/20816-3 Group 1 rigid-support boundaries 2.3 / 4.5 / 7.1 mm/s rms confirmed. Genuinely uncovered: SS2.13(e) carries only optical/resonator width parameterizations (beam size, pulse duration, HWHM/FWHM), and SS5's 'Scattering rates: HWHM/FWHM' row is a linewidth fork, not an amplitude statistic. TWO CORRECTIONS. (a) The worked example's zone labels are off. 5.02 mm/s rms lies inside "
+ },
+ {
+  "batch": "acoustics-eng",
+  "name": "Spectral basis for proportional-bandwidth spectra: band level vs spectral density (a frequency-proportional bandwidth normalization)",
+  "status": "confirmed",
+  "magnitude": "10 log₁₀(0.2316 f_c) = 13.65 dB at 100 Hz, 23.65 dB at 1 kHz, 33.65 dB at 10 kHz — a 20 dB tilt across the audio band and a 10 dB/decade change in apparent slope. Octave bands: 28.5 dB at 1 kHz. The base-2 vs base-10 (ISO 266 vs ANSI S1.11 / IEC 61260, G = 2 vs 10^0.3) sub-fork the seed raises is real but negligible by comparison: 0.2316 f_c vs 0.2308 f_c, 0.015 dB.",
+  "fingerprint": "'1/3-octave', 'third-octave', 'one-third octave', 'octave band', 'CPB', 'constant percentage bandwidth', 'proportional bandwidth', 'spectrum level', 'band level'; y-axis units 'dB re 1 μPa²/Hz', 'dB/Hz', 'dB re 1 μPa/√Hz', '(m/s²)²/Hz'; window names (Hann, Hamming, flat-top) plus 'ENBW' or 'noise ba",
+  "treatment": "identity_tag",
+  "tier": "v1",
+  "verifier_notes": "All bandwidth arithmetic verified: 2^(1/6) - 2^(-1/6) = 0.231563; octave 2^(1/2) - 2^(-1/2) = 0.707107; base-10 (G = 10^0.3) third-octave = 0.230768, so the base-2/base-10 sub-fork is 10 log10(0.231563/0.230768) = 0.0150 dB -- negligible, as claimed. 10 log10(0.231563 f_c) = 13.647 / 23.647 / 33.647 dB at 100 Hz / 1 kHz / 10 kHz; octave at 1 kHz = 28.495 dB; worked example 65 dB band level -> 41.353 and 51.353 dB re 1 uPa^2/Hz. Hann ENBW = 1.5 bins is exact. Not a duplicate of 'PSD one- vs two-sided; per-Hz vs per-(rad/s)' or of the per-lambda/nu/omega Jacobian row -- a proportional filter ban"
+ },
+ {
+  "batch": "acoustics-eng",
+  "name": "Exchange rate and criterion level: a declared exponent in the dose functional, not a rescaling",
+  "status": "confirmed",
+  "magnitude": "8 h at a constant 95 dB(A): OSHA (q = 5, L_c = 90) gives permissible time 4.00 h and dose 200 %; ISO/NIOSH (q = 3, L_c = 85) gives 0.794 h and dose 1008 % — a factor 5.04 in dose. For a varying exposure the two disagree in the reported *level* as well, and can invert the compliance verdict.",
+  "fingerprint": "'exchange rate', 'trading ratio', 'doubling rate', 'q = 3' / 'q = 5', 'criterion level 85 dB' / '90 dB', 'action level', TWA vs L_EX,8h vs L_Aeq,8h vs L_EP,d, 'dose (%)', 'noise dosimeter'. Hard tell for OSHA: the constant 16.61 in TWA = 16.61 log₁₀(D/100) + 90, which is exactly 5/log₁₀2 = 16.6096 —",
+  "treatment": "refuse_class",
+  "tier": "v2",
+  "verifier_notes": "Every number reproduces exactly: T_OSHA(95) = 8/2^1 = 4.00 h, dose 200%; T_NIOSH(95) = 8/2^(10/3) = 0.79370 h, dose 1007.94%, ratio 5.0397. Worked example: T(100) = 2.00 h, T(80) = 32.0 h, D = 100(0.5 + 0.21875) = 71.875%, TWA = 16.61 log10(0.71875) + 90 = 87.618 dB(A); L_EX,8h = 10 log10(1.07e10/8) = 91.263 dB(A). The OSHA fingerprint constant is right: 5/log10(2) = 16.60964. MIL-STD-1474's q = 4 confirmed. CORRECTION: the quoted gap is 3.65 dB, not 3.7 (the claim rounded both endpoints first); the opposite-verdict conclusion is unaffected. PRECISION NOTE: ISO 1999 defines no criterion level "
+ },
+ {
+  "batch": "acoustics-eng",
+  "name": "Procedurally-defined units: the unit token is stable across incompatible standard editions (phon, sone, acum, T30, STI, LUFS)",
+  "status": "confirmed",
+  "magnitude": "Phon: the ISO committee records that the pre-2003 (Robinson–Dadson) contours differ from the current data by as much as 10–15 dB in the low-frequency region — i.e. 'X phon' is a 10–15 dB different SPL below ~200 Hz depending on edition, which is roughly a factor 2 in sone. Sone: ISO 532-1 systematically under-predicts at low loudness and over-predicts at high relative to ECMA-418-2 on the same rec",
+  "fingerprint": "Unit tokens sone, phon, acum, asper, vacil, LUFS, LKFS, STI/RASTI, T20, T30, T60, EDT, C50, D50, R_w, STC, NRC, NIC, NC/NR/RC — each co-occurring with, or conspicuously missing, a standard-with-year citation ('ISO 532-1:2017', 'ISO 226:2003', 'DIN 45692', 'ITU-R BS.1770-4', 'ISO 3382-2'). Absence of",
+  "treatment": "refuse_class",
+  "tier": "v2",
+  "verifier_notes": "Core gap real and uncovered. Verified externally: ISO 226:2003 vs :1987 (Robinson-Dadson) differ by as much as 10-15 dB below ~500 Hz; the ISO 532-1 vs ECMA-418-2 direction the claim asserts (532-1 low at low loudness, high at high loudness) is supported in the comparison literature; ISO 226:2023, ISO 532-2/-3 and the BS.1770 gating change (introduced at -2) all check out. MATERIAL CORRECTION, and it lands on the claim's own 'safe' edge: N = 2^((L_N - 40)/10) is NOT unconditionally exact. It holds only for L_N >= 40 phon; below 40 phon ISO 532-1 uses a different branch (N ~ (L_N/40)^2.86 - 0.0"
+ },
+ {
+  "batch": "acoustics-eng",
+  "name": "dB HL / dB SL / dB nHL: zeros that are a frequency×transducer table or a per-subject fitted threshold",
+  "status": "confirmed",
+  "magnitude": "TDH-39 supra-aural earphone in the IEC 60318-1 artificial ear: 0 dB HL = 7.5 dB SPL at 1 kHz but 45.0 dB SPL at 125 Hz — a 37.5 dB frequency-dependent offset within one audiogram. Transducer alone moves the zero by ~2–10 dB (ER-3A insert ≈ 5.5 dB SPL at 1 kHz in an HA-2 coupler). dB SL offsets in a hearing-impaired cohort routinely exceed 60 dB and differ per subject.",
+  "fingerprint": "'dB HL', 'dB SL', 'dB nHL', 'HTL', 'hearing level', 'sensation level', 'audiogram', 'RETSPL', 'RETFL'; transducer names TDH-39/TDH-49/TDH-50, ER-3A, ER-5A, DD45, HDA-200/280; coupler names 'artificial ear', 'HA-1', 'HA-2', 'IEC 60318-1/-3', '6-cc coupler'; standards ISO 389 parts 1/2/8, ANSI S3.6. A",
+  "treatment": "converter_entry",
+  "tier": "v2",
+  "verifier_notes": "Verified: ISO 389-1 RETSPL for TDH-39 on the IEC 60318-1 ear simulator gives 0 dB HL = 7.5 dB SPL at 1 kHz and 45.0 dB SPL at 125 Hz, a 37.5 dB within-audiogram spread; 70 dB HL -> 115.0 and 77.5 dB SPL. ER-3A in the HA-2 coupler = 5.5 dB SPL at 1 kHz. Nothing in the census covers these. THREE CORRECTIONS. (a) The transducer offset range '~2-10 dB' understates the low-frequency end: TDH-39 vs ER-3A at 250 Hz is ~11-12 dB. Say ~2-12 dB. (b) The coupler is load-bearing in the claim's own headline number -- TDH-39 reads 7.5 dB SPL on IEC 60318-1 but 7.0 dB SPL on the IEC 60318-3 / NBS-9A acoustic"
+ },
+ {
+  "batch": "acoustics-eng",
+  "name": "Sabine vs Eyring absorption coefficient: a dimensionless fork whose measured branch legitimately exceeds 1",
+  "status": "confirmed",
+  "magnitude": "α_S = 0.80 ⇒ α_E = 1 − e^(−0.80) = 0.551 (Eyring predicts T60 a factor 0.80/(−ln 0.20) = 0.497 of Sabine's, i.e. half). Published ISO 354 value α_s = 1.15 ⇒ α_E = 1 − e^(−1.15) = 0.683; equating the two overstates the absorbed power fraction by 1.15/0.683 = 1.68×, and clipping to α = 1.00 gives a third, also-wrong, value.",
+  "fingerprint": "'ISO 354', 'reverberation room', 'random-incidence absorption coefficient', 'α_s', 'Sabine', 'Eyring', 'Norris–Eyring', 'Millington–Sette', 'NRC', 'α_w / ISO 11654'; the printed reverberation formula (0.161 V/A vs the log form). Hard tell: any α > 1 — impossible as an absorptance, entirely normal as",
+  "treatment": "registry_entry",
+  "tier": "v2",
+  "verifier_notes": "Map and arithmetic verified: equating T = 0.161V/(S alpha_S) to T = 0.161V/(-S ln(1 - alpha_E)) gives exactly alpha_E = 1 - exp(-alpha_S). 0.80 -> 0.550671; 1.15 -> 0.683363; 1.15/0.683363 = 1.6829; T ratio 0.80/(-ln 0.20) = 0.49707; V = 200 m^3, S = 100 m^2, alpha = 0.80 -> 0.4025 s (Sabine) vs 0.20007 s (Eyring). ISO 354 admitting alpha_s > 1 is correct and the 'tag, never clip, never reject' lint is the right behaviour. SS2.5 indeed carries no acoustics entries. TWO CORRECTIONS. (a) 'the same material' overstates the mapping. alpha_E = 1 - exp(-alpha_S) preserves the *predicted T60*, not th"
+ }
+]
