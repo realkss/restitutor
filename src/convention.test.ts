@@ -148,6 +148,12 @@ describe("all shipped conventions: full validation records (census §1.6 ladder 
     "chaos-mw": { kind: "partial", n: 2, rank: 2, residual: 3 },
     "trap-units": { kind: "partial", n: 3, rank: 3, residual: 2 },
     "ns-inertial": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    // v1 completion (phases-3+4 review backlog)
+    "hartree-gaussian": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    "lattice-model": { kind: "well-posed", n: 5, rank: 5, residual: 0 },
+    "effective-au": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    "magnetism-emu": { kind: "partial", n: 1, rank: 1, residual: 4 },
+    "gpe-healing": { kind: "partial", n: 3, rank: 3, residual: 2 },
   }
   test("every shipped convention has an expectation and vice versa", () => {
     assert.deepStrictEqual(Object.keys(CONVENTIONS).sort(), Object.keys(EXPECT).sort())
@@ -190,6 +196,17 @@ describe("the span rule (census §2.4)", () => {
 })
 
 describe("restoration solve: exact exponents and non-unique branch", () => {
+  test("Gaussian-rendered Hartree: the half-integer charge dimension is load-bearing — E_h = ħ⁻² m_e e⁴", () => {
+    const s = solveRestoration(CONVENTIONS["hartree-gaussian"], ENERGY)
+    assert.strictEqual(s.kind, "unique")
+    if (s.kind === "unique") {
+      const byTex = Object.fromEntries(s.exponents.map((e) => [e.generator.tex, e.power]))
+      assert.ok(byTex["\\hbar"].eq(Frac.of(-2)))
+      assert.ok(byTex["m_e"].eq(Frac.of(1)))
+      assert.ok(byTex["e"].eq(Frac.of(4)))
+    }
+  })
+
   test("reduced-Planck length restores half-integer powers: √(8πGħ/c³) = √(8π)·l_P", () => {
     const s = solveRestoration(CONVENTIONS["reduced-planck"], LENGTH)
     assert.strictEqual(s.kind, "unique")

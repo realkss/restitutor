@@ -621,4 +621,100 @@ export const CONVENTIONS: Record<string, Convention> = {
       g("\\rho", dimQ(1, -3, 0, 0, 0), "1", "\\rho", "solution_parameter"),
     ],
   },
+
+  // --- v1 completion (phases-3+4 review backlog) ---
+  "hartree-gaussian": {
+    // The 3-generator half-integer rendering of the same physics as "hartree":
+    // Gaussian charge carries dimension M^½ L^{3/2} T⁻¹ (census §2.1 makes the
+    // halves load-bearing). E_h restores as ħ⁻² m_e e⁴.
+    name: "Hartree atomic units, Gaussian rendering (ħ = m_e = e = 1, Gaussian charge)",
+    generators: [
+      g("\\hbar", CONST_DIM.hbar, "1", "\\hbar"),
+      g("m_e", CONST_DIM.me, "1", "m_e"),
+      g("e", dimQ([1, 2], [3, 2], -1, 0, 0), "1", "e"),
+    ],
+  },
+  "lattice-model": {
+    // Distinct from "lattice" (the QCD ħ = c = a row): the condensed-matter
+    // declaration a = ħ = t = 1 with k_B and e — five switches, full rank.
+    name: "Lattice-model condensed-matter units (a = ħ = t = 1, with k_B and e)",
+    generators: [
+      g("a", dimQ(0, 1, 0, 0, 0), "1", "a", "regulator"),
+      g("\\hbar", CONST_DIM.hbar, "1", "\\hbar"),
+      g("t", dimQ(1, 2, -2, 0, 0), "1", "t", "theory_scale"),
+      g("k_B", CONST_DIM.kB, "1", "k_B"),
+      g("e", CONST_DIM.e, "1", "e"),
+    ],
+  },
+  "effective-au": {
+    name: "Effective (excitonic) atomic units (ħ = m* = 1, e²/(4πε₀ε_r) = 1)",
+    generators: [
+      g("\\hbar", CONST_DIM.hbar, "1", "\\hbar"),
+      g("m^*", dimQ(1, 0, 0, 0, 0), "1", "m^*", "solution_parameter"),
+      g("e^2/(4\\pi\\varepsilon_0\\varepsilon_r)", dimQ(1, 3, -2, 0, 0), "1", "e^2/(4\\pi\\varepsilon_0\\varepsilon_r)", "theory_scale"),
+    ],
+  },
+  "magnetism-emu": {
+    // The experimental-magnetism rendering: μ₀ = 1 with the 4π written
+    // explicitly in the field equations (unrationalized) — distinct from the
+    // "emu" row's μ₀/4π = 1.
+    name: "CGS-emu / Gaussian magnetism (μ₀ = 1, unrationalized)",
+    generators: [g("\\mu_0", CONST_DIM.mu0, "1", "\\mu_0")],
+  },
+  "gpe-healing": {
+    // The ξ = ħ/√(2mgn) vs ħ/√(mgn) √2 fork lives in the healing-length
+    // DEFINITION, not the generator set — registry material, noted here.
+    name: "GPE healing-length units (ħ = m = gn = 1; ξ carries the √2 fork)",
+    generators: [
+      g("\\hbar", CONST_DIM.hbar, "1", "\\hbar"),
+      g("m", dimQ(1, 0, 0, 0, 0), "1", "m", "solution_parameter"),
+      g("gn", dimQ(1, 2, -2, 0, 0), "1", "gn", "theory_scale"),
+    ],
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Census §3 scope tiers, as a parallel map (single source, completeness-guarded
+// by tests) rather than a field on every row.
+// ---------------------------------------------------------------------------
+
+export type Tier = "v1" | "v2" | "out_of_scope"
+
+export const TIERS: Record<string, Tier> = {
+  "geometrized": "v1",
+  "geometrized-gaussian": "v1",
+  "hep-hl-kb": "v1",
+  "reduced-planck": "v1",
+  "kolb-turner": "v1",
+  "planck-gaussian": "v1",
+  "hartree": "v1",
+  "rydberg": "v1",
+  "si": "v1",
+  "gaussian": "v1",
+  "esu": "v1",
+  "emu": "v1",
+  "heaviside-lorentz": "v1",
+  "c-only": "v1",
+  "hep-hl": "v1",
+  "gaussian-natural": "v1",
+  "planck-hl": "v2",
+  "classical-kappa": "v1",
+  "sixteen-pi-g": "v1",
+  "string-alpha-prime": "v1",
+  "string-ls-2pi": "v1",
+  "lattice": "v1",
+  "bh-scale": "v1",
+  "nr-code": "v2",
+  "geometrized-hl": "v2",
+  "dirac-atomic": "v2",
+  "kb-only": "v1",
+  "lj-reduced": "v1",
+  "chaos-mw": "v1",
+  "trap-units": "v1",
+  "ns-inertial": "v1",
+  "hartree-gaussian": "v1",
+  "lattice-model": "v1",
+  "effective-au": "v1",
+  "magnetism-emu": "v1",
+  "gpe-healing": "v1",
 }

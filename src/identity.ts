@@ -49,8 +49,18 @@ export type CombineReport = {
   unverifiable: UnverifiableTag[]
 }
 
+export type CombineOptions = {
+  /**
+   * strict: a key declared on only one side also bars combination — the
+   * conservative reading of §2.13(a)'s "never combine values whose tags
+   * differ" when one side's tag state is unknowable. Default false: report
+   * as unverifiable, leave the call to the consumer.
+   */
+  strict?: boolean
+}
+
 /** The §2.13(a) lint: refuse to combine quantities whose identity tags differ. */
-export function checkCombinable(a: Tagged, b: Tagged): CombineReport {
+export function checkCombinable(a: Tagged, b: Tagged, opts: CombineOptions = {}): CombineReport {
   const conflicts: TagConflict[] = []
   const unverifiable: UnverifiableTag[] = []
   // Own-key discipline: an inherited prototype property must never fabricate a
@@ -66,7 +76,10 @@ export function checkCombinable(a: Tagged, b: Tagged): CombineReport {
       unverifiable.push({ key, declaredOn: hasLeft ? "left" : "right" })
     }
   }
-  return { combinable: conflicts.length === 0, conflicts, unverifiable }
+  const combinable = opts.strict
+    ? conflicts.length === 0 && unverifiable.length === 0
+    : conflicts.length === 0
+  return { combinable, conflicts, unverifiable }
 }
 
 /** Render a report as decline-vocabulary text (empty string when fully clean). */

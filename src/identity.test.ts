@@ -39,6 +39,13 @@ describe("the combination lint (census §2.13(a))", () => {
     assert.deepStrictEqual(r.unverifiable, [{ key: "vintage", declaredOn: "left" }])
   })
 
+  test("strict mode: an unverifiable key also bars combination", () => {
+    const a = { tags: { scheme: "MS-bar" } }
+    const b = { tags: { scheme: "MS-bar", scale: "m_H" } }
+    assert.strictEqual(checkCombinable(a, b).combinable, true)
+    assert.strictEqual(checkCombinable(a, b, { strict: true }).combinable, false)
+  })
+
   test("an inherited prototype property never fabricates a tag", () => {
     const r = checkCombinable({ tags: { toString: "declared" } }, { tags: {} })
     assert.strictEqual(r.combinable, true)

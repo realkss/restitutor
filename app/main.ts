@@ -178,31 +178,17 @@ run()
 // ---------------------------------------------------------------------------
 // Convention inspector: the generator-parameterized layer, live.
 // ---------------------------------------------------------------------------
-import { CONVENTIONS, EM_RIDERS, activeRiders, validateConvention } from "../src/convention"
+import { CONVENTIONS, EM_RIDERS, TIERS, activeRiders, validateConvention } from "../src/convention"
+import { RENDERING } from "./rendering"
 
 const convEl = $<HTMLSelectElement>("conv")
 const convOut = $("convOut")
 
-/** Which E&M rendering's rider table demonstrates the span rule for each convention. */
-const RENDERING: Record<string, string> = {
-  si: "si",
-  gaussian: "gaussian",
-  esu: "esu",
-  emu: "emu",
-  "heaviside-lorentz": "heaviside-lorentz",
-  "geometrized-gaussian": "gaussian",
-  "gaussian-natural": "gaussian",
-  "planck-gaussian": "gaussian",
-  "geometrized-hl": "heaviside-lorentz",
-  "hep-hl": "heaviside-lorentz",
-  "hep-hl-kb": "heaviside-lorentz",
-  "planck-hl": "heaviside-lorentz",
-}
-
 for (const [key, c] of Object.entries(CONVENTIONS)) {
   const opt = document.createElement("option")
   opt.value = key
-  opt.textContent = c.name
+  const tier = TIERS[key]
+  opt.textContent = (tier && tier !== "v1" ? `[${tier}] ` : "") + c.name
   if (key === "geometrized") opt.selected = true
   convEl.appendChild(opt)
 }
