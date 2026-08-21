@@ -120,6 +120,33 @@ describe("all shipped conventions: full validation records (census §1.6 ladder 
     "planck-gaussian": { kind: "well-posed", n: 5, rank: 5, residual: 0 },
     "hartree": { kind: "partial", n: 4, rank: 4, residual: 1 },
     "rydberg": { kind: "partial", n: 4, rank: 4, residual: 1 },
+    // classical E&M family — the SI baseline is the zero-generator identity
+    "si": { kind: "partial", n: 0, rank: 0, residual: 5 },
+    "gaussian": { kind: "partial", n: 1, rank: 1, residual: 4 },
+    "esu": { kind: "partial", n: 1, rank: 1, residual: 4 },
+    "emu": { kind: "partial", n: 1, rank: 1, residual: 4 },
+    "heaviside-lorentz": { kind: "partial", n: 1, rank: 1, residual: 4 },
+    // natural units
+    "c-only": { kind: "partial", n: 1, rank: 1, residual: 4 },
+    "hep-hl": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    "gaussian-natural": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    "planck-hl": { kind: "well-posed", n: 5, rank: 5, residual: 0 },
+    "classical-kappa": { kind: "partial", n: 2, rank: 2, residual: 3 },
+    "sixteen-pi-g": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    "string-alpha-prime": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    "lattice": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    // GR / astro
+    "bh-scale": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    "nr-code": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    "geometrized-hl": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    // atomic / statistical
+    "dirac-atomic": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    "kb-only": { kind: "partial", n: 1, rank: 1, residual: 4 },
+    // nondimensionalization presets
+    "lj-reduced": { kind: "partial", n: 4, rank: 4, residual: 1 },
+    "chaos-mw": { kind: "partial", n: 2, rank: 2, residual: 3 },
+    "trap-units": { kind: "partial", n: 3, rank: 3, residual: 2 },
+    "ns-inertial": { kind: "partial", n: 3, rank: 3, residual: 2 },
   }
   test("every shipped convention has an expectation and vice versa", () => {
     assert.deepStrictEqual(Object.keys(CONVENTIONS).sort(), Object.keys(EXPECT).sort())
