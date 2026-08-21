@@ -80,9 +80,10 @@ export type DimQ = [Frac, Frac, Frac, Frac, Frac]
 
 /** Convenience constructor from plain numbers (halves etc. via [n, d] pairs). */
 export function dimQ(...parts: (number | [number, number])[]): DimQ {
+  if (parts.length > 5) throw new Error(`dimQ: ${parts.length} components over a 5-dimension basis`)
   const out = parts.map((p) => (Array.isArray(p) ? Frac.of(p[0], p[1]) : Frac.of(p)))
   while (out.length < 5) out.push(F0)
-  return out.slice(0, 5) as DimQ
+  return out as DimQ
 }
 
 export function dimIsZero(d: DimQ): boolean {
@@ -98,9 +99,10 @@ export type GeneratorKind =
   | "theory_scale"
   | "solution_parameter"
   | "regulator"
+  | "reference_model"
 
 export type Generator = {
-  /** TeX of the constant (or combination) set to 1, e.g. "G", "\\hbar", "4\\pi\\varepsilon_0". */
+  /** TeX of the BARE constant, e.g. "G", "\\hbar", "\\varepsilon_0" — the absorbed combination lives in `emits`. */
   tex: string
   dim: DimQ
   /**
@@ -111,6 +113,10 @@ export type Generator = {
   /** Exact TeX a restoration should emit, e.g. "(8\\pi G)". */
   emits: string
   kind: GeneratorKind
+  /** Census §2.2: absorbed (set to 1) vs inserted (non-coherent engineering systems force it ≠ 1). */
+  role: "absorbed" | "inserted"
+  /** Optional numeric value for round-tripping; absent for theory scales published without one. */
+  value?: string
 }
 
 export type Convention = {
@@ -156,10 +162,19 @@ function rankAndNullspace(rows: DimQ[]): { rank: number; nullspace: Frac[][] } {
 
 export type ValidationResult =
   | {
+      /** Generators independent and every base dimension fixed (residual rank 0). */
       kind: "well-posed"
       generatorCount: number
       rank: number
-      /** 5 − rank: how much dimensional checking survives (census §2.3; 0 ⇒ checking is vacuous). */
+      residualRank: number
+    }
+  | {
+      /** Census §2.3's third outcome: independent generators, but residual dimensional
+       * freedom survives (ħ = c = 1 with lengths still in fm). Common and legitimate;
+       * residualRank says how much checking remains possible. */
+      kind: "partial"
+      generatorCount: number
+      rank: number
       residualRank: number
     }
   | {
@@ -177,16 +192,28 @@ export type ValidationResult =
     }
 
 export function validateConvention(conv: Convention): ValidationResult {
+  for (const gen of conv.generators) {
+    if (dimIsZero(gen.dim))
+      throw new Error(
+        `dimensionless generator "${gen.tex}": not a unit choice — route it to the N axis or the dimensionless-conventions registry (census §2.1, §2.5)`,
+      )
+  }
   const rows = conv.generators.map((g) => g.dim)
   const { rank, nullspace } = rankAndNullspace(rows)
   const n = rows.length
   const residualRank = 5 - rank
-  if (n <= rank) return { kind: "well-posed", generatorCount: n, rank, residualRank }
+  if (n <= rank)
+    return {
+      kind: residualRank === 0 ? "well-posed" : "partial",
+      generatorCount: n,
+      rank,
+      residualRank,
+    }
   const impliedGroups = nullspace.map((vec) => {
     const parts: string[] = []
     vec.forEach((a, i) => {
       if (!a.isZero()) {
-        const sym = conv.generators[i].tex
+        const sym = conv.generators[i].emits
         parts.push(a.eq(F1) ? sym : `${sym}^{${a.toString()}}`)
       }
     })
@@ -271,7 +298,7 @@ const g = (
   numericFactor: string,
   emits: string,
   kind: GeneratorKind = "fundamental_constant",
-): Generator => ({ tex, dim, numericFactor, emits, kind })
+): Generator => ({ tex, dim, numericFactor, emits, kind, role: "absorbed" })
 
 export const CONVENTIONS: Record<string, Convention> = {
   "geometrized": {
@@ -283,10 +310,10 @@ export const CONVENTIONS: Record<string, Convention> = {
     generators: [
       g("c", CONST_DIM.c, "1", "c"),
       g("G", CONST_DIM.G, "1", "G"),
-      g("4\\pi\\varepsilon_0", CONST_DIM.eps0, "4\\pi", "(4\\pi\\varepsilon_0)"),
+      g("\\varepsilon_0", CONST_DIM.eps0, "4\\pi", "(4\\pi\\varepsilon_0)"),
     ],
   },
-  "hep-hl": {
+  "hep-hl-kb": {
     name: "HEP natural units (ħ = c = ε₀ = k_B = 1, Heaviside–Lorentz)",
     generators: [
       g("\\hbar", CONST_DIM.hbar, "1", "\\hbar"),
@@ -319,7 +346,7 @@ export const CONVENTIONS: Record<string, Convention> = {
       g("c", CONST_DIM.c, "1", "c"),
       g("G", CONST_DIM.G, "1", "G"),
       g("k_B", CONST_DIM.kB, "1", "k_B"),
-      g("4\\pi\\varepsilon_0", CONST_DIM.eps0, "4\\pi", "(4\\pi\\varepsilon_0)"),
+      g("\\varepsilon_0", CONST_DIM.eps0, "4\\pi", "(4\\pi\\varepsilon_0)"),
     ],
   },
   "hartree": {
@@ -328,7 +355,7 @@ export const CONVENTIONS: Record<string, Convention> = {
       g("\\hbar", CONST_DIM.hbar, "1", "\\hbar"),
       g("m_e", CONST_DIM.me, "1", "m_e"),
       g("e", CONST_DIM.e, "1", "e"),
-      g("4\\pi\\varepsilon_0", CONST_DIM.eps0, "4\\pi", "(4\\pi\\varepsilon_0)"),
+      g("\\varepsilon_0", CONST_DIM.eps0, "4\\pi", "(4\\pi\\varepsilon_0)"),
     ],
   },
   "rydberg": {
@@ -337,7 +364,7 @@ export const CONVENTIONS: Record<string, Convention> = {
       g("\\hbar", CONST_DIM.hbar, "1", "\\hbar"),
       g("m_e", CONST_DIM.me, "2", "(2m_e)"),
       g("e", CONST_DIM.e, "1/\\sqrt{2}", "(e/\\sqrt{2})"),
-      g("4\\pi\\varepsilon_0", CONST_DIM.eps0, "4\\pi", "(4\\pi\\varepsilon_0)"),
+      g("\\varepsilon_0", CONST_DIM.eps0, "4\\pi", "(4\\pi\\varepsilon_0)"),
     ],
   },
 }

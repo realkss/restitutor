@@ -83,11 +83,19 @@ function render(result: TranslationResult, spec: TargetSpec, sourceTex: string) 
       "verdict ok",
       "Translated",
       ` — target ${SYSTEM_LABELS[spec.system]}` +
-        (spec.geometrized ? ", geometrized (constants verified, then stripped)" : "") +
+        (spec.geometrized
+          ? result.changed
+            ? ", geometrized (constants verified, then stripped)"
+            : ", geometrized"
+          : "") +
         (result.changed ? "" : " — already in target form"),
     )
   } else if (result.kind === "no-anchor") {
-    badge("verdict", "No anchor", " — nothing in this equation needs restoration.")
+    badge(
+      "verdict",
+      "No anchor",
+      " — no relation to anchor the target dimension; paste a full equation, not a bare expression.",
+    )
   } else {
     badge("verdict warn", "Declined", " — the registry cannot vouch for this equation.")
   }
@@ -98,6 +106,11 @@ function render(result: TranslationResult, spec: TargetSpec, sourceTex: string) 
     for (const r of result.reasons) {
       const li = document.createElement("li")
       li.textContent = `Declined: this equation contains ${r}.`
+      ul.appendChild(li)
+    }
+    for (const sym of result.unknown) {
+      const li = document.createElement("li")
+      li.textContent = `Unknown symbol: ${sym} — not in the registry's readings.`
       ul.appendChild(li)
     }
     head.appendChild(ul)
@@ -136,7 +149,7 @@ function render(result: TranslationResult, spec: TargetSpec, sourceTex: string) 
       const tdGloss = document.createElement("td")
       tdGloss.textContent = e.gloss
       const tdUnit = document.createElement("td")
-      katex.render(e.unit, tdUnit, { throwOnError: false })
+      tdUnit.textContent = e.unit
       tr.append(tdSym, tdGloss, tdUnit)
       tbody.appendChild(tr)
     }

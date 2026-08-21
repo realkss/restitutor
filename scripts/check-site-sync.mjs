@@ -10,11 +10,12 @@ const sitePath =
   "C:/Users/silen/Documents/hypomnemata/quartz/components/scripts";
 const files = ["unitsEngine.ts", "unitsEngine.test.ts"];
 
-// Normalize CRLF at read: Windows checkouts differ from committed LF content,
-// and the comparison is about content identity, not line endings.
+// Normalize CRLF and a leading BOM at read: Windows checkouts differ from
+// committed LF content, and the comparison is about content identity, not
+// line endings or encoding markers.
 const sha = (p) =>
   createHash("sha256")
-    .update(readFileSync(p, "utf8").replaceAll("\r\n", "\n"))
+    .update(readFileSync(p, "utf8").replace(/^﻿/, "").replaceAll("\r\n", "\n"))
     .digest("hex");
 
 let ok = true;

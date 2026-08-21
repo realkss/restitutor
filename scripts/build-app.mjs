@@ -2,17 +2,23 @@
 // (the site's charter and this repo's posture agree: no runtime CDN requests).
 import { build } from "esbuild"
 import { cpSync, mkdirSync } from "node:fs"
+import { fileURLToPath } from "node:url"
+import { join } from "node:path"
 
-mkdirSync("app/dist", { recursive: true })
+// Resolve from the repo root regardless of the caller's cwd.
+const root = fileURLToPath(new URL("..", import.meta.url))
+const p = (...parts) => join(root, ...parts)
+
+mkdirSync(p("app/dist"), { recursive: true })
 
 await build({
-  entryPoints: ["app/main.ts"],
+  entryPoints: [p("app/main.ts")],
   bundle: true,
   format: "esm",
-  outfile: "app/dist/main.js",
+  outfile: p("app/dist/main.js"),
   logLevel: "info",
 })
 
-cpSync("node_modules/katex/dist/katex.min.css", "app/dist/katex.min.css")
-cpSync("node_modules/katex/dist/fonts", "app/dist/fonts", { recursive: true })
+cpSync(p("node_modules/katex/dist/katex.min.css"), p("app/dist/katex.min.css"))
+cpSync(p("node_modules/katex/dist/fonts"), p("app/dist/fonts"), { recursive: true })
 console.log("app built: app/index.html + app/dist/")
