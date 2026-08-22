@@ -91,14 +91,34 @@ describe("the E&M 2×2 table (census §2.4 / §10.3 test 2)", () => {
     assert.strictEqual(dir("gaussian", "H", "4\\pi"), "multiply")
   })
 
-  test("EM_RIDERS covers exactly the five classical renderings", () => {
+  test("EM_RIDERS covers the five classical renderings plus the two encoded IOU tables", () => {
     assert.deepStrictEqual(Object.keys(EM_RIDERS).sort(), [
       "emu",
       "esu",
       "gaussian",
       "heaviside-lorentz",
+      "lattice-peierls",
+      "magnetism-emu",
       "si",
     ])
+  })
+
+  test("the magnetism riders carry the three census forks, dimensionless and always active", () => {
+    const riders = EM_RIDERS["magnetism-emu"]
+    assert.strictEqual(riders.length, 3)
+    assert.ok(riders.every((r) => r.factorDim === null))
+    const by = (sym: string) => riders.find((r) => r.symbol === sym)!
+    assert.strictEqual(by("M").direction, "multiply") // 4πM ordinate
+    assert.strictEqual(by("\\chi").direction, "divide") // χ_cgs = χ_SI/4π
+    assert.strictEqual(by("N").direction, "multiply") // ΣN = 4π vs 1
+    for (const r of riders) assert.strictEqual(riderActive(CONVENTIONS["magnetism-emu"], r), true)
+  })
+
+  test("the Peierls rider is the 2π flux-quantum placement, always active", () => {
+    const [r] = EM_RIDERS["lattice-peierls"]
+    assert.strictEqual(r.factorTex, "2\\pi")
+    assert.strictEqual(r.factorDim, null)
+    assert.strictEqual(riderActive(CONVENTIONS["lattice-model"], r), true)
   })
 
   test("Gaussian and ESU share the generator and differ ONLY in the c-riders (census §6.3)", () => {

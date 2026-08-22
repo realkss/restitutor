@@ -15,8 +15,9 @@ const katex = katexDefault as unknown as {
   __parse: (tex: string, options?: Record<string, unknown>) => any[]
 }
 
-const registry = findRegistryForSlug("Topics/Physics/Relativity-and-Gravitation/")
-if (!registry) throw new Error("GR registry not found")
+import { defaultProfile } from "../src/profiles"
+
+const registry = defaultProfile().registry
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 const texEl = $<HTMLTextAreaElement>("tex")
@@ -308,5 +309,70 @@ function inspect() {
 }
 
 convEl.addEventListener("change", inspect)
+
+// ---------------------------------------------------------------------------
+// Numeric converter panel: the equivalence graph, decline-loudly included.
+// ---------------------------------------------------------------------------
+import { convert, knownUnits } from "../src/converter"
+import { recognizeContractConstant } from "../src/contract"
+import type { Medium } from "../src/converter"
+
+const cvValue = $<HTMLInputElement>("convValue")
+const cvFrom = $<HTMLSelectElement>("convFrom")
+const cvTo = $<HTMLSelectElement>("convTo")
+const cvMedium = $<HTMLSelectElement>("convMedium")
+const cvAirIndex = $<HTMLInputElement>("convAirIndex")
+const cvResult = $("convResult")
+
+for (const u of knownUnits()) {
+  for (const sel of [cvFrom, cvTo]) {
+    const opt = document.createElement("option")
+    opt.value = u
+    opt.textContent = u
+    sel.appendChild(opt)
+  }
+}
+cvFrom.value = "nm"
+cvTo.value = "eV"
+
+function runConvert() {
+  cvResult.textContent = ""
+  const card = document.createElement("div")
+  card.className = "card"
+  const value = Number(cvValue.value)
+  const p = document.createElement("p")
+  p.style.margin = "0"
+  if (!Number.isFinite(value)) {
+    p.textContent = "Declined: the value is not a number."
+  } else {
+    const opts: { medium?: Medium; airIndex?: number } = {}
+    if (cvMedium.value) opts.medium = cvMedium.value as Medium
+    if (cvAirIndex.value.trim() !== "") opts.airIndex = Number(cvAirIndex.value)
+    const r = convert(value, cvFrom.value, cvTo.value, opts)
+    if (r.kind === "converted") {
+      const badge = document.createElement("span")
+      badge.className = "verdict ok"
+      badge.textContent = "Converted"
+      p.append(badge, ` — ${value} ${cvFrom.value} = ${r.value.toPrecision(8)} ${cvTo.value}`)
+    } else {
+      const badge = document.createElement("span")
+      badge.className = "verdict warn"
+      badge.textContent = "Declined"
+      p.append(badge, ` — ${r.reason}`)
+    }
+    const contract = recognizeContractConstant(value)
+    if (contract.kind === "unit-contract") {
+      const note = document.createElement("p")
+      note.className = "unitline"
+      note.textContent = `Aside: ${value} matches the unit-contract constant ${contract.constant.meaning} (${contract.constant.contract}) — in a formula, tag it and never restore on top.`
+      card.appendChild(note)
+    }
+  }
+  card.prepend(p)
+  cvResult.appendChild(card)
+}
+$("convGo").addEventListener("click", runConvert)
+
 // Initial render last: run() translates AND syncs the inspector to the target.
 run()
+runConvert()

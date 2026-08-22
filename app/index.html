@@ -79,6 +79,22 @@
 
   <div id="out" aria-live="polite"></div>
 
+  <label class="head" for="convValue">Numeric converter (the equivalence graph — census §2.9)</label>
+  <div class="row">
+    <input id="convValue" type="text" value="1550" style="font: 15px Consolas, monospace; padding: .42rem .7rem; border: 1px solid var(--line); border-radius: 3px; width: 8rem;" aria-label="value">
+    <select id="convFrom" aria-label="from unit"></select>
+    <span aria-hidden="true">→</span>
+    <select id="convTo" aria-label="to unit"></select>
+    <select id="convMedium" aria-label="medium">
+      <option value="">medium: undeclared</option>
+      <option value="vacuum">vacuum</option>
+      <option value="air">air (needs index)</option>
+    </select>
+    <input id="convAirIndex" type="text" placeholder="n (Edlén/Ciddor)" style="font: 14px Consolas, monospace; padding: .42rem .7rem; border: 1px solid var(--line); border-radius: 3px; width: 9.5rem;" aria-label="air refractive index">
+    <button class="primary" id="convGo">Convert</button>
+  </div>
+  <div id="convResult" aria-live="polite"></div>
+
   <label class="head" for="conv">Convention inspector (the generator-parameterized layer)</label>
   <div class="row">
     <select id="conv"></select>

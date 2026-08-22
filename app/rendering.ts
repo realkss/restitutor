@@ -15,6 +15,9 @@ export const RENDERING: Record<string, string> = {
   "hep-hl": "heaviside-lorentz",
   "hep-hl-kb": "heaviside-lorentz",
   "planck-hl": "heaviside-lorentz",
+  // The two former exclusion-list IOUs, now carrying their own rider tables:
+  "magnetism-emu": "magnetism-emu",
+  "lattice-model": "lattice-peierls",
 }
 
 /**
@@ -29,10 +32,6 @@ export const RENDERING_EXCLUDED: Record<string, string> = {
   "hartree-gaussian": "atomic magnetic α-ambiguity (census §6.4)",
   "effective-au": "atomic magnetic α-ambiguity (census §6.4)",
   "dirac-atomic": "carries the Gaussian/HL fork in its census rescaling list — un-adjudicated here",
-  // Its census content IS rider data (4πM, G/Oe) that is not yet encoded.
-  "magnetism-emu": "unrationalized-magnetism rider table not yet encoded",
-  // Peierls-phase convention rider not yet encoded; B restorations are bare SI-basis.
-  "lattice-model": "Peierls-phase rider not yet encoded",
 }
 
 /**

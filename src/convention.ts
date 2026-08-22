@@ -383,6 +383,30 @@ export const EM_RIDERS: Record<string, Rider[]> = {
     fourPiRider("D", "multiply"),
     fourPiRider("H", "multiply"),
   ],
+  /**
+   * The experimental-magnetism practice (the census's atomic-cm magnetism row,
+   * paired with the "magnetism-emu" convention): the three census-named
+   * dimensionless forks, all always-active. χ_SI = 4πχ_cgs; demagnetizing
+   * factors sum to 4π in cgs against 1 in SI; and the plotted ordinate is
+   * 4πM ("4πM (kG)"), not M. The full G/Oe field-relation set stays census-row
+   * material — encoding it needs the H/B unit-identity story, not just factors.
+   */
+  "magnetism-emu": [
+    fourPiRider("M", "multiply"), // the 4πM ordinate convention
+    fourPiRider("\\chi", "divide"), // χ_cgs = χ_SI/4π
+    fourPiRider("N", "multiply"), // ΣN_cgs = 4π vs ΣN_SI = 1
+  ],
+  /**
+   * The Peierls-phase convention for lattice models (paired with
+   * "lattice-model"): the flux-per-plaquette φ enters hopping phases as 2πφ
+   * with Φ₀ = h/e, or as φ itself with Φ₀ = ħ/e — the same 2π placement as
+   * registry fork #10, adjacent to #11's h/e-vs-h/2e. The 2π is data.
+   */
+  "lattice-peierls": [fourPiRiderLike("\\phi", "2\\pi", "multiply")],
+}
+
+function fourPiRiderLike(symbol: string, factorTex: string, direction: "multiply" | "divide"): Rider {
+  return { symbol, factorTex, factorDim: null, direction }
 }
 
 export const CONVENTIONS: Record<string, Convention> = {
