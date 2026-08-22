@@ -3,11 +3,14 @@
 // an independent basis; what relates eV to cm⁻¹ to K to nm is a set of edges,
 // exactly one of which (E = hc/λ) is RECIPROCAL and carries the medium tag
 // (census §5 round-3: air vs vacuum is 2.77×10⁻⁴ — orders of magnitude above
-// line-list precision — and a wavelength without a declared medium does not
-// convert; it declines).
+// line-list precision). The tag rules, refined by review:
+//  - crossing the reciprocal edge REQUIRES a declared medium (never a silent
+//    vacuum default), and every emitted wavelength carries its medium stamp;
+//  - a wavelength→wavelength prefix rescale never crosses the edge, so it
+//    needs no medium and never changes one;
+//  - "air" requires the Edlén/Ciddor index (finite, ≥ 1) — no default is honest.
 //
-// Constants are the SI-2019 exact values (vintage tag below): h, c, k_B, e are
-// defining constants, so every factor here is exact by construction.
+// Constants are the SI-2019 exact values (vintage tag below).
 
 export const CONSTANT_VINTAGE = "SI-2019 (defining constants, exact)"
 
@@ -32,7 +35,8 @@ const ENERGY_LIKE: Record<string, number> = {
   "THz": H * 1e12,
   "rad/s": HBAR, // E = ħω — the ω edge; the 2π between ν and ω is these two rows
   "cm^-1": H * C * 100, // E = hc·ν̃ — the kayser edge
-  "K": KB, // E = k_B T
+  "kayser": H * C * 100, // explicit alias: the census's K-homograph gate — bare "K" is kelvin ONLY
+  "K": KB, // E = k_B T — kelvin; the kayser lives under "cm^-1"/"kayser" (census §5 homograph row)
 }
 
 /** Wavelength units: value × factor = metres. The reciprocal side of the graph. */
@@ -46,11 +50,16 @@ const WAVELENGTH: Record<string, number> = {
 export type Medium = "vacuum" | "air"
 
 export type ConvertResult =
-  | { kind: "converted"; value: number }
+  | {
+      kind: "converted"
+      value: number
+      /** Present whenever the emitted quantity is a wavelength: its medium. */
+      medium?: Medium
+    }
   | { kind: "declined"; reason: string }
 
 export type ConvertOptions = {
-  /** Required whenever a wavelength unit is involved. */
+  /** Required whenever the reciprocal edge is crossed involving a wavelength. */
   medium?: Medium
   /** Refractive index of standard air at the working wavelength (Edlén/Ciddor). Required for medium "air". */
   airIndex?: number
@@ -60,23 +69,16 @@ export function knownUnits(): string[] {
   return [...Object.keys(ENERGY_LIKE), ...Object.keys(WAVELENGTH)]
 }
 
-/** λ_vacuum in metres from a wavelength quantity, honoring the medium tag. */
-function toVacuumMetres(value: number, unit: string, opts: ConvertOptions): number | ConvertResult {
-  const metres = value * WAVELENGTH[unit]
-  if (opts.medium === undefined)
-    return {
-      kind: "declined",
-      reason:
-        "wavelength carries a medium tag (census §5 round-3: air vs vacuum is 2.77×10⁻⁴) — declare medium: \"vacuum\" or \"air\"",
-    }
-  if (opts.medium === "vacuum") return metres
+const declined = (reason: string): ConvertResult => ({ kind: "declined", reason })
+
+function airIndexOrDecline(opts: ConvertOptions): number | ConvertResult {
   if (opts.airIndex === undefined)
-    return {
-      kind: "declined",
-      reason:
-        "medium \"air\" needs the refractive index of standard air at this wavelength (Edlén/Ciddor) — pass airIndex; it is wavelength-, T-, p- and humidity-dependent, so no default is honest",
-    }
-  return metres * opts.airIndex // λ_vac = n·λ_air
+    return declined(
+      'medium "air" needs the refractive index of standard air at this wavelength (Edlén/Ciddor) — pass airIndex; it is wavelength-, T-, p- and humidity-dependent, so no default is honest',
+    )
+  if (!Number.isFinite(opts.airIndex) || opts.airIndex < 1)
+    return declined(`airIndex must be a finite number ≥ 1 (got ${opts.airIndex})`)
+  return opts.airIndex
 }
 
 /**
@@ -89,49 +91,52 @@ export function convert(
   to: string,
   opts: ConvertOptions = {},
 ): ConvertResult {
-  const fromWave = from in WAVELENGTH
-  const toWave = to in WAVELENGTH
-  if (!fromWave && !(from in ENERGY_LIKE))
-    return { kind: "declined", reason: `unknown unit "${from}"` }
-  if (!toWave && !(to in ENERGY_LIKE))
-    return { kind: "declined", reason: `unknown unit "${to}"` }
+  if (!Number.isFinite(value)) return declined(`the value is not a finite number (got ${value})`)
+  const fromWave = Object.hasOwn(WAVELENGTH, from)
+  const toWave = Object.hasOwn(WAVELENGTH, to)
+  if (!fromWave && !Object.hasOwn(ENERGY_LIKE, from))
+    return declined(`unknown unit "${from}"`)
+  if (!toWave && !Object.hasOwn(ENERGY_LIKE, to)) return declined(`unknown unit "${to}"`)
 
   if (!fromWave && !toWave)
     return { kind: "converted", value: (value * ENERGY_LIKE[from]) / ENERGY_LIKE[to] }
 
   if (fromWave && toWave) {
-    // Same side of the reciprocal edge: still a length, but media may differ.
-    const vac = toVacuumMetres(value, from, opts)
-    if (typeof vac !== "number") return vac
-    // Emit in the target unit as a VACUUM wavelength — re-tagging into air would
-    // need the index at the target too; keep the output unambiguous.
-    return { kind: "converted", value: vac / WAVELENGTH[to] }
+    // A pure prefix rescale on the SAME side of the reciprocal edge: no medium
+    // is needed and none changes — the tag (if any) rides along untouched.
+    return {
+      kind: "converted",
+      value: (value * WAVELENGTH[from]) / WAVELENGTH[to],
+      ...(opts.medium ? { medium: opts.medium } : {}),
+    }
   }
 
+  // Crossing the reciprocal edge: medium is mandatory.
+  if (opts.medium === undefined)
+    return declined(
+      'crossing E = hc/λ needs the wavelength\'s medium (census §5 round-3: air vs vacuum is 2.77×10⁻⁴) — declare medium: "vacuum" or "air"',
+    )
+
   if (fromWave) {
-    const vac = toVacuumMetres(value, from, opts)
-    if (typeof vac !== "number") return vac
-    if (vac === 0) return { kind: "declined", reason: "zero wavelength has no energy equivalent" }
-    const joule = (H * C) / vac // the reciprocal edge
+    if (value <= 0) return declined("a wavelength must be positive to cross the reciprocal edge")
+    let vacMetres = value * WAVELENGTH[from]
+    if (opts.medium === "air") {
+      const n = airIndexOrDecline(opts)
+      if (typeof n !== "number") return n
+      vacMetres *= n // λ_vac = n·λ_air
+    }
+    const joule = (H * C) / vacMetres
     return { kind: "converted", value: joule / ENERGY_LIKE[to] }
   }
 
   // energy-like → wavelength
   const joule = value * ENERGY_LIKE[from]
-  if (joule === 0) return { kind: "declined", reason: "zero energy has no wavelength equivalent" }
-  if (opts.medium === undefined)
-    return {
-      kind: "declined",
-      reason:
-        "wavelength carries a medium tag (census §5 round-3) — declare medium: \"vacuum\" or \"air\"",
-    }
+  if (joule <= 0)
+    return declined("a positive energy is needed to cross the reciprocal edge")
   const vacMetres = (H * C) / joule
   if (opts.medium === "vacuum")
-    return { kind: "converted", value: vacMetres / WAVELENGTH[to] }
-  if (opts.airIndex === undefined)
-    return {
-      kind: "declined",
-      reason: "medium \"air\" needs airIndex (Edlén/Ciddor) — no default is honest",
-    }
-  return { kind: "converted", value: vacMetres / opts.airIndex / WAVELENGTH[to] }
+    return { kind: "converted", value: vacMetres / WAVELENGTH[to], medium: "vacuum" }
+  const n = airIndexOrDecline(opts)
+  if (typeof n !== "number") return n
+  return { kind: "converted", value: vacMetres / n / WAVELENGTH[to], medium: "air" }
 }

@@ -9,7 +9,13 @@
 
 export type ContractConstant = {
   value: number
-  /** Relative tolerance for recognition. */
+  /**
+   * Relative tolerance for recognition — the PRINTED-TRUNCATION width, not the
+   * CODATA width: the table exists to catch the rounded literals papers print
+   * (1.27, 0.2998, 197.3), so each window is ~half a unit in the last digit of
+   * the shortest form seen in the literature. Deliberate exclusion: a bare
+   * "0.3" never matches c/10⁹ (false-positive risk beats the recall).
+   */
   tolerance: number
   /** What the decimal IS, as physics. */
   meaning: string
@@ -22,42 +28,42 @@ export type ContractConstant = {
 export const CONTRACT_CONSTANTS: ContractConstant[] = [
   {
     value: 1.2669327,
-    tolerance: 3e-4,
+    tolerance: 3e-3, // catches the ubiquitous 1.27
     meaning: "1/(4ħc)",
     contract: "Δm²[eV²] · L[km] / E[GeV] → radians",
     fingerprint: "neutrino oscillation phase: sin²(1.27 Δm² L / E)",
   },
   {
     value: 0.299792458,
-    tolerance: 1e-9,
+    tolerance: 1e-4, // catches 0.2998 and 0.29979; a bare 0.3 stays out
     meaning: "c / 10⁹",
     contract: "p[GeV/c] = 0.2998 · B[T] · R[m]",
     fingerprint: "magnetic rigidity",
   },
   {
     value: 0.3893793721,
-    tolerance: 1e-9,
+    tolerance: 2e-4, // catches 0.3894
     meaning: "(ħc)²",
     contract: "GeV² · mbarn",
     fingerprint: "cross-section conversion σ = 0.3894 |M|²/s …",
   },
   {
     value: 197.3269804,
-    tolerance: 1e-9,
+    tolerance: 2e-4, // catches 197.33 and 197.3
     meaning: "ħc",
     contract: "MeV · fm",
     fingerprint: "the ħc bridge itself",
   },
   {
     value: 6.582119569e-25,
-    tolerance: 1e-9,
+    tolerance: 1e-4, // catches 6.582e-25
     meaning: "ħ",
     contract: "GeV · s",
     fingerprint: "width ↔ lifetime: τ = ħ/Γ",
   },
   {
     value: 1239.84198,
-    tolerance: 1e-8,
+    tolerance: 2e-4, // catches 1239.84 and the common 1240
     meaning: "hc",
     contract: "eV · nm",
     fingerprint: "photon energy E = 1239.84/λ",

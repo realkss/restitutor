@@ -6,7 +6,6 @@ import {
   TargetSpec,
   TranslationResult,
   UnitSystem,
-  findRegistryForSlug,
   translateTex,
 } from "../src/unitsEngine"
 
@@ -166,7 +165,7 @@ function run() {
     geometrized: geomEl.checked,
   }
   const tex = texEl.value
-  const result = translateTex(tex, katex, registry!, spec)
+  const result = translateTex(tex, katex, registry, spec)
   render(result, spec, tex)
   syncInspectorToTarget(spec)
 }
@@ -298,8 +297,10 @@ function inspect() {
       for (const r of riders) {
         const li = document.createElement("li")
         const state = active.has(r) ? "ACTIVE" : "suppressed — the solve supplies this factor"
-        const factorLabel = r.factorTex === "c" ? "c" : "4π"
-        li.textContent = `${r.symbol} ${r.direction === "multiply" ? "×" : "÷"} ${factorLabel}: ${state}`
+        const symSpan = document.createElement("span")
+        katex.render(r.symbol, symSpan, { throwOnError: false })
+        const factorLabel = { "c": "c", "4\\pi": "4π", "2\\pi": "2π" }[r.factorTex] ?? r.factorTex
+        li.append(symSpan, ` ${r.direction === "multiply" ? "×" : "÷"} ${factorLabel}: ${state}`)
         ul.appendChild(li)
       }
       rcard.appendChild(ul)
@@ -328,7 +329,7 @@ for (const u of knownUnits()) {
   for (const sel of [cvFrom, cvTo]) {
     const opt = document.createElement("option")
     opt.value = u
-    opt.textContent = u
+    opt.textContent = u === "K" ? "K (kelvin)" : u === "kayser" ? "kayser (= cm⁻¹)" : u
     sel.appendChild(opt)
   }
 }
@@ -353,7 +354,8 @@ function runConvert() {
       const badge = document.createElement("span")
       badge.className = "verdict ok"
       badge.textContent = "Converted"
-      p.append(badge, ` — ${value} ${cvFrom.value} = ${r.value.toPrecision(8)} ${cvTo.value}`)
+      const mediumNote = "medium" in r && r.medium ? ` (${r.medium})` : ""
+      p.append(badge, ` — ${value} ${cvFrom.value} = ${r.value.toPrecision(8)} ${cvTo.value}${mediumNote}`)
     } else {
       const badge = document.createElement("span")
       badge.className = "verdict warn"
@@ -364,7 +366,7 @@ function runConvert() {
     if (contract.kind === "unit-contract") {
       const note = document.createElement("p")
       note.className = "unitline"
-      note.textContent = `Aside: ${value} matches the unit-contract constant ${contract.constant.meaning} (${contract.constant.contract}) — in a formula, tag it and never restore on top.`
+      note.textContent = `Aside: as a bare formula prefactor (not as this converted quantity), ${value} would be the unit-contract constant ${contract.constant.meaning} (${contract.constant.contract}) — tag it, and never restore on top.`
       card.appendChild(note)
     }
   }

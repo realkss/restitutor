@@ -62,6 +62,43 @@ describe("the reciprocal edge and the medium tag", () => {
     assert.ok(rel(nm, 1239.84198 / 0.8) < 1e-8)
     assert.strictEqual(convert(0, "eV", "nm", { medium: "vacuum" }).kind, "declined")
   })
+  test("wavelength → wavelength is a pure prefix rescale: no medium needed, tag rides along", () => {
+    // 5000 Å = 500 nm on EITHER side of the edge — the edge is never crossed.
+    const r = convert(5000, "Å", "nm")
+    assert.strictEqual(r.kind, "converted")
+    if (r.kind === "converted") {
+      assert.ok(rel(r.value, 500) < 1e-12)
+      assert.strictEqual(r.medium, undefined) // no tag in, no tag invented
+    }
+    const tagged = convert(5000, "Å", "nm", { medium: "air" })
+    if (tagged.kind === "converted") assert.strictEqual(tagged.medium, "air")
+    else assert.fail("tagged rescale declined")
+  })
+  test("every emitted wavelength carries its medium stamp; emitted energies carry none", () => {
+    const toNm = convert(0.8, "eV", "nm", { medium: "vacuum" })
+    if (toNm.kind === "converted") assert.strictEqual(toNm.medium, "vacuum")
+    else assert.fail("vacuum crossing declined")
+    const toNmAir = convert(0.8, "eV", "nm", { medium: "air", airIndex: 1.000279 })
+    if (toNmAir.kind === "converted") assert.strictEqual(toNmAir.medium, "air")
+    else assert.fail("air crossing declined")
+    const toEv = convert(1550, "nm", "eV", { medium: "vacuum" })
+    if (toEv.kind === "converted") assert.ok(!("medium" in toEv && toEv.medium !== undefined))
+    else assert.fail("wave→energy declined")
+  })
+  test("guards decline loudly: non-finite values, negative wavelengths, bad air indices", () => {
+    assert.strictEqual(convert(NaN, "eV", "K").kind, "declined")
+    assert.strictEqual(convert(Infinity, "nm", "eV", { medium: "vacuum" }).kind, "declined")
+    assert.strictEqual(convert(-1550, "nm", "eV", { medium: "vacuum" }).kind, "declined")
+    assert.strictEqual(convert(-0.8, "eV", "nm", { medium: "vacuum" }).kind, "declined")
+    assert.strictEqual(convert(5000, "Å", "eV", { medium: "air", airIndex: 0.5 }).kind, "declined")
+    assert.strictEqual(convert(5000, "Å", "eV", { medium: "air", airIndex: NaN }).kind, "declined")
+  })
+  test("'kayser' is an explicit alias of cm⁻¹, and bare 'K' stays kelvin (the census homograph gate)", () => {
+    assert.strictEqual(ok(convert(1, "kayser", "eV")), ok(convert(1, "cm^-1", "eV")))
+    // 1 K (kelvin) is ~8.6×10⁻⁵ eV; 1 kayser is ~1.24×10⁻⁴ eV — the homograph
+    // would be a silent factor-of-1.44 error if "K" ever meant kayser.
+    assert.ok(rel(ok(convert(1, "K", "eV")), 8.617333262e-5) < 1e-9)
+  })
 })
 
 describe("graph hygiene", () => {
@@ -108,5 +145,29 @@ describe("the unit-contract detector (census §2.13(b) + C38)", () => {
   test("an unremarkable decimal does not match", () => {
     assert.strictEqual(recognizeContractConstant(1.5).kind, "no-match")
     assert.strictEqual(recognizeContractConstant(3.14159).kind, "no-match")
+  })
+  test("PRINTED-LITERAL BATTERY: each row catches the rounded forms papers actually print", () => {
+    // The review blocker: tolerances must be printed-truncation widths, not
+    // CODATA widths — the table exists to catch these literals (§2.13(b)).
+    const expectMatch: [number, string][] = [
+      [1.27, "1/(4ħc)"],
+      [1.267, "1/(4ħc)"],
+      [0.2998, "c / 10⁹"],
+      [0.29979, "c / 10⁹"],
+      [0.3894, "(ħc)²"],
+      [197.33, "ħc"],
+      [197.3, "ħc"],
+      [6.582e-25, "ħ"],
+      [1239.84, "hc"],
+      [1240, "hc"],
+      [-1.27, "1/(4ħc)"], // sign is folded — a negated prefactor is the same contract
+    ]
+    for (const [literal, meaning] of expectMatch) {
+      const m = recognizeContractConstant(literal)
+      assert.strictEqual(m.kind, "unit-contract", `${literal} should match`)
+      if (m.kind === "unit-contract") assert.strictEqual(m.constant.meaning, meaning, `${literal}`)
+    }
+    // Deliberate exclusion: a bare 0.3 is NOT evidence of magnetic rigidity.
+    assert.strictEqual(recognizeContractConstant(0.3).kind, "no-match")
   })
 })

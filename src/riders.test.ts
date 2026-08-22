@@ -103,14 +103,19 @@ describe("the E&M 2×2 table (census §2.4 / §10.3 test 2)", () => {
     ])
   })
 
-  test("the magnetism riders carry the three census forks, dimensionless and always active", () => {
+  test("the magnetism riders carry the census 4π forks, dimensionless and always active", () => {
+    // D and H are the unrationalized-Gaussian carriers; χ and N are the §5 #17
+    // forks. 4πM is NOT here: the census files it as a plotting FINGERPRINT
+    // (an ordinate label), not a rescaling of M itself.
     const riders = EM_RIDERS["magnetism-emu"]
-    assert.strictEqual(riders.length, 3)
+    assert.strictEqual(riders.length, 4)
     assert.ok(riders.every((r) => r.factorDim === null))
     const by = (sym: string) => riders.find((r) => r.symbol === sym)!
-    assert.strictEqual(by("M").direction, "multiply") // 4πM ordinate
+    assert.strictEqual(by("D").direction, "multiply")
+    assert.strictEqual(by("H").direction, "multiply")
     assert.strictEqual(by("\\chi").direction, "divide") // χ_cgs = χ_SI/4π
     assert.strictEqual(by("N").direction, "multiply") // ΣN = 4π vs 1
+    assert.strictEqual(riders.some((r) => r.symbol === "M"), false)
     for (const r of riders) assert.strictEqual(riderActive(CONVENTIONS["magnetism-emu"], r), true)
   })
 

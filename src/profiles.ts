@@ -8,6 +8,7 @@
 // the way the census was (enumerate → adversarially verify → adjudicate).
 // This module is the mounting point, not a license to fabricate registries.
 import { HubRegistry, findRegistryForSlug } from "./unitsEngine"
+import { SOURCE_CONVENTION_KEY } from "./bridge"
 
 export type Profile = {
   id: string
@@ -15,6 +16,8 @@ export type Profile = {
   registry: HubRegistry
   /** The CONVENTIONS key of the registry's source convention. */
   sourceConventionKey: string
+  /** The real corpus this profile encodes — profiles are corpus-driven, never invented. */
+  corpus: string
 }
 
 const grRegistry = findRegistryForSlug("Topics/Physics/Relativity-and-Gravitation/")
@@ -25,7 +28,8 @@ export const PROFILES: Profile[] = [
     id: "gr",
     name: "General relativity (the site's conventions page as data)",
     registry: grRegistry,
-    sourceConventionKey: "geometrized",
+    sourceConventionKey: SOURCE_CONVENTION_KEY,
+    corpus: "hypomnemata: Topics/Physics/Relativity-and-Gravitation/00. Conventions and Notation (production floater registry)",
   },
 ]
 
@@ -34,5 +38,7 @@ export function profileFor(slug: string): Profile | null {
 }
 
 export function defaultProfile(): Profile {
-  return PROFILES[0]
+  const p = PROFILES[0]
+  if (!p) throw new Error("no profiles registered")
+  return p
 }

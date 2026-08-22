@@ -385,16 +385,19 @@ export const EM_RIDERS: Record<string, Rider[]> = {
   ],
   /**
    * The experimental-magnetism practice (the census's atomic-cm magnetism row,
-   * paired with the "magnetism-emu" convention): the three census-named
-   * dimensionless forks, all always-active. χ_SI = 4πχ_cgs; demagnetizing
-   * factors sum to 4π in cgs against 1 in SI; and the plotted ordinate is
-   * 4πM ("4πM (kG)"), not M. The full G/Oe field-relation set stays census-row
-   * material — encoding it needs the H/B unit-identity story, not just factors.
+   * paired with the "magnetism-emu" convention). The unrationalized 4π sits on
+   * D and H exactly as in the sibling esu/emu tables (census §2.4: "1 Oe =
+   * (10³/4π) A m⁻¹ … because CGS-emu is unrationalized"), and the two §5 #17
+   * forks ride on χ and N. The famous "4πM (kG)" ordinate is a PLOTTING
+   * fingerprint, not a rescaling of M — the census files it under fingerprints,
+   * and M's own relation is a pure decade factor (1 emu cm⁻³ = 10³ A m⁻¹).
+   * The numeric G/Oe/Mx/emu decade interchange stays census-row material.
    */
   "magnetism-emu": [
-    fourPiRider("M", "multiply"), // the 4πM ordinate convention
-    fourPiRider("\\chi", "divide"), // χ_cgs = χ_SI/4π
-    fourPiRider("N", "multiply"), // ΣN_cgs = 4π vs ΣN_SI = 1
+    fourPiRider("D", "multiply"),
+    fourPiRider("H", "multiply"),
+    fourPiRider("\\chi", "divide"), // χ_cgs = χ_SI/4π (§5 #17)
+    fourPiRider("N", "multiply"), // ΣN_cgs = 4π vs ΣN_SI = 1 (§5 #17)
   ],
   /**
    * The Peierls-phase convention for lattice models (paired with
@@ -664,8 +667,9 @@ export const CONVENTIONS: Record<string, Convention> = {
     // Distinct from "lattice" (the QCD ħ = c = a row): the condensed-matter
     // declaration a = ħ = t = 1 with k_B — and e, which the census declares
     // CONDITIONALLY ("when a flux or field is present"); with it the basis is
-    // complete (rank 5). The Peierls-phase convention rider is NOT yet
-    // encoded, so B-dimension restorations emit the bare SI-basis form.
+    // complete (rank 5). The Peierls-phase 2π rider lives in
+    // EM_RIDERS["lattice-peierls"]; B-dimension restorations still emit the
+    // bare SI-basis form.
     name: "Lattice-model condensed-matter units (a = ħ = t = 1, k_B; e when flux/field present)",
     generators: [
       g("a", dimQ(0, 1, 0, 0, 0), "1", "a", "regulator"),
@@ -690,10 +694,9 @@ export const CONVENTIONS: Record<string, Convention> = {
     // The atomic-cm census row "CGS-emu / Gaussian magnetism (gauss, oersted,
     // emu)": μ₀ = 1 with the 4π explicit in the field equations — distinct
     // from the "emu" row's μ₀/4π = 1, and ALSO from the still-unencoded v2
-    // materials-science "emu system" row. The row's census content is chiefly
-    // RIDER data (4πM-as-magnetization, G/Oe interchange) not yet encoded, so
-    // this rank-1 generator record restores almost nothing by itself — it
-    // exists to name the convention and hold the slot until the riders land.
+    // materials-science "emu system" row. Its rider table lives in
+    // EM_RIDERS["magnetism-emu"] (the unrationalized D/H 4π plus the χ and N
+    // forks); the numeric G/Oe decade interchange stays census-row material.
     name: "CGS-emu / Gaussian magnetism (μ₀ = 1, unrationalized)",
     generators: [g("\\mu_0", CONST_DIM.mu0, "1", "\\mu_0")],
   },
