@@ -1,0 +1,136 @@
+/* restitutor stage-2 panel — scoped under #rst-panel / .rst-math so page
+   styles stay untouched. Palette mirrors the stage-1 app. */
+
+.rst-math {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: outline-color 120ms;
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+}
+.rst-math:hover {
+  outline-color: #3b5f8f;
+}
+
+#rst-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147483646;
+  width: 420px;
+  max-width: calc(100vw - 36px);
+  max-height: 72vh;
+  overflow-y: auto;
+  background: #faf9f6;
+  color: #20242c;
+  border: 1px solid #ddd9cf;
+  border-top: 3px solid #3b5f8f;
+  border-radius: 4px;
+  box-shadow: 0 8px 28px rgba(32, 36, 44, 0.22);
+  font: 14px/1.55 Georgia, "Times New Roman", serif;
+  padding: 0.8rem 1rem 1rem;
+}
+#rst-panel .rst-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  border-bottom: 1px solid #ddd9cf;
+  padding-bottom: 0.45rem;
+  margin-bottom: 0.6rem;
+}
+#rst-panel .rst-title {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+#rst-panel .rst-via {
+  color: #5a6272;
+  font-size: 0.72rem;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  flex: 1;
+}
+#rst-panel .rst-close {
+  border: none;
+  background: none;
+  color: #5a6272;
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.15rem;
+}
+#rst-panel .rst-close:hover {
+  color: #a13d3d;
+}
+#rst-panel .rst-controls {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+}
+#rst-panel .rst-controls select {
+  font: 13px Georgia, serif;
+  padding: 0.25rem 0.45rem;
+  background: #fff;
+  color: #20242c;
+  border: 1px solid #ddd9cf;
+  border-radius: 3px;
+}
+#rst-panel .rst-controls label {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+#rst-panel .card {
+  background: #fff;
+  border: 1px solid #ddd9cf;
+  border-radius: 3px;
+  padding: 0.6rem 0.8rem;
+  margin-top: 0.55rem;
+  overflow-x: auto;
+}
+#rst-panel .card h2 {
+  font: 700 0.62rem/1 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5a6272;
+  margin: 0 0 0.45rem;
+}
+#rst-panel .verdict {
+  font-weight: 700;
+}
+#rst-panel .verdict.ok {
+  color: #22603d;
+}
+#rst-panel .verdict.warn {
+  color: #a13d3d;
+}
+#rst-panel ul.reasons {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+#rst-panel table.legend {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+#rst-panel table.legend td,
+#rst-panel table.legend th {
+  padding: 0.28rem 0.5rem;
+  border-bottom: 1px solid #ddd9cf;
+  text-align: left;
+  vertical-align: top;
+}
+#rst-panel table.legend th {
+  font: 700 0.6rem/1.3 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5a6272;
+}
+#rst-panel .unitline {
+  color: #5a6272;
+  font-size: 0.82rem;
+  margin-top: 0.4rem;
+}
+#rst-panel .katex-display {
+  margin: 0.35rem 0;
+}

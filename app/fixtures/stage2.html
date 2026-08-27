@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>restitutor stage-2 fixture</title>
+<link rel="stylesheet" href="../dist/katex.min.css">
+<link rel="stylesheet" href="../dist/panel.css">
+<style>
+  body { font: 16px/1.7 Georgia, serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.3rem; } h2 { font-size: 1rem; margin-top: 2rem; }
+  .note { color: #5a6272; font-size: .85rem; }
+</style>
+</head>
+<body>
+<h1>Stage-2 extraction fixture</h1>
+<p class="note">Three math flavors, each carrying its own TeX the way real pages do.
+The content script (loaded below as a plain script — same code the extension injects)
+should decorate all three; clicking one opens the panel.</p>
+
+<h2>1. LaTeXML-style (ar5iv / arXiv HTML / Wikipedia): <code>&lt;math alttext&gt;</code></h2>
+<p>The Einstein field equations in geometrized form:</p>
+<math display="block" alttext="G_{ab} + \Lambda g_{ab} = 8\pi T_{ab}">
+  <mrow><msub><mi>G</mi><mrow><mi>a</mi><mi>b</mi></mrow></msub><mo>+</mo>
+  <mi>&#x39B;</mi><msub><mi>g</mi><mrow><mi>a</mi><mi>b</mi></mrow></msub>
+  <mo>=</mo><mn>8</mn><mi>&#x3C0;</mi><msub><mi>T</mi><mrow><mi>a</mi><mi>b</mi></mrow></msub></mrow>
+</math>
+
+<h2>2. KaTeX-style: <code>&lt;annotation encoding="application/x-tex"&gt;</code></h2>
+<p>The Schwarzschild radius (KaTeX keeps the source in its MathML half):</p>
+<span class="katex-display"><span class="katex">
+  <span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML">
+    <semantics><mrow><msub><mi>r</mi><mi>s</mi></msub><mo>=</mo><mn>2</mn><mi>M</mi></mrow>
+    <annotation encoding="application/x-tex">r_s = 2 M</annotation></semantics>
+  </math></span>
+  <span class="katex-html" aria-hidden="true"><span class="base">
+    <span class="mord"><span class="mord mathnormal">r</span><span class="msupsub"><span class="mord mathnormal mtight">s</span></span></span>
+    <span class="mrel">=</span><span class="mord">2</span><span class="mord mathnormal">M</span>
+  </span></span>
+</span></span>
+
+<h2>3. MathJax v2-style: <code>&lt;script type="math/tex"&gt;</code></h2>
+<p>A decliner — the registry cannot vouch for these symbols:</p>
+<div class="MathJax_Display" style="font-style: italic; color: #444;">&psi;&#8324; = &chi; &Xi;&#7480;&#7481; T&#8336;&#8337; (rendered preview)</div>
+<script type="math/tex; mode=display">\psi_4 = \chi \, \Xi^{ab} \, T_{ab}</script>
+
+<script src="../dist/content.js"></script>
+</body>
+</html>
