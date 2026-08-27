@@ -5,9 +5,9 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+// Default: a sibling checkout of the site next to this repo.
 const sitePath =
-  process.env.SITE_PATH ??
-  "C:/Users/silen/Documents/hypomnemata/quartz/components/scripts";
+  process.env.SITE_PATH ?? "../hypomnemata/quartz/components/scripts";
 const files = ["unitsEngine.ts", "unitsEngine.test.ts"];
 
 // Normalize CRLF and a leading BOM at read: Windows checkouts differ from

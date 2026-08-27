@@ -6,13 +6,16 @@ A deterministic engine that restores, strips, and checks physical constants in e
 
 ## Status
 
-Working engine with a general-relativity profile and its test suite (`npm test`), extracted with full history from the private site where it runs in production as an equation-translation floater. The generator-parameterized convention layer (`src/convention.ts`: exact rational dimension vectors, `validateConvention` with named implied groups, the restoration solve, the first eight census v1 conventions as data) is implemented with its own suite. Still ahead, specified in `docs/`: per-symbol riders under the span rule, the sign-convention axis, identity-metadata tags.
+Working engine with a general-relativity profile, extracted with full history from the private site where it runs in production as an equation-translation floater. The census §2 machinery is fully coded beside it and adversarially reviewed: the generator-parameterized convention layer (36 conventions as data over exact rational dimension vectors, `validateConvention` with named implied groups, the restoration solve), per-symbol riders under the constant-identity span rule, the sign-convention axis, the identity-metadata tag lint, the numeric converter graph with its medium-tag discipline, and the unit-contract detector. The suite (`npm test`) covers all of it. Still ahead, specified in `docs/`: the stage-2 HTML extension that reads real pages, refuse-class detectors, fermion γ-rider tables, and ict (v2).
 
 ## Layout
 
 - `src/unitsEngine.ts` — the DOM-free engine plus the GR registry. KaTeX is dependency-injected by the caller; this file imports nothing.
-- `src/unitsEngine.test.ts`, `src/convention.test.ts` — the test suites (`npm test`).
-- `src/convention.ts` — the generator-parameterized convention layer (census §2).
+- `src/*.test.ts` — the test suites (`npm test`).
+- `src/convention.ts` — the generator-parameterized convention layer (census §2): conventions, validation, the restoration solve, and the rider tables under the span rule.
+- `src/signs.ts`, `src/identity.ts` — the sign-convention axis (signature translation, Levi-Civita typing) and the open identity-metadata tag vector with its combinability lint.
+- `src/converter.ts`, `src/contract.ts` — the numeric equivalence graph (SI-2019 exact constants, one reciprocal edge with a mandatory medium tag) and the unit-contract prefactor detector.
+- `src/bridge.ts`, `src/profiles.ts` — the engine↔convention-layer bridge and the corpus-driven profile mounting point.
 - `app/` — the stage-1 paste box over the production engine. Build it with `npm run build:app` (bundles into the gitignored `app/dist/`, staging KaTeX's stylesheet and fonts locally — no runtime CDN requests), then serve `app/` statically.
 - `docs/unit-systems-census.md` — the five-round adjudicated census of unit systems and conventions: the domain spec this engine grows into. Its evidence base lives in `docs/data/`, including `benchmarks-seed.json` (the mined test corpus) and `kernel_test.py` (the executed prototype of the census machinery, 15/15).
 - `docs/product-design.md` — architecture, staging, API, and the open owner decisions.

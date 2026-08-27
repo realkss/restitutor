@@ -84,6 +84,17 @@ Census §10 governs: the five benchmark classes, the mined 404-item seed (`bench
 | 1 | Repo name | **DECIDED (2026-08-20): `restitutor`** — Latin, the restorer; fits the site's register |
 | 2 | License now vs at public flip | **DECIDED (2026-08-20): no license until the flip** — all rights reserved while private |
 | 3 | Convention data versioning | schema version + CODATA vintage tags on constants; whether registry edits bump a data version consumers can pin |
-| 4 | Numeric converter in stage 1? | cheap and demo-friendly; adds the constants-table maintenance duty |
+| 4 | Numeric converter in stage 1? | **DECIDED (2026-08-21): yes, shipped** — the equivalence graph with the mandatory medium tag; SI-2019 exact constants carry a vintage tag |
 | 5 | Stage-4 OCR vendor | Mathpix (paid, best) vs pix2tex/Texify (open); can be deferred for years |
 | 6 | Package metadata if ever published | npm author identity = Keeper; package name availability check before the flip |
+| 7 | Public-flip timing | **RULING (2026-08-27): stay private; the natural flip point is a working stage-2 demo.** The gate below governs the flip whenever it happens. |
+
+### The public-flip gate (2026-08-27)
+
+The flip is a one-way door: once public, the full history is forkable and cached by archive crawlers, so everything here must be resolved *before* the flip — a later scrub removes nothing.
+
+1. **Identity (owner decision).** The repo lives under `realkss`; flipping in place permanently links Keeper↔realkss. Git history also carries the link even after a working-tree scrub: this file's §7 named the account in 14 revisions, and `scripts/check-site-sync.mjs` hardcoded a `C:/Users/<name>/…` path in 15 revisions (working-tree copies scrubbed 2026-08-27). If the pseudonym is a soft brand, accept and flip in place. If it is a real separation, the flip must be a **history-rewritten copy under a Keeper-owned account** (`git filter-repo --replace-text` over the two files; cheap — the repo is small and single-author, all commits already Keeper-authored).
+2. **License (owner decision, §9 #2).** Flip day is license day by construction. Public-with-no-license (source visible, all rights reserved) is a coherent portfolio stance but must be chosen, not defaulted into.
+3. **README current** at the flip (status paragraph tracks the shipped surface).
+4. **Docs sweep** — first full sweep 2026-08-27 (12 agents, all 33 `docs/` + README files end to end; 63 raw findings adjudicated). Result: the public spine — README, the census itself, `benchmarks-seed.json`, `kernel_test.py`, the enum/verdict/sweep files apart from the three named below — is clean: no PII beyond the §7 line item 1 covers, no path leaks (the one hardcoded local path, in `check-site-sync.mjs`, was scrubbed the same day), and every table-shaped block is either US-government public domain (NIST CODATA, NBS SP 696) or facts in this project's own arrangement. The quote concentration sits in three round-4/5 **evidence archives** — `fold_pilot.json`, `pv_dedup.json`, `si-cgs-em.verdict.json` — carrying ~14 attributed scholarly quotations of 24–54 words (1706.08388, cond-mat/0405160, 1008.4884, astro-ph/0210603, 1506.01951, 1508.04989, Baez's FAQ). All are attributed, evidentiary, and tiny fractions of their sources, so a scholarly-quotation stance is defensible; the conservative alternative is to prune those three files from the public tree at the flip. **Do not paraphrase them in place** — they are verification records, and the verbatim quote is the evidence. Internal `wf_*` run IDs stay: they are deliberate provenance of the multi-agent process. Re-run the sweep at the flip over anything added since.
+5. **Package/name check** (§9 #6) if npm publication accompanies the flip.
