@@ -147,7 +147,7 @@ The census's first contact with real papers: twelve equation-dense arXiv papers 
 
 Aggregate empirical facts worth pinning: symbol resolution across 555 sampled symbols ran **54% domain-profile / 35% paper-mining / 10% ask-the-user** (the acquisition-tier architecture holds); the §6.5 declaration cues had **zero recall on two heavily-cited papers** (hence §6.5b); and the registry-closure claim died (§2.5 as amended) — each subfield contributes its own open tail of forks.
 
-Structural findings (cluster ids refer to `data/pv_dedup.json`):
+Structural findings (cluster ids refer to the round-4 dedup archive `pv_dedup.json`, held in the private census workshop):
 - **Intra-document quantity-symbol homographs** — One glyph carries two to five quantities inside one paper: astro-ph/0210603 uses η for conformal time, the slow-roll parameter and the iε contour. Row 407's resolver is era-gated and scoped to unit symbols. (C01)
 - **The identity tag vector must be declared open** — §1 item 7 prints it with an ellipsis, §2.13(a) closed. Most proposed slots are instances of existing axes (xc functional is *scheme*, LNRF tetrad is *frame*), so declare it extensible with per-field vocabularies. (C04)
 - **Silent hat-dropping** — §6.5(iii) makes "we drop the hats" the switch, and 1004.0279 drops them with no marker, so a correct normalized equation is flagged inhomogeneous. Fallback: a per-equation homogeneity vote plus a same-symbol-two-states report. (C09)

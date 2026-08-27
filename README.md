@@ -27,4 +27,4 @@ KaTeX is pinned **exactly** (`0.16.47`). The engine consumes KaTeX parse trees, 
 
 ## License
 
-None granted. All rights reserved while the repository is private; a license will be chosen at public release.
+MIT — see [LICENSE](LICENSE).
