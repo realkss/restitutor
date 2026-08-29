@@ -12,6 +12,21 @@
   outline-color: #3b5f8f;
 }
 
+/* Math the page renders WITHOUT a TeX carrier (MathJax v3): honestly marked,
+   not clickable — the tooltip says why. */
+.rst-carrierless:hover {
+  outline: 2px dashed #a13d3d55;
+  outline-offset: 3px;
+  cursor: help;
+}
+
+#rst-panel pre {
+  font: 12px/1.5 Consolas, "Cascadia Mono", monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0.4rem 0 0;
+}
+
 #rst-panel {
   position: fixed;
   right: 18px;

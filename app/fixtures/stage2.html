@@ -43,6 +43,19 @@ should decorate all three; clicking one opens the panel.</p>
 <div class="MathJax_Display" style="font-style: italic; color: #444;">&psi;&#8324; = &chi; &Xi;&#7480;&#7481; T&#8336;&#8337; (rendered preview)</div>
 <script type="math/tex; mode=display">\psi_4 = \chi \, \Xi^{ab} \, T_{ab}</script>
 
+<h2>4. Wikipedia-style: <code>.mwe-math-element</code> wrapper + hidden MathML + SVG fallback</h2>
+<p>Clicks must land on the wrapper (which child is visible varies by skin):</p>
+<span class="mwe-math-element mwe-math-element-display">
+  <span class="mwe-math-mathml-display mwe-math-mathml-a11y" style="clip: rect(1px, 1px, 1px, 1px); position: absolute; overflow: hidden; width: 1px; height: 1px;">
+    <math display="block" alttext="{\displaystyle E = m c^{2} \ .}"><mrow><mi>E</mi><mo>=</mo><mi>m</mi><msup><mi>c</mi><mn>2</mn></msup></mrow></math>
+  </span>
+  <span class="mwe-math-fallback-image-display" style="font-style: italic;">E = mc&sup2; (SVG fallback stand-in)</span>
+</span>
+<p class="note">The alttext above also carries the {\displaystyle} wrapper AND trailing punctuation ("\ .") — both must be normalized away before the engine sees it.</p>
+
+<h2>5. MathJax v3-style: no TeX carrier — honestly marked, not clickable</h2>
+<mjx-container class="MathJax" jax="CHTML" style="font-style: italic;">x&#775; = f(x) (v3 render, no source in DOM)</mjx-container>
+
 <script src="../dist/content.js"></script>
 </body>
 </html>

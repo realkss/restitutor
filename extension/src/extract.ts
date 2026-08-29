@@ -49,7 +49,25 @@ export function normalizeTex(raw: string): string {
   t = t.replace(/%\s*\n\s*/g, "")
   // Equation labels are document plumbing, not math
   t = t.replace(/\\label\{[^}]*\}/g, "")
-  return t.trim()
+  return stripTrailingPunctuation(t.trim())
+}
+
+// Display equations routinely end in sentence punctuation carried inside the
+// math ("\tilde{F}_{5}=\star\tilde{F}_{5}\,." — a quarter of the alttexts on a
+// real arXiv HTML page). That is prose, not math; strip it token-wise. The one
+// guard: a trailing "." can be a null delimiter (\right. / \Big.), and
+// stripping it would unbalance the math — leave those alone.
+function stripTrailingPunctuation(tex: string): string {
+  // Whitespace is a token here, NOT pre-trimmed: trimming inside the loop
+  // would split the two-character "\ " control-space and leave a dangling
+  // backslash. The alternation prefers the longer "\<char>" match.
+  let t = tex.trimEnd()
+  for (;;) {
+    const m = t.match(/(\\(?:quad|qquad)|\\[,;:! ]|[.,;:~]|\s)$/)
+    if (!m) return t
+    if (m[0] === "." && /\\(?:[Bb]igg?[lrm]?|right|left)$/.test(t.slice(0, -1))) return t
+    t = t.slice(0, t.length - m[0].length)
+  }
 }
 
 const X_TEX_ANNOTATION = 'annotation[encoding="application/x-tex"]'
@@ -80,15 +98,20 @@ export function scanForMath(root: MinimalRoot): MathCandidate[] {
   for (const el of root.querySelectorAll("math")) {
     const got = texFromMathEl(el)
     if (!got) continue
-    // KaTeX nests its MathML inside the rendered span — decorate the wrapper.
-    const wrapper = el.closest(".katex-display") ?? el.closest(".katex")
+    // KaTeX nests its MathML inside the rendered span; Wikipedia hides the
+    // MathML behind an .mwe-math-element wrapper that also holds the SVG
+    // fallback image (which child is visible varies by skin and browser).
+    // In both cases the wrapper is the reliable click target.
+    const katexWrapper = el.closest(".katex-display") ?? el.closest(".katex")
+    const mweWrapper = el.closest(".mwe-math-element")
     push({
       ...got,
       display:
-        el.getAttribute("display") === "block" || (wrapper !== null && wrapper.closest(".katex-display") !== null) ||
-        (el.closest(".katex-display") !== null),
+        el.getAttribute("display") === "block" ||
+        el.closest(".katex-display") !== null ||
+        (mweWrapper?.getAttribute("class") ?? "").includes("-display"),
       el,
-      displayEl: wrapper ?? el,
+      displayEl: katexWrapper ?? mweWrapper ?? el,
     })
   }
 

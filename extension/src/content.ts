@@ -21,7 +21,7 @@ const katex = katexDefault as unknown as {
 const profile = defaultProfile()
 
 const VIA_LABEL: Record<MathCandidate["via"], string> = {
-  "alttext": "MathML alttext (LaTeXML)",
+  "alttext": "MathML alttext",
   "mml-annotation": "x-tex annotation (KaTeX)",
   "mathjax2-script": "math/tex script (MathJax v2)",
 }
@@ -88,8 +88,29 @@ function runTranslate(): void {
     system: systemSel.value as UnitSystem,
     geometrized: geomBox.checked,
   }
-  const result = translateTex(currentTex, katex, profile.registry, spec)
-  renderTranslation(resultsEl, result, spec, currentTex, katex)
+  // Real pages carry arbitrary TeX; an engine crash must degrade into an
+  // honest report, never a dead panel.
+  try {
+    const result = translateTex(currentTex, katex, profile.registry, spec)
+    renderTranslation(resultsEl, result, spec, currentTex, katex)
+  } catch (e) {
+    resultsEl.textContent = ""
+    const card = document.createElement("div")
+    card.className = "card"
+    const p = document.createElement("p")
+    p.style.margin = "0"
+    const badge = document.createElement("span")
+    badge.className = "verdict warn"
+    badge.textContent = "Engine error"
+    p.append(
+      badge,
+      ` — the extracted TeX crashed the engine (${e instanceof Error ? e.message : String(e)}). The extraction itself is shown below; this is a bug worth reporting.`,
+    )
+    const pre = document.createElement("pre")
+    pre.textContent = currentTex
+    card.append(p, pre)
+    resultsEl.appendChild(card)
+  }
 }
 
 function openPanel(c: MathCandidate): void {
@@ -103,14 +124,33 @@ function init(): void {
   const candidates = scanForMath(document)
   for (const c of candidates) {
     const target = c.displayEl as unknown as HTMLElement
-    if (!(target instanceof HTMLElement) && !(target instanceof Element)) continue
+    if (!(target instanceof Element)) continue
     target.classList.add("rst-math")
-    target.setAttribute("title", "restitutor: click to translate")
+    if (!target.hasAttribute("title")) target.setAttribute("title", "restitutor: click to translate")
     target.addEventListener("click", (ev) => {
       ev.preventDefault()
       ev.stopPropagation()
       openPanel(c)
     })
+  }
+  markCarrierless()
+}
+
+// Honesty marker (product contract: decline loudly, never silently skip):
+// MathJax v3 renders math with NO TeX carrier in the DOM, so those elements
+// can never be candidates. Say so on hover instead of ignoring them.
+function markCarrierless(): void {
+  const containers = document.querySelectorAll<HTMLElement>(
+    "mjx-container, span.MathJax, div.MathJax_Display",
+  )
+  for (const el of containers) {
+    if (el.classList.contains("rst-math")) continue // v2 pairs decorated via their script
+    el.classList.add("rst-carrierless")
+    if (!el.hasAttribute("title"))
+      el.setAttribute(
+        "title",
+        "restitutor: this math carries no TeX source in the page — nothing to look up (deterministic extraction only, no OCR)",
+      )
   }
 }
 

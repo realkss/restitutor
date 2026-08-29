@@ -58,6 +58,26 @@ describe("normalizeTex", () => {
   test("does not rewrite math it has no rule for", () => {
     assert.strictEqual(normalizeTex(`  ${EINSTEIN}  `), EINSTEIN)
   })
+  test("strips trailing sentence punctuation token-wise (the arXiv \\,. pattern)", () => {
+    // Real alttexts from the recon: a quarter of display equations end this way.
+    assert.strictEqual(
+      normalizeTex("\\tilde{F}_{5}=\\star\\tilde{F}_{5}\\,."),
+      "\\tilde{F}_{5}=\\star\\tilde{F}_{5}",
+    )
+    assert.strictEqual(normalizeTex("s^{2}=(\\Delta x)^{2}\\ ."), "s^{2}=(\\Delta x)^{2}")
+    assert.strictEqual(normalizeTex("E = m c^{2}\\qquad"), "E = m c^{2}")
+    assert.strictEqual(normalizeTex("a = b ."), "a = b")
+    assert.strictEqual(normalizeTex("a = b\\,;"), "a = b")
+  })
+  test("never strips a null delimiter's dot (\\right. / \\Big.)", () => {
+    assert.strictEqual(
+      normalizeTex("f = \\left( \\frac{dg}{dx} \\right."),
+      "f = \\left( \\frac{dg}{dx} \\right.",
+    )
+    assert.strictEqual(normalizeTex("x \\Big."), "x \\Big.")
+    // …but punctuation AFTER a closed delimiter still goes:
+    assert.strictEqual(normalizeTex("f = \\left( g \\right) ."), "f = \\left( g \\right)")
+  })
 })
 
 describe("texFromMathEl", () => {
@@ -101,6 +121,19 @@ describe("scanForMath", () => {
     assert.strictEqual(by("mml-annotation").displayEl, katexWrapper)
     assert.strictEqual(by("mathjax2-script").display, true)
     assert.strictEqual(by("mathjax2-script").displayEl, mjPreview)
+  })
+  test("Wikipedia math routes clicks to the .mwe-math-element wrapper", () => {
+    // The wrapper holds BOTH the MathML and the SVG fallback image; which child
+    // is visible varies by skin/browser, so the wrapper is the click target.
+    const wrapper = new Stub({ tagName: "span", attrs: { class: "mwe-math-element mwe-math-element-display" } })
+    const wikiMath = new Stub({
+      attrs: { alttext: `{\\displaystyle ${EINSTEIN}}` },
+      closestMap: { ".mwe-math-element": wrapper },
+    })
+    const [c] = scanForMath(root({ math: [wikiMath], 'script[type^="math/tex"]': [] }))
+    assert.strictEqual(c.tex, EINSTEIN)
+    assert.strictEqual(c.displayEl, wrapper)
+    assert.strictEqual(c.display, true) // wrapper class says -display
   })
   test("deduplicates by visible element and skips empty carriers", () => {
     const wrapper = new Stub({ tagName: "span" })
