@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "restitutor",
   "version": "0.1.0",
-  "description": "Select an equation; restore, strip, and dimension-check its constants. Lookup, never inference — anything unvouched-for declines loudly.",
+  "description": "Restore, strip, and dimension-check the constants in equations. Lookup, never inference - the unvouched-for declines loudly.",
   "content_scripts": [
     {
       "matches": [
@@ -11,14 +11,18 @@
         "https://*.wikipedia.org/*"
       ],
       "js": ["content.js"],
-      "css": ["katex.min.css", "panel.css"],
+      "css": ["panel.css"],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["fonts/*"],
-      "matches": ["<all_urls>"]
+      "resources": ["katex.min.css", "fonts/*"],
+      "matches": [
+        "https://ar5iv.labs.arxiv.org/*",
+        "https://arxiv.org/*",
+        "https://*.wikipedia.org/*"
+      ]
     }
   ]
 }

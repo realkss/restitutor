@@ -69,14 +69,39 @@ describe("normalizeTex", () => {
     assert.strictEqual(normalizeTex("a = b ."), "a = b")
     assert.strictEqual(normalizeTex("a = b\\,;"), "a = b")
   })
-  test("never strips a null delimiter's dot (\\right. / \\Big.)", () => {
+  test("never strips a null delimiter's dot (\\right. / \\Big.), spaced or not", () => {
     assert.strictEqual(
       normalizeTex("f = \\left( \\frac{dg}{dx} \\right."),
       "f = \\left( \\frac{dg}{dx} \\right.",
     )
     assert.strictEqual(normalizeTex("x \\Big."), "x \\Big.")
+    assert.strictEqual(normalizeTex("f = \\left( g \\right ."), "f = \\left( g \\right .")
     // …but punctuation AFTER a closed delimiter still goes:
     assert.strictEqual(normalizeTex("f = \\left( g \\right) ."), "f = \\left( g \\right)")
+  })
+  test("strips trailing ~ and never eats a row separator's backslash", () => {
+    assert.strictEqual(normalizeTex("a \\sim b~"), "a \\sim b")
+    // "x \\ ." ends in a ROW SEPARATOR + punctuation: the separator survives.
+    assert.strictEqual(normalizeTex("x \\\\ ."), "x \\\\")
+  })
+  test("strips the whole leading sizing-directive family, not just \\displaystyle", () => {
+    assert.strictEqual(normalizeTex(`\\textstyle ${EINSTEIN}`), EINSTEIN)
+    assert.strictEqual(normalizeTex("\\scriptstyle n"), "n")
+    assert.strictEqual(normalizeTex("\\scriptscriptstyle x + y"), "x + y")
+  })
+  test("the {\\displaystyle} unwrap refuses non-partner braces (never corrupts)", () => {
+    // The opening brace closes BEFORE the end — unwrapping would unbalance it.
+    const tricky = "{\\displaystyle \\frac{\\hbar}{2}}\\,\\mathrm{J\\,s}"
+    assert.strictEqual(normalizeTex(tricky), tricky)
+    assert.strictEqual(
+      normalizeTex("{\\displaystyle x} \\cdot {\\displaystyle y}"),
+      "{\\displaystyle x} \\cdot {\\displaystyle y}",
+    )
+  })
+  test("an escaped \\% is a percent sign, not a comment", () => {
+    assert.strictEqual(normalizeTex("x = 50\\%\n+ y"), "x = 50\\%\n+ y")
+    // A doubled backslash before % is a row separator; the % IS a comment.
+    assert.strictEqual(normalizeTex("a \\\\%\nb"), "a \\\\b")
   })
 })
 
@@ -103,7 +128,7 @@ describe("scanForMath", () => {
       children: { [ANN]: new Stub({ tagName: "annotation", text: "E = m c^{2}" }) },
       closestMap: { ".katex": katexWrapper },
     })
-    const mjPreview = new Stub({ tagName: "div" })
+    const mjPreview = new Stub({ tagName: "div", attrs: { class: "MathJax_Display" } })
     const mjScript = new Stub({
       tagName: "script",
       attrs: { type: "math/tex; mode=display" },
@@ -125,7 +150,8 @@ describe("scanForMath", () => {
   test("Wikipedia math routes clicks to the .mwe-math-element wrapper", () => {
     // The wrapper holds BOTH the MathML and the SVG fallback image; which child
     // is visible varies by skin/browser, so the wrapper is the click target.
-    const wrapper = new Stub({ tagName: "span", attrs: { class: "mwe-math-element mwe-math-element-display" } })
+    // Production Wikipedia uses …-block (verified live); -display is legacy.
+    const wrapper = new Stub({ tagName: "span", attrs: { class: "mwe-math-element mwe-math-element-block" } })
     const wikiMath = new Stub({
       attrs: { alttext: `{\\displaystyle ${EINSTEIN}}` },
       closestMap: { ".mwe-math-element": wrapper },
@@ -133,7 +159,29 @@ describe("scanForMath", () => {
     const [c] = scanForMath(root({ math: [wikiMath], 'script[type^="math/tex"]': [] }))
     assert.strictEqual(c.tex, EINSTEIN)
     assert.strictEqual(c.displayEl, wrapper)
-    assert.strictEqual(c.display, true) // wrapper class says -display
+    assert.strictEqual(c.display, true) // wrapper class says -block
+  })
+  test("KaTeX display nesting prefers .katex-display over the inner .katex", () => {
+    const kd = new Stub({ tagName: "span", attrs: { class: "katex-display" } })
+    const k = new Stub({ tagName: "span", attrs: { class: "katex" } })
+    const el = new Stub({
+      children: { [ANN]: new Stub({ tagName: "annotation", text: "x" }) },
+      closestMap: { ".katex-display": kd, ".katex": k },
+    })
+    const [c] = scanForMath(root({ math: [el], 'script[type^="math/tex"]': [] }))
+    assert.strictEqual(c.displayEl, kd)
+    assert.strictEqual(c.display, true)
+  })
+  test("MathJax v2: an unrelated preceding element never becomes the click target", () => {
+    const unrelated = new Stub({ tagName: "a", attrs: { class: "citation" } })
+    const script = new Stub({
+      tagName: "script",
+      attrs: { type: "math/tex" },
+      text: "E = m c^{2}",
+      prevSibling: unrelated,
+    })
+    const [c] = scanForMath(root({ math: [], 'script[type^="math/tex"]': [script] }))
+    assert.strictEqual(c.displayEl, script) // falls back to the script itself
   })
   test("deduplicates by visible element and skips empty carriers", () => {
     const wrapper = new Stub({ tagName: "span" })

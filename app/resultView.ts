@@ -56,7 +56,7 @@ export function renderTranslation(
     badge(
       "verdict",
       "No anchor",
-      " — no relation to anchor the target dimension; paste a full equation, not a bare expression.",
+      " — no relation to anchor the target dimension; a full equation is needed, not a bare expression.",
     )
   } else {
     badge("verdict warn", "Declined", " — the registry cannot vouch for this equation.")

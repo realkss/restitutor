@@ -78,6 +78,7 @@ function buildPanel(): void {
 
   resultsEl = document.createElement("div")
   resultsEl.className = "rst-results"
+  resultsEl.setAttribute("aria-live", "polite")
 
   panel.append(head, controls, resultsEl)
   document.body.appendChild(panel)
@@ -114,19 +115,27 @@ function runTranslate(): void {
 }
 
 function openPanel(c: MathCandidate): void {
-  if (!panel) buildPanel()
+  // The page can remove the panel by routes other than our close button
+  // (SPA re-renders, cleanup scripts) — a disconnected panel means rebuild.
+  if (!panel || !panel.isConnected) buildPanel()
   currentTex = c.tex
   provenanceEl.textContent = `TeX via ${VIA_LABEL[c.via]} · profile: ${profile.id}`
   runTranslate()
 }
 
 function init(): void {
+  loadKatexStylesheet()
   const candidates = scanForMath(document)
   for (const c of candidates) {
     const target = c.displayEl as unknown as HTMLElement
     if (!(target instanceof Element)) continue
     target.classList.add("rst-math")
-    if (!target.hasAttribute("title")) target.setAttribute("title", "restitutor: click to translate")
+    // title on a MathML element shows nothing in Chrome — hang the tooltip on
+    // the nearest HTML ancestor (ar5iv: td.ltx_eqn_cell) in that case.
+    const tipHost =
+      target.tagName.toLowerCase() === "math" ? (target.parentElement ?? target) : target
+    if (!tipHost.hasAttribute("title"))
+      tipHost.setAttribute("title", "restitutor: click to translate")
     target.addEventListener("click", (ev) => {
       ev.preventDefault()
       ev.stopPropagation()
@@ -134,6 +143,20 @@ function init(): void {
     })
   }
   markCarrierless()
+}
+
+// KaTeX's stylesheet cannot ride content_scripts css: url() in an injected
+// stylesheet resolves against the PAGE, so the fonts would be requested from
+// the visited site (and 404). Link it from the extension origin instead.
+// The dev fixture loads the stylesheet itself and has no chrome.runtime.
+function loadKatexStylesheet(): void {
+  const rt = (globalThis as { chrome?: { runtime?: { getURL?: (p: string) => string } } })
+    .chrome?.runtime
+  if (!rt?.getURL) return
+  const link = document.createElement("link")
+  link.rel = "stylesheet"
+  link.href = rt.getURL("katex.min.css")
+  document.head.appendChild(link)
 }
 
 // Honesty marker (product contract: decline loudly, never silently skip):
@@ -144,7 +167,9 @@ function markCarrierless(): void {
     "mjx-container, span.MathJax, div.MathJax_Display",
   )
   for (const el of containers) {
-    if (el.classList.contains("rst-math")) continue // v2 pairs decorated via their script
+    // Anything inside (or containing) a decorated candidate is spoken for —
+    // MathJax v2 display output nests spans under the decorated wrapper.
+    if (el.closest(".rst-math") || el.querySelector(".rst-math")) continue
     el.classList.add("rst-carrierless")
     if (!el.hasAttribute("title"))
       el.setAttribute(

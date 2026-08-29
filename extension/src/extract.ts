@@ -41,15 +41,39 @@ export type MathCandidate = {
  */
 export function normalizeTex(raw: string): string {
   let t = raw.trim()
-  // Wikipedia alttext wraps the whole formula: {\displaystyle …}
+  // Wikipedia alttext wraps the whole formula: {\displaystyle …} — unwrap ONLY
+  // when the opening brace's partner is the final character; a greedy regex
+  // would pair unrelated braces and corrupt "{\displaystyle x}\,\mathrm{J}".
   const wrapped = t.match(/^\{\\displaystyle\s([\s\S]*)\}$/)
-  if (wrapped) t = wrapped[1].trim()
-  if (t.startsWith("\\displaystyle")) t = t.slice("\\displaystyle".length).trim()
-  // LaTeXML alttext carries line-continuation comments from the source
-  t = t.replace(/%\s*\n\s*/g, "")
+  if (wrapped && outerBracesArePartners(t)) t = wrapped[1].trim()
+  // A leading sizing directive blocks the engine's statement splitter, and the
+  // whole family occurs in the wild (\textstyle on hand-compressed sums), not
+  // just \displaystyle.
+  t = t.replace(/^\\(?:display|text|scriptscript|script)style\b\s*/, "")
+  // Source line-continuation comments: an UNESCAPED % swallowing its newline.
+  // "50\%" is a percent sign, not a comment — parity of the backslash run.
+  t = t.replace(/(\\*)%\s*\n\s*/g, (m, bs: string) => (bs.length % 2 === 1 ? m : bs))
   // Equation labels are document plumbing, not math
   t = t.replace(/\\label\{[^}]*\}/g, "")
   return stripTrailingPunctuation(t.trim())
+}
+
+/** True when the string's first "{" closes exactly at its final character. */
+function outerBracesArePartners(t: string): boolean {
+  let depth = 0
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i]
+    if (ch === "\\") {
+      i++
+      continue
+    }
+    if (ch === "{") depth++
+    else if (ch === "}") {
+      depth--
+      if (depth === 0) return i === t.length - 1
+    }
+  }
+  return false
 }
 
 // Display equations routinely end in sentence punctuation carried inside the
@@ -63,9 +87,20 @@ function stripTrailingPunctuation(tex: string): string {
   // backslash. The alternation prefers the longer "\<char>" match.
   let t = tex.trimEnd()
   for (;;) {
-    const m = t.match(/(\\(?:quad|qquad)|\\[,;:! ]|[.,;:~]|\s)$/)
+    let m = t.match(/(\\(?:quad|qquad)|\\[,;:! ]|[.,;:~]|\s)$/)
     if (!m) return t
-    if (m[0] === "." && /\\(?:[Bb]igg?[lrm]?|right|left)$/.test(t.slice(0, -1))) return t
+    // A "\<char>" match is a control token only when its backslash is an
+    // escape — the run of backslashes ending there must have ODD total length.
+    // In "x \\ " the matched backslash is the tail of a row separator; only
+    // the bare trailing whitespace/punctuation after it may go.
+    if (m[0].startsWith("\\")) {
+      const runBefore = (t.slice(0, t.length - m[0].length).match(/\\*$/) ?? [""])[0].length
+      if ((runBefore + 1) % 2 === 0) {
+        m = t.match(/([.,;:~]|\s)$/)
+        if (!m) return t
+      }
+    }
+    if (m[0] === "." && /\\(?:[Bb]igg?[lrm]?|right|left)\s*$/.test(t.slice(0, -1))) return t
     t = t.slice(0, t.length - m[0].length)
   }
 }
@@ -109,7 +144,9 @@ export function scanForMath(root: MinimalRoot): MathCandidate[] {
       display:
         el.getAttribute("display") === "block" ||
         el.closest(".katex-display") !== null ||
-        (mweWrapper?.getAttribute("class") ?? "").includes("-display"),
+        // Wikipedia's production wrapper class is …-block; -display kept for
+        // older markup.
+        /-(block|display)\b/.test(mweWrapper?.getAttribute("class") ?? ""),
       el,
       displayEl: katexWrapper ?? mweWrapper ?? el,
     })
@@ -119,14 +156,17 @@ export function scanForMath(root: MinimalRoot): MathCandidate[] {
     const tex = el.textContent
     if (!tex || tex.trim() === "") continue
     const type = el.getAttribute("type") ?? ""
-    // MathJax v2 renders into a sibling span/div placed just before the script.
+    // MathJax v2 renders into a sibling placed just before the script — but
+    // only trust a sibling that actually looks like MathJax output; an
+    // unrelated preceding element must not become the click target.
     const sib = el.previousElementSibling
+    const render = sib && /(^|\s)MathJax/.test(sib.getAttribute("class") ?? "") ? sib : null
     push({
       tex: normalizeTex(tex),
       via: "mathjax2-script",
       display: type.includes("mode=display"),
       el,
-      displayEl: sib ?? el,
+      displayEl: render ?? el,
     })
   }
 

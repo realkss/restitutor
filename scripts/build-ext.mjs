@@ -27,8 +27,12 @@ cpSync(p("extension/panel.css"), p("extension/dist/panel.css"))
 cpSync(p("node_modules/katex/dist/katex.min.css"), p("extension/dist/katex.min.css"))
 cpSync(p("node_modules/katex/dist/fonts"), p("extension/dist/fonts"), { recursive: true })
 
-// Dev fixture copies (app/dist is gitignored and served by the preview server).
+// Dev fixture copies (app/dist is gitignored and served by the preview
+// server). KaTeX's css + fonts too, so the fixture renders correctly on a
+// clean clone without a prior build:app.
 cpSync(p("extension/dist/content.js"), p("app/dist/content.js"))
 cpSync(p("extension/panel.css"), p("app/dist/panel.css"))
+cpSync(p("node_modules/katex/dist/katex.min.css"), p("app/dist/katex.min.css"))
+cpSync(p("node_modules/katex/dist/fonts"), p("app/dist/fonts"), { recursive: true })
 
 console.log("extension built: load-unpacked directory = extension/dist/")

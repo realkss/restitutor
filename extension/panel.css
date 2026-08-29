@@ -31,6 +31,10 @@
   position: fixed;
   right: 18px;
   bottom: 18px;
+  /* The panel renders math and English regardless of the host page's script:
+     rtl Wikipedias would otherwise mirror every equation. */
+  direction: ltr;
+  text-align: left;
   z-index: 2147483646;
   width: 420px;
   max-width: calc(100vw - 36px);
