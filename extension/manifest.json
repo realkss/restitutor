@@ -11,7 +11,7 @@
         "https://*.wikipedia.org/*"
       ],
       "js": ["content.js"],
-      "css": ["panel.css"],
+      "css": ["decorate.css"],
       "run_at": "document_idle"
     }
   ],

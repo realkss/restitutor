@@ -12,6 +12,8 @@ import {
 import { defaultProfile } from "../../src/profiles"
 import { renderTranslation } from "../../app/resultView"
 import { MathCandidate, scanForMath } from "./extract"
+import panelCss from "../panel.css"
+import katexCss from "katex/dist/katex.min.css"
 
 const katex = katexDefault as unknown as {
   render: (tex: string, el: HTMLElement, opts?: Record<string, unknown>) => void
@@ -26,6 +28,7 @@ const VIA_LABEL: Record<MathCandidate["via"], string> = {
   "mathjax2-script": "math/tex script (MathJax v2)",
 }
 
+let host: HTMLElement | null = null
 let panel: HTMLElement | null = null
 let resultsEl: HTMLElement
 let provenanceEl: HTMLElement
@@ -34,6 +37,19 @@ let geomBox: HTMLInputElement
 let currentTex = ""
 
 function buildPanel(): void {
+  // The panel lives inside a SHADOW ROOT: page CSS — including !important
+  // rules on generic class names like .card — cannot reach it, and our card
+  // styles cannot leak out. Both stylesheets ride along as bundled text.
+  // (@font-face inside a shadow root is ignored by Chrome, which is why
+  // loadKatexStylesheet() ALSO registers the fonts at document level.)
+  host = document.createElement("div")
+  const root = host.attachShadow({ mode: "open" })
+  for (const cssText of [katexCss, panelCss]) {
+    const style = document.createElement("style")
+    style.textContent = cssText
+    root.appendChild(style)
+  }
+
   panel = document.createElement("div")
   panel.id = "rst-panel"
   panel.setAttribute("role", "dialog")
@@ -52,7 +68,8 @@ function buildPanel(): void {
   close.textContent = "×"
   close.setAttribute("aria-label", "close")
   close.addEventListener("click", () => {
-    panel!.remove()
+    host!.remove()
+    host = null
     panel = null
   })
   head.append(title, provenanceEl, close)
@@ -81,7 +98,8 @@ function buildPanel(): void {
   resultsEl.setAttribute("aria-live", "polite")
 
   panel.append(head, controls, resultsEl)
-  document.body.appendChild(panel)
+  root.appendChild(panel)
+  document.body.appendChild(host)
 }
 
 function runTranslate(): void {
@@ -145,10 +163,12 @@ function init(): void {
   markCarrierless()
 }
 
-// KaTeX's stylesheet cannot ride content_scripts css: url() in an injected
-// stylesheet resolves against the PAGE, so the fonts would be requested from
-// the visited site (and 404). Link it from the extension origin instead.
-// The dev fixture loads the stylesheet itself and has no chrome.runtime.
+// Registers KaTeX's @font-face rules at DOCUMENT level: Chrome ignores
+// @font-face inside a shadow root, and a content_scripts stylesheet would
+// resolve url() against the PAGE (fonts requested from the visited site).
+// A runtime-URL link resolves against the extension origin; faces registered
+// on the document apply to shadow-root content. The dev fixture links the
+// stylesheet itself and has no chrome.runtime.
 function loadKatexStylesheet(): void {
   const rt = (globalThis as { chrome?: { runtime?: { getURL?: (p: string) => string } } })
     .chrome?.runtime

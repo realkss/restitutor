@@ -19,11 +19,14 @@ await build({
   bundle: true,
   format: "iife", // content scripts are classic scripts, not modules
   outfile: p("extension/dist/content.js"),
+  // panel.css + KaTeX's css ride INSIDE the bundle as text: the panel lives
+  // in a shadow root and injects them there itself.
+  loader: { ".css": "text" },
   logLevel: "info",
 })
 
 cpSync(p("extension/manifest.json"), p("extension/dist/manifest.json"))
-cpSync(p("extension/panel.css"), p("extension/dist/panel.css"))
+cpSync(p("extension/decorate.css"), p("extension/dist/decorate.css"))
 cpSync(p("node_modules/katex/dist/katex.min.css"), p("extension/dist/katex.min.css"))
 cpSync(p("node_modules/katex/dist/fonts"), p("extension/dist/fonts"), { recursive: true })
 
@@ -31,7 +34,7 @@ cpSync(p("node_modules/katex/dist/fonts"), p("extension/dist/fonts"), { recursiv
 // server). KaTeX's css + fonts too, so the fixture renders correctly on a
 // clean clone without a prior build:app.
 cpSync(p("extension/dist/content.js"), p("app/dist/content.js"))
-cpSync(p("extension/panel.css"), p("app/dist/panel.css"))
+cpSync(p("extension/decorate.css"), p("app/dist/decorate.css"))
 cpSync(p("node_modules/katex/dist/katex.min.css"), p("app/dist/katex.min.css"))
 cpSync(p("node_modules/katex/dist/fonts"), p("app/dist/fonts"), { recursive: true })
 

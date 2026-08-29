@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>restitutor hostile-CSS fixture</title>
+<link rel="stylesheet" href="../dist/katex.min.css">
+<link rel="stylesheet" href="../dist/decorate.css">
+<style>
+  /* Deliberately hostile page styling — the shape of the real-world page that
+     bled into the panel (maroon cards, lime dashed borders, Comic Sans,
+     magenta !important text). The panel must be COMPLETELY unaffected. */
+  * {
+    font-family: "Comic Sans MS", cursive !important;
+    color: magenta !important;
+  }
+  body { background: #1c0f14; margin: 0; padding: 2rem; direction: rtl; }
+  .card, .verdict, .reasons, .legend, .unitline, pre {
+    background: maroon !important;
+    border: 4px dashed lime !important;
+    color: magenta !important;
+  }
+  h2 { text-decoration: blink underline wavy; }
+</style>
+</head>
+<body>
+<h1>Hostile-CSS fixture</h1>
+<p>This page attacks every class name the panel uses, with <code>!important</code>,
+plus a global Comic Sans and <code>direction: rtl</code>. Click the equation:
+the panel must render in its own paper/serif style, LTR, with KaTeX-formatted math.</p>
+
+<math display="block" alttext="G_{ab} + \Lambda g_{ab} = 8\pi T_{ab}">
+  <mrow><msub><mi>G</mi><mrow><mi>a</mi><mi>b</mi></mrow></msub><mo>+</mo>
+  <mi>&#x39B;</mi><msub><mi>g</mi><mrow><mi>a</mi><mi>b</mi></mrow></msub>
+  <mo>=</mo><mn>8</mn><mi>&#x3C0;</mi><msub><mi>T</mi><mrow><mi>a</mi><mi>b</mi></mrow></msub></mrow>
+</math>
+
+<p>And a decliner (its Source card must still be KaTeX-set, not raw text):</p>
+<math display="block" alttext="\psi_4 = \chi \, \Xi^{ab} \, T_{ab}">
+  <mrow><mi>&#x3C8;</mi></mrow>
+</math>
+
+<script src="../dist/content.js"></script>
+</body>
+</html>

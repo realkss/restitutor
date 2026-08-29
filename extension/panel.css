@@ -1,23 +1,13 @@
-/* restitutor stage-2 panel — scoped under #rst-panel / .rst-math so page
-   styles stay untouched. Palette mirrors the stage-1 app. */
+/* restitutor stage-2 panel. Injected as a <style> INSIDE the panel's shadow
+   root (imported as text by the content script), so page CSS — including
+   !important rules on generic class names like .card — cannot restyle it.
+   Palette mirrors the stage-1 app. Page-element decoration lives in
+   decorate.css (light DOM). */
 
-.rst-math {
-  cursor: pointer;
-  border-radius: 3px;
-  transition: outline-color 120ms;
-  outline: 2px solid transparent;
-  outline-offset: 3px;
-}
-.rst-math:hover {
-  outline-color: #3b5f8f;
-}
-
-/* Math the page renders WITHOUT a TeX carrier (MathJax v3): honestly marked,
-   not clickable — the tooltip says why. */
-.rst-carrierless:hover {
-  outline: 2px dashed #a13d3d55;
-  outline-offset: 3px;
-  cursor: help;
+/* The host is a plain div in the page; neutralize anything the page pushes
+   onto it (inherited color/font/direction included). */
+:host {
+  all: initial;
 }
 
 #rst-panel pre {

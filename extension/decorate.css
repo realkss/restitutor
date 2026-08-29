@@ -1,0 +1,22 @@
+/* Light-DOM decoration for math ON THE PAGE (the panel itself lives in a
+   shadow root and carries its own styles — see panel.css, bundled into the
+   content script). */
+
+.rst-math {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: outline-color 120ms;
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+}
+.rst-math:hover {
+  outline-color: #3b5f8f;
+}
+
+/* Math the page renders WITHOUT a TeX carrier (MathJax v3): honestly marked,
+   not clickable — the tooltip says why. */
+.rst-carrierless:hover {
+  outline: 2px dashed #a13d3d55;
+  outline-offset: 3px;
+  cursor: help;
+}
