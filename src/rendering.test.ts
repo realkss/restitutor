@@ -3,7 +3,7 @@
 import test, { describe } from "node:test"
 import assert from "node:assert"
 import { CONVENTIONS, EM_RIDERS, TIERS } from "./convention"
-import { RENDERING, RENDERING_EXCLUDED, RENDERING_NOT_APPLICABLE } from "../app/rendering"
+import { RENDERING, RENDERING_EXCLUDED, RENDERING_NOT_APPLICABLE } from "./rendering"
 
 describe("tier stamps", () => {
   test("every convention has a tier and every tier names a convention", () => {

@@ -10,6 +10,7 @@ import {
   translateTex,
 } from "../../src/unitsEngine"
 import { defaultProfile } from "../../src/profiles"
+import { DetectionReport, inferConventions } from "../../src/detect"
 import { renderTranslation } from "../../app/resultView"
 import { MathCandidate, scanForMath } from "./extract"
 import panelCss from "../panel.css"
@@ -35,6 +36,22 @@ let provenanceEl: HTMLElement
 let systemSel: HTMLSelectElement
 let geomBox: HTMLInputElement
 let currentTex = ""
+let pageDetection: DetectionReport | null = null
+
+function detectionLine(): string {
+  const r = pageDetection
+  if (!r) return ""
+  if (r.kind === "conflict")
+    return "Page evidence CONFLICTS — the declared units and the visible constants disagree."
+  if (r.kind === "insufficient") return "No convention evidence found on this page."
+  const set = r.sets[0]
+  const shown = set.slice(0, 4).join(", ") + (set.length > 4 ? `, +${set.length - 4} more` : "")
+  const why = r.evidence
+    .filter((e) => e.kind === "declaration" || (e.kind === "visible-constant" && e.excludes.length))
+    .map((e) => (e.kind === "declaration" ? `“${e.label}”` : `${e.constant} visible`))
+    .join("; ")
+  return `Page evidence → ${set.length} candidate convention${set.length === 1 ? "" : "s"}: ${shown} (${why})`
+}
 
 function buildPanel(): void {
   // The panel lives inside a SHADOW ROOT: page CSS — including !important
@@ -97,7 +114,12 @@ function buildPanel(): void {
   resultsEl.className = "rst-results"
   resultsEl.setAttribute("aria-live", "polite")
 
-  panel.append(head, controls, resultsEl)
+  const detect = document.createElement("p")
+  detect.className = "rst-detect"
+  detect.textContent = detectionLine()
+  if (!detect.textContent) detect.style.display = "none"
+
+  panel.append(head, controls, detect, resultsEl)
   root.appendChild(panel)
   document.body.appendChild(host)
 }
@@ -144,6 +166,17 @@ function openPanel(c: MathCandidate): void {
 function init(): void {
   loadKatexStylesheet()
   const candidates = scanForMath(document)
+  // Document-level detection (census §6): prose declarations + visible
+  // constants across everything extracted. Once per page — the evidence set
+  // does not change on click.
+  try {
+    pageDetection = inferConventions({
+      text: (document.body?.innerText ?? "").slice(0, 300000),
+      equations: candidates.slice(0, 500).map((c) => c.tex),
+    })
+  } catch {
+    pageDetection = null // detection must never take the panel down with it
+  }
   for (const c of candidates) {
     const target = c.displayEl as unknown as HTMLElement
     if (!(target instanceof Element)) continue

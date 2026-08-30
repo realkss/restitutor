@@ -72,7 +72,7 @@ texEl.addEventListener("keydown", (ev) => {
 // the translate target drives it (src/bridge.ts).
 // ---------------------------------------------------------------------------
 import { CONVENTIONS, EM_RIDERS, TIERS, activeRiders, validateConvention } from "../src/convention"
-import { RENDERING } from "./rendering"
+import { RENDERING } from "../src/rendering"
 import { conventionKeyForTarget } from "../src/bridge"
 
 function syncInspectorToTarget(spec: TargetSpec) {

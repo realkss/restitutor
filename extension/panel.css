@@ -89,6 +89,14 @@
   gap: 0.3rem;
   align-items: center;
 }
+#rst-panel .rst-detect {
+  color: #5a6272;
+  font-size: 0.78rem;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  margin: 0 0 0.35rem;
+  border-left: 2px solid #ddd9cf;
+  padding-left: 0.5rem;
+}
 #rst-panel .card {
   background: #fff;
   border: 1px solid #ddd9cf;
