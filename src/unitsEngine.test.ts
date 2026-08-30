@@ -1,7 +1,13 @@
 import test, { describe } from "node:test"
 import assert from "node:assert"
 import katexDefault from "katex"
-import { TargetSpec, TranslationResult, findRegistryForSlug, translateTex } from "./unitsEngine"
+import {
+  TargetSpec,
+  TranslationResult,
+  findRegistryForSlug,
+  stripTrailingPunctuation,
+  translateTex,
+} from "./unitsEngine"
 
 // katex's published types omit the internal (but stable and documented) __parse.
 const katex = katexDefault as typeof katexDefault & {
@@ -938,5 +944,47 @@ describe("target systems", () => {
       assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
       if (result.kind === "translated") rendersInKatex(result.restoredTex)
     }
+  })
+})
+
+describe("pre-parse normalization (2026-08-29 review fixes)", () => {
+  test("a leading styling directive is inert typography, not a decline", () => {
+    const plain = restored("E = m c^{2}")
+    assert.strictEqual(restored("\\textstyle E = m c^{2}"), plain)
+    assert.strictEqual(restored("\\scriptstyle E = m c^{2}"), plain)
+    assert.strictEqual(restored("{\\textstyle E = m c^{2}}"), plain)
+    // Wikipedia's wrapper arriving unstripped:
+    assert.strictEqual(restored("{\\displaystyle E = m c^{2}}"), plain)
+  })
+  test("the style unwrap refuses non-partner braces and the engine fails CLOSED", () => {
+    // The opening brace closes before the end, so the string-level unwrap must
+    // not touch it (unwrapping would unbalance the math). A wrapper scoped to
+    // one SIDE is outside the normalization's scope: the engine declines
+    // honestly rather than translating around typography it cannot replay.
+    const result = run("{\\textstyle E} = m c^{2}")
+    assert.strictEqual(result.kind, "declined")
+  })
+  test("nested wrapper and punctuation normalize to a fixpoint", () => {
+    assert.strictEqual(restored("{\\displaystyle E = m c^{2} .}"), restored("E = m c^{2}"))
+    assert.strictEqual(restored("\\textstyle E = m c^{2}\\,."), restored("E = m c^{2}"))
+  })
+  test("stripTrailingPunctuation strips sentence tokens but never a delimiter dot", () => {
+    assert.strictEqual(stripTrailingPunctuation("x = y\\,."), "x = y")
+    assert.strictEqual(stripTrailingPunctuation("x = y\\qquad"), "x = y")
+    assert.strictEqual(stripTrailingPunctuation("x = y ;"), "x = y")
+    assert.strictEqual(
+      stripTrailingPunctuation("f = \\left( g \\right."),
+      "f = \\left( g \\right.",
+    )
+    assert.strictEqual(
+      stripTrailingPunctuation("f = \\left( g \\right ."),
+      "f = \\left( g \\right .",
+    )
+    assert.strictEqual(stripTrailingPunctuation("x \\Big."), "x \\Big.")
+    // A row separator's backslash is never half-eaten:
+    assert.strictEqual(stripTrailingPunctuation("x \\\\ ."), "x \\\\")
+  })
+  test("an equation ending in \\,. translates end to end (the arXiv-HTML pattern)", () => {
+    assert.strictEqual(restored("E = m c^{2}\\,."), restored("E = m c^{2}"))
   })
 })

@@ -1924,15 +1924,91 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
   return { emitSides, rels, tabAtRel, target: resolvedTarget, hadRel: true }
 }
 
+/**
+ * Trailing sentence punctuation, token-wise. Display equations routinely end
+ * in “\,.”, “\qquad”, or a bare period — the sentence's punctuation, not the
+ * equation's. Two guards: a trailing “.” can be a NULL DELIMITER
+ * (\right. / \Big.), where stripping it unbalances the math; and a matched
+ * “\<char>” is only a control token when its backslash is an escape — the run
+ * of backslashes ending there must have odd total length (in “x \\ ” the
+ * matched backslash is the tail of a row separator).
+ * Exported: the stage-2 extractor uses this same stripper, so the two layers
+ * cannot disagree about what a delimiter dot is.
+ */
+export function stripTrailingPunctuation(tex: string): string {
+  let t = tex.replace(/\s+$/, "")
+  for (;;) {
+    let m = t.match(/(\\(?:quad|qquad)|\\[,;:! ]|[.,;:~]|\s)$/)
+    if (!m) return t
+    if (m[0].startsWith("\\")) {
+      const runBefore = (t.slice(0, t.length - m[0].length).match(/\\*$/) ?? [""])[0].length
+      if ((runBefore + 1) % 2 === 0) {
+        m = t.match(/([.,;:~]|\s)$/)
+        if (!m) return t
+      }
+    }
+    if (m[0] === "." && /\\(?:[Bb]igg?[lrm]?|right|left)\s*$/.test(t.slice(0, -1))) return t
+    t = t.slice(0, t.length - m[0].length)
+  }
+}
+
+// A leading styling directive (\textstyle on hand-compressed sums, Wikipedia's
+// {\displaystyle …} wrapper arriving unstripped) parses into a single node
+// that hides the relation from the row splitter, so the decline blames “=”.
+// It is inert typography — peel it from the STRING, before ctx.input is
+// fixed, so the masked-replay backstop compares consistently. Only the
+// four-member style family is peeled; \small, \color and friends stay
+// declined (unmeasured in the served corpus — widen only with evidence).
+const STYLE_PREFIX = /^\\(?:display|text|scriptscript|script)style\b\s*/
+const STYLE_GROUP = /^\{\s*\\(?:display|text|scriptscript|script)style\b([\s\S]*)\}$/
+function stripStyleWrapper(tex: string): string {
+  let t = tex.trim()
+  for (;;) {
+    if (STYLE_PREFIX.test(t)) {
+      t = t.replace(STYLE_PREFIX, "").trim()
+      continue
+    }
+    const m = t.match(STYLE_GROUP)
+    if (m && outerBracesArePartners(t)) {
+      t = m[1].trim()
+      continue
+    }
+    return t
+  }
+}
+
+/** True when the string's first "{" closes exactly at its final character. */
+function outerBracesArePartners(t: string): boolean {
+  let depth = 0
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i]
+    if (ch === "\\") {
+      i++
+      continue
+    }
+    if (ch === "{") depth++
+    else if (ch === "}") {
+      depth--
+      if (depth === 0) return i === t.length - 1
+    }
+  }
+  return false
+}
+
 export function translateTex(
   rawTex: string,
   katex: { __parse: (tex: string, options?: Record<string, unknown>) => any[] },
   reg: HubRegistry,
   spec: TargetSpec = DEFAULT_TARGET,
 ): TranslationResult {
-  // Display equations routinely end in prose punctuation (“… = 8\pi T_{ab}.”,
-  // “\right),”). That punctuation is the sentence's, not the equation's.
-  const tex = rawTex.replace(/\s+$/, "").replace(/[.,;]$/, "")
+  // Punctuation and style wrappers can nest (“{\displaystyle x = y .}”), so
+  // normalize to a fixpoint; both transforms are idempotent and shrinking.
+  let tex = rawTex
+  for (;;) {
+    const next = stripStyleWrapper(stripTrailingPunctuation(tex))
+    if (next === tex) break
+    tex = next
+  }
   const ctx: Ctx = {
     input: tex,
     reg,

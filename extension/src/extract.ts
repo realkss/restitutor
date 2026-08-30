@@ -9,6 +9,7 @@
 //
 // The DOM types here are structural minimums so the adapters are unit-testable
 // under node:test without a DOM implementation; real Elements satisfy them.
+import { stripTrailingPunctuation } from "../../src/unitsEngine"
 
 export type TexVia = "alttext" | "mml-annotation" | "mathjax2-script"
 
@@ -76,34 +77,11 @@ function outerBracesArePartners(t: string): boolean {
   return false
 }
 
-// Display equations routinely end in sentence punctuation carried inside the
-// math ("\tilde{F}_{5}=\star\tilde{F}_{5}\,." — a quarter of the alttexts on a
-// real arXiv HTML page). That is prose, not math; strip it token-wise. The one
-// guard: a trailing "." can be a null delimiter (\right. / \Big.), and
-// stripping it would unbalance the math — leave those alone.
-function stripTrailingPunctuation(tex: string): string {
-  // Whitespace is a token here, NOT pre-trimmed: trimming inside the loop
-  // would split the two-character "\ " control-space and leave a dangling
-  // backslash. The alternation prefers the longer "\<char>" match.
-  let t = tex.trimEnd()
-  for (;;) {
-    let m = t.match(/(\\(?:quad|qquad)|\\[,;:! ]|[.,;:~]|\s)$/)
-    if (!m) return t
-    // A "\<char>" match is a control token only when its backslash is an
-    // escape — the run of backslashes ending there must have ODD total length.
-    // In "x \\ " the matched backslash is the tail of a row separator; only
-    // the bare trailing whitespace/punctuation after it may go.
-    if (m[0].startsWith("\\")) {
-      const runBefore = (t.slice(0, t.length - m[0].length).match(/\\*$/) ?? [""])[0].length
-      if ((runBefore + 1) % 2 === 0) {
-        m = t.match(/([.,;:~]|\s)$/)
-        if (!m) return t
-      }
-    }
-    if (m[0] === "." && /\\(?:[Bb]igg?[lrm]?|right|left)\s*$/.test(t.slice(0, -1))) return t
-    t = t.slice(0, t.length - m[0].length)
-  }
-}
+// Trailing sentence punctuation ("\tilde{F}_{5}=\star\tilde{F}_{5}\,." — a
+// quarter of the alttexts on a real arXiv HTML page) is stripped by the
+// ENGINE's exported stripTrailingPunctuation (imported above): one
+// implementation, so the two layers cannot disagree about what a null
+// delimiter's dot is.
 
 const X_TEX_ANNOTATION = 'annotation[encoding="application/x-tex"]'
 
