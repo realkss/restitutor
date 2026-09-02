@@ -22,6 +22,48 @@ function mathCard(katex: KatexLike, title: string, tex: string): HTMLElement {
   return card
 }
 
+const QUOTE_L = String.fromCharCode(0x201c)
+const QUOTE_R = String.fromCharCode(0x201d)
+// Backslash, caret, underscore, braces: the fragment is TeX, not a word.
+const TEXISH = new RegExp("[" + String.fromCharCode(92) + "^_{}]")
+
+/**
+ * A quoted fragment of an engine explanation, as inline math when it looks
+ * like TeX (or is a lone symbol), otherwise as the quoted word it is. A
+ * fragment KaTeX cannot parse falls back to its quoted source text.
+ */
+function inlineMath(katex: KatexLike, tex: string, force = false): HTMLElement {
+  const span = document.createElement("span")
+  const mathy = force || TEXISH.test(tex) || /^[A-Za-z]$/.test(tex)
+  if (!mathy) {
+    span.textContent = QUOTE_L + tex + QUOTE_R
+    return span
+  }
+  try {
+    katex.render(tex, span, { throwOnError: true })
+  } catch {
+    span.textContent = QUOTE_L + tex + QUOTE_R
+  }
+  return span
+}
+
+/**
+ * Engine explanations quote the offending TeX in curly quotes; render each
+ * quoted fragment so the reader sees the symbol, not its source.
+ */
+function explain(katex: KatexLike, el: HTMLElement, text: string): void {
+  const parts = text.split(QUOTE_L)
+  el.append(parts[0])
+  for (let i = 1; i < parts.length; i++) {
+    const close = parts[i].indexOf(QUOTE_R)
+    if (close < 0) {
+      el.append(QUOTE_L + parts[i])
+      continue
+    }
+    el.append(inlineMath(katex, parts[i].slice(0, close)), parts[i].slice(close + 1))
+  }
+}
+
 export function renderTranslation(
   outEl: HTMLElement,
   result: TranslationResult,
@@ -67,12 +109,14 @@ export function renderTranslation(
     ul.className = "reasons"
     for (const r of result.reasons) {
       const li = document.createElement("li")
-      li.textContent = `Declined: this equation contains ${r}.`
+      li.append("Declined: this equation contains ")
+      explain(katex, li, r)
+      li.append(".")
       ul.appendChild(li)
     }
     for (const sym of result.unknown) {
       const li = document.createElement("li")
-      li.textContent = `Unknown symbol: ${sym} — not in the registry's readings.`
+      li.append("Unknown symbol: ", inlineMath(katex, sym, true), " — not in the registry's readings.")
       ul.appendChild(li)
     }
     head.appendChild(ul)
