@@ -10,19 +10,27 @@
         "https://arxiv.org/html/*",
         "https://*.wikipedia.org/*"
       ],
-      "js": ["content.js"],
-      "css": ["decorate.css"],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "decorate.css"
+      ],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["katex.min.css", "fonts/*"],
+      "resources": [
+        "katex.min.css",
+        "fonts/*"
+      ],
       "matches": [
         "https://ar5iv.labs.arxiv.org/*",
         "https://arxiv.org/*",
         "https://*.wikipedia.org/*"
-      ]
+      ],
+      "use_dynamic_url": true
     }
   ]
 }

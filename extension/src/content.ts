@@ -288,15 +288,39 @@ function openPanel(c: MathCandidate): void {
   runTranslate()
 }
 
-function init(): void {
-  loadKatexStylesheet()
-  const candidates = scanForMath(document)
-  // Document-level detection (census §6): prose declarations + the ladder +
-  // body-level visible constants across everything extracted. Once per page —
-  // the evidence set does not change on click. Display equations first: the
-  // ladder and the couplings live there, not in inline single symbols.
+const decorated = new WeakSet<Element>()
+const pool: MathCandidate[] = []
+
+function decorate(candidates: MathCandidate[]): number {
+  let added = 0
+  for (const c of candidates) {
+    const target = c.displayEl as unknown as HTMLElement
+    if (!(target instanceof Element) || decorated.has(target)) continue
+    decorated.add(target)
+    pool.push(c)
+    added++
+    target.classList.add("rst-math")
+    // title on a MathML element shows nothing in Chrome; hang the tooltip on
+    // the nearest HTML ancestor (ar5iv: td.ltx_eqn_cell) in that case.
+    const tipHost =
+      target.tagName.toLowerCase() === "math" ? (target.parentElement ?? target) : target
+    if (!tipHost.hasAttribute("title")) tipHost.setAttribute("title", "restitutor: click to translate")
+    target.addEventListener("click", (ev) => {
+      ev.preventDefault()
+      ev.stopPropagation()
+      openPanel(c)
+    })
+  }
+  return added
+}
+
+// Document-level detection (census section 6): prose declarations, the
+// ladder, body-level visible constants across everything extracted so far.
+// Display equations first: the ladder and the couplings live there, not in
+// inline single symbols.
+function runDetection(): void {
   try {
-    const ordered = [...candidates].sort((a, b) => Number(b.display) - Number(a.display))
+    const ordered = [...pool].sort((a, b) => Number(b.display) - Number(a.display))
     pageDetection = inferConventions({
       text: proseSurface(),
       equations: ordered.slice(0, 500).map((c) => c.tex),
@@ -304,23 +328,33 @@ function init(): void {
   } catch {
     pageDetection = null // detection must never take the panel down with it
   }
-  for (const c of candidates) {
-    const target = c.displayEl as unknown as HTMLElement
-    if (!(target instanceof Element)) continue
-    target.classList.add("rst-math")
-    // title on a MathML element shows nothing in Chrome — hang the tooltip on
-    // the nearest HTML ancestor (ar5iv: td.ltx_eqn_cell) in that case.
-    const tipHost =
-      target.tagName.toLowerCase() === "math" ? (target.parentElement ?? target) : target
-    if (!tipHost.hasAttribute("title"))
-      tipHost.setAttribute("title", "restitutor: click to translate")
-    target.addEventListener("click", (ev) => {
-      ev.preventDefault()
-      ev.stopPropagation()
-      openPanel(c)
-    })
-  }
+}
+
+function init(): void {
+  loadKatexStylesheet()
+  decorate(scanForMath(document))
   markCarrierless()
+  runDetection()
+
+  // Pages add math after document_idle (SPA navigation, lazily rendered
+  // sections). Rescan on DOM growth, debounced; already-decorated elements
+  // are skipped and detection is recomputed over the enlarged pool. Our own
+  // panel host is a light-DOM insertion too and is ignored.
+  let timer: number | undefined
+  const observer = new MutationObserver((records) => {
+    const grew = records.some((r) =>
+      [...r.addedNodes].some((n) => n.nodeType === 1 && n !== host && !(host && host.contains(n))),
+    )
+    if (!grew) return
+    if (timer !== undefined) clearTimeout(timer)
+    timer = window.setTimeout(() => {
+      timer = undefined
+      const added = decorate(scanForMath(document))
+      markCarrierless()
+      if (added) runDetection()
+    }, 400)
+  })
+  observer.observe(document.body, { childList: true, subtree: true })
 }
 
 // Registers KaTeX's @font-face rules at DOCUMENT level: Chrome ignores

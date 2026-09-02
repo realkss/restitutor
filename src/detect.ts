@@ -247,12 +247,17 @@ const CONST_NAMES: Record<string, { tex: string; dim: DimQ; modifier?: boolean }
   mu0: { tex: "\\mu_0", dim: CONST_DIM.mu0 },
 }
 const TERM = String.raw`(?:(\d+)\s*pi\s*)?(hbar|kB|me|epsilon0|mu0|c|G|e)`
-// The right boundary rejects a NUMBER continuing (1.38, 10, 1,5, 1 × 10⁻²³),
-// not a sentence's own period after "= 1."
+// The right boundary rejects a NUMBER continuing (1.38, 10, 1,5, 1 × 10⁻²³)
+// and a FRACTION (ε₀ = 1/4π, G = 1/m_P²), not a sentence's own period.
 const CHAIN_RE = new RegExp(
-  String.raw`(?<![A-Za-z0-9_\\])(${TERM}(?:\s*=\s*${TERM})*)\s*=\s*1(?!\d|[.,]\d|\s*[×x]\s*10)`,
+  String.raw`(?<![A-Za-z0-9_\\])(${TERM}(?:\s*=\s*${TERM})*)\s*=\s*1(?!\d|[.,]\d|\s*[×x]\s*10|\s*/|\s*\\over\b|\s*\^)`,
   "g",
 )
+
+// A chain stated hypothetically, negated, or as one of several alternatives
+// is not the document's declaration (census §6.4: classify from the body).
+const CHAIN_ANTI_FRAME =
+  /\b(if|would|were|unless|not fixed by|does not fix|do not fix|orthogonal to|also sets?|(?:third|another|other|second) variant|variant sets|instead|alternatively|rather than|unlike|whereas|as opposed to|compared|in contrast|a different row|note that|one (?:may|can|could|might)|is not (?:unity|set)|not unity|only if|provided that|corresponds to|would (?:be|read|give))\b/i
 const TERM_RE = new RegExp(TERM, "g")
 
 function parseTerms(chain: string): ChainTerm[] {
@@ -261,11 +266,24 @@ function parseTerms(chain: string): ChainTerm[] {
   return out
 }
 
+/**
+ * A declaration names a GENERATOR by its symbol ("e = 1"), whatever basis
+ * the row gives that symbol — hartree-gaussian's e carries the Gaussian
+ * half-integer charge dimension, and "ħ = m_e = e = 1" must keep it. So a
+ * chain term matches generators by tex and numeric factor directly; the
+ * dimension-based predicates serve visibility and the ladder.
+ */
+function declaresGenerator(convKey: string, tex: string, factor: string): boolean {
+  return CONVENTIONS[convKey].generators.some(
+    (g) => g.tex === tex && g.role !== "inserted" && normFactor(g.numericFactor) === normFactor(factor),
+  )
+}
+
 function termImplies(t: ChainTerm): string[] {
   const c = CONST_NAMES[t.name]
   if (c.modifier) return ALL_KEYS.filter(compatibleWithKb)
   const factor = t.coef ? `${t.coef}\\pi` : "1"
-  return ALL_KEYS.filter((k) => absorbsWithFactor(k, c.tex, c.dim, factor))
+  return ALL_KEYS.filter((k) => declaresGenerator(k, c.tex, factor))
 }
 
 export function findDeclarationChains(
@@ -521,27 +539,69 @@ export function inferConventions(
   //    equation is a declaration, not a body equation: it leaves the
   //    visible-constant pool.
   const bodyEquations: string[] = []
-  const chains: { excerpt: string; terms: ChainTerm[] }[] = []
+  type Chain = { excerpt: string; sentence: string; src: string; at: number; terms: ChainTerm[]; implies: string[] }
+  const chains: Chain[] = []
+  const chainImplies = (terms: ChainTerm[]) => {
+    let implies = [...ALL_KEYS]
+    for (const t of terms) {
+      const ti = termImplies(t)
+      implies = implies.filter((k) => ti.includes(k))
+    }
+    return implies
+  }
   for (const ch of findDeclarationChains(prose)) {
     chains.push({
       excerpt: prose.slice(Math.max(0, ch.index - 40), ch.index + ch.text.length + 40),
+      sentence: sentenceAround(prose, ch.index),
+      src: prose,
+      at: ch.index,
       terms: ch.terms,
+      implies: chainImplies(ch.terms),
     })
   }
   for (const eq of equations) {
     const found = findDeclarationChains(eq)
-    if (found.length) for (const ch of found) chains.push({ excerpt: eq, terms: ch.terms })
-    else bodyEquations.push(eq)
+    if (found.length) {
+      for (const ch of found)
+        chains.push({
+          excerpt: eq,
+          sentence: sentenceAround(eq, ch.index),
+          src: eq,
+          at: ch.index,
+          terms: ch.terms,
+          implies: chainImplies(ch.terms),
+        })
+    } else bodyEquations.push(eq)
   }
+  // Two mutually exclusive chains close together in the same source are
+  // alternatives being discussed ("Gaussian-Planck (4πε₀ = 1): … .
+  // Heaviside-Planck (ε₀ = 1): …"), not a declaration of either.
+  const alternatives = new Set<Chain>()
+  for (const a of chains)
+    for (const b of chains)
+      if (
+        a !== b &&
+        a.src === b.src &&
+        Math.abs(a.at - b.at) < 400 &&
+        !a.implies.some((k) => b.implies.includes(k))
+      ) {
+        alternatives.add(a)
+        alternatives.add(b)
+      }
   const seenChains = new Set<string>()
   for (const ch of chains) {
     const label = chainLabel(ch.terms)
     if (seenChains.has(label)) continue
     seenChains.add(label)
-    let implies = [...ALL_KEYS]
-    for (const t of ch.terms) {
-      const ti = termImplies(t)
-      implies = implies.filter((k) => ti.includes(k))
+    const hypothetical = CHAIN_ANTI_FRAME.test(ch.sentence)
+    if (hypothetical || alternatives.has(ch)) {
+      evidence.push({
+        kind: "mention",
+        label,
+        excerpt: ch.sentence.slice(0, 200),
+        note: hypothetical ? "stated hypothetically or in contrast, not adopted" : "one of several alternatives stated",
+      })
+      continue
     }
     evidence.push({
       kind: "declaration",
@@ -549,9 +609,9 @@ export function inferConventions(
       label,
       labelTex: chainTex(ch.terms),
       excerpt: ch.excerpt.trim(),
-      implies,
+      implies: ch.implies,
     })
-    intersect(implies)
+    intersect(ch.implies)
   }
 
   // 2. Named systems, framed or merely mentioned.
