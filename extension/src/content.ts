@@ -47,12 +47,7 @@ const nameOf = (key: string) => CONVENTIONS[key]?.name ?? key
 
 function evidenceItem(e: Evidence): HTMLLIElement {
   const li = document.createElement("li")
-  const strong = (s: string) => {
-    const b = document.createElement("strong")
-    b.textContent = s
-    return b
-  }
-  const excerpt = (s: string) => {
+  const quote = (s: string) => {
     const span = document.createElement("span")
     span.className = "rst-excerpt"
     const cut = s.length > 140 ? s.slice(0, 140) + "…" : s
@@ -61,30 +56,28 @@ function evidenceItem(e: Evidence): HTMLLIElement {
   }
   switch (e.kind) {
     case "declaration":
-      li.append("Declared: ", strong(e.label), excerpt(e.excerpt))
+      li.append("Stated: " + e.label + ".", quote(e.excerpt))
       break
     case "fingerprint": {
       const m = document.createElement("span")
       katex.render(e.tex, m, { throwOnError: false })
-      li.append("Equation form: ", m, " — " + e.meaning)
+      li.append("Field equation ", m, ": " + e.meaning + ".")
       break
     }
-    case "visible-constant": {
-      const tail =
-        e.strength === "strong"
-          ? ""
-          : e.strength === "isolated"
-            ? " (isolated — may be a restored numeric formula; not counted)"
-            : " (bare letter — a homograph; not counted)"
-      li.append(strong(e.constant), " appears in " + e.count + " of " + e.of + " body equations" + tail)
+    case "visible-constant":
+      li.append(
+        e.constant + " explicit in " + e.count + " of " + e.of + " equations" +
+          (e.strength === "strong" ? "." : "; too few to count."),
+      )
       break
-    }
     case "mention":
-      li.append("Mentioned only: ", strong(e.label), e.note ? " — " + e.note : "")
+      li.append(e.label + ": " + (e.note || "mentioned, not declared") + ".")
       break
   }
   return li
 }
+
+const TOTAL_CONVENTIONS = Object.keys(CONVENTIONS).length
 
 function detectionCard(): HTMLElement | null {
   const r = pageDetection
@@ -92,7 +85,7 @@ function detectionCard(): HTMLElement | null {
   const card = document.createElement("div")
   card.className = "card"
   const h = document.createElement("h2")
-  h.textContent = "Page conventions"
+  h.textContent = "Conventions"
   card.appendChild(h)
 
   const acting = r.evidence.filter(
@@ -102,26 +95,26 @@ function detectionCard(): HTMLElement | null {
 
   const line = document.createElement("p")
   line.style.margin = "0"
-  const badge = document.createElement("span")
+  const lead = document.createElement("span")
   if (r.kind === "narrowed") {
     const set = r.sets[0]
-    badge.className = "verdict ok"
-    badge.textContent = "Narrowed"
-    line.append(badge, " — " + set.length + " candidate" + (set.length === 1 ? "" : "s") + " the evidence cannot separate:")
+    lead.className = "verdict ok"
+    lead.textContent = "Consistent with " + set.length + " of " + TOTAL_CONVENTIONS + " conventions"
+    line.append(lead, ":")
     card.appendChild(line)
     const cands = document.createElement("p")
     cands.className = "rst-cands"
     cands.textContent = set.map(nameOf).join("  ·  ")
     card.appendChild(cands)
   } else if (r.kind === "conflict") {
-    badge.className = "verdict warn"
-    badge.textContent = "Conflict"
-    line.append(badge, " — these cannot all hold:")
+    lead.className = "verdict warn"
+    lead.textContent = "Inconsistent."
+    line.append(lead, " No convention satisfies all of the following.")
     card.appendChild(line)
   } else {
-    badge.className = "verdict"
-    badge.textContent = "Undetermined"
-    line.append(badge, " — nothing on this page fixes its conventions.")
+    lead.className = "verdict"
+    lead.textContent = "Undetermined."
+    line.append(lead, " Nothing in the page fixes a convention.")
     card.appendChild(line)
   }
 
@@ -135,7 +128,7 @@ function detectionCard(): HTMLElement | null {
   if (r.kind === "narrowed" && noted.length) {
     const also = document.createElement("p")
     also.className = "unitline"
-    also.textContent = "Also noted, not applied: " + noted.map((e) => (e.kind === "mention" ? e.label : e.kind === "visible-constant" ? e.constant : "")).filter(Boolean).join("; ")
+    also.textContent = "Not used: " + noted.map((e) => (e.kind === "mention" ? e.label : e.kind === "visible-constant" ? e.constant : "")).filter(Boolean).join("; ") + "."
     card.appendChild(also)
   }
   return card

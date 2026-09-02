@@ -305,7 +305,7 @@ export const NAMED_RULES: NamedRule[] = [
   {
     label: "natural units",
     pattern: /natural\s+units/i,
-    note: "polysemous — c = 1 only, ħ = c = k_B = ε₀ = 1, or full Planck; the phrase alone classifies nothing (census §6.4)",
+    note: "ambiguous (c = 1; ħ = c = k_B = ε₀ = 1; Planck) and fixes nothing by itself",
   },
   {
     label: "effective (excitonic) Rydberg units",
@@ -400,7 +400,7 @@ function ladderRung(prefix: string): Rung | null {
     return {
       label: "G_μν = κ T_μν — κ symbolic, bind per paper",
       tex: "G_{\\mu\\nu} = \\kappa\\, T_{\\mu\\nu}",
-      meaning: "κ is symbolic — bind it per paper; it has three literature expansions of different dimension",
+      meaning: "κ symbolic; the units of T₀₀ fix it",
       note: "κ has three literature expansions of different dimension (census §6.1)",
     }
   if (hasG && hasC) return null // constants explicit: the visible-constant channel speaks
@@ -408,21 +408,21 @@ function ladderRung(prefix: string): Rung | null {
     return {
       label: `G_μν = ${coef}πG T_μν — c = 1`,
       tex: `G_{\\mu\\nu} = ${coef}\\pi G\\, T_{\\mu\\nu}`,
-      meaning: "G is printed but no c: a c = 1 convention",
+      meaning: "G without c, hence c = 1",
       implies: absorbing(["c", CONST_DIM.c]),
     }
   if (!hasG && hasPi)
     return {
       label: `G_μν = ${coef}π T_μν — Cluster A (G = c = 1 family)`,
       tex: `G_{\\mu\\nu} = ${coef}\\pi\\, T_{\\mu\\nu}`,
-      meaning: `${coef}π with no G: the G = c = 1 family (Cluster A)`,
+      meaning: `${coef}π and no G, hence G = c = 1 (Cluster A)`,
       implies: absorbing(["c", CONST_DIM.c], ["G", CONST_DIM.G]),
     }
   if (p === "")
     return {
       label: "G_μν = T_μν — 8πG = c = 1",
       tex: "G_{\\mu\\nu} = T_{\\mu\\nu}",
-      meaning: "no prefactor at all: 8πG = c = 1",
+      meaning: "no prefactor, hence 8πG = c = 1",
       implies: ALL_KEYS.filter(
         (k) => absorbsWithFactor(k, "G", CONST_DIM.G, "8\\pi") && absorbsExactly(k, "c", CONST_DIM.c),
       ),
@@ -555,7 +555,7 @@ export function inferConventions(
         kind: "mention",
         label: rule.label,
         excerpt: sentence.slice(0, 200),
-        note: "named outside a declarative frame (a conversion remark, comparison, or reference) — recorded, not applied",
+        note: "mentioned, not declared",
       })
       continue
     }
