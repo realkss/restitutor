@@ -34,6 +34,43 @@ export const RENDERING_EXCLUDED: Record<string, string> = {
   "dirac-atomic": "carries the Gaussian/HL fork in its census rescaling list — un-adjudicated here",
 }
 
+export type EmFlavor = "si" | "gaussian" | "esu" | "emu" | "heaviside-lorentz"
+
+/**
+ * The E&M flavor a row is DETERMINED to carry (an E&M generator, or SI
+ * itself), for detection (census §6.3). Rows absent here are either
+ * undetermined (EM_FLAVOR_UNDETERMINED — the atomic α-ambiguity and the
+ * Peierls lattice row) or mechanical with no E&M sector at all
+ * (RENDERING_NOT_APPLICABLE); neither may be excluded by an E&M declaration,
+ * because the registry is not closed under mechanical ⊗ E&M composition.
+ * A row may carry two flavors when the literature names it both ways
+ * (magnetism-emu: "Gaussian units (emu cm⁻³ Oe⁻¹)"). Partition-guarded by test.
+ */
+export const EM_FLAVOR: Record<string, EmFlavor[]> = {
+  si: ["si"],
+  gaussian: ["gaussian"],
+  "geometrized-gaussian": ["gaussian"],
+  "gaussian-natural": ["gaussian"],
+  "planck-gaussian": ["gaussian"],
+  "hartree-gaussian": ["gaussian"],
+  esu: ["esu"],
+  emu: ["emu"],
+  "magnetism-emu": ["gaussian", "emu"],
+  "heaviside-lorentz": ["heaviside-lorentz"],
+  "hep-hl": ["heaviside-lorentz"],
+  "hep-hl-kb": ["heaviside-lorentz"],
+  "planck-hl": ["heaviside-lorentz"],
+  "geometrized-hl": ["heaviside-lorentz"],
+}
+
+export const EM_FLAVOR_UNDETERMINED: readonly string[] = [
+  "hartree",
+  "rydberg",
+  "effective-au",
+  "dirac-atomic",
+  "lattice-model",
+] as const
+
 /**
  * Conventions with no classical-E&M rendering story to demonstrate —
  * mechanical, gravitational, or per-paper scales whose EM sector is either

@@ -3,7 +3,13 @@
 import test, { describe } from "node:test"
 import assert from "node:assert"
 import { CONVENTIONS, EM_RIDERS, TIERS } from "./convention"
-import { RENDERING, RENDERING_EXCLUDED, RENDERING_NOT_APPLICABLE } from "./rendering"
+import {
+  EM_FLAVOR,
+  EM_FLAVOR_UNDETERMINED,
+  RENDERING,
+  RENDERING_EXCLUDED,
+  RENDERING_NOT_APPLICABLE,
+} from "./rendering"
 
 describe("tier stamps", () => {
   test("every convention has a tier and every tier names a convention", () => {
@@ -38,5 +44,25 @@ describe("the inspector's rendering map", () => {
       ...RENDERING_NOT_APPLICABLE,
     ].sort()
     assert.deepStrictEqual(partition, all)
+  })
+})
+
+describe("the detection flavor map", () => {
+  test("COMPLETENESS: every convention is flavor-determined, undetermined, or mechanical — exactly once", () => {
+    const all = Object.keys(CONVENTIONS).sort()
+    const partition = [
+      ...Object.keys(EM_FLAVOR),
+      ...EM_FLAVOR_UNDETERMINED,
+      ...RENDERING_NOT_APPLICABLE,
+    ].sort()
+    assert.deepStrictEqual(partition, all)
+  })
+  test("determined flavors agree with the rider-table rendering where both exist", () => {
+    for (const [key, rendering] of Object.entries(RENDERING)) {
+      const flavors = EM_FLAVOR[key]
+      if (!flavors) continue
+      if (["si", "gaussian", "esu", "emu", "heaviside-lorentz"].includes(rendering))
+        assert.ok(flavors.includes(rendering as (typeof flavors)[number]), `${key}: ${rendering} vs ${flavors}`)
+    }
   })
 })

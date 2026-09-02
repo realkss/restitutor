@@ -10,7 +10,7 @@ import {
   translateTex,
 } from "../../src/unitsEngine"
 import { defaultProfile } from "../../src/profiles"
-import { DetectionReport, inferConventions } from "../../src/detect"
+import { DetectionReport, Evidence, inferConventions } from "../../src/detect"
 import { renderTranslation } from "../../app/resultView"
 import { MathCandidate, scanForMath } from "./extract"
 import panelCss from "../panel.css"
@@ -38,19 +38,37 @@ let geomBox: HTMLInputElement
 let currentTex = ""
 let pageDetection: DetectionReport | null = null
 
+// The line is DERIVED from the evidence the report carries — never a fixed
+// sentence that might name a cause that did not participate.
+function describeEvidence(e: Evidence): string {
+  switch (e.kind) {
+    case "declaration":
+      return `“${e.label}”`
+    case "fingerprint":
+      return e.label
+    case "visible-constant":
+      return `${e.constant} in ${e.count}/${e.of} equations${e.strength === "strong" ? "" : ` (${e.strength})`}`
+    case "mention":
+      return `${e.label} (mention)`
+  }
+}
+
 function detectionLine(): string {
   const r = pageDetection
   if (!r) return ""
+  const acting = r.evidence.filter(
+    (e) => e.kind === "declaration" || e.kind === "fingerprint" || (e.kind === "visible-constant" && e.strength === "strong"),
+  )
+  const noted = r.evidence.filter((e) => !acting.includes(e))
   if (r.kind === "conflict")
-    return "Page evidence CONFLICTS — the declared units and the visible constants disagree."
-  if (r.kind === "insufficient") return "No convention evidence found on this page."
+    return `Page evidence conflicts — these cannot all hold: ${acting.map(describeEvidence).join("; ")}.`
+  if (r.kind === "insufficient")
+    return noted.length
+      ? `No convention declaration found on this page. Noted, not applied: ${noted.map(describeEvidence).join("; ")}.`
+      : "No convention evidence found on this page."
   const set = r.sets[0]
   const shown = set.slice(0, 4).join(", ") + (set.length > 4 ? `, +${set.length - 4} more` : "")
-  const why = r.evidence
-    .filter((e) => e.kind === "declaration" || (e.kind === "visible-constant" && e.excludes.length))
-    .map((e) => (e.kind === "declaration" ? `“${e.label}”` : `${e.constant} visible`))
-    .join("; ")
-  return `Page evidence → ${set.length} candidate convention${set.length === 1 ? "" : "s"}: ${shown} (${why})`
+  return `Page evidence → ${set.length} candidate convention${set.length === 1 ? "" : "s"}: ${shown} (${acting.map(describeEvidence).join("; ")})`
 }
 
 function buildPanel(): void {
@@ -166,13 +184,15 @@ function openPanel(c: MathCandidate): void {
 function init(): void {
   loadKatexStylesheet()
   const candidates = scanForMath(document)
-  // Document-level detection (census §6): prose declarations + visible
-  // constants across everything extracted. Once per page — the evidence set
-  // does not change on click.
+  // Document-level detection (census §6): prose declarations + the ladder +
+  // body-level visible constants across everything extracted. Once per page —
+  // the evidence set does not change on click. Display equations first: the
+  // ladder and the couplings live there, not in inline single symbols.
   try {
+    const ordered = [...candidates].sort((a, b) => Number(b.display) - Number(a.display))
     pageDetection = inferConventions({
-      text: (document.body?.innerText ?? "").slice(0, 300000),
-      equations: candidates.slice(0, 500).map((c) => c.tex),
+      text: proseSurface(),
+      equations: ordered.slice(0, 500).map((c) => c.tex),
     })
   } catch {
     pageDetection = null // detection must never take the panel down with it
@@ -210,6 +230,33 @@ function loadKatexStylesheet(): void {
   link.rel = "stylesheet"
   link.href = rt.getURL("katex.min.css")
   document.head.appendChild(link)
+}
+
+// The prose surface for declarations. On LaTeXML pages (ar5iv, arXiv HTML)
+// that is the abstract, the opening paragraphs, and any section titled
+// conventions/notation/units — where declarations live — skipping the
+// bibliography, whose reference titles mention every unit system there is.
+// textContent (not innerText) so LaTeXML's x-tex annotations, i.e. the TeX,
+// come along. Elsewhere: the body's innerText, capped.
+function proseSurface(): string {
+  const parts: string[] = []
+  const abstract = document.querySelector(".ltx_abstract")
+  if (abstract) parts.push(abstract.textContent ?? "")
+  const paras = document.querySelectorAll(".ltx_para")
+  if (paras.length) {
+    let n = 0
+    for (const p of paras) {
+      if (p.closest(".ltx_bibliography")) continue
+      parts.push(p.textContent ?? "")
+      if (++n >= 60) break
+    }
+    for (const sec of document.querySelectorAll(".ltx_section, .ltx_subsection, .ltx_appendix")) {
+      const title = sec.querySelector(".ltx_title")?.textContent ?? ""
+      if (/convention|notation|units/i.test(title)) parts.push(sec.textContent ?? "")
+    }
+    return parts.join("\n").slice(0, 300000)
+  }
+  return (document.body?.innerText ?? "").slice(0, 300000)
 }
 
 // Honesty marker (product contract: decline loudly, never silently skip):
