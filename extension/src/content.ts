@@ -10,6 +10,7 @@ import {
   translateTex,
 } from "../../src/unitsEngine"
 import { defaultProfile } from "../../src/profiles"
+import { CONVENTIONS } from "../../src/convention"
 import { DetectionReport, Evidence, inferConventions } from "../../src/detect"
 import { renderTranslation } from "../../app/resultView"
 import { MathCandidate, scanForMath } from "./extract"
@@ -38,37 +39,106 @@ let geomBox: HTMLInputElement
 let currentTex = ""
 let pageDetection: DetectionReport | null = null
 
-// The line is DERIVED from the evidence the report carries — never a fixed
-// sentence that might name a cause that did not participate.
-function describeEvidence(e: Evidence): string {
+// The page-conventions card is DERIVED from the evidence the report
+// carries — never a fixed sentence that might name a cause that did not
+// participate — and it speaks in convention NAMES and typeset equation
+// forms, not registry slugs and pseudo-math.
+const nameOf = (key: string) => CONVENTIONS[key]?.name ?? key
+
+function evidenceItem(e: Evidence): HTMLLIElement {
+  const li = document.createElement("li")
+  const strong = (s: string) => {
+    const b = document.createElement("strong")
+    b.textContent = s
+    return b
+  }
+  const excerpt = (s: string) => {
+    const span = document.createElement("span")
+    span.className = "rst-excerpt"
+    const cut = s.length > 140 ? s.slice(0, 140) + "…" : s
+    span.textContent = " " + String.fromCharCode(0x201c) + cut + String.fromCharCode(0x201d)
+    return span
+  }
   switch (e.kind) {
     case "declaration":
-      return `“${e.label}”`
-    case "fingerprint":
-      return e.label
-    case "visible-constant":
-      return `${e.constant} in ${e.count}/${e.of} equations${e.strength === "strong" ? "" : ` (${e.strength})`}`
+      li.append("Declared: ", strong(e.label), excerpt(e.excerpt))
+      break
+    case "fingerprint": {
+      const m = document.createElement("span")
+      katex.render(e.tex, m, { throwOnError: false })
+      li.append("Equation form: ", m, " — " + e.meaning)
+      break
+    }
+    case "visible-constant": {
+      const tail =
+        e.strength === "strong"
+          ? ""
+          : e.strength === "isolated"
+            ? " (isolated — may be a restored numeric formula; not counted)"
+            : " (bare letter — a homograph; not counted)"
+      li.append(strong(e.constant), " appears in " + e.count + " of " + e.of + " body equations" + tail)
+      break
+    }
     case "mention":
-      return `${e.label} (mention)`
+      li.append("Mentioned only: ", strong(e.label), e.note ? " — " + e.note : "")
+      break
   }
+  return li
 }
 
-function detectionLine(): string {
+function detectionCard(): HTMLElement | null {
   const r = pageDetection
-  if (!r) return ""
+  if (!r) return null
+  const card = document.createElement("div")
+  card.className = "card"
+  const h = document.createElement("h2")
+  h.textContent = "Page conventions"
+  card.appendChild(h)
+
   const acting = r.evidence.filter(
     (e) => e.kind === "declaration" || e.kind === "fingerprint" || (e.kind === "visible-constant" && e.strength === "strong"),
   )
-  const noted = r.evidence.filter((e) => !acting.includes(e))
-  if (r.kind === "conflict")
-    return `Page evidence conflicts — these cannot all hold: ${acting.map(describeEvidence).join("; ")}.`
-  if (r.kind === "insufficient")
-    return noted.length
-      ? `No convention declaration found on this page. Noted, not applied: ${noted.map(describeEvidence).join("; ")}.`
-      : "No convention evidence found on this page."
-  const set = r.sets[0]
-  const shown = set.slice(0, 4).join(", ") + (set.length > 4 ? `, +${set.length - 4} more` : "")
-  return `Page evidence → ${set.length} candidate convention${set.length === 1 ? "" : "s"}: ${shown} (${acting.map(describeEvidence).join("; ")})`
+  const noted = r.evidence.filter((e) => !acting.includes(e) && !(e.kind === "visible-constant" && e.strength === "weak-homograph"))
+
+  const line = document.createElement("p")
+  line.style.margin = "0"
+  const badge = document.createElement("span")
+  if (r.kind === "narrowed") {
+    const set = r.sets[0]
+    badge.className = "verdict ok"
+    badge.textContent = "Narrowed"
+    line.append(badge, " — " + set.length + " candidate" + (set.length === 1 ? "" : "s") + " the evidence cannot separate:")
+    card.appendChild(line)
+    const cands = document.createElement("p")
+    cands.className = "rst-cands"
+    cands.textContent = set.map(nameOf).join("  ·  ")
+    card.appendChild(cands)
+  } else if (r.kind === "conflict") {
+    badge.className = "verdict warn"
+    badge.textContent = "Conflict"
+    line.append(badge, " — these cannot all hold:")
+    card.appendChild(line)
+  } else {
+    badge.className = "verdict"
+    badge.textContent = "Undetermined"
+    line.append(badge, " — nothing on this page fixes its conventions.")
+    card.appendChild(line)
+  }
+
+  const shown = r.kind === "insufficient" ? noted : acting
+  if (shown.length) {
+    const ul = document.createElement("ul")
+    ul.className = "reasons"
+    for (const e of shown) ul.appendChild(evidenceItem(e))
+    card.appendChild(ul)
+  }
+  if (r.kind === "narrowed" && noted.length) {
+    const also = document.createElement("p")
+    also.className = "unitline"
+    also.textContent = "Also noted, not applied: " + noted.map((e) => (e.kind === "mention" ? e.label : e.kind === "visible-constant" ? e.constant : "")).filter(Boolean).join("; ")
+    card.appendChild(also)
+  }
+  return card
 }
 
 function buildPanel(): void {
@@ -132,12 +202,10 @@ function buildPanel(): void {
   resultsEl.className = "rst-results"
   resultsEl.setAttribute("aria-live", "polite")
 
-  const detect = document.createElement("p")
-  detect.className = "rst-detect"
-  detect.textContent = detectionLine()
-  if (!detect.textContent) detect.style.display = "none"
-
-  panel.append(head, controls, detect, resultsEl)
+  panel.append(head, controls)
+  const detect = detectionCard()
+  if (detect) panel.appendChild(detect)
+  panel.appendChild(resultsEl)
   root.appendChild(panel)
   document.body.appendChild(host)
 }

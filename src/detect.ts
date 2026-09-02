@@ -54,6 +54,11 @@ export type Evidence =
   | {
       kind: "fingerprint"
       label: string
+      /** The canonical form of the rung, as TeX, for display. */
+      tex: string
+      /** What the form implies, in words. */
+      meaning: string
+      /** The page equation that matched. */
       equation: string
       implies: string[]
     }
@@ -370,7 +375,9 @@ export const NAMED_RULES: NamedRule[] = [
 ]
 
 function sentenceAround(text: string, index: number): string {
-  const start = Math.max(text.lastIndexOf(". ", index), text.lastIndexOf("; ", index), 0)
+  // The previous sentence's ". " boundary belongs to IT: start after it.
+  const prev = Math.max(text.lastIndexOf(". ", index), text.lastIndexOf("; ", index))
+  const start = prev < 0 ? 0 : prev + 2
   const ends = [text.indexOf(". ", index), text.indexOf("; ", index)].filter((i) => i >= 0)
   const end = ends.length ? Math.min(...ends) + 1 : text.length
   return text.slice(start, end).trim()
@@ -381,7 +388,9 @@ function sentenceAround(text: string, index: number): string {
 // ---------------------------------------------------------------------------
 const EINSTEIN_RE = /\bG_\{?([a-zA-Z\\]+)\}?\s*(?:\+[^=]*?)?=\s*([^=]*?)\bT_\{?\1\}?/
 
-function ladderRung(prefix: string): { label: string; implies?: string[]; note?: string } | null {
+type Rung = { label: string; tex: string; meaning: string; implies?: string[]; note?: string }
+
+function ladderRung(prefix: string): Rung | null {
   const p = prefix.replace(/\s+/g, " ").trim()
   const hasG = /\bG\b/.test(p)
   const hasC = /\bc\b|c\^/.test(p)
@@ -390,19 +399,30 @@ function ladderRung(prefix: string): { label: string; implies?: string[]; note?:
   if (/kappa/.test(p))
     return {
       label: "G_μν = κ T_μν — κ symbolic, bind per paper",
+      tex: "G_{\\mu\\nu} = \\kappa\\, T_{\\mu\\nu}",
+      meaning: "κ is symbolic — bind it per paper; it has three literature expansions of different dimension",
       note: "κ has three literature expansions of different dimension (census §6.1)",
     }
   if (hasG && hasC) return null // constants explicit: the visible-constant channel speaks
   if (hasG && hasPi)
-    return { label: `G_μν = ${coef}πG T_μν — c = 1`, implies: absorbing(["c", CONST_DIM.c]) }
+    return {
+      label: `G_μν = ${coef}πG T_μν — c = 1`,
+      tex: `G_{\\mu\\nu} = ${coef}\\pi G\\, T_{\\mu\\nu}`,
+      meaning: "G is printed but no c: a c = 1 convention",
+      implies: absorbing(["c", CONST_DIM.c]),
+    }
   if (!hasG && hasPi)
     return {
       label: `G_μν = ${coef}π T_μν — Cluster A (G = c = 1 family)`,
+      tex: `G_{\\mu\\nu} = ${coef}\\pi\\, T_{\\mu\\nu}`,
+      meaning: `${coef}π with no G: the G = c = 1 family (Cluster A)`,
       implies: absorbing(["c", CONST_DIM.c], ["G", CONST_DIM.G]),
     }
   if (p === "")
     return {
       label: "G_μν = T_μν — 8πG = c = 1",
+      tex: "G_{\\mu\\nu} = T_{\\mu\\nu}",
+      meaning: "no prefactor at all: 8πG = c = 1",
       implies: ALL_KEYS.filter(
         (k) => absorbsWithFactor(k, "G", CONST_DIM.G, "8\\pi") && absorbsExactly(k, "c", CONST_DIM.c),
       ),
@@ -553,7 +573,14 @@ export function inferConventions(
     if (!rung || seenRungs.has(rung.label)) continue
     seenRungs.add(rung.label)
     if (rung.implies) {
-      evidence.push({ kind: "fingerprint", label: rung.label, equation: eq.trim().slice(0, 120), implies: rung.implies })
+      evidence.push({
+        kind: "fingerprint",
+        label: rung.label,
+        tex: rung.tex,
+        meaning: rung.meaning,
+        equation: eq.trim().slice(0, 120),
+        implies: rung.implies,
+      })
       intersect(rung.implies)
     } else {
       evidence.push({ kind: "mention", label: rung.label, excerpt: eq.trim().slice(0, 120), note: rung.note ?? "" })
