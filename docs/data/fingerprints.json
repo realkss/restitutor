@@ -1,0 +1,470 @@
+[
+  {
+    "id": "coulomb-4pi-eps0",
+    "label": "Coulomb prefactor 1/(4πε₀)",
+    "tex": "F = \\frac{1}{4\\pi\\varepsilon_0}\\frac{q_1 q_2}{r^2}",
+    "meaning": "4πε₀ under the fraction bar: SI, rationalized, ε₀ not absorbed",
+    "pattern": "(?:/\\s*\\(?\\s*4\\s*pi\\s*epsilon0|\\(\\s*4\\s*pi\\s*epsilon0\\s*\\)\\s*\\^\\s*\\{?\\s*-)",
+    "implies": {
+      "flavored": [
+        "si"
+      ]
+    },
+    "positives": [
+      "F = \\frac{1}{4\\pi\\varepsilon_0}\\frac{q_1 q_2}{r^2}",
+      "\\alpha = \\frac{e^2}{4\\pi\\varepsilon_0\\hbar c}",
+      "V(r) = \\frac{e^2}{4\\pi\\epsilon_{0} r}"
+    ],
+    "negatives": [
+      "\\alpha_s = \\frac{g^2}{4\\pi}",
+      "F^k = \\frac{4\\pi}{2k+1}\\langle Y_k\\rangle"
+    ],
+    "census": "6.3 table row SI (Coulomb 1/(4πε₀)); 6.4 'α = e²/(4πε₀ħc) → SI' and 'constants-explicit SI is positively assertible'; negatives are 6.6's α_s = g²/4π and the spherical-harmonic 4π"
+  },
+  {
+    "id": "coulomb-emu-c2",
+    "label": "Coulomb force with an explicit c²",
+    "tex": "F = c^2\\,\\frac{q_1 q_2}{r^2}",
+    "meaning": "c² in Coulomb's law: EMU, the family's most diagnostic single equation",
+    "pattern": "c\\s*\\^\\s*\\{?\\s*2\\s*\\}?\\s*\\)?\\s*\\(?\\s*q[^=]{0,30}/\\s*\\(?\\s*r\\s*\\^\\s*\\{?\\s*2",
+    "implies": {
+      "flavored": [
+        "emu"
+      ]
+    },
+    "positives": [
+      "F = c^2 \\frac{q_1 q_2}{r^2}",
+      "F = \\frac{c^2 q_1 q_2}{r^2}",
+      "F = c^2 q_1 q_2 / r^2"
+    ],
+    "negatives": [
+      "F = \\frac{q_1 q_2}{r^2}",
+      "E = m c^2"
+    ],
+    "census": "6.3 table row EMU, plus its note: 'EMU's Coulomb law with an explicit c² is the single most diagnostic equation in the family'"
+  },
+  {
+    "id": "gauss-unrationalized",
+    "label": "Gauss law with 4πρ",
+    "tex": "\\nabla\\cdot\\mathbf{D} = 4\\pi\\rho",
+    "meaning": "4πρ on the source: unrationalized — Gaussian, ESU, or EMU",
+    "pattern": "\\\\nabla\\s*\\\\cdot[^=]{0,25}=\\s*4\\s*pi\\s*(?:\\\\rho|ρ)",
+    "implies": {
+      "flavored": [
+        "gaussian",
+        "esu",
+        "emu"
+      ]
+    },
+    "positives": [
+      "\\nabla\\cdot\\mathbf{D} = 4\\pi\\rho",
+      "\\nabla \\cdot \\vec{E} = 4\\pi\\rho_{f}",
+      "\\vec\\nabla\\cdot\\mathbf{D}(\\mathbf{r}) = 4\\pi \\rho"
+    ],
+    "negatives": [
+      "\\nabla\\cdot\\mathbf{D} = \\rho",
+      "\\langle r^{-1}\\rangle = \\sum_k \\frac{4\\pi}{2k+1} F^k"
+    ],
+    "census": "6.3 table rows Gaussian / ESU / EMU (Gauss ∇·D = 4πρ); 6.6 keeps the Slater-integral 4π out of this rule"
+  },
+  {
+    "id": "gauss-rationalized",
+    "label": "Gauss law with bare ρ",
+    "tex": "\\nabla\\cdot\\mathbf{D} = \\rho",
+    "meaning": "no 4π on the source: rationalized — SI or Heaviside–Lorentz",
+    "pattern": "\\\\nabla\\s*\\\\cdot[^=]{0,25}=\\s*(?:\\\\rho|ρ)(?![A-Za-z])",
+    "implies": {
+      "flavored": [
+        "si",
+        "heaviside-lorentz"
+      ]
+    },
+    "positives": [
+      "\\nabla\\cdot\\mathbf{D} = \\rho",
+      "\\nabla \\cdot \\vec{D} = \\rho_{\\rm free}"
+    ],
+    "negatives": [
+      "\\nabla\\cdot\\mathbf{D} = 4\\pi\\rho",
+      "\\nabla\\cdot\\mathbf{B} = 0"
+    ],
+    "census": "6.3 table rows SI and Heaviside–Lorentz (Gauss ∇·D = ρ) — the two rationalized systems, which this form cannot separate"
+  },
+  {
+    "id": "ampere-4pi-over-c",
+    "label": "Ampère–Maxwell with (4π/c)J",
+    "tex": "\\nabla\\times\\mathbf{H} = \\frac{4\\pi}{c}\\mathbf{J} + \\frac{1}{c}\\frac{\\partial\\mathbf{D}}{\\partial t}",
+    "meaning": "4π/c on the current: Gaussian — unrationalized plus the c-rider",
+    "pattern": "(?<![0-9])4\\s*pi\\s*\\)?[^=G]{0,12}?/\\s*\\(?\\s*c(?![A-Za-z_0-9^])",
+    "implies": {
+      "flavored": [
+        "gaussian"
+      ]
+    },
+    "positives": [
+      "\\nabla\\times\\mathbf{H} = \\frac{4\\pi}{c}\\mathbf{J} + \\frac{1}{c}\\frac{\\partial\\mathbf{D}}{\\partial t}",
+      "\\mathbf{B}(\\mathbf{r}) = \\frac{4\\pi}{c}\\int \\mathbf{J}\\,d^3r'"
+    ],
+    "negatives": [
+      "\\alpha = \\frac{e^2}{4\\pi\\varepsilon_0\\hbar c}",
+      "\\Delta\\theta = \\frac{4\\pi G}{c^2}\\Sigma"
+    ],
+    "census": "6.3 table row Gaussian (Ampère (4π/c)J + (1/c)Ḋ) — the c-rider that separates Gaussian from ESU/EMU. The second negative is the gravitational 4πG/c², which must never read as the E&M c-rider"
+  },
+  {
+    "id": "ampere-4pi-j",
+    "label": "Ampère–Maxwell with 4πJ and no 1/c",
+    "tex": "\\nabla\\times\\mathbf{H} = 4\\pi\\mathbf{J} + \\frac{\\partial\\mathbf{D}}{\\partial t}",
+    "meaning": "4πJ with no c-rider: ESU or EMU, never Gaussian",
+    "pattern": "\\\\nabla\\s*\\\\times[^=]{0,25}=\\s*4\\s*pi\\s*(?![^=]{0,12}/\\s*c(?![A-Za-z_0-9]))[^=]{0,15}?J(?![A-Za-z])",
+    "implies": {
+      "flavored": [
+        "esu",
+        "emu"
+      ]
+    },
+    "positives": [
+      "\\nabla\\times\\mathbf{H} = 4\\pi\\mathbf{J} + \\frac{\\partial\\mathbf{D}}{\\partial t}",
+      "\\nabla \\times \\vec{H} = 4\\pi \\vec{J} + \\dot{\\vec{D}}"
+    ],
+    "negatives": [
+      "\\nabla\\times\\mathbf{H} = \\frac{4\\pi}{c}\\mathbf{J} + \\frac{1}{c}\\dot{\\mathbf{D}}",
+      "\\nabla\\times\\mathbf{H} = \\mathbf{J} + \\dot{\\mathbf{D}}"
+    ],
+    "census": "6.3 table rows ESU and EMU (Ampère 4πJ + Ḋ), which the census says are identical in the electric sector"
+  },
+  {
+    "id": "ampere-si",
+    "label": "Ampère–Maxwell with J + Ḋ",
+    "tex": "\\nabla\\times\\mathbf{H} = \\mathbf{J} + \\frac{\\partial\\mathbf{D}}{\\partial t}",
+    "meaning": "current with neither 4π nor 1/c: SI, asserted positively",
+    "pattern": "\\\\nabla\\s*\\\\times[^=]{0,25}=\\s*(?:mu0\\s*)?(?:\\\\[a-zA-Z]+\\s*)?\\{?\\s*J\\s*\\}?\\s*\\+",
+    "implies": {
+      "flavored": [
+        "si"
+      ]
+    },
+    "positives": [
+      "\\nabla\\times\\mathbf{H} = \\mathbf{J} + \\frac{\\partial\\mathbf{D}}{\\partial t}",
+      "\\nabla\\times\\mathbf{B} = \\mu_0\\mathbf{J} + \\mu_0\\varepsilon_0\\frac{\\partial\\mathbf{E}}{\\partial t}"
+    ],
+    "negatives": [
+      "\\nabla\\times\\mathbf{H} = 4\\pi\\mathbf{J} + \\dot{\\mathbf{D}}",
+      "\\nabla\\times\\mathbf{H} = \\frac{1}{c}\\left(\\mathbf{J} + \\dot{\\mathbf{D}}\\right)"
+    ],
+    "census": "6.3 table row SI (Ampère ∇×H = J + Ḋ); 6.4 'Constants-explicit SI is positively assertible', not the residue of nothing firing"
+  },
+  {
+    "id": "ampere-hl",
+    "label": "Ampère–Maxwell with (1/c)(J + Ḋ)",
+    "tex": "\\nabla\\times\\mathbf{H} = \\frac{1}{c}\\left(\\mathbf{J} + \\dot{\\mathbf{D}}\\right)",
+    "meaning": "1/c on the whole source, no 4π: Heaviside–Lorentz",
+    "pattern": "\\\\nabla\\s*\\\\times[^=]{0,25}=\\s*\\(?\\s*1\\s*\\)?\\s*/\\s*\\(?\\s*c\\s*\\)?\\s*\\(?\\s*(?:\\\\[a-zA-Z]+\\s*)?\\{?\\s*J(?![A-Za-z])",
+    "implies": {
+      "flavored": [
+        "heaviside-lorentz"
+      ]
+    },
+    "positives": [
+      "\\nabla\\times\\mathbf{H} = \\frac{1}{c}\\left(\\mathbf{J} + \\dot{\\mathbf{D}}\\right)",
+      "\\nabla \\times \\vec{H} = \\frac{1}{c}(\\vec{J} + \\partial_t \\vec{D})"
+    ],
+    "negatives": [
+      "\\nabla\\times\\mathbf{H} = \\frac{4\\pi}{c}\\mathbf{J} + \\frac{1}{c}\\dot{\\mathbf{D}}",
+      "\\nabla\\times\\mathbf{H} = \\mathbf{J} + \\dot{\\mathbf{D}}"
+    ],
+    "census": "6.3 table row Heaviside–Lorentz (Ampère (1/c)(J + Ḋ)) — rationalized source, c-rider present"
+  },
+  {
+    "id": "alpha-hl",
+    "label": "α = e²/4π",
+    "tex": "\\alpha = \\frac{e^2}{4\\pi}",
+    "meaning": "4π but no ε₀ under e²: Heaviside–Lorentz",
+    "pattern": "(?<![A-Za-z])alpha(?![A-Za-z_'])\\s*=\\s*\\(?\\s*e\\s*\\^\\s*\\{?\\s*2\\s*\\}?\\s*\\)?\\s*/\\s*\\(?\\s*4\\s*pi(?!\\s*epsilon0)",
+    "implies": {
+      "flavored": [
+        "heaviside-lorentz"
+      ]
+    },
+    "positives": [
+      "\\alpha = \\frac{e^2}{4\\pi}",
+      "\\alpha = e^2/4\\pi \\simeq 1/137"
+    ],
+    "negatives": [
+      "\\alpha_s = \\frac{g^2}{4\\pi}",
+      "\\alpha = \\frac{e^2}{4\\pi\\varepsilon_0\\hbar c}"
+    ],
+    "census": "6.4 'Strong tokens worth hard-coding: α = e²/4π → HL'; 6.6 retires α_s = g²/4π as a Gaussian tell, so it must not fire here"
+  },
+  {
+    "id": "alpha-gaussian",
+    "label": "α = e²/ħc",
+    "tex": "\\alpha = \\frac{e^2}{\\hbar c}",
+    "meaning": "e²/ħc with no 4π and no ε₀: Gaussian",
+    "pattern": "(?<![A-Za-z])alpha(?![A-Za-z_'])\\s*=\\s*\\(?\\s*e\\s*\\^\\s*\\{?\\s*2\\s*\\}?\\s*\\)?\\s*/\\s*\\(?\\s*hbar\\s*c(?![A-Za-z_0-9])",
+    "implies": {
+      "flavored": [
+        "gaussian"
+      ]
+    },
+    "positives": [
+      "\\alpha = \\frac{e^2}{\\hbar c}",
+      "\\alpha = e^2/(\\hbar c) \\approx 1/137"
+    ],
+    "negatives": [
+      "\\alpha = \\frac{e^2}{4\\pi\\varepsilon_0\\hbar c}",
+      "\\alpha = \\frac{e^2}{4\\pi}"
+    ],
+    "census": "6.4 'α = e²/ħc → Gaussian', the third spelling of the fine-structure constant in the hard-coded token list"
+  },
+  {
+    "id": "maxwell-lagrangian-16pi",
+    "label": "−F²/16π",
+    "tex": "\\mathcal{L} = -\\frac{1}{16\\pi}F_{\\mu\\nu}F^{\\mu\\nu}",
+    "meaning": "16π normalizing F²: Gaussian field-strength convention",
+    "pattern": "(?:F(?![A-Za-z])[^=]{0,40}(?<![0-9])16\\s*pi(?!\\s*G(?![A-Za-z_]))|(?<![0-9])16\\s*pi\\s*(?!\\s*G(?![A-Za-z_]))\\)?\\s*[^=]{0,8}F(?![A-Za-z]))",
+    "implies": {
+      "flavored": [
+        "gaussian"
+      ]
+    },
+    "positives": [
+      "\\mathcal{L} = -\\frac{1}{16\\pi}F_{\\mu\\nu}F^{\\mu\\nu}",
+      "\\mathcal{L} = -\\frac{F_{\\mu\\nu}F^{\\mu\\nu}}{16\\pi}"
+    ],
+    "negatives": [
+      "S = \\frac{c^4}{16\\pi G}\\int d^4x\\,\\sqrt{-g}\\,R",
+      "\\mathcal{L} = -\\frac{1}{4}F_{\\mu\\nu}F^{\\mu\\nu}"
+    ],
+    "census": "6.4 'Strong tokens worth hard-coding: −F²/16π → Gaussian'; the (?!G) guard keeps the §6.1 action prefactor 16πG out"
+  },
+  {
+    "id": "maxwell-lagrangian-quarter",
+    "label": "−¼F²",
+    "tex": "\\mathcal{L} = -\\frac{1}{4}F_{\\mu\\nu}F^{\\mu\\nu}",
+    "meaning": "¼ normalizing F²: rationalized — SI or Heaviside–Lorentz",
+    "pattern": "-\\s*(?:\\(\\s*1\\s*\\)\\s*/\\s*\\(\\s*4\\s*\\)|\\\\[dt]?frac\\s*\\{?\\s*1\\s*\\}?\\s*\\{?\\s*4\\s*\\}?|1\\s*/\\s*4)(?!\\s*pi)\\s*[^=]{0,2}F(?![A-Za-z])",
+    "implies": {
+      "flavored": [
+        "si",
+        "heaviside-lorentz"
+      ]
+    },
+    "positives": [
+      "\\mathcal{L} = -\\frac{1}{4}F_{\\mu\\nu}F^{\\mu\\nu}",
+      "\\mathcal{L}_{YM} = -\\tfrac{1}{4}F^a_{\\mu\\nu}F^{a\\,\\mu\\nu}"
+    ],
+    "negatives": [
+      "\\mathcal{L} = -\\frac{1}{16\\pi}F_{\\mu\\nu}F^{\\mu\\nu}",
+      "-\\frac{1}{4\\pi}\\int F\\,dA"
+    ],
+    "census": "6.4 '−¼F² → rationalized', read against the Gaussian −F²/16π in the same bullet; the split SI/HL stays a set"
+  },
+  {
+    "id": "si-constants-explicit",
+    "label": "μ₀/4π in a coupling, or μ_B with no 1/c",
+    "tex": "\\mathbf{B} = \\frac{\\mu_0}{4\\pi}\\int\\frac{I\\,d\\boldsymbol{\\ell}\\times\\hat{\\mathbf{r}}}{r^2},\\qquad \\mu_B = \\frac{e\\hbar}{2m_e}",
+    "meaning": "μ₀/4π printed, or a Zeeman coupling with no 1/c: SI asserted",
+    "pattern": "(?:mu0\\s*\\)?\\s*/\\s*\\(?\\s*4\\s*pi|e\\s*hbar\\s*\\)?\\s*/\\s*\\(?\\s*2\\s*(?:me|m\\s*_\\s*\\{?\\s*e\\s*\\}?)\\s*\\)?(?!\\s*c(?![A-Za-z_0-9])))",
+    "implies": {
+      "flavored": [
+        "si"
+      ]
+    },
+    "positives": [
+      "\\mathbf{B} = \\frac{\\mu_0}{4\\pi}\\int \\frac{I\\,d\\boldsymbol{\\ell}\\times\\hat{\\mathbf{r}}}{r^2}",
+      "\\mu_B = \\frac{e\\hbar}{2m_e}",
+      "H_Z = \\frac{e\\hbar}{2m_e}\\,\\mathbf{B}\\cdot\\boldsymbol{\\sigma}"
+    ],
+    "negatives": [
+      "\\mu_B = \\frac{e\\hbar}{2m_e c}",
+      "\\nabla\\times\\mathbf{H} = \\frac{4\\pi}{c}\\mathbf{J}"
+    ],
+    "census": "6.4 'Constants-explicit SI is positively assertible … μ₀/4π or ε₀ in a printed coupling, a Zeeman term with no 1/c'; §6.4's atomic-magnetism bullet makes the 1/c the only discriminator"
+  },
+  {
+    "id": "einstein-hilbert-c4-16piG",
+    "label": "Einstein–Hilbert prefactor c⁴/16πG",
+    "tex": "S = \\frac{c^4}{16\\pi G}\\int d^4x\\,\\sqrt{-g}\\,R",
+    "meaning": "c and G printed in the action prefactor: neither is absorbed",
+    "pattern": "c\\s*\\^\\s*\\{?\\s*[34]\\s*\\}?\\s*\\)?\\s*/\\s*\\(?\\s*16\\s*pi\\s*G(?![A-Za-z_])",
+    "implies": {
+      "keys": [
+        "si",
+        "gaussian",
+        "esu",
+        "emu",
+        "heaviside-lorentz",
+        "magnetism-emu",
+        "hartree",
+        "rydberg",
+        "hartree-gaussian",
+        "effective-au",
+        "kb-only",
+        "lj-reduced",
+        "chaos-mw",
+        "trap-units",
+        "ns-inertial",
+        "lattice-model",
+        "gpe-healing"
+      ]
+    },
+    "positives": [
+      "S = \\frac{c^4}{16\\pi G}\\int d^4x\\,\\sqrt{-g}\\,R",
+      "S_{EH} = \\frac{c^3}{16\\pi G}\\int \\sqrt{-g}\\,R\\,d^4x"
+    ],
+    "negatives": [
+      "S = \\frac{1}{16\\pi}\\int d^4x\\,\\sqrt{-g}\\,R",
+      "S = \\frac{1}{16\\pi G}\\int d^4x\\,\\sqrt{-g}\\,R"
+    ],
+    "census": "6.1 action-prefactor ladder: 'c⁴/16πG (SI, d⁴x = dtd³x) · c³/16πG (d⁴x = c dt d³x)'. The key list is exactly the registry rows with neither c nor G as a generator"
+  },
+  {
+    "id": "einstein-hilbert-1-over-16pi",
+    "label": "Einstein–Hilbert prefactor 1/16π",
+    "tex": "S = \\frac{1}{16\\pi}\\int d^4x\\,\\sqrt{-g}\\,R",
+    "meaning": "16π with no G on √−g R: G = c = 1, Cluster A",
+    "pattern": "/\\s*\\(?\\s*16\\s*pi\\s*(?!\\s*G(?![A-Za-z_]))\\)?\\s*[^=]{0,30}\\\\sqrt\\s*\\{?\\s*-\\s*g(?![A-Za-z])",
+    "implies": {
+      "absorbing": [
+        [
+          "c",
+          "c"
+        ],
+        [
+          "G",
+          "G"
+        ]
+      ]
+    },
+    "positives": [
+      "S = \\frac{1}{16\\pi}\\int d^4x\\,\\sqrt{-g}\\,R",
+      "S = \\frac{1}{16\\pi}\\int \\sqrt{-g}\\,(R - 2\\Lambda)\\,d^4x"
+    ],
+    "negatives": [
+      "S = \\frac{c^4}{16\\pi G}\\int d^4x\\,\\sqrt{-g}\\,R",
+      "\\mathcal{L} = -\\frac{1}{16\\pi}F_{\\mu\\nu}F^{\\mu\\nu}"
+    ],
+    "census": "6.1 action ladder '1/16π (Cluster A)'; 6.2 Cluster A is a set, never a single row; the √−g requirement keeps the Gaussian −F²/16π out"
+  },
+  {
+    "id": "einstein-hilbert-half",
+    "label": "Einstein–Hilbert prefactor ½",
+    "tex": "S = \\frac{1}{2}\\int d^4x\\,\\sqrt{-g}\\,(R - 2\\Lambda)",
+    "meaning": "½ on √−g R: 8πG = 1",
+    "pattern": "\\(?\\s*1\\s*\\)?\\s*/\\s*\\(?\\s*2\\s*\\)?\\s*(?=\\\\int|\\\\sqrt|d\\s*\\^)[^=]{0,40}\\\\sqrt\\s*\\{?\\s*-\\s*g\\s*\\}?[^=]{0,12}R(?![A-Za-z])",
+    "implies": {
+      "absorbsWithFactor": [
+        "G",
+        "8\\pi"
+      ]
+    },
+    "positives": [
+      "S = \\frac{1}{2}\\int d^4x\\,\\sqrt{-g}\\,(R - 2\\Lambda)",
+      "S = \\frac{1}{2}\\int \\sqrt{-g}\\,R\\,d^4x"
+    ],
+    "negatives": [
+      "S = \\frac{1}{2\\kappa^2}\\int d^4x\\,\\sqrt{-g}\\,R",
+      "S = \\int d^4x\\,\\sqrt{-g}\\,(R - 2\\Lambda)"
+    ],
+    "census": "6.1 action ladder '½ or M̄²/2 (reduced Planck)'; 6.4's warning that ½∫√−g(R−2Λ) is 8πG=1 while the bare integral is 16πG=1 — key on the prefactor. M̄²/2 is deliberately not matched here (κ-symbolic denominators are excluded by the lookahead)"
+  },
+  {
+    "id": "einstein-hilbert-bare",
+    "label": "Bare ∫√−g (R − 2Λ), no prefactor",
+    "tex": "S = \\int d^4x\\,\\sqrt{-g}\\,(R - 2\\Lambda)",
+    "meaning": "no prefactor at all on √−g R: 16πG = 1",
+    "pattern": "=\\s*\\\\int[^=]{0,25}\\\\sqrt\\s*\\{?\\s*-\\s*g\\s*\\}?[^=0-9\\\\]{0,12}R(?![A-Za-z])(?!\\s*\\}?\\s*\\)?\\s*/)",
+    "implies": {
+      "absorbsWithFactor": [
+        "G",
+        "16\\pi"
+      ]
+    },
+    "positives": [
+      "S = \\int d^4x\\,\\sqrt{-g}\\,(R - 2\\Lambda)",
+      "S=\\int \\sqrt{-g}\\,R\\;d^4x"
+    ],
+    "negatives": [
+      "S = \\frac{1}{16\\pi}\\int d^4x\\,\\sqrt{-g}\\,R",
+      "S = \\int d^4x\\,\\sqrt{-g}\\,\\frac{R}{16\\pi G}",
+      "S = \\int d^4x\\sqrt{-g}\\left[\\tfrac12 R + \\mathcal{L}_m\\right]"
+    ],
+    "census": "6.1 action ladder '1 (16πG=1)'; 6.4 'the Einstein–Hilbert prefactor, never the bracket' — the second negative is the in-bracket 1/16πG this rule must refuse; the third negative is the seed's reduced-Planck action with the 1/2 inside the bracket — a coefficient in the window is not a bare R"
+  },
+  {
+    "id": "bh-thermo-planck",
+    "label": "S = A/4 and T_H = 1/8πM",
+    "tex": "S = \\frac{A}{4},\\qquad T_H = \\frac{1}{8\\pi M}",
+    "meaning": "bare A/4 or 1/8πM: Planck units, ħ = c = G = 1",
+    "pattern": "(?:(?<![A-Za-z])S[^=]{0,14}=\\s*\\(?\\s*A\\s*\\)?\\s*/\\s*\\(?\\s*4\\s*\\)?(?![0-9A-Za-z\\\\])|(?<![A-Za-z])T[^=]{0,14}=\\s*\\(?\\s*1\\s*\\)?\\s*/\\s*\\(?\\s*8\\s*pi\\s*M(?![A-Za-z_]))",
+    "implies": {
+      "absorbing": [
+        [
+          "\\hbar",
+          "hbar"
+        ],
+        [
+          "c",
+          "c"
+        ],
+        [
+          "G",
+          "G"
+        ]
+      ]
+    },
+    "positives": [
+      "S = \\frac{A}{4}",
+      "T_H = \\frac{1}{8\\pi M}",
+      "S_{\\rm BH} = A/4"
+    ],
+    "negatives": [
+      "S = \\frac{A}{4\\ell_P^2}",
+      "T_H = \\frac{\\hbar c^3}{8\\pi G M k_B}"
+    ],
+    "census": "6.2 Cluster A, corrected by adjudication: 'T_H = 1/8πM and S = A/4 hold only for Planck units; elsewhere T_H = ħ/8πM, S = A/4ℓ_P², so the thermodynamic forms are discriminators'; 6.4 lists S = A/4 (with ħ = 1) → G = 1"
+  },
+  {
+    "id": "bh-entropy-4pi-a",
+    "label": "S = 4πA",
+    "tex": "S = 4\\pi A",
+    "meaning": "entropy 4πA: 16πG = 1",
+    "pattern": "(?<![A-Za-z])S[^=]{0,14}=\\s*4\\s*pi\\s*A(?![A-Za-z])",
+    "implies": {
+      "absorbsWithFactor": [
+        "G",
+        "16\\pi"
+      ]
+    },
+    "positives": [
+      "S = 4\\pi A",
+      "S_{BH} = 4\\pi A"
+    ],
+    "negatives": [
+      "S = \\frac{A}{4}",
+      "S = \\frac{A}{4G\\hbar}"
+    ],
+    "census": "6.4 'Strong tokens worth hard-coding: … S = 4πA → 16πG=1', the entropy sibling of the bare-action rung"
+  },
+  {
+    "id": "covariant-source-4pi-j",
+    "label": "∂_μF^{μν} = 4πJ^ν",
+    "tex": "\\partial_\\mu F^{\\mu\\nu} = \\frac{4\\pi}{c}J^\\nu",
+    "meaning": "4π on the covariant source: Gaussian",
+    "pattern": "\\\\partial[^=]{0,20}F[^=]{0,20}=\\s*(?:\\(\\s*4\\s*pi\\s*\\)\\s*/\\s*\\(?\\s*c\\s*\\)?|4\\s*pi\\s*/\\s*c|4\\s*pi)\\s*[^=]{0,12}J(?![A-Za-z])",
+    "implies": {
+      "flavored": [
+        "gaussian"
+      ]
+    },
+    "positives": [
+      "\\partial_\\mu F^{\\mu\\nu} = \\frac{4\\pi}{c}J^\\nu",
+      "\\partial_\\mu F^{\\mu\\nu} = 4\\pi J^\\nu"
+    ],
+    "negatives": [
+      "\\partial_\\mu F^{\\mu\\nu} = J^\\nu",
+      "\\partial_\\mu F^{\\mu\\nu} = \\mu_0 J^\\nu"
+    ],
+    "census": "6.4 'Strong tokens worth hard-coding: … −F²/16π or ∂F = 4πJ → Gaussian'; the HL and SI spellings of the same equation are the negatives"
+  }
+]

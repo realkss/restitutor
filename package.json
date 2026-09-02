@@ -9,7 +9,8 @@
     "test": "tsx --test",
     "sync-check": "node scripts/check-site-sync.mjs",
     "build:app": "node scripts/build-app.mjs",
-    "build:ext": "node scripts/build-ext.mjs"
+    "build:ext": "node scripts/build-ext.mjs",
+    "gen:tables": "node scripts/gen-tables.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

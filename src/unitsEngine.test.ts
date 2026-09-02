@@ -972,10 +972,7 @@ describe("pre-parse normalization (2026-08-29 review fixes)", () => {
     assert.strictEqual(stripTrailingPunctuation("x = y\\,."), "x = y")
     assert.strictEqual(stripTrailingPunctuation("x = y\\qquad"), "x = y")
     assert.strictEqual(stripTrailingPunctuation("x = y ;"), "x = y")
-    assert.strictEqual(
-      stripTrailingPunctuation("f = \\left( g \\right."),
-      "f = \\left( g \\right.",
-    )
+    assert.strictEqual(stripTrailingPunctuation("f = \\left( g \\right."), "f = \\left( g \\right.")
     assert.strictEqual(
       stripTrailingPunctuation("f = \\left( g \\right ."),
       "f = \\left( g \\right .",

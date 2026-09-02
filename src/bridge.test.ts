@@ -5,7 +5,8 @@ import test, { describe } from "node:test"
 import assert from "node:assert"
 import { findRegistryForSlug } from "./unitsEngine"
 import { CONST_DIM, CONVENTIONS, Convention, Frac, solveRestoration } from "./convention"
-import { SOURCE_CONVENTION_KEY, conventionKeyForTarget, dimToDimQ } from "./bridge"
+import { SOURCE_CONVENTION_KEY, conventionKeyForTarget, dimToDimQ, targetFromDetection } from "./bridge"
+import { inferConventions } from "./detect"
 
 const registry = findRegistryForSlug("Topics/Physics/Relativity-and-Gravitation/")!
 
@@ -79,5 +80,23 @@ describe("cross-validation: the engine's registry against the independent solver
       assert.strictEqual(s.exponents[0].generator.tex, "c")
       assert.ok(s.exponents[0].power.eq(Frac.of(1)))
     }
+  })
+})
+
+describe("targetFromDetection — the panel target follows the evidence only where every candidate agrees", () => {
+  test("a G = c = 1 family agrees on geometrized but not on the E&M system", () => {
+    const r = inferConventions({ text: "We use geometrized units throughout." })
+    const seed = targetFromDetection(r)
+    assert.strictEqual(seed.geometrized, true)
+    assert.strictEqual(seed.system, undefined)
+  })
+  test("a single flavored survivor fixes both axes", () => {
+    const r = inferConventions({ text: "We adopt geometrized units and Gaussian units for the electromagnetic sector." })
+    const seed = targetFromDetection(r)
+    assert.strictEqual(seed.geometrized, true)
+    assert.strictEqual(seed.system, "gaussian")
+  })
+  test("insufficient or conflicting evidence seeds nothing", () => {
+    assert.deepStrictEqual(targetFromDetection(inferConventions({})), {})
   })
 })

@@ -1,0 +1,2144 @@
+{
+ "meta": {
+  "source": "census section 6.5 gloss-noun table, drafted 2026-09-02 by an opus agent; consumer contract implemented in src/mine.ts",
+  "dimensionBasis": [
+   "M",
+   "L",
+   "T",
+   "Θ",
+   "I"
+  ],
+  "dimensionEncoding": "Each dim is a 5-tuple in SI reading. Integers are plain numbers; exact rationals are [numerator, denominator] pairs, matching dimQ() in src/convention.ts (which accepts exactly this form) and the 5-tuple layout of dim() in src/unitsEngine.ts. Only the wavefunction entry currently uses a rational, but the Gaussian readings under gaussianDim use them throughout.",
+  "flags": {
+   "dimensionless": "dim is the zero vector; the quantity is a pure number in every system.",
+   "conventionDependent": "The SI and Gaussian readings differ. dim is the SI one; gaussianDim carries the CGS-Gaussian one (half-integer exponents throughout the charge sector).",
+   "coordinateConventionDependent": "The dimension depends on the coordinate convention (x⁰ = ct vs t in seconds; a(t₀) = 1 vs curvature-absorbed), not on the EM rationalization axis.",
+   "dimensionDependsOnSpatialDimension": "The dimension is a function of the spatial dimension d; dimByD carries the readings. Never emit without finding d in the text.",
+   "ambiguous": "One gloss, several live quantities with different dimensions. Emit at reduced confidence and require a disambiguator from the surrounding text."
+  }
+ },
+ "nouns": [
+  {
+   "noun": "mass",
+   "synonyms": [
+    "rest mass",
+    "masses",
+    "total mass",
+    "particle mass",
+    "inertial mass"
+   ],
+   "dim": [
+    1,
+    0,
+    0,
+    0,
+    0
+   ],
+   "si": "kg",
+   "note": "The default reading of bare m and M in the GR registry. In hep prose a 'mass' is routinely quoted in GeV under hbar = c = 1; the SI dim here is the restored one."
+  },
+  {
+   "noun": "length",
+   "synonyms": [
+    "distance",
+    "separation",
+    "displacement",
+    "size",
+    "scale",
+    "lengths",
+    "distances",
+    "length scale",
+    "characteristic length"
+   ],
+   "dim": [
+    0,
+    1,
+    0,
+    0,
+    0
+   ],
+   "si": "m",
+   "note": "'scale' alone is dangerously polysemous (energy scale, mass scale, length scale) — resolve only when the sentence says which."
+  },
+  {
+   "noun": "radius",
+   "synonyms": [
+    "radii",
+    "radial coordinate",
+    "radial distance",
+    "orbital radius"
+   ],
+   "dim": [
+    0,
+    1,
+    0,
+    0,
+    0
+   ],
+   "si": "m",
+   "note": "Distinct entry from length because r is the single most common declared symbol; the GR registry reads bare r as a radial coordinate."
+  },
+  {
+   "noun": "time",
+   "synonyms": [
+    "duration",
+    "period",
+    "timescale",
+    "time scale",
+    "times",
+    "coordinate time",
+    "proper time",
+    "orbital period"
+   ],
+   "dim": [
+    0,
+    0,
+    1,
+    0,
+    0
+   ],
+   "si": "s",
+   "note": "'period' resolves here; a spatial period is a wavelength, so a declaration reading 'the period of the lattice' must be routed to length instead."
+  },
+  {
+   "noun": "frequency",
+   "synonyms": [
+    "frequencies",
+    "linear frequency",
+    "cyclic frequency",
+    "rotation frequency"
+   ],
+   "dim": [
+    0,
+    0,
+    -1,
+    0,
+    0
+   ],
+   "si": "Hz",
+   "note": "Same dimension as angular frequency: the 2pi between them is a registry fork (census registry #10, the radian collapse), never a dimension check."
+  },
+  {
+   "noun": "angular frequency",
+   "synonyms": [
+    "angular velocity",
+    "angular frequencies",
+    "circular frequency",
+    "rotation rate",
+    "spin rate"
+   ],
+   "dim": [
+    0,
+    0,
+    -1,
+    0,
+    0
+   ],
+   "si": "rad s⁻¹",
+   "note": "rad is dimensionless, so this is indistinguishable from frequency dimensionally — the discriminator is textual (omega vs nu), never dimensional."
+  },
+  {
+   "noun": "velocity",
+   "synonyms": [
+    "speed",
+    "velocities",
+    "speeds",
+    "flow velocity",
+    "orbital velocity",
+    "recession velocity"
+   ],
+   "dim": [
+    0,
+    1,
+    -1,
+    0,
+    0
+   ],
+   "si": "m s⁻¹",
+   "note": "'speed of light' resolves here; under c = 1 the mined dimension will disagree with the paper's in-system reading, which is the expected disagreement, not an error."
+  },
+  {
+   "noun": "acceleration",
+   "synonyms": [
+    "accelerations",
+    "proper acceleration",
+    "gravitational acceleration",
+    "surface gravity"
+   ],
+   "dim": [
+    0,
+    1,
+    -2,
+    0,
+    0
+   ],
+   "si": "m s⁻²",
+   "note": "The GR registry reads kappa (surface gravity) as an acceleration, fixed by T_H = hbar*kappa/(2*pi*k_B*c)."
+  },
+  {
+   "noun": "force",
+   "synonyms": [
+    "forces",
+    "restoring force",
+    "applied force"
+   ],
+   "dim": [
+    1,
+    1,
+    -2,
+    0,
+    0
+   ],
+   "si": "N",
+   "note": "Unremarkable; included because 'where F is the force' is a high-frequency declaration."
+  },
+  {
+   "noun": "energy",
+   "synonyms": [
+    "energies",
+    "total energy",
+    "kinetic energy",
+    "potential energy",
+    "binding energy",
+    "Fermi energy",
+    "energy scale"
+   ],
+   "dim": [
+    1,
+    2,
+    -2,
+    0,
+    0
+   ],
+   "si": "J",
+   "note": "In hbar = c = 1 papers energy is the residual axis and everything else is quoted as a power of it; the SI reading is what a restoration must land on."
+  },
+  {
+   "noun": "work",
+   "synonyms": [
+    "work done"
+   ],
+   "dim": [
+    1,
+    2,
+    -2,
+    0,
+    0
+   ],
+   "si": "J",
+   "note": "Dimensionally identical to energy and torque — a dimension check can never separate these three."
+  },
+  {
+   "noun": "power",
+   "synonyms": [
+    "radiated power",
+    "output power",
+    "luminosity"
+   ],
+   "dim": [
+    1,
+    2,
+    -3,
+    0,
+    0
+   ],
+   "si": "W",
+   "note": "Shares its dimension with luminosity; the astro sense of 'luminosity' is the same quantity, but 'luminosity distance' and 'luminosity function' are not."
+  },
+  {
+   "noun": "momentum",
+   "synonyms": [
+    "linear momentum",
+    "momenta",
+    "canonical momentum"
+   ],
+   "dim": [
+    1,
+    1,
+    -1,
+    0,
+    0
+   ],
+   "si": "kg m s⁻¹",
+   "note": "Under c = 1 momentum and mass and energy collapse to one axis; the mined SI dim is the restored one."
+  },
+  {
+   "noun": "angular momentum",
+   "synonyms": [
+    "spin angular momentum",
+    "orbital angular momentum",
+    "spin"
+   ],
+   "dim": [
+    1,
+    2,
+    -1,
+    0,
+    0
+   ],
+   "si": "kg m² s⁻¹",
+   "note": "'spin' is a synonym only when it means the angular momentum itself; a dimensionless spin quantum number or a Kerr spin parameter a/M is a different quantity."
+  },
+  {
+   "noun": "action",
+   "synonyms": [
+    "Euclidean action",
+    "on-shell action"
+   ],
+   "dim": [
+    1,
+    2,
+    -1,
+    0,
+    0
+   ],
+   "si": "J s",
+   "note": "Same dimension as angular momentum and as hbar — the reason hbar = 1 makes action dimensionless."
+  },
+  {
+   "noun": "pressure",
+   "synonyms": [
+    "stress",
+    "stresses",
+    "pressures",
+    "gas pressure",
+    "radiation pressure"
+   ],
+   "dim": [
+    1,
+    -1,
+    -2,
+    0,
+    0
+   ],
+   "si": "Pa",
+   "note": "Dimensionally identical to energy density, which is why an equation of state p = w*rho passes any dimension check with w dimensionless."
+  },
+  {
+   "noun": "mass density",
+   "synonyms": [
+    "density",
+    "densities",
+    "matter density",
+    "rest-mass density",
+    "critical density",
+    "bulk density"
+   ],
+   "dim": [
+    1,
+    -3,
+    0,
+    0,
+    0
+   ],
+   "si": "kg m⁻³",
+   "note": "Bare 'density' is the single worst gloss in the corpus: mass, number, energy, charge and probability densities all answer to it. The engine's GR registry already flags rho as a registry CHOICE (an energy density differs by c²) — mined 'density' with no modifier should be emitted with low confidence, never silently."
+  },
+  {
+   "noun": "number density",
+   "synonyms": [
+    "particle density",
+    "electron density",
+    "column density",
+    "number densities"
+   ],
+   "dim": [
+    0,
+    -3,
+    0,
+    0,
+    0
+   ],
+   "si": "m⁻³",
+   "note": "Counts are dimensionless in the 5-basis (amount of substance is off-basis); a per-mole reading would need a sixth axis the census does not carry. 'column density' is often per area instead — check the sentence."
+  },
+  {
+   "noun": "surface density",
+   "synonyms": [
+    "surface mass density",
+    "areal density",
+    "column mass density",
+    "disc surface density"
+   ],
+   "dim": [
+    1,
+    -2,
+    0,
+    0,
+    0
+   ],
+   "si": "kg m⁻²",
+   "note": "Sigma in accretion-disc prose. Sigma is also the Kerr metric function r² + a²cos²θ in the GR registry — a symbol clash the dimension check exists to catch."
+  },
+  {
+   "noun": "torque",
+   "synonyms": [
+    "torques",
+    "moment of force"
+   ],
+   "dim": [
+    1,
+    2,
+    -2,
+    0,
+    0
+   ],
+   "si": "N m",
+   "note": "Same dim as energy; the SI habit of writing N m rather than J is a display convention only."
+  },
+  {
+   "noun": "moment of inertia",
+   "synonyms": [
+    "inertia tensor",
+    "moments of inertia"
+   ],
+   "dim": [
+    1,
+    2,
+    0,
+    0,
+    0
+   ],
+   "si": "kg m²",
+   "note": "The 'of' in the head noun is why the gloss grammar needs an explicit of-tail whitelist."
+  },
+  {
+   "noun": "area",
+   "synonyms": [
+    "areas",
+    "surface area",
+    "cross-sectional area",
+    "horizon area"
+   ],
+   "dim": [
+    0,
+    2,
+    0,
+    0,
+    0
+   ],
+   "si": "m²",
+   "note": "Bekenstein–Hawking S = A/4 makes horizon area a frequent declared symbol in G = c = hbar = 1 papers."
+  },
+  {
+   "noun": "volume",
+   "synonyms": [
+    "volumes",
+    "mode volume",
+    "comoving volume"
+   ],
+   "dim": [
+    0,
+    3,
+    0,
+    0,
+    0
+   ],
+   "si": "m³",
+   "note": "Mode volume carries the atomic-units 4pi ambiguity flagged in census §6.4 — the reading differs by 4pi between the two epsilon_0 conventions."
+  },
+  {
+   "noun": "cross section",
+   "synonyms": [
+    "cross-section",
+    "cross sections",
+    "scattering cross section",
+    "total cross section",
+    "partial cross section"
+   ],
+   "dim": [
+    0,
+    2,
+    0,
+    0,
+    0
+   ],
+   "si": "m²",
+   "note": "An area, but almost never quoted as one (barn, a_0², Mb). Under hbar = c = 1 it reads as an inverse squared energy."
+  },
+  {
+   "noun": "energy density",
+   "synonyms": [
+    "energy densities",
+    "vacuum energy density",
+    "radiation energy density"
+   ],
+   "dim": [
+    1,
+    -1,
+    -2,
+    0,
+    0
+   ],
+   "si": "J m⁻³",
+   "note": "Indistinguishable from pressure by dimension. Differs from mass density by exactly c², the census's canonical rho ambiguity."
+  },
+  {
+   "noun": "angle",
+   "synonyms": [
+    "polar angle",
+    "azimuthal angle",
+    "scattering angle",
+    "inclination",
+    "phase",
+    "angles"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "si": "rad",
+   "note": "Dimensionless by SI fiat (rad = 1). 'phase' is a synonym only for the argument of an exponential; an optical path phase in radians is the same thing.",
+   "dimensionless": true
+  },
+  {
+   "noun": "solid angle",
+   "synonyms": [
+    "solid angles"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "si": "sr",
+   "note": "Dimensionless (sr = 1). Hidden solid angles are exactly what makes Jy/beam and mag/arcsec² refuse-list items in census §7.",
+   "dimensionless": true
+  },
+  {
+   "noun": "diffusion coefficient",
+   "synonyms": [
+    "diffusivity",
+    "diffusion constant",
+    "kinematic viscosity",
+    "thermal diffusivity"
+   ],
+   "dim": [
+    0,
+    2,
+    -1,
+    0,
+    0
+   ],
+   "si": "m² s⁻¹",
+   "note": "Kinematic viscosity shares this dimension exactly; that coincidence is the Schmidt number."
+  },
+  {
+   "noun": "dynamic viscosity",
+   "synonyms": [
+    "shear viscosity",
+    "viscosity"
+   ],
+   "dim": [
+    1,
+    -1,
+    -1,
+    0,
+    0
+   ],
+   "si": "Pa s",
+   "note": "Bare 'viscosity' is ambiguous between dynamic (Pa s) and kinematic (m² s⁻¹); emit with low confidence unless the sentence disambiguates."
+  },
+  {
+   "noun": "strain",
+   "synonyms": [
+    "gravitational-wave strain",
+    "strain amplitude",
+    "fractional deformation"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "si": "1",
+   "note": "Dimensionless, but the census records a live fork in its DEFINITION (ΔL/L vs δL/L, §6.5b cue 3) that no dimension check can see.",
+   "dimensionless": true
+  },
+  {
+   "noun": "temperature",
+   "synonyms": [
+    "temperatures",
+    "brightness temperature",
+    "effective temperature",
+    "Hawking temperature",
+    "ambient temperature"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "si": "K",
+   "note": "Under k_B = 1 temperature IS an energy; the Theta axis vanishes. The mined SI dim is the restored one and will disagree with any k_B = 1 body — expected, not an error."
+  },
+  {
+   "noun": "entropy",
+   "synonyms": [
+    "entropies",
+    "thermodynamic entropy",
+    "Bekenstein-Hawking entropy"
+   ],
+   "dim": [
+    1,
+    2,
+    -2,
+    -1,
+    0
+   ],
+   "si": "J K⁻¹",
+   "note": "Dimensionless under k_B = 1 — the S = A/4 form only makes sense there. Same dim as heat capacity."
+  },
+  {
+   "noun": "heat capacity",
+   "synonyms": [
+    "specific heat",
+    "specific heat capacity",
+    "heat capacities"
+   ],
+   "dim": [
+    1,
+    2,
+    -2,
+    -1,
+    0
+   ],
+   "si": "J K⁻¹",
+   "note": "SPECIFIC heat capacity is per mass (J K⁻¹ kg⁻¹ = [0,2,-2,-1,0]) and molar heat capacity is off-basis; the bare gloss is the extensive one, so a 'specific' modifier must change the emitted dim."
+  },
+  {
+   "noun": "chemical potential",
+   "synonyms": [
+    "chemical potentials",
+    "Fermi level"
+   ],
+   "dim": [
+    1,
+    2,
+    -2,
+    0,
+    0
+   ],
+   "si": "J",
+   "note": "An ENERGY, not a potential in the electrostatic sense — the naming is a trap. Census round 4 left one chemical-potential identity claim unadjudicated; treat a per-particle-vs-per-mole reading as an open fork."
+  },
+  {
+   "noun": "charge",
+   "synonyms": [
+    "electric charge",
+    "charges",
+    "total charge",
+    "elementary charge"
+   ],
+   "dim": [
+    0,
+    0,
+    1,
+    0,
+    1
+   ],
+   "si": "C",
+   "note": "SI reading. Gaussian charge carries HALF-INTEGER exponents (M^1/2 L^3/2 T^-1) — this is the census's load-bearing example of why exponents must be exact rationals.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "current",
+   "synonyms": [
+    "electric current",
+    "currents"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "si": "A",
+   "note": "The SI base quantity. In every CGS system current is a derived half-integer quantity.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     2
+    ],
+    -2,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "voltage",
+   "synonyms": [
+    "potential",
+    "electric potential",
+    "electrostatic potential",
+    "potential difference",
+    "bias voltage",
+    "electromotive force"
+   ],
+   "dim": [
+    1,
+    2,
+    -3,
+    0,
+    -1
+   ],
+   "si": "V",
+   "note": "Bare 'potential' also means the Newtonian gravitational potential (m² s⁻²) and the interaction potential energy (J) — three different dimensions behind one word.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     1,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "electric field",
+   "synonyms": [
+    "electric field strength",
+    "electric fields",
+    "applied field"
+   ],
+   "dim": [
+    1,
+    1,
+    -3,
+    0,
+    -1
+   ],
+   "si": "V m⁻¹",
+   "note": "In Gaussian, E and B share one dimension — which is precisely why the c-rider on B exists (convention.ts EM_RIDERS).",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     -1,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "magnetic field",
+   "synonyms": [
+    "magnetic flux density",
+    "magnetic induction",
+    "magnetic fields",
+    "field strength B"
+   ],
+   "dim": [
+    1,
+    0,
+    -2,
+    0,
+    -1
+   ],
+   "si": "T",
+   "note": "This is B. Carries the c-rider in Gaussian and Heaviside–Lorentz (B_gauss = c × B_SI-quotient) — a rider, NOT a dimension change within a system. Magnetic atomic units are ambiguous by exactly alpha (census §6.4): 2.3505e5 T vs 1715.26 T.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     -1,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "magnetic field H",
+   "synonyms": [
+    "magnetizing field",
+    "auxiliary magnetic field",
+    "H-field",
+    "magnetic field strength"
+   ],
+   "dim": [
+    0,
+    -1,
+    0,
+    0,
+    1
+   ],
+   "si": "A m⁻¹",
+   "note": "H carries BOTH riders in Gaussian (the c-rider and the unrationalized 4pi). 1 Oe = (10³/4pi) A m⁻¹ for exactly that reason. Note the gloss 'magnetic field strength' is claimed by both B and H in the wild — a genuine collision.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     -1,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "magnetic flux",
+   "synonyms": [
+    "flux",
+    "magnetic fluxes",
+    "flux quantum"
+   ],
+   "dim": [
+    1,
+    2,
+    -2,
+    0,
+    -1
+   ],
+   "si": "Wb",
+   "note": "Bare 'flux' is polysemous (magnetic flux, energy flux, particle flux, flux density). The flux quantum itself carries registry fork #11 (h/e vs h/2e).",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "capacitance",
+   "synonyms": [
+    "capacitances",
+    "gate capacitance"
+   ],
+   "dim": [
+    -1,
+    -2,
+    4,
+    0,
+    2
+   ],
+   "si": "F",
+   "note": "In Gaussian, capacitance is a LENGTH (cm) — the cleanest demonstration that EM dimensions are convention-relative.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    0,
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "resistance",
+   "synonyms": [
+    "impedance",
+    "resistances",
+    "sheet resistance"
+   ],
+   "dim": [
+    1,
+    2,
+    -3,
+    0,
+    -2
+   ],
+   "si": "Ω",
+   "note": "Gaussian resistance is s cm⁻¹. Pre-1948 papers mean the international ohm (1.00049) and the 1884 legal ohm is a distinct unit 0.25% off (census §7).",
+   "conventionDependent": true,
+   "gaussianDim": [
+    0,
+    -1,
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "inductance",
+   "synonyms": [
+    "self-inductance",
+    "mutual inductance",
+    "inductances"
+   ],
+   "dim": [
+    1,
+    2,
+    -2,
+    0,
+    -2
+   ],
+   "si": "H",
+   "note": "Gaussian inductance is s² cm⁻¹.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    0,
+    -1,
+    2,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "conductivity",
+   "synonyms": [
+    "electrical conductivity",
+    "conductance per length",
+    "conductivities"
+   ],
+   "dim": [
+    -1,
+    -3,
+    3,
+    0,
+    2
+   ],
+   "si": "S m⁻¹",
+   "note": "In Gaussian, conductivity is a FREQUENCY (s⁻¹) — a favourite plasma-physics tell.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    0,
+    0,
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "resistivity",
+   "synonyms": [
+    "electrical resistivity",
+    "resistivities"
+   ],
+   "dim": [
+    1,
+    3,
+    -3,
+    0,
+    -2
+   ],
+   "si": "Ω m",
+   "note": "Gaussian resistivity is a TIME (s).",
+   "conventionDependent": true,
+   "gaussianDim": [
+    0,
+    0,
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "permittivity",
+   "synonyms": [
+    "dielectric permittivity",
+    "vacuum permittivity",
+    "dielectric constant"
+   ],
+   "dim": [
+    -1,
+    -3,
+    4,
+    0,
+    2
+   ],
+   "si": "F m⁻¹",
+   "note": "Matches CONST_DIM.eps0. DIMENSIONLESS in Gaussian, which is what makes 4*pi*eps_0 = 1 a generator rather than a unit choice. Note 'dielectric constant' usually means the RELATIVE permittivity, which is dimensionless in every system.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "permeability",
+   "synonyms": [
+    "magnetic permeability",
+    "vacuum permeability"
+   ],
+   "dim": [
+    1,
+    1,
+    -2,
+    0,
+    -2
+   ],
+   "si": "H m⁻¹",
+   "note": "Matches CONST_DIM.mu0. mu_0 = 1e-7 (rather than 4pi×1e-7) marks unrationalized MKS, whose riders put 4pi on D, H, eps and DIVIDE mu by 4pi (census §7).",
+   "conventionDependent": true,
+   "gaussianDim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "electric dipole moment",
+   "synonyms": [
+    "dipole moment",
+    "transition dipole moment",
+    "electric dipole"
+   ],
+   "dim": [
+    0,
+    1,
+    1,
+    0,
+    1
+   ],
+   "si": "C m",
+   "note": "Bare 'dipole moment' is ambiguous between the electric one (C m) and the magnetic one (A m²) — different dimensions, one gloss.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     5,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "magnetic moment",
+   "synonyms": [
+    "magnetic dipole moment",
+    "magnetic moments",
+    "Bohr magneton"
+   ],
+   "dim": [
+    0,
+    2,
+    0,
+    0,
+    1
+   ],
+   "si": "A m²",
+   "note": "The emu/G-per-Oe decade interchange lives here; census keeps it as row material, not a rider.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     5,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "polarization",
+   "synonyms": [
+    "electric polarization",
+    "polarization density",
+    "dielectric polarization"
+   ],
+   "dim": [
+    0,
+    -2,
+    1,
+    0,
+    1
+   ],
+   "si": "C m⁻²",
+   "note": "Not to be confused with optical polarization (a state, dimensionless) or a polarization fraction.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     -1,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "magnetization",
+   "synonyms": [
+    "magnetisation",
+    "magnetization density",
+    "magnetic moment per volume"
+   ],
+   "dim": [
+    0,
+    -1,
+    0,
+    0,
+    1
+   ],
+   "si": "A m⁻¹",
+   "note": "Carries the c-rider only (not the 4pi) in Gaussian. The famous '4piM (kG)' ordinate is a PLOTTING fingerprint, not a rescaling of M (convention.ts, magnetism-emu).",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     -1,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "current density",
+   "synonyms": [
+    "current densities",
+    "surface current density"
+   ],
+   "dim": [
+    0,
+    -2,
+    0,
+    0,
+    1
+   ],
+   "si": "A m⁻²",
+   "note": "The 4pi*j form with j in abA/cm² is the variant-Gaussian detector in census §7 — warn, never translate.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     -1,
+     2
+    ],
+    -2,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "charge density",
+   "synonyms": [
+    "charge densities",
+    "volume charge density",
+    "surface charge density"
+   ],
+   "dim": [
+    0,
+    -3,
+    1,
+    0,
+    1
+   ],
+   "si": "C m⁻³",
+   "note": "Surface charge density is per area, not per volume — the modifier changes the dim.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     -3,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "wavelength",
+   "synonyms": [
+    "wavelengths",
+    "de Broglie wavelength",
+    "Compton wavelength"
+   ],
+   "dim": [
+    0,
+    1,
+    0,
+    0,
+    0
+   ],
+   "si": "m",
+   "note": "The GR registry notes bare lambda as a REGISTRY CHOICE — an affine parameter written lambda would differ."
+  },
+  {
+   "noun": "wavenumber",
+   "synonyms": [
+    "wave number",
+    "wave vector",
+    "wavevector",
+    "spatial frequency",
+    "wavenumbers"
+   ],
+   "dim": [
+    0,
+    -1,
+    0,
+    0,
+    0
+   ],
+   "si": "m⁻¹",
+   "note": "Spectroscopic wavenumbers in cm⁻¹ are the same dimension; the 2pi (k = 2pi/lambda vs 1/lambda) is registry fork #10 again, invisible to a dimension check."
+  },
+  {
+   "noun": "refractive index",
+   "synonyms": [
+    "index of refraction",
+    "refractive indices"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "si": "1",
+   "note": "Dimensionless. The full Edlén/Ciddor air-index transform is refuse-listed in census §7 when T, p and humidity are unstated.",
+   "dimensionless": true
+  },
+  {
+   "noun": "intensity",
+   "synonyms": [
+    "intensities",
+    "beam intensity",
+    "laser intensity"
+   ],
+   "dim": [
+    1,
+    0,
+    -3,
+    0,
+    0
+   ],
+   "si": "W m⁻²",
+   "note": "Radiometric intensity (W m⁻²) collides with the radiative-transfer specific intensity (W m⁻² sr⁻¹ Hz⁻¹) and with a dimensionless line intensity. Low confidence unless the sentence disambiguates.",
+   "ambiguous": true
+  },
+  {
+   "noun": "irradiance",
+   "synonyms": [
+    "flux density (radiometric)",
+    "energy flux",
+    "power per unit area"
+   ],
+   "dim": [
+    1,
+    0,
+    -3,
+    0,
+    0
+   ],
+   "si": "W m⁻²",
+   "note": "The unambiguous name for what 'intensity' usually means."
+  },
+  {
+   "noun": "luminosity",
+   "synonyms": [
+    "bolometric luminosity",
+    "luminosities",
+    "radiated power"
+   ],
+   "dim": [
+    1,
+    2,
+    -3,
+    0,
+    0
+   ],
+   "si": "W",
+   "note": "A power. Note little-h: absolute magnitudes carry −5*log(h), a sign the census had to correct in two rows."
+  },
+  {
+   "noun": "flux density",
+   "synonyms": [
+    "spectral flux density",
+    "flux densities"
+   ],
+   "dim": [
+    1,
+    0,
+    -2,
+    0,
+    0
+   ],
+   "si": "Jy",
+   "note": "The astronomical reading (W m⁻² Hz⁻¹ = Jy). Collides head-on with 'magnetic flux density' (B, a tesla) and with a radiometric flux density (W m⁻²). Jy/beam is refuse-listed for its hidden solid angle.",
+   "ambiguous": true
+  },
+  {
+   "noun": "optical depth",
+   "synonyms": [
+    "optical depths",
+    "opacity depth"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "si": "1",
+   "note": "Dimensionless; census §2.11 refuse-classes optical-depth self-similar variables as a nondimensionalization, not a unit system.",
+   "dimensionless": true
+  },
+  {
+   "noun": "metric",
+   "synonyms": [
+    "metric tensor",
+    "spacetime metric",
+    "line element coefficient"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "si": "1",
+   "note": "Dimensionless ONLY under the coordinate convention x⁰ = ct with all coordinates carrying length, which is what the engine's GR registry adopts so that indexed tensors have index-independent dimensions. Under a t-in-seconds convention, g_00 is not dimensionless.",
+   "dimensionless": true,
+   "coordinateConventionDependent": true
+  },
+  {
+   "noun": "Schwarzschild radius",
+   "synonyms": [
+    "gravitational radius",
+    "horizon radius",
+    "event-horizon radius"
+   ],
+   "dim": [
+    0,
+    1,
+    0,
+    0,
+    0
+   ],
+   "si": "m",
+   "note": "A length. GM_sun/c³ = 4.9255 microseconds is the geometrized companion figure the census had to correct."
+  },
+  {
+   "noun": "gravitational potential",
+   "synonyms": [
+    "Newtonian potential",
+    "gravitational potentials",
+    "Bardeen potential"
+   ],
+   "dim": [
+    0,
+    2,
+    -2,
+    0,
+    0
+   ],
+   "si": "m² s⁻²",
+   "note": "A velocity SQUARED, not an energy and not a voltage. This is the highest-value entry in the table for catching a bad 'potential' resolution."
+  },
+  {
+   "noun": "Hubble parameter",
+   "synonyms": [
+    "Hubble constant",
+    "Hubble rate",
+    "expansion rate"
+   ],
+   "dim": [
+    0,
+    0,
+    -1,
+    0,
+    0
+   ],
+   "si": "s⁻¹",
+   "note": "An inverse time, despite always being quoted in km s⁻¹ Mpc⁻¹. The little-h convention hides inside the numeric value, never inside the dimension."
+  },
+  {
+   "noun": "cosmological constant",
+   "synonyms": [
+    "dark-energy constant",
+    "vacuum curvature"
+   ],
+   "dim": [
+    0,
+    -2,
+    0,
+    0,
+    0
+   ],
+   "si": "m⁻²",
+   "note": "An inverse length squared in the geometrized reading the engine encodes. A paper writing Lambda as an energy density (J m⁻³) means the OTHER Lambda, differing by c⁴/(8*pi*G) — a live fork, not an error.",
+   "ambiguous": true
+  },
+  {
+   "noun": "redshift",
+   "synonyms": [
+    "cosmological redshift",
+    "redshifts"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "si": "1",
+   "note": "Dimensionless. The engine's GR registry reads bare z as a redshift but dz under a differential as a coordinate — a prefix-sensitive reading a flat extractor will get wrong.",
+   "dimensionless": true
+  },
+  {
+   "noun": "scale factor",
+   "synonyms": [
+    "cosmological scale factor",
+    "expansion factor"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "si": "1",
+   "note": "Dimensionless under the a(t_0) = 1 normalization used almost everywhere; under the closed-FRW normalization where the curvature scale is absorbed, a carries LENGTH. Neither is wrong; the paper must say.",
+   "dimensionless": true,
+   "coordinateConventionDependent": true
+  },
+  {
+   "noun": "surface gravity",
+   "synonyms": [
+    "horizon surface gravity"
+   ],
+   "dim": [
+    0,
+    1,
+    -2,
+    0,
+    0
+   ],
+   "si": "m s⁻²",
+   "note": "The engine reads kappa as an acceleration, a reading fixed by T_H = hbar*kappa/(2*pi*k_B*c); a kappa = 8*pi*G paper means an entirely different kappa (convention.ts classical-kappa).",
+   "ambiguous": true
+  },
+  {
+   "noun": "wavefunction",
+   "synonyms": [
+    "wave function",
+    "state function",
+    "field amplitude",
+    "wavefunctions"
+   ],
+   "dim": [
+    0,
+    [
+     -3,
+     2
+    ],
+    0,
+    0,
+    0
+   ],
+   "si": "m^(-3/2)",
+   "note": "DIMENSION DEPENDS ON THE SPATIAL DIMENSION d: a normalized single-particle wavefunction is L^(-d/2), so L^(-3/2) in 3D, L^(-1/2) in 1D, L^(-1) in 2D. A quantum-field psi in 4D has yet another dimension (mass^3/2 under hbar = c = 1). Never emit this without the d the paper works in — the half-integer exponent is exactly why the basis uses exact rationals.",
+   "dimensionDependsOnSpatialDimension": true,
+   "dimByD": {
+    "1": [
+     0,
+     [
+      -1,
+      2
+     ],
+     0,
+     0,
+     0
+    ],
+    "2": [
+     0,
+     -1,
+     0,
+     0,
+     0
+    ],
+    "3": [
+     0,
+     [
+      -3,
+      2
+     ],
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "noun": "coupling constant",
+   "synonyms": [
+    "coupling",
+    "couplings",
+    "gauge coupling",
+    "interaction strength",
+    "fine-structure constant"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "si": "1",
+   "note": "Dimensionless for a marginal coupling in 4D (alpha, alpha_s, g). NOT dimensionless in general: the Fermi coupling G_F is mass^-2, a phi^3 coupling in 4D is a mass, and away from d = 4 every gauge coupling carries mass dimension (4−d)/2. Also note convention.ts REFUSES a dimensionless generator — a dimensionless coupling belongs to the N axis, never to the unit axes.",
+   "dimensionless": true,
+   "ambiguous": true
+  },
+  {
+   "noun": "decay width",
+   "synonyms": [
+    "width",
+    "linewidth",
+    "resonance width",
+    "partial width",
+    "total width"
+   ],
+   "dim": [
+    1,
+    2,
+    -2,
+    0,
+    0
+   ],
+   "si": "J",
+   "note": "An ENERGY (Gamma = hbar/tau). Papers quote it in eV, MeV or in Hz; the Hz reading is the decay RATE, differing by hbar. 'linewidth' in laser prose usually means the rate.",
+   "ambiguous": true
+  },
+  {
+   "noun": "decay rate",
+   "synonyms": [
+    "rate",
+    "transition rate",
+    "relaxation rate",
+    "scattering rate"
+   ],
+   "dim": [
+    0,
+    0,
+    -1,
+    0,
+    0
+   ],
+   "si": "s⁻¹",
+   "note": "Inverse time. Under hbar = 1 this is indistinguishable from a decay width, which is why both entries exist."
+  },
+  {
+   "noun": "lifetime",
+   "synonyms": [
+    "mean lifetime",
+    "half-life",
+    "coherence time",
+    "relaxation time",
+    "lifetimes"
+   ],
+   "dim": [
+    0,
+    0,
+    1,
+    0,
+    0
+   ],
+   "si": "s",
+   "note": "A time. Half-life and mean lifetime differ by ln 2 — a numeric fork, not a dimensional one."
+  },
+  {
+   "noun": "scattering length",
+   "synonyms": [
+    "s-wave scattering length",
+    "scattering lengths"
+   ],
+   "dim": [
+    0,
+    1,
+    0,
+    0,
+    0
+   ],
+   "si": "m",
+   "note": "A length. In cold-atom papers it is quoted in Bohr radii, which drags in the a_0 = 28.0028 Mb cross-section bridge from the census backlog."
+  }
+ ],
+ "tests": [
+  {
+   "id": "t01_gr_binary_masses",
+   "sentence": "We model the inspiral in the post-Newtonian approximation, where $m_1$ and $m_2$ are the masses of the two component objects and $r$ is the orbital separation.",
+   "expected": [
+    {
+     "symbol": "m_1",
+     "gloss": "masses",
+     "noun": "mass",
+     "dim": [
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "matchedTemplate": "where_comma_list_are_the_Y"
+    },
+    {
+     "symbol": "m_2",
+     "gloss": "masses",
+     "noun": "mass",
+     "dim": [
+      1,
+      0,
+      0,
+      0,
+      0
+     ],
+     "matchedTemplate": "where_comma_list_are_the_Y"
+    },
+    {
+     "symbol": "r",
+     "gloss": "orbital separation",
+     "noun": "length",
+     "dim": [
+      0,
+      1,
+      0,
+      0,
+      0
+     ],
+     "matchedTemplate": "continuation_X_is_the_Y"
+    }
+   ],
+   "note": "Exercises the comma-list template alongside the workhorse in one sentence; 'orbital separation' resolves by dropping the leading modifier."
+  },
+  {
+   "id": "t02_cosmology_hubble",
+   "sentence": "Here $H_0$ is the present-day Hubble constant and $\\Omega_m$ is the matter density in units of the critical density.",
+   "expected": [
+    {
+     "symbol": "H_0",
+     "gloss": "present-day Hubble constant",
+     "noun": "Hubble parameter",
+     "dim": [
+      0,
+      0,
+      -1,
+      0,
+      0
+     ],
+     "matchedTemplate": "here_X_is_the_Y"
+    },
+    {
+     "symbol": "\\Omega_m",
+     "gloss": "matter density",
+     "noun": "mass density",
+     "dim": [
+      1,
+      -3,
+      0,
+      0,
+      0
+     ],
+     "matchedTemplate": "continuation_X_is_the_Y"
+    }
+   ],
+   "caveat": "surface-form trap: mined dim [1,-3,0,0,0] but the paper's Omega_m is dimensionless",
+   "note": "The second triple is a deliberate half-truth the consumer must catch: Omega_m is DIMENSIONLESS (a density ratio), but the sentence's surface form declares it as 'the matter density'. The trailing 'in units of the critical density' is the disambiguator, and it lives outside the gloss capture. Flagged so the dimension-check stage has a case where the mined dim is right about the words and wrong about the physics."
+  },
+  {
+   "id": "t03_em_si_assertion",
+   "sentence": "The Zeeman term is evaluated with no factor of $1/c$, where $B$ is the magnetic field and $\\mu$ is the magnetic moment of the defect.",
+   "expected": [
+    {
+     "symbol": "B",
+     "gloss": "magnetic field",
+     "noun": "magnetic field",
+     "dim": [
+      1,
+      0,
+      -2,
+      0,
+      -1
+     ],
+     "matchedTemplate": "where_X_is_the_Y"
+    },
+    {
+     "symbol": "\\mu",
+     "gloss": "magnetic moment",
+     "noun": "magnetic moment",
+     "dim": [
+      0,
+      2,
+      0,
+      0,
+      1
+     ],
+     "matchedTemplate": "continuation_X_is_the_Y"
+    }
+   ],
+   "note": "Both nouns are convention-dependent; the sentence itself carries the census §6.4 positive-SI fingerprint (a Zeeman term with no 1/c), so the SI reading is the licensed one here."
+  },
+  {
+   "id": "t04_qft_decay_width",
+   "sentence": "Let $\\Gamma$ be the total decay width of the resonance, so that $\\tau = \\hbar/\\Gamma$ is the lifetime in the rest frame.",
+   "expected": [
+    {
+     "symbol": "\\Gamma",
+     "gloss": "total decay width",
+     "noun": "decay width",
+     "dim": [
+      1,
+      2,
+      -2,
+      0,
+      0
+     ],
+     "matchedTemplate": "let_X_be_the_Y"
+    },
+    {
+     "symbol": "\\tau",
+     "gloss": "lifetime",
+     "noun": "lifetime",
+     "dim": [
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "matchedTemplate": "X_eq_expr_is_the_Y"
+    }
+   ],
+   "note": "Pairs the let-template with the expression-carrying template; the expression hbar/Gamma dimension-checks against 'lifetime' exactly (J s / J = s), which is the §6.5 stage-2 check succeeding."
+  },
+  {
+   "id": "t05_condensed_matter_resistivity",
+   "sentence": "The response is governed by the electrical resistivity, denoted by $\\rho$, at the base temperature.",
+   "expected": [
+    {
+     "symbol": "\\rho",
+     "gloss": "electrical resistivity",
+     "noun": "resistivity",
+     "dim": [
+      1,
+      3,
+      -3,
+      0,
+      -2
+     ],
+     "matchedTemplate": "Y_denoted_by_X"
+    }
+   ],
+   "note": "Exercises the reverse-order template. Worth noting that rho here collides with the engine's GR-registry reading (mass density) and with the fluid-dynamics reading; the Gaussian resistivity is a TIME, so a Gaussian-convention paper writing the same sentence means a different dimension again."
+  },
+  {
+   "id": "t06_plasma_current_density",
+   "sentence": "The induced field satisfies Ampere's law, where $\\mathbf{J}$ is the current density and $\\sigma$ is the electrical conductivity of the plasma.",
+   "expected": [
+    {
+     "symbol": "\\mathbf{J}",
+     "gloss": "current density",
+     "noun": "current density",
+     "dim": [
+      0,
+      -2,
+      0,
+      0,
+      1
+     ],
+     "matchedTemplate": "where_X_is_the_Y"
+    },
+    {
+     "symbol": "\\sigma",
+     "gloss": "electrical conductivity",
+     "noun": "conductivity",
+     "dim": [
+      -1,
+      -3,
+      3,
+      0,
+      2
+     ],
+     "matchedTemplate": "continuation_X_is_the_Y"
+    }
+   ],
+   "caveat": "symbol is emitted with its \\mathbf wrapper intact",
+   "note": "Exercises the argument-taking macro branch of the symbol grammar. The emitted symbol keeps its wrapper (\\mathbf{J}); stripping presentation macros is the consumer's job, and it must NOT strip \\hat or \\tilde the same way, because those carry the §6.5 cue-(iii) meaning 'dimensionless / normalized' and are excluded from the grammar for that reason."
+  },
+  {
+   "id": "t07_optics_refractive_index",
+   "sentence": "The phase velocity is $c/n$, where $n$ is the refractive index of the medium at the pump wavelength.",
+   "expected": [
+    {
+     "symbol": "n",
+     "gloss": "refractive index",
+     "noun": "refractive index",
+     "dim": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "matchedTemplate": "where_X_is_the_Y"
+    }
+   ],
+   "note": "A dimensionless noun that IS in the table, unlike the dimensionless ratio in t18 — the difference is that a refractive index is a named physical quantity with a registry entry, while a bare ratio is not."
+  },
+  {
+   "id": "t08_thermo_chemical_potential",
+   "sentence": "In the tables below, $\\mu$ refers to the chemical potential of the electron gas, measured from the band edge.",
+   "expected": [
+    {
+     "symbol": "\\mu",
+     "gloss": "chemical potential",
+     "noun": "chemical potential",
+     "dim": [
+      1,
+      2,
+      -2,
+      0,
+      0
+     ],
+     "matchedTemplate": "X_stands_for_the_Y"
+    }
+   ],
+   "note": "Chemical potential is an ENERGY despite the name; this is the single most valuable dimension correction in the thermodynamics block. Also exercises the refers-to verb and the 'measured' stopword as a gloss boundary."
+  },
+  {
+   "id": "t09_accretion_surface_density",
+   "sentence": "We adopt the convention of Ref. [4], where $\\Sigma$ denotes the surface density of the disc at the inner radius.",
+   "expected": [
+    {
+     "symbol": "\\Sigma",
+     "gloss": "surface density",
+     "noun": "surface density",
+     "dim": [
+      1,
+      -2,
+      0,
+      0,
+      0
+     ],
+     "matchedTemplate": "where_X_denotes_the_Y"
+    }
+   ],
+   "note": "Sigma collides with the engine's GR-registry reading (the Kerr metric function r^2 + a^2 cos^2 theta, an AREA). Not flagged as a contradiction test because the hub differs — but a consumer running the GR registry over an accretion-disc paper would hit exactly this clash."
+  },
+  {
+   "id": "t10_quantum_wavefunction",
+   "sentence": "Throughout, $\\psi$ is the wavefunction of the relative coordinate, normalized over the three-dimensional volume.",
+   "expected": [
+    {
+     "symbol": "\\psi",
+     "gloss": "wavefunction",
+     "noun": "wavefunction",
+     "dim": [
+      0,
+      [
+       -3,
+       2
+      ],
+      0,
+      0,
+      0
+     ],
+     "matchedTemplate": "continuation_X_is_the_Y"
+    }
+   ],
+   "caveat": "dimension is d-dependent; the emitted [0,[-3,2],0,0,0] is the 3D reading only",
+   "note": "The dimension emitted, L^(-3/2), is only correct because the sentence says three-dimensional. The noun entry carries dimensionDependsOnSpatialDimension and a dimByD map; a consumer that emits L^(-3/2) without finding d in the text is guessing."
+  },
+  {
+   "id": "t11_gw_strain",
+   "sentence": "We inject signals at fixed $h$, with $h$ the gravitational-wave strain at the detector.",
+   "expected": [
+    {
+     "symbol": "h",
+     "gloss": "gravitational-wave strain",
+     "noun": "strain",
+     "dim": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "matchedTemplate": "with_X_the_Y"
+    }
+   ],
+   "note": "Dimensionless, and the census records that the DEFINITION forks (Delta L / L vs delta L / L) with no dimensional signature — a case where a passed dimension check certifies nothing."
+  },
+  {
+   "id": "t12_lattice_scattering_length",
+   "sentence": "The interaction is parameterized by $a_s$, where $a_s$ is the s-wave scattering length in units of the Bohr radius.",
+   "expected": [
+    {
+     "symbol": "a_s",
+     "gloss": "s-wave scattering length",
+     "noun": "scattering length",
+     "dim": [
+      0,
+      1,
+      0,
+      0,
+      0
+     ],
+     "matchedTemplate": "where_X_is_the_Y"
+    }
+   ],
+   "note": "Exercises the synonym path (s-wave scattering length) and lands on a length whose quoted unit (a_0) drags in a converter-graph entry from the census backlog."
+  },
+  {
+   "id": "t13_astro_flux_density",
+   "sentence": "Sources are selected above a threshold in $S_\\nu$, where $S_\\nu$ is the flux density at 1.4 GHz.",
+   "expected": [
+    {
+     "symbol": "S_\\nu",
+     "gloss": "flux density",
+     "noun": "flux density",
+     "dim": [
+      1,
+      0,
+      -2,
+      0,
+      0
+     ],
+     "matchedTemplate": "where_X_is_the_Y"
+    }
+   ],
+   "caveat": "ambiguous noun; the per-frequency reading is licensed by context outside the capture",
+   "note": "'flux density' is flagged ambiguous in the table: the astronomical Jy reading (W m^-2 Hz^-1) collides with magnetic flux density (T) and with a radiometric W m^-2. The '1.4 GHz' in the sentence is what licenses the Jy reading, and it sits outside the gloss capture."
+  },
+  {
+   "id": "t14_mechanics_moment_of_inertia",
+   "sentence": "$I$ is the moment of inertia about the spin axis, and $\\omega$ is the angular frequency of rotation.",
+   "expected": [
+    {
+     "symbol": "I",
+     "gloss": "moment of inertia",
+     "noun": "moment of inertia",
+     "dim": [
+      1,
+      2,
+      0,
+      0,
+      0
+     ],
+     "matchedTemplate": "X_is_the_Y_sentence_initial"
+    },
+    {
+     "symbol": "\\omega",
+     "gloss": "angular frequency",
+     "noun": "angular frequency",
+     "dim": [
+      0,
+      0,
+      -1,
+      0,
+      0
+     ],
+     "matchedTemplate": "continuation_X_is_the_Y"
+    }
+   ],
+   "note": "Exercises the of-tail whitelist in the gloss grammar (without it, the gloss truncates to the useless head 'moment')."
+  },
+  {
+   "id": "t15_em_permittivity",
+   "sentence": "The mode volume is computed with $\\varepsilon_0$, where $\\varepsilon_0$ is the vacuum permittivity in the rationalized convention.",
+   "expected": [
+    {
+     "symbol": "\\varepsilon_0",
+     "gloss": "vacuum permittivity",
+     "noun": "permittivity",
+     "dim": [
+      -1,
+      -3,
+      4,
+      0,
+      2
+     ],
+     "matchedTemplate": "where_X_is_the_Y"
+    }
+   ],
+   "note": "Permittivity is dimensionless in Gaussian, so the emitted SI vector is convention-dependent; the sentence's word 'rationalized' is the fingerprint that licenses it. Census §6.4 records that the electric analogue of the magnetic atomic-unit ambiguity is a factor sqrt(4pi) = 3.545 in lambda and 4pi in a mode volume."
+  },
+  {
+   "id": "t16_negative_results_table_caption",
+   "sentence": "Table 2. Best-fit parameters for the three samples; columns give the annealing temperature, the extracted mobility, and the reduced chi-square of each fit.",
+   "expected": [],
+   "mustYieldNothing": true,
+   "trap": "This is census §6.5b's guard case rendered as prose. A table whose row or column labels are METHODS OR MATERIALS is a results table, not a normalization table, and reading it as cue (i) emits a false generator on a paper with an empty generator set. Mechanically it stays silent because no 'the <noun phrase>' here is followed by a symbol: 'the annealing temperature,' is followed by a comma, and 'the extracted mobility' by a comma — so even the appositive template, the loosest in the set, cannot fire."
+  },
+  {
+   "id": "t17_negative_integration_domain",
+   "sentence": "The self-energy is finite after regularization, where the integral runs over all momenta $k$ below the cutoff.",
+   "expected": [],
+   "mustYieldNothing": true,
+   "trap": "The canonical 'where' false positive. Two independent guards stop it: the workhorse needs a SYMBOL immediately after 'where' and finds the word 'the'; the appositive template would otherwise capture gloss 'integral runs over all momenta' with symbol 'k', but 'runs', 'over' and 'all' are stopwords, so no gloss can span them. Remove the stopword guard and this sentence produces a spurious length-dimension triple for k."
+  },
+  {
+   "id": "t18_negative_citation",
+   "sentence": "The notation follows Ref. [12], where $E$ denotes the same quantity as in Eq. (3) of that work.",
+   "expected": [],
+   "mustYieldNothing": true,
+   "trap": "A citation sentence wearing the exact syntax of a declaration. It is blocked at the template level rather than at the noun table: 'same' is a stopword, so the gloss cannot start, and the match fails outright. A consumer that relaxes the stopword list must then rely on the noun lookup rejecting 'same quantity' — a weaker guard, since it emits a candidate that a fuzzy matcher might snap to 'quantity'."
+  },
+  {
+   "id": "t19_negative_dimensionless_ratio",
+   "sentence": "We define $\\eta = n_b/n_\\gamma$, the baryon-to-photon ratio, which is fixed by big-bang nucleosynthesis.",
+   "expected": [],
+   "mustYieldNothing": true,
+   "trap": "A dimensionless RATIO must not enter the unit-axis glossary at all. convention.ts throws on a dimensionless generator with exactly this instruction — route it to the N axis or the dimensionless-conventions registry (census §2.1, §2.5). Mechanically: the we-define template captures symbol eta and expression n_b/n_gamma but its gloss tail requires the literal 'as the', which is absent, so no gloss is attached and the reference pipeline emits nothing. The (symbol, expression) pair is still worth routing onward — to the dimensionless registry, not here."
+  },
+  {
+   "id": "t20_contradiction_m_as_length",
+   "sentence": "Following the notation of the survey papers, $m$ is the comoving separation between the two haloes, expressed in Mpc.",
+   "expected": [
+    {
+     "symbol": "m",
+     "gloss": "comoving separation",
+     "noun": "length",
+     "dim": [
+      0,
+      1,
+      0,
+      0,
+      0
+     ],
+     "matchedTemplate": "continuation_X_is_the_Y"
+    }
+   ],
+   "contradictsRegistry": {
+    "registry": "relativity-and-gravitation (src/unitsEngine.ts GR_REGISTRY.bare)",
+    "symbol": "m",
+    "registryGloss": "mass",
+    "registryDim": [
+     1,
+     0,
+     0,
+     0,
+     0
+    ],
+    "minedDim": [
+     0,
+     1,
+     0,
+     0,
+     0
+    ],
+    "expectedConsumerBehavior": "The per-paper declaration WINS over the registry default — that is the entire point of §6.5 extraction — but the clash must be surfaced, not silently resolved, because a mis-parsed declaration and a genuine per-paper override are indistinguishable at this stage. Emit a conflict record carrying both readings."
+   },
+   "note": "Contradiction case 1 of 2."
+  },
+  {
+   "id": "t21_contradiction_T_as_period",
+   "sentence": "Here $T$ is the orbital period of the binary, and the mass ratio is held fixed at 0.8.",
+   "expected": [
+    {
+     "symbol": "T",
+     "gloss": "orbital period",
+     "noun": "time",
+     "dim": [
+      0,
+      0,
+      1,
+      0,
+      0
+     ],
+     "matchedTemplate": "here_X_is_the_Y"
+    }
+   ],
+   "contradictsRegistry": {
+    "registry": "relativity-and-gravitation (src/unitsEngine.ts GR_REGISTRY.bare)",
+    "symbol": "T",
+    "registryGloss": "temperature",
+    "registryDim": [
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    "minedDim": [
+     0,
+     0,
+     1,
+     0,
+     0
+    ],
+    "expectedConsumerBehavior": "Same rule as t20. This one is nastier because BOTH readings are ubiquitous for T and the two dimensions are on orthogonal axes (Theta vs T), so any downstream restoration solve will fail loudly rather than return a wrong number — the good failure mode. Under k_B = 1 the two readings partially merge, and the failure stops being loud."
+   },
+   "note": "Contradiction case 2 of 2."
+  }
+ ]
+}

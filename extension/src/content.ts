@@ -11,7 +11,10 @@ import {
 } from "../../src/unitsEngine"
 import { defaultProfile } from "../../src/profiles"
 import { CONVENTIONS } from "../../src/convention"
-import { DetectionReport, Evidence, inferConventions } from "../../src/detect"
+import { DetectionReport, DocumentReport, Evidence, Span, inferDocument } from "../../src/detect"
+import { targetFromDetection } from "../../src/bridge"
+import { MinedSymbol, mineDeclarations } from "../../src/mine"
+import { normalizeTex } from "./extract"
 import { renderTranslation } from "../../app/resultView"
 import { MathCandidate, scanForMath } from "./extract"
 import panelCss from "../panel.css"
@@ -38,6 +41,8 @@ let systemSel: HTMLSelectElement
 let geomBox: HTMLInputElement
 let currentTex = ""
 let pageDetection: DetectionReport | null = null
+let pageDocument: DocumentReport | null = null
+let pageSymbols: MinedSymbol[] = []
 
 // The page-conventions card is DERIVED from the evidence the report
 // carries — never a fixed sentence that might name a cause that did not
@@ -89,7 +94,7 @@ function evidenceItem(e: Evidence): HTMLLIElement {
     case "fingerprint": {
       const m = document.createElement("span")
       katex.render(e.tex, m, { throwOnError: false })
-      li.append("Field equation ", m, ": " + e.meaning + ".")
+      li.append(m, ": " + e.meaning + ".")
       break
     }
     case "visible-constant": {
@@ -99,6 +104,20 @@ function evidenceItem(e: Evidence): HTMLLIElement {
         m,
         " explicit in " + e.count + " of " + e.of + " equations" +
           (e.strength === "strong" ? "." : "; too few to count."),
+      )
+      break
+    }
+    case "contradicted": {
+      const chain = document.createElement("span")
+      katex.render(e.labelTex, chain, { throwOnError: false })
+      const k = document.createElement("span")
+      katex.render(e.constantTex, k, { throwOnError: false })
+      li.append(
+        "Stated ",
+        chain,
+        ", yet ",
+        k,
+        " is written in " + e.count + " of " + e.of + " equations; the equations govern.",
       )
       break
     }
@@ -121,7 +140,11 @@ function detectionCard(): HTMLElement | null {
   card.appendChild(h)
 
   const acting = r.evidence.filter(
-    (e) => e.kind === "declaration" || e.kind === "fingerprint" || (e.kind === "visible-constant" && e.strength === "strong"),
+    (e) =>
+      e.kind === "declaration" ||
+      e.kind === "fingerprint" ||
+      e.kind === "contradicted" ||
+      (e.kind === "visible-constant" && e.strength === "strong"),
   )
   const noted = r.evidence.filter((e) => !acting.includes(e) && !(e.kind === "visible-constant" && e.strength === "weak-homograph"))
 
@@ -141,6 +164,26 @@ function detectionCard(): HTMLElement | null {
       cands.appendChild(candidateNode(k))
     })
     card.appendChild(cands)
+  } else if (pageDocument && pageDocument.mixed.length) {
+    lead.className = "verdict warn"
+    lead.textContent = "Mixed."
+    line.append(lead, " Different parts of the page use different conventions.")
+    card.appendChild(line)
+    const ul = document.createElement("ul")
+    ul.className = "reasons"
+    for (const s of pageDocument.spans) {
+      if (s.report.kind !== "narrowed") continue
+      const li = document.createElement("li")
+      li.append(s.label + ": ")
+      s.report.sets[0].slice(0, 3).forEach((k, i) => {
+        if (i) li.append(" · ")
+        li.appendChild(candidateNode(k))
+      })
+      if (s.report.sets[0].length > 3) li.append(" · +" + (s.report.sets[0].length - 3))
+      ul.appendChild(li)
+    }
+    card.appendChild(ul)
+    return card
   } else if (r.kind === "conflict") {
     lead.className = "verdict warn"
     lead.textContent = "Inconsistent."
@@ -177,6 +220,39 @@ function detectionCard(): HTMLElement | null {
     also.append(".")
     card.appendChild(also)
   }
+  return card
+}
+
+// Symbols the text declares (census §6.5): the reading as printed, its
+// dimension's noun, and the registry's own reading wherever it disagrees —
+// the declaration wins, the clash is shown.
+const CAVEAT_TEXT: Record<NonNullable<MinedSymbol["caveat"]>, string> = {
+  ambiguous: "Ambiguous noun.",
+  "convention-dependent": "Dimension depends on the E&M system.",
+  "depends-on-d": "Dimension depends on the spatial dimension.",
+  "coordinate-convention": "Depends on the coordinate convention.",
+}
+
+function symbolsCard(): HTMLElement | null {
+  if (!pageSymbols.length) return null
+  const card = document.createElement("div")
+  card.className = "card"
+  const h = document.createElement("h2")
+  h.textContent = "Symbols"
+  card.appendChild(h)
+  const ul = document.createElement("ul")
+  ul.className = "reasons"
+  for (const s of pageSymbols) {
+    const li = document.createElement("li")
+    const m = document.createElement("span")
+    katex.render(s.symbol, m, { throwOnError: false })
+    const gloss = s.gloss.toLowerCase() === s.noun.noun.toLowerCase() ? "" : " (“" + s.gloss + "”)"
+    li.append(m, ": " + s.noun.noun + gloss + ".")
+    if (s.registry) li.append(" Registry reads " + s.registry.gloss + ".")
+    if (s.caveat) li.append(" " + CAVEAT_TEXT[s.caveat])
+    ul.appendChild(li)
+  }
+  card.appendChild(ul)
   return card
 }
 
@@ -234,6 +310,13 @@ function buildPanel(): void {
   geomBox.type = "checkbox"
   geomLabel.append(geomBox, " geometrized")
   controls.append(systemSel, geomLabel)
+  // The target follows the page evidence where every candidate agrees
+  // (src/bridge.ts targetFromDetection); the reader can still override.
+  if (pageDetection) {
+    const seed = targetFromDetection(pageDetection)
+    if (seed.system) systemSel.value = seed.system
+    if (seed.geometrized !== undefined) geomBox.checked = seed.geometrized
+  }
   systemSel.addEventListener("change", runTranslate)
   geomBox.addEventListener("change", runTranslate)
 
@@ -244,6 +327,8 @@ function buildPanel(): void {
   panel.append(head, controls)
   const detect = detectionCard()
   if (detect) panel.appendChild(detect)
+  const symbols = symbolsCard()
+  if (symbols) panel.appendChild(symbols)
   panel.appendChild(resultsEl)
   root.appendChild(panel)
   document.body.appendChild(host)
@@ -318,16 +403,83 @@ function decorate(candidates: MathCandidate[]): number {
 // ladder, body-level visible constants across everything extracted so far.
 // Display equations first: the ladder and the couplings live there, not in
 // inline single symbols.
+// Spans (census section 6.2): on LaTeXML pages every top-level section and
+// appendix is a span, with the equations that sit inside it; the abstract and
+// unclaimed equations form one more. Elsewhere the page is a single span.
+function documentSpans(): Span[] {
+  const ordered = [...pool].sort((a, b) => Number(b.display) - Number(a.display)).slice(0, 500)
+  const sections = [...document.querySelectorAll(".ltx_section, .ltx_appendix")].filter(
+    (s) => !s.parentElement?.closest(".ltx_section, .ltx_appendix"),
+  )
+  if (sections.length === 0) {
+    return [{ id: "page", label: "Page", text: proseSurface(), equations: ordered.map((c) => c.tex) }]
+  }
+  const spans: Span[] = []
+  const claimed = new Set<MathCandidate>()
+  sections.forEach((sec, i) => {
+    const title = (sec.querySelector(".ltx_title")?.textContent ?? "").replace(/\s+/g, " ").trim()
+    const eqs: string[] = []
+    for (const c of ordered) {
+      const el = c.displayEl as unknown as Element
+      if (!claimed.has(c) && sec.contains(el)) {
+        claimed.add(c)
+        eqs.push(c.tex)
+      }
+    }
+    const paras = [...sec.querySelectorAll(".ltx_para")].filter((q) => !q.closest(".ltx_bibliography")).slice(0, 40)
+    spans.push({
+      id: "s" + i,
+      label: title || "Section " + (i + 1),
+      text: paras.map((q) => q.textContent ?? "").join("\n").slice(0, 120000),
+      equations: eqs,
+    })
+  })
+  const rest = ordered.filter((c) => !claimed.has(c)).map((c) => c.tex)
+  const front = document.querySelector(".ltx_abstract")?.textContent ?? ""
+  if (front || rest.length) spans.unshift({ id: "front", label: "Front matter", text: front, equations: rest })
+  return spans
+}
+
 function runDetection(): void {
   try {
-    const ordered = [...pool].sort((a, b) => Number(b.display) - Number(a.display))
-    pageDetection = inferConventions({
-      text: proseSurface(),
-      equations: ordered.slice(0, 500).map((c) => c.tex),
-    })
+    pageDocument = inferDocument(documentSpans())
+    pageDetection = pageDocument.overall
   } catch {
+    pageDocument = null
     pageDetection = null // detection must never take the panel down with it
   }
+  try {
+    pageSymbols = mineDeclarations(miningSurface()).symbols.slice(0, 12)
+  } catch {
+    pageSymbols = []
+  }
+}
+
+// The miner's surface: prose with every math element replaced by its TeX in
+// $…$. Rendered MathML's textContent glues glyphs to the annotation
+// ("aμa^{\mu}"), which no symbol grammar should be asked to read.
+function mathTex(el: Element): string | null {
+  const alt = el.getAttribute("alttext") ?? el.querySelector("math[alttext]")?.getAttribute("alttext")
+  if (alt) return normalizeTex(alt)
+  const ann = el.querySelector('annotation[encoding="application/x-tex"]')
+  const tex = ann?.textContent?.trim()
+  return tex ? normalizeTex(tex) : null
+}
+
+function miningSurface(): string {
+  const ltx = [...document.querySelectorAll(".ltx_para")].filter((p) => !p.closest(".ltx_bibliography"))
+  const roots = ltx.length ? ltx.slice(0, 80) : [...document.querySelectorAll("p")].slice(0, 400)
+  const parts: string[] = []
+  for (const root of roots) {
+    const clone = root.cloneNode(true) as Element
+    for (const m of clone.querySelectorAll("math, .mwe-math-element, .katex")) {
+      if (!m.isConnected && !clone.contains(m)) continue
+      const tex = mathTex(m)
+      m.replaceWith(document.createTextNode(tex ? " $" + tex + "$ " : " "))
+    }
+    parts.push((clone.textContent ?? "").replace(/\s+/g, " "))
+  }
+  return parts.join("\n").slice(0, 300000)
 }
 
 function init(): void {

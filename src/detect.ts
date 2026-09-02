@@ -31,6 +31,7 @@
 // the G-normalization family, so those keys stay together in one set.
 import { CONST_DIM, CONVENTIONS, DimQ, Frac, solveRestoration } from "./convention"
 import { EM_FLAVOR, EmFlavor } from "./rendering"
+import { FINGERPRINT_RULES, FingerprintRule } from "./tables.generated"
 
 export type Strength = "strong" | "isolated" | "weak-homograph"
 
@@ -40,6 +41,8 @@ export type Evidence =
       label: string
       /** The label as TeX where it is a formula (chains); absent for prose labels. */
       labelTex?: string
+      /** For an E&M-flavor declaration: the flavors it names. Two disjoint ones make a hybrid. */
+      flavors?: EmFlavor[]
       /** The matched text with a little surrounding context. */
       excerpt: string
       implies: string[]
@@ -63,6 +66,8 @@ export type Evidence =
       /** The page equation that matched. */
       equation: string
       implies: string[]
+      /** For an E&M form: the flavors it asserts. Two disjoint ones make a hybrid. */
+      flavors?: EmFlavor[]
     }
   | {
       kind: "visible-constant"
@@ -73,6 +78,22 @@ export type Evidence =
       /** Empty unless strong — recorded, never acted on otherwise. */
       excludes: string[]
       /** How many of the body equations show it, out of how many. */
+      count: number
+      of: number
+    }
+  | {
+      /**
+       * A chain stated in the text whose constant the body equations keep
+       * printing at body level: an encyclopedia rewriting one form "in units
+       * where G = c = 1", or a paper contradicting its own declaration. The
+       * equations as printed govern (census §6.4); the chain does not narrow.
+       */
+      kind: "contradicted"
+      label: string
+      labelTex: string
+      excerpt: string
+      constant: string
+      constantTex: string
       count: number
       of: number
     }
@@ -160,7 +181,7 @@ const flavored = (...flavors: EmFlavor[]) =>
 // Mathematical Alphanumeric Symbols (U+1D400–U+1D7FF): 13 Latin styles of 52
 // letters, Greek styles of 58, then digits. innerText of MathML carries these
 // (Chrome's math-auto transform), so "𝐺 = 𝑐 = 1" must read as "G = c = 1".
-function foldMathAlphanumeric(s: string): string {
+export function foldMathAlphanumeric(s: string): string {
   return s.replace(/[\u{1D400}-\u{1D7FF}]/gu, (ch) => {
     const cp = ch.codePointAt(0)!
     if (cp <= 0x1d6a3) {
@@ -257,7 +278,7 @@ const CHAIN_RE = new RegExp(
 // A chain stated hypothetically, negated, or as one of several alternatives
 // is not the document's declaration (census §6.4: classify from the body).
 const CHAIN_ANTI_FRAME =
-  /\b(if|would|were|unless|not fixed by|does not fix|do not fix|orthogonal to|also sets?|(?:third|another|other|second) variant|variant sets|instead|alternatively|rather than|unlike|whereas|as opposed to|compared|in contrast|a different row|note that|one (?:may|can|could|might)|is not (?:unity|set)|not unity|only if|provided that|corresponds to|would (?:be|read|give))\b/i
+  /\b(if|would|were|unless|not fixed by|does not fix|do not fix|orthogonal to|also sets?|(?:third|another|other|second) variant|variant sets|instead|alternatively|rather than|unlike|whereas|as opposed to|compared|in contrast|a different row|note that|one (?:may|can|could|might)|is not (?:unity|set)|not unity|only if|provided that|corresponds to|would (?:be|read|give)|(?:can|may|could|might) (?:also |then |equivalently )?be (?:re)?(?:written|expressed|cast|stated|put))\b/i
 const TERM_RE = new RegExp(TERM, "g")
 
 function parseTerms(chain: string): ChainTerm[] {
@@ -315,6 +336,8 @@ type NamedRule = {
   pattern: RegExp
   /** Undefined ⇒ the phrase classifies nothing on its own (census §6.4). */
   implies?: () => string[]
+  /** Set when the rule names an E&M flavor (so hybrids can be recognized). */
+  flavors?: EmFlavor[]
   note?: string
 }
 
@@ -350,31 +373,37 @@ export const NAMED_RULES: NamedRule[] = [
     label: "Gaussian (CGS) units",
     pattern: /Gaussian\s+units|CGS-?Gaussian|Gaussian-?CGS/i,
     implies: () => flavored("gaussian"),
+    flavors: ["gaussian"],
   },
   {
     label: "cgs units (rendering unstated)",
     pattern: /\bcgs\s+units/i,
     implies: () => flavored("gaussian", "esu", "emu"),
+    flavors: ["gaussian", "esu", "emu"],
   },
   {
     label: "Heaviside–Lorentz units",
     pattern: /Heaviside\s*[-–]?\s*Lorentz/i,
     implies: () => flavored("heaviside-lorentz"),
+    flavors: ["heaviside-lorentz"],
   },
   {
     label: "SI (MKSA) units",
     pattern: /\bSI\s+units\b|\bMKSA\b/,
     implies: () => flavored("si"),
+    flavors: ["si"],
   },
   {
     label: "electrostatic (esu) units",
     pattern: /electrostatic\s+units|\besu\s+units|\bin\s+esu\b/i,
     implies: () => flavored("esu"),
+    flavors: ["esu"],
   },
   {
     label: "electromagnetic (emu) units",
     pattern: /electromagnetic\s+units|\bemu\s+units|\bin\s+emu\b/i,
     implies: () => flavored("emu"),
+    flavors: ["emu"],
   },
   {
     label: "reduced Planck units",
@@ -412,7 +441,15 @@ function sentenceAround(text: string, index: number): string {
 // ---------------------------------------------------------------------------
 const EINSTEIN_RE = /\bG_\{?([a-zA-Z\\]+)\}?\s*(?:\+[^=]*?)?=\s*([^=]*?)\bT_\{?\1\}?/
 
-type Rung = { label: string; tex: string; meaning: string; implies?: string[]; note?: string }
+type Rung = {
+  label: string
+  tex: string
+  meaning: string
+  implies?: string[]
+  /** The constants the rung claims absorbed — weighed against the body, as chains are. */
+  absorbs?: string[]
+  note?: string
+}
 
 function ladderRung(prefix: string): Rung | null {
   const p = prefix.replace(/\s+/g, " ").trim()
@@ -434,6 +471,7 @@ function ladderRung(prefix: string): Rung | null {
       tex: `G_{\\mu\\nu} = ${coef}\\pi G\\, T_{\\mu\\nu}`,
       meaning: "G without c, hence c = 1",
       implies: absorbing(["c", CONST_DIM.c]),
+      absorbs: ["c"],
     }
   if (!hasG && hasPi)
     return {
@@ -441,6 +479,7 @@ function ladderRung(prefix: string): Rung | null {
       tex: `G_{\\mu\\nu} = ${coef}\\pi\\, T_{\\mu\\nu}`,
       meaning: `${coef}π and no G, hence G = c = 1 (Cluster A)`,
       implies: absorbing(["c", CONST_DIM.c], ["G", CONST_DIM.G]),
+      absorbs: ["c", "G"],
     }
   if (p === "")
     return {
@@ -450,8 +489,47 @@ function ladderRung(prefix: string): Rung | null {
       implies: ALL_KEYS.filter(
         (k) => absorbsWithFactor(k, "G", CONST_DIM.G, "8\\pi") && absorbsExactly(k, "c", CONST_DIM.c),
       ),
+      absorbs: ["c", "G"],
     }
   return null
+}
+
+// ---------------------------------------------------------------------------
+// Channel 3b: equation-form matchers (census §6.3 E&M discriminators, §6.4
+// strong natural-units tokens, the §6.1 action-prefactor ladder, and the
+// constants-explicit forms that assert SI POSITIVELY — never the residue of
+// nothing firing). The table lives in docs/data/fingerprints.json with its
+// positives and negatives; each rule's implication is resolved against the
+// registry here, so a rule names generators, not rows.
+// ---------------------------------------------------------------------------
+const FINGERPRINTS = FINGERPRINT_RULES.map((r) => ({ rule: r, re: new RegExp(r.pattern) }))
+
+const DIM_OF_TEX: Record<string, DimQ> = {
+  "\\hbar": CONST_DIM.hbar,
+  c: CONST_DIM.c,
+  G: CONST_DIM.G,
+  k_B: CONST_DIM.kB,
+  e: CONST_DIM.e,
+  m_e: CONST_DIM.me,
+  "\\varepsilon_0": CONST_DIM.eps0,
+  "\\mu_0": CONST_DIM.mu0,
+}
+
+/** The constants a rule claims absorbed (the §6.1 action rungs and the Planck forms); E&M flavor rules claim none. */
+export function fingerprintAbsorbs(rule: FingerprintRule): string[] {
+  const imp = rule.implies
+  if ("absorbing" in imp) return imp.absorbing.map(([tex]) => tex)
+  if ("absorbsWithFactor" in imp) return [imp.absorbsWithFactor[0]]
+  return []
+}
+
+export function fingerprintImplies(rule: FingerprintRule): string[] {
+  const imp = rule.implies
+  if ("flavored" in imp) return flavored(...(imp.flavored as EmFlavor[]))
+  if ("keys" in imp) return imp.keys.filter((k) => k in CONVENTIONS)
+  if ("absorbing" in imp) return absorbing(...imp.absorbing.map(([tex]) => [tex, DIM_OF_TEX[tex]] as [string, DimQ]))
+  const [tex, factor] = imp.absorbsWithFactor
+  return ALL_KEYS.filter((k) => absorbsWithFactor(k, tex, DIM_OF_TEX[tex], factor))
 }
 
 // ---------------------------------------------------------------------------
@@ -504,9 +582,14 @@ export const CONSTANT_TOKENS: ConstantToken[] = [
   { constant: "e (bare)", tex: "e", dim: CONST_DIM.e, pattern: /(?<![A-Za-z_])e(?![A-Za-z_])/, weak: true },
 ]
 
-/** Body-level: at least two equations and at least 5% of them. */
+/**
+ * Body-level: at least two equations and at least 5% of them — or eight
+ * outright, so that a lecture-notes page of thousands of equations still
+ * counts a constant it writes throughout (a restoration in a final formula
+ * is one or two appearances, never eight).
+ */
 export function prevalent(count: number, of: number): boolean {
-  return count >= 2 && count * 20 >= of
+  return count >= 2 && (count * 20 >= of || count >= 8)
 }
 
 // ---------------------------------------------------------------------------
@@ -588,6 +671,31 @@ export function inferConventions(
         alternatives.add(a)
         alternatives.add(b)
       }
+  // Body statistics come BEFORE any chain is applied: a stated chain is
+  // weighed against what the equations print. A constant a chain sets to one
+  // yet the body writes at body level (prevalent, in coupling context) means
+  // the chain is a rewrite or a slip, not the document's convention — the
+  // equations as printed govern (census §6.4), and the chain is recorded as
+  // contradicted instead of narrowing.
+  const of = bodyEquations.length
+  type Stat = { token: ConstantToken; count: number; strength: Strength }
+  const stats: Stat[] = []
+  for (const token of CONSTANT_TOKENS) {
+    const hits = bodyEquations.filter((eq) => token.pattern.test(eq))
+    if (hits.length === 0) continue
+    if (token.weak) {
+      stats.push({ token, count: hits.length, strength: "weak-homograph" })
+      continue
+    }
+    const inContext = token.context ? hits.filter((eq) => token.context!.test(eq)) : hits
+    if (inContext.length === 0) {
+      stats.push({ token, count: hits.length, strength: "weak-homograph" })
+      continue
+    }
+    stats.push({ token, count: inContext.length, strength: prevalent(inContext.length, of) ? "strong" : "isolated" })
+  }
+  const printedStrongly = (tex: string) => stats.find((s) => s.strength === "strong" && s.token.tex === tex)
+
   const seenChains = new Set<string>()
   for (const ch of chains) {
     const label = chainLabel(ch.terms)
@@ -600,6 +708,20 @@ export function inferConventions(
         label,
         excerpt: ch.sentence.slice(0, 200),
         note: hypothetical ? "stated hypothetically or in contrast, not adopted" : "one of several alternatives stated",
+      })
+      continue
+    }
+    const printed = ch.terms.map((t) => printedStrongly(CONST_NAMES[t.name].tex)).find((s) => s)
+    if (printed) {
+      evidence.push({
+        kind: "contradicted",
+        label,
+        labelTex: chainTex(ch.terms),
+        excerpt: ch.excerpt.trim(),
+        constant: printed.token.constant,
+        constantTex: printed.token.tex,
+        count: printed.count,
+        of,
       })
       continue
     }
@@ -633,10 +755,16 @@ export function inferConventions(
       continue
     }
     const implies = rule.implies()
-    evidence.push({ kind: "declaration", form: "named", label: rule.label, excerpt: sentence.slice(0, 200), implies })
+    evidence.push({
+      kind: "declaration",
+      form: "named",
+      label: rule.label,
+      excerpt: sentence.slice(0, 200),
+      implies,
+      ...(rule.flavors ? { flavors: rule.flavors } : {}),
+    })
     intersect(implies)
   }
-
   // 3. The ladder.
   const seenRungs = new Set<string>()
   for (const eq of bodyEquations) {
@@ -645,6 +773,20 @@ export function inferConventions(
     const rung = ladderRung(m[2])
     if (!rung || seenRungs.has(rung.label)) continue
     seenRungs.add(rung.label)
+    const printed = (rung.absorbs ?? []).map(printedStrongly).find((s) => s)
+    if (printed) {
+      evidence.push({
+        kind: "contradicted",
+        label: rung.label,
+        labelTex: rung.tex,
+        excerpt: eq.trim().slice(0, 120),
+        constant: printed.token.constant,
+        constantTex: printed.token.tex,
+        count: printed.count,
+        of,
+      })
+      continue
+    }
     if (rung.implies) {
       evidence.push({
         kind: "fingerprint",
@@ -660,12 +802,88 @@ export function inferConventions(
     }
   }
 
-  // 4. Visible constants, body-level.
-  const of = bodyEquations.length
-  for (const token of CONSTANT_TOKENS) {
-    const hits = bodyEquations.filter((eq) => token.pattern.test(eq))
-    if (hits.length === 0) continue
-    const push = (strength: Strength, count: number, excludes: string[]) =>
+  // 3b. Equation-form matchers, one firing per rule. Two forms with disjoint
+  //     implications printed in ONE equation string are alternatives being
+  //     compared ("Gaussian-Planck: ∇·E = 4πρ. Heaviside-Planck: ∇·E = ρ."),
+  //     not the document's form: recorded as mentions, as with chains.
+  const seenRules = new Set<string>()
+  for (const eq of bodyEquations) {
+    const hits = FINGERPRINTS.filter(({ rule, re }) => !seenRules.has(rule.id) && re.test(eq)).map(({ rule }) => ({
+      rule,
+      implies: fingerprintImplies(rule),
+      flavors: "flavored" in rule.implies ? (rule.implies.flavored as EmFlavor[]) : null,
+    }))
+    // Disjoint on rows, or — since mechanical rows survive every E&M form —
+    // disjoint on the flavor axis.
+    const disjoint = (a: (typeof hits)[number], b: (typeof hits)[number]) =>
+      !a.implies.some((k) => b.implies.includes(k)) ||
+      (!!a.flavors && !!b.flavors && !a.flavors.some((f) => b.flavors!.includes(f)))
+    const contested = new Set<string>()
+    for (const a of hits)
+      for (const b of hits)
+        if (a !== b && disjoint(a, b)) {
+          contested.add(a.rule.id)
+          contested.add(b.rule.id)
+        }
+    for (const { rule, implies } of hits) {
+      seenRules.add(rule.id)
+      // A form claiming a constant absorbed while the body prints that
+      // constant at body level (the unnormalized Hilbert action of a
+      // lecture-notes page, with 8πG everywhere else) is contradicted.
+      const printed = fingerprintAbsorbs(rule).map(printedStrongly).find((s) => s)
+      if (printed) {
+        evidence.push({
+          kind: "contradicted",
+          label: rule.label,
+          labelTex: rule.tex,
+          excerpt: eq.trim().slice(0, 120),
+          constant: printed.token.constant,
+          constantTex: printed.token.tex,
+          count: printed.count,
+          of,
+        })
+        continue
+      }
+      if (contested.has(rule.id)) {
+        evidence.push({
+          kind: "mention",
+          label: rule.label,
+          excerpt: eq.trim().slice(0, 120),
+          note: "one of several alternatives stated",
+        })
+        continue
+      }
+      evidence.push({
+        kind: "fingerprint",
+        label: rule.label,
+        tex: rule.tex,
+        meaning: rule.meaning,
+        equation: eq.trim().slice(0, 120),
+        implies,
+        ...("flavored" in rule.implies ? { flavors: rule.implies.flavored as EmFlavor[] } : {}),
+      })
+      intersect(implies)
+    }
+  }
+
+  // Two E&M assertions naming disjoint flavors — declarations or printed
+  // forms — are a hybrid (census §6.2's document_hybrid class, Jackson 3e):
+  // mechanical rows survive both intersections, so the contradiction must be
+  // recognized on the flavor axis itself.
+  const flavorBearing = evidence.filter(
+    (e): e is Extract<Evidence, { kind: "declaration" | "fingerprint" }> =>
+      (e.kind === "declaration" || e.kind === "fingerprint") && !!e.flavors,
+  )
+  for (let i = 0; i < flavorBearing.length; i++)
+    for (let j = i + 1; j < flavorBearing.length; j++)
+      if (!flavorBearing[i].flavors!.some((f) => flavorBearing[j].flavors!.includes(f))) {
+        survivors = new Set()
+        constrained = true
+      }
+
+  // 4. Visible constants, body-level (the statistics gathered above).
+  for (const { token, count, strength } of stats) {
+    const push = (excludes: string[]) =>
       evidence.push({
         kind: "visible-constant",
         constant: token.constant,
@@ -675,17 +893,8 @@ export function inferConventions(
         count,
         of,
       })
-    if (token.weak) {
-      push("weak-homograph", hits.length, [])
-      continue
-    }
-    const inContext = token.context ? hits.filter((eq) => token.context!.test(eq)) : hits
-    if (inContext.length === 0) {
-      push("weak-homograph", hits.length, [])
-      continue
-    }
-    if (!prevalent(inContext.length, of)) {
-      push("isolated", inContext.length, [])
+    if (strength !== "strong") {
+      push([])
       continue
     }
     const excludes = [...survivors].filter(
@@ -693,7 +902,7 @@ export function inferConventions(
         generatesConstant(k, token.tex, token.dim) ||
         (token.excludesFlavors ?? []).some((f) => (EM_FLAVOR[k] ?? []).includes(f)),
     )
-    push("strong", inContext.length, excludes)
+    push(excludes)
     for (const k of excludes) survivors.delete(k)
     constrained = true
   }
@@ -701,4 +910,48 @@ export function inferConventions(
   if (!constrained) return { kind: "insufficient", sets: [[...start].sort()], evidence }
   if (survivors.size === 0) return { kind: "conflict", sets: [], evidence }
   return { kind: "narrowed", sets: [[...survivors].sort()], evidence }
+}
+
+// ---------------------------------------------------------------------------
+// Span-scoped detection (census §6.2, round-4 amendment): a document can be
+// SI in the main text and Gaussian in an inherited appendix. Detect per
+// span, then report {span → conventions} plus a MIXED flag whenever two
+// narrowed spans are disjoint — never a document-level winner.
+// ---------------------------------------------------------------------------
+export type Span = { id: string; label?: string; text?: string; equations?: string[] }
+
+export type DocumentReport = {
+  /** Detection over everything, as if the document were one span. */
+  overall: DetectionReport
+  spans: { id: string; label: string; report: DetectionReport }[]
+  /** Pairs of spans whose narrowed candidate sets share no convention. */
+  mixed: { a: string; b: string }[]
+}
+
+export function inferDocument(spans: Span[], opts: { candidates?: string[] } = {}): DocumentReport {
+  const overall = inferConventions(
+    {
+      text: spans.map((s) => s.text ?? "").join("\n"),
+      equations: spans.flatMap((s) => s.equations ?? []),
+    },
+    opts,
+  )
+  const per = spans.map((s) => ({ id: s.id, label: s.label ?? s.id, report: inferConventions(s, opts) }))
+  const mixed: { a: string; b: string }[] = []
+  for (let i = 0; i < per.length; i++)
+    for (let j = i + 1; j < per.length; j++) {
+      const a = per[i].report
+      const b = per[j].report
+      if (a.kind !== "narrowed" || b.kind !== "narrowed") continue
+      const bs = new Set(b.sets[0])
+      // Disjoint outright, or disjoint on the rows whose E&M flavor is
+      // determined (mechanical rows survive every E&M sentence and would
+      // otherwise mask an SI-main-text / Gaussian-appendix split).
+      const detA = a.sets[0].filter((k) => EM_FLAVOR[k])
+      const detB = b.sets[0].filter((k) => EM_FLAVOR[k])
+      const disjoint = !a.sets[0].some((k) => bs.has(k))
+      const flavorDisjoint = detA.length > 0 && detB.length > 0 && !detA.some((k) => bs.has(k))
+      if (disjoint || flavorDisjoint) mixed.push({ a: per[i].id, b: per[j].id })
+    }
+  return { overall, spans: per, mixed }
 }

@@ -14,6 +14,7 @@ import {
   absorbsWithFactor,
   generatesConstant,
   inferConventions,
+  inferDocument,
   normalizeProse,
   normalizeTexForDetection,
   prevalent,
@@ -93,7 +94,7 @@ describe("channel 1 — declaration chains read their numeric prefixes", () => {
   test("a chain typeset as MATH is a declaration, not a visible constant (no self-conflict)", () => {
     const r = inferConventions({
       text: "Throughout we work in natural units,",
-      equations: ["\\hbar = c = 1", "S = \\int d^4x \\sqrt{-g} R", "E = \\hbar \\omega"],
+      equations: ["\\hbar = c = 1", "E^2 = p^2 + m^2", "E = \\hbar \\omega"],
     })
     assert.notStrictEqual(r.kind, "conflict")
     has(r, "hep-hl-kb")
@@ -261,6 +262,41 @@ describe("normalization — rendered pages fold to the matching form", () => {
   })
 })
 
+describe("span-scoped detection (census §6.2, round-4 amendment)", () => {
+  test("SI main text + Gaussian appendix → per-span verdicts and a MIXED flag, no document winner", () => {
+    const doc = inferDocument([
+      {
+        id: "main",
+        label: "Main text",
+        text: "We work in SI units throughout the main text.",
+        equations: ["F = \\frac{1}{4\\pi\\varepsilon_0}\\frac{q_1 q_2}{r^2}", "U = \\frac{q_1 q_2}{4\\pi\\varepsilon_0 r}"],
+      },
+      {
+        id: "appB",
+        label: "Appendix B",
+        text: "In Appendix B we work in Gaussian units, following the original derivation.",
+        equations: ["\\nu = \\frac{4\\pi n e^{4} \\ln\\Lambda}{m^{2} v^{3}}"],
+      },
+    ])
+    assert.strictEqual(doc.spans.length, 2)
+    assert.strictEqual(doc.spans[0].report.kind, "narrowed")
+    assert.strictEqual(doc.spans[1].report.kind, "narrowed")
+    assert.deepStrictEqual(doc.mixed, [{ a: "main", b: "appB" }])
+    // The document-level read is the honest conflict; the spans carry the answer.
+    assert.strictEqual(doc.overall.kind, "conflict")
+  })
+  test("one span, or spans that agree, are not mixed", () => {
+    const one = inferDocument([{ id: "p", text: "We use geometrized units." }])
+    assert.deepStrictEqual(one.mixed, [])
+    const agree = inferDocument([
+      { id: "a", text: "We use geometrized units." },
+      { id: "b", equations: ["G_{ab} = 8\\pi T_{ab}"] },
+    ])
+    assert.deepStrictEqual(agree.mixed, [])
+    assert.strictEqual(agree.overall.kind, "narrowed")
+  })
+})
+
 describe("the sets contract (census §6.2) and report hygiene", () => {
   test("empty input → insufficient, a FRESH sorted full list each call", () => {
     const a = inferConventions({})
@@ -287,5 +323,57 @@ describe("the sets contract (census §6.2) and report hygiene", () => {
   test("a vacuum-only GR page leaves the G family undivided (Cluster B honesty)", () => {
     const r = inferConventions({ equations: ["R_{ab} = 0", "ds^2 = -(1 - 2M/r) dt^2"] })
     assert.strictEqual(r.kind, "insufficient")
+  })
+})
+
+// Real-page finding (2026-09-02): the Arabic Wikipedia field-equations page
+// says "using geometrized units where G = c = 1, this can be rewritten as …"
+// — in Arabic, so no English frame catches it — while writing G in 13 of 70
+// equations. Under v1.5 that was a conflict; the equations as printed govern.
+describe("a stated chain weighed against the printed equations", () => {
+  const body = (withG: number, total: number) => [
+    ...Array.from({ length: withG }, (_, i) => `G_{ab} + \\Lambda g_{ab} = \\frac{8 \\pi G}{c^{4}} T_{ab}^{(${i})}`),
+    ...Array.from({ length: total - withG }, (_, i) => `R_{ab}^{(${i})} = 0`),
+  ]
+  test("a chain the body contradicts at body level is recorded as such, and does not narrow", () => {
+    const r = inferConventions({ text: "باستعمال وحدات هندسية حيث G = c = 1, يمكن إعادة كتابتها", equations: body(3, 10) })
+    assert.strictEqual(r.kind, "narrowed")
+    const c = r.evidence.find((e) => e.kind === "contradicted")
+    assert.ok(c && c.kind === "contradicted")
+    assert.strictEqual(c.constantTex, "G")
+    assert.strictEqual(c.count, 3)
+    assert.strictEqual(c.of, 10)
+    assert.ok(!r.evidence.some((e) => e.kind === "declaration"))
+    has(r, "si", "gaussian", "heaviside-lorentz")
+    lacks(r, "geometrized")
+  })
+  test("an isolated appearance does not unseat the chain (authors restore c and G in final formulas)", () => {
+    const r = inferConventions({ text: "Throughout, G = c = 1.", equations: body(1, 40) })
+    assert.strictEqual(r.kind, "narrowed")
+    assert.ok(r.evidence.some((e) => e.kind === "declaration" && e.form === "chain"))
+    assert.ok(!r.evidence.some((e) => e.kind === "contradicted"))
+    has(r, "geometrized")
+    lacks(r, "si")
+  })
+  test("a lecture-notes page: the unnormalized Hilbert action is contradicted by the 8πG it writes throughout", () => {
+    // Carroll's notes print S = ∫√−g R before normalizing it, then 8πG in
+    // dozens of equations among thousands: under 5% but far past eight.
+    const equations = [
+      "S = \\int d^4x \\sqrt{-g} R",
+      ...Array.from({ length: 12 }, (_, i) => `R_{\\mu\\nu}^{(${i})} - \\frac12 R g_{\\mu\\nu} = 8\\pi G T_{\\mu\\nu}`),
+      ...Array.from({ length: 400 }, (_, i) => `\\nabla_{\\mu} V^{(${i})} = 0`),
+    ]
+    const r = inferConventions({ text: "we will choose units in which c = 1;", equations })
+    assert.strictEqual(r.kind, "narrowed")
+    const c = r.evidence.find((e) => e.kind === "contradicted")
+    assert.ok(c && c.kind === "contradicted" && c.constantTex === "G" && c.count === 12)
+    assert.ok(r.evidence.some((e) => e.kind === "declaration" && e.label === "c = 1"))
+    has(r, "c-only")
+    lacks(r, "sixteen-pi-g", "geometrized")
+  })
+  test("\"can be rewritten in units where G = c = 1\" is a rewrite, not an adoption", () => {
+    const r = inferConventions({ text: "In geometrized units where G = c = 1, this can be rewritten as a simpler form.", equations: body(0, 4) })
+    assert.ok(r.evidence.some((e) => e.kind === "mention" && e.label === "G = c = 1"))
+    assert.ok(!r.evidence.some((e) => e.kind === "declaration"))
   })
 })
