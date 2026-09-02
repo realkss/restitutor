@@ -38,6 +38,8 @@ export type Evidence =
   | {
       kind: "declaration"
       label: string
+      /** The label as TeX where it is a formula (chains); absent for prose labels. */
+      labelTex?: string
       /** The matched text with a little surrounding context. */
       excerpt: string
       implies: string[]
@@ -65,6 +67,8 @@ export type Evidence =
   | {
       kind: "visible-constant"
       constant: string
+      /** The constant as TeX, for display. */
+      constantTex: string
       strength: Strength
       /** Empty unless strong — recorded, never acted on otherwise. */
       excludes: string[]
@@ -277,6 +281,8 @@ export function findDeclarationChains(
 const PRETTY: Record<string, string> = { hbar: "ħ", kB: "k_B", me: "m_e", epsilon0: "ε₀", mu0: "μ₀" }
 const chainLabel = (terms: ChainTerm[]) =>
   terms.map((t) => (t.coef ? `${t.coef}π` : "") + (PRETTY[t.name] ?? t.name)).join(" = ") + " = 1"
+const chainTex = (terms: ChainTerm[]) =>
+  terms.map((t) => (t.coef ? `${t.coef}\\pi ` : "") + CONST_NAMES[t.name].tex).join(" = ") + " = 1"
 
 // ---------------------------------------------------------------------------
 // Channel 2: named systems — only inside a declarative frame.
@@ -305,7 +311,7 @@ export const NAMED_RULES: NamedRule[] = [
   {
     label: "natural units",
     pattern: /natural\s+units/i,
-    note: "ambiguous (c = 1; ħ = c = k_B = ε₀ = 1; Planck) and fixes nothing by itself",
+    note: "ambiguous (c = 1 alone; the HEP set; Planck) and fixes nothing by itself",
   },
   {
     label: "effective (excitonic) Rydberg units",
@@ -537,7 +543,14 @@ export function inferConventions(
       const ti = termImplies(t)
       implies = implies.filter((k) => ti.includes(k))
     }
-    evidence.push({ kind: "declaration", form: "chain", label, excerpt: ch.excerpt.trim(), implies })
+    evidence.push({
+      kind: "declaration",
+      form: "chain",
+      label,
+      labelTex: chainTex(ch.terms),
+      excerpt: ch.excerpt.trim(),
+      implies,
+    })
     intersect(implies)
   }
 
@@ -593,7 +606,15 @@ export function inferConventions(
     const hits = bodyEquations.filter((eq) => token.pattern.test(eq))
     if (hits.length === 0) continue
     const push = (strength: Strength, count: number, excludes: string[]) =>
-      evidence.push({ kind: "visible-constant", constant: token.constant, strength, excludes, count, of })
+      evidence.push({
+        kind: "visible-constant",
+        constant: token.constant,
+        constantTex: token.tex,
+        strength,
+        excludes,
+        count,
+        of,
+      })
     if (token.weak) {
       push("weak-homograph", hits.length, [])
       continue

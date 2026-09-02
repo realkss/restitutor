@@ -43,7 +43,28 @@ let pageDetection: DetectionReport | null = null
 // carries — never a fixed sentence that might name a cause that did not
 // participate — and it speaks in convention NAMES and typeset equation
 // forms, not registry slugs and pseudo-math.
-const nameOf = (key: string) => CONVENTIONS[key]?.name ?? key
+// A candidate as its prose name plus its defining relation TYPESET from the
+// registry's own generator TeX: "Geometrized (c = G = 1)" with real
+// subscripts, never "k_B" or "M_odot" as text.
+function candidateNode(key: string): HTMLElement {
+  const c = CONVENTIONS[key]
+  const span = document.createElement("span")
+  span.className = "rst-cand"
+  if (!c) {
+    span.textContent = key
+    return span
+  }
+  const cut = c.name.lastIndexOf(" (")
+  const prose = cut > 0 && c.name.endsWith(")") ? c.name.slice(0, cut) : c.name
+  span.append(prose)
+  if (c.generators.length) {
+    const unwrap = (s: string) => (s.startsWith("(") && s.endsWith(")") ? s.slice(1, -1) : s)
+    const m = document.createElement("span")
+    katex.render(c.generators.map((g) => unwrap(g.emits)).join(" = ") + " = 1", m, { throwOnError: false })
+    span.append(" (", m, ")")
+  }
+  return span
+}
 
 function evidenceItem(e: Evidence): HTMLLIElement {
   const li = document.createElement("li")
@@ -55,21 +76,32 @@ function evidenceItem(e: Evidence): HTMLLIElement {
     return span
   }
   switch (e.kind) {
-    case "declaration":
-      li.append("Stated: " + e.label + ".", quote(e.excerpt))
+    case "declaration": {
+      if (e.labelTex) {
+        const m = document.createElement("span")
+        katex.render(e.labelTex, m, { throwOnError: false })
+        li.append("Stated: ", m, ".", quote(e.excerpt))
+      } else {
+        li.append("Stated: " + e.label + ".", quote(e.excerpt))
+      }
       break
+    }
     case "fingerprint": {
       const m = document.createElement("span")
       katex.render(e.tex, m, { throwOnError: false })
       li.append("Field equation ", m, ": " + e.meaning + ".")
       break
     }
-    case "visible-constant":
+    case "visible-constant": {
+      const m = document.createElement("span")
+      katex.render(e.constantTex, m, { throwOnError: false })
       li.append(
-        e.constant + " explicit in " + e.count + " of " + e.of + " equations" +
+        m,
+        " explicit in " + e.count + " of " + e.of + " equations" +
           (e.strength === "strong" ? "." : "; too few to count."),
       )
       break
+    }
     case "mention":
       li.append(e.label + ": " + (e.note || "mentioned, not declared") + ".")
       break
@@ -104,7 +136,10 @@ function detectionCard(): HTMLElement | null {
     card.appendChild(line)
     const cands = document.createElement("p")
     cands.className = "rst-cands"
-    cands.textContent = set.map(nameOf).join("  ·  ")
+    set.forEach((k, i) => {
+      if (i) cands.append("  ·  ")
+      cands.appendChild(candidateNode(k))
+    })
     card.appendChild(cands)
   } else if (r.kind === "conflict") {
     lead.className = "verdict warn"
@@ -128,7 +163,18 @@ function detectionCard(): HTMLElement | null {
   if (r.kind === "narrowed" && noted.length) {
     const also = document.createElement("p")
     also.className = "unitline"
-    also.textContent = "Not used: " + noted.map((e) => (e.kind === "mention" ? e.label : e.kind === "visible-constant" ? e.constant : "")).filter(Boolean).join("; ") + "."
+    also.append("Not used: ")
+    noted.forEach((e, i) => {
+      if (i) also.append("; ")
+      if (e.kind === "visible-constant") {
+        const m = document.createElement("span")
+        katex.render(e.constantTex, m, { throwOnError: false })
+        also.appendChild(m)
+      } else if (e.kind === "mention") {
+        also.append(e.label)
+      }
+    })
+    also.append(".")
     card.appendChild(also)
   }
   return card
