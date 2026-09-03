@@ -19,6 +19,25 @@
  },
  "nouns": [
   {
+   "noun": "Einstein gravitational constant",
+   "synonyms": [
+    "Einstein's gravitational constant",
+    "Einstein constant",
+    "Einstein's constant",
+    "Einstein gravitational coupling"
+   ],
+   "dim": [
+    -1,
+    -1,
+    2,
+    0,
+    0
+   ],
+   "si": "m⁻¹ kg⁻¹ s²",
+   "note": "kappa in G_{mu nu} = kappa T_{mu nu}. Three literature expansions of DIFFERENT dimension (8 pi G / c^4, 8 pi G / c^2, 8 pi G — census 6.1); the c^4 reading is encoded and the noun is ambiguous, so it never feeds the registry. Review v2 follow-up (2026-09-02): the modifier drop had turned it into Newton's G.",
+   "ambiguous": true
+  },
+  {
    "noun": "gravitational constant",
    "synonyms": [
     "Newton's constant",

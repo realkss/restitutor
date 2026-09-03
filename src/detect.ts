@@ -31,7 +31,7 @@
 // the G-normalization family, so those keys stay together in one set.
 import { CONST_DIM, CONVENTIONS, DimQ, Frac, solveRestoration } from "./convention"
 import { EM_FLAVOR, EmFlavor } from "./rendering"
-import { FINGERPRINT_RULES, FingerprintRule } from "./tables.generated"
+import { CODE_RULES, CodeRule, FINGERPRINT_RULES, FingerprintRule } from "./tables.generated"
 
 export type Strength = "strong" | "isolated" | "weak-homograph"
 
@@ -409,7 +409,18 @@ const FRAME =
 // (the code-identity draft, 2026-09-02), so citations are keyed on their
 // own tokens.
 const ANTI_FRAME =
-  /\b(convert(?:ed|ing|s)?|conversion|to recover|restor\w*|in terms of|quoted in|reported in|compared? (?:to|with)|unlike|whereas|as opposed to|rather than|instead of|for comparison|in contrast|by contrast|contrary to|see also|references?\s*(?:\[|\d|therein)|refs?\.|cite[sd]?|citation|et al\.|manual|documentation|available from|distributed by|developed (?:at|by))\b|\[\d+(?:[,–-]\s*\d+)*\]/i
+  /\b(convert(?:ed|ing|s)?|conversion|to recover|restor\w*|in terms of|quoted in|reported in|compared? (?:to|with)|unlike|whereas|as opposed to|rather than|instead of|for comparison|in contrast|by contrast|contrary to|see also|references?\s*(?:\[|\d|therein)|refs?\.\s*(?:\[|\d)|cited (?:as|in)|manual|documentation|available from|distributed by|developed (?:at|by))\b/i
+
+// Census §6.5b: the program a paper ran, as evidence of its native units.
+const CODES = CODE_RULES.map((r) => ({
+  rule: r,
+  re: new RegExp(r.pattern, "g"),
+  cue: r.cue ? new RegExp(r.cue, "i") : null,
+}))
+const codeUnits = (r: CodeRule) => r.nativeUnits.split(/[:;—(]/)[0].trim().replace(/\.$/, "")
+/** The usage frame for a program: what the calculations were performed with. */
+const CODE_USAGE =
+  /\b(performed|carried out|computed|calculated|obtained|implemented|run|ran|simulated|solved|evolved|generated|relaxed|optimi[sz]ed|converged)\b/i
 
 type NamedRule = {
   label: string
@@ -906,6 +917,48 @@ export function inferConventions(input: DetectionInput, opts: DetectionOptions =
     })
     intersect(implies)
   }
+  // 2b. Code identity (census §6.5b): when nothing is declared, the program
+  //     a paper ran is the evidence — "computed with Elk" is Hartree units.
+  //     A name in a usage frame with its cue declares, where the registry
+  //     has the row and the native-unit fact is settled (confidence ≥ 0.8);
+  //     a name without the frame, or a code whose units no row absorbs, is a
+  //     mention that says what the code computes in; a name in a comparison
+  //     or a citation is nothing.
+  for (const { rule, re, cue } of CODES) {
+    let framed: string | null = null
+    let plain: string | null = null
+    re.lastIndex = 0
+    for (const m of prose.matchAll(re)) {
+      const at = m.index ?? 0
+      const sentence = sentenceAround(prose, at)
+      if (ANTI_FRAME.test(sentence)) continue
+      if (rule.cueRequired && cue && !cue.test(prose.slice(Math.max(0, at - 300), at + 300))) continue
+      if (FRAME.test(sentence) || CODE_USAGE.test(sentence)) framed ??= sentence
+      else plain ??= sentence
+    }
+    if (!framed && !plain) continue
+    const units = codeUnits(rule)
+    if (framed && "keys" in rule.implies && rule.confidence >= 0.8) {
+      const implies = rule.implies.keys.filter((k) => k in CONVENTIONS)
+      evidence.push({
+        kind: "declaration",
+        form: "named",
+        label: `${rule.code} (${units})`,
+        excerpt: framed.slice(0, 200),
+        implies,
+      })
+      intersect(implies)
+      continue
+    }
+    const note =
+      "keys" in rule.implies
+        ? rule.confidence < 0.8
+          ? `named; computes in ${units}, a reading not yet verified to the registry's standard`
+          : `named; computes in ${units}`
+        : `named; computes in ${units}, which no registry row absorbs`
+    evidence.push({ kind: "mention", label: rule.code, excerpt: (framed ?? plain)!.slice(0, 200), note })
+  }
+
   // 3. The ladder.
   const seenRungs = new Set<string>()
   for (const eq of bodyEquations) {

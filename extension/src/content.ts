@@ -300,7 +300,9 @@ function symbolsCard(): HTMLElement | null {
     katex.render(s.symbol, m, { throwOnError: false })
     const gloss = s.gloss.toLowerCase() === s.noun.noun.toLowerCase() ? "" : " (“" + s.gloss + "”)"
     li.append(m, ": " + s.noun.noun + gloss + ".")
-    if (s.registry) li.append(" Registry reads " + s.registry.gloss + ".")
+    // The registry's glosses carry their own rationale after a dash or a
+    // comma; the card needs only the reading.
+    if (s.registry) li.append(" Registry reads " + s.registry.gloss.split(/\s+[—–]\s+|,\s|\s\(/)[0] + ".")
     if (s.caveat) li.append(" " + CAVEAT_TEXT[s.caveat])
     ul.appendChild(li)
   }

@@ -356,6 +356,24 @@ export type GlossNoun = {
 
 export const GLOSSARY_NOUNS: GlossNoun[] = [
   {
+    "noun": "Einstein gravitational constant",
+    "synonyms": [
+      "Einstein's gravitational constant",
+      "Einstein constant",
+      "Einstein's constant",
+      "Einstein gravitational coupling"
+    ],
+    "dim": [
+      -1,
+      -1,
+      2,
+      0,
+      0
+    ],
+    "si": "m⁻¹ kg⁻¹ s²",
+    "ambiguous": true
+  },
+  {
     "noun": "gravitational constant",
     "synonyms": [
       "Newton's constant",
@@ -2207,5 +2225,612 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
       0
     ],
     "si": "m"
+  }
+]
+
+/** Census §6.5b: the program a paper ran, as evidence of its native units. */
+export type CodeRule = {
+  id: string
+  code: string
+  /** Case-sensitive: capitalization is the homograph guard (Elk, GENE, CLASS). */
+  pattern: string
+  family: string
+  implies: { keys: string[] } | { none: string }
+  nativeUnits: string
+  strength: string
+  /** Case-insensitive; a co-occurring token that confirms the reading. */
+  cue: string | null
+  cueRequired: boolean
+  confidence: number
+}
+
+export const CODE_RULES: CodeRule[] = [
+  {
+    "id": "elk",
+    "code": "Elk",
+    "pattern": "\\bElk\\b",
+    "family": "dft",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Hartree atomic units throughout: total energies printed in Ha, lattice vectors and muffin-tin radii in bohr, reciprocal cutoffs in bohr^-1 — never Rydberg (the discriminating fact the census records by name).",
+    "strength": "code identity is decisive",
+    "cue": "\\b(?:all[- ]electron|full[- ]potential|FP[- ]?LAPW|LAPW|augmented[- ]plane[- ]wave|Hartrees?\\b|Ha\\b|bohr|code|package|version)\\b",
+    "cueRequired": true,
+    "confidence": 0.93
+  },
+  {
+    "id": "quantum-espresso",
+    "code": "Quantum ESPRESSO (PWscf)",
+    "pattern": "\\bQuantum[\\s-]?(?:ESPRESSO|Espresso|espresso)\\b|\\bPWscf\\b|\\bpw\\.x\\b",
+    "family": "dft",
+    "implies": {
+      "keys": [
+        "rydberg"
+      ]
+    },
+    "nativeUnits": "Rydberg atomic units internally (ħ = 2m_e = e²/2 = 1): pw.x prints the total energy in Ry and forces in Ry/bohr, cell and positions in bohr (or in alat units), while the post-processing executables (dos.x, projwfc.x, bands.x) print eV and ph.x prints cm^-1/THz — the Ry-vs-eV split ACROSS executables is the discriminator, not a switch.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bRy\\b|\\bRydbergs?\\b|\\bbohr\\b|\\becutwfc\\b|\\becutrho\\b|\\bRy/bohr\\b|\\bpseudopotentials?\\b",
+    "cueRequired": true,
+    "confidence": 0.9
+  },
+  {
+    "id": "vasp",
+    "code": "VASP",
+    "pattern": "\\bVASP\\b|\\bVienna [Aa]b[\\s-]?initio Simulation Package\\b",
+    "family": "dft",
+    "implies": {
+      "none": "VASP's eV/Å practical units are numeric-only, Cluster D: no generator is absorbed (ħ, m_e, e all appear at full strength inside the code), so there is nothing to restore and no registry row applies. The census's \"Solid-state and DFT practical units\" row is deliberately class numeric-only; route to the converter (§2.9), not the translator."
+    },
+    "nativeUnits": "eV and Å throughout: ENCUT in eV, TOTEN in eV, forces in eV/Å, stress in kBar, energy differences conventionally quoted in meV/atom; internally the plane-wave machinery uses atomic units but nothing user-visible does.",
+    "strength": "code identity is decisive",
+    "cue": "\\beV\\b|\\bENCUT\\b|\\bmeV\\b|Å|\\b[Aa]ngstr(?:o|ö)ms?\\b|\\bPAW\\b|\\bGPa\\b|\\bkBar\\b",
+    "cueRequired": false,
+    "confidence": 0.93
+  },
+  {
+    "id": "abinit",
+    "code": "ABINIT",
+    "pattern": "\\b(?:ABINIT|Abinit|abinit)\\b",
+    "family": "dft",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Hartree atomic units by default: ecut and etotal in Ha, acell/rprim lengths in bohr; input values accept explicit unit suffixes (Ry, eV, Angstr) that override the default, so any single printed number needs its suffix checked before it is read as Ha.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bHartrees?\\b|\\bHa\\b|\\bbohr\\b|\\becut\\b|\\betotal\\b|\\bacell\\b|\\ba\\.u\\.\\b|\\bRy\\b|\\beV\\b",
+    "cueRequired": true,
+    "confidence": 0.82
+  },
+  {
+    "id": "wien2k",
+    "code": "WIEN2k",
+    "pattern": "\\bWIEN2k\\b|\\bWIEN2K\\b|\\bWien2k\\b",
+    "family": "dft",
+    "implies": {
+      "keys": [
+        "rydberg"
+      ]
+    },
+    "nativeUnits": "Rydberg for energies, bohr for lengths: case.struct lattice parameters and muffin-tin radii in bohr, the SCF energy (:ENE) in Ry, convergence criteria in Ry per cell; densities of states and band plots are conventionally re-rendered in eV by the plotting tools.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bRy\\b|\\bRydbergs?\\b|\\bbohr\\b|\\bLAPW\\b|\\bAPW\\+lo\\b|\\bRK_?max\\b|\\bRMT\\b|\\bmuffin[- ]tin\\b",
+    "cueRequired": true,
+    "confidence": 0.75
+  },
+  {
+    "id": "cp2k",
+    "code": "CP2K (Quickstep)",
+    "pattern": "\\bCP2K\\b|\\bQuickstep\\b",
+    "family": "dft",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Atomic (Hartree) units internally — the ENERGY| lines print total energies in a.u. — while input keywords carry explicit bracketed unit tags ([eV], [angstrom]) whose ABSENCE means atomic units, with the notorious exception that the plane-wave CUTOFF is read in Ry by default.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bRy\\b|\\bGPW\\b|\\bGaussian and plane[- ]waves?\\b|\\bCUTOFF\\b|\\bbohr\\b|\\[eV\\]|\\[angstrom\\]",
+    "cueRequired": true,
+    "confidence": 0.78
+  },
+  {
+    "id": "gaussian-program",
+    "code": "Gaussian (09/16)",
+    "pattern": "\\bGaussian\\s?(?:16|09|03|98|94|92|88|70)\\b|\\bGaussian\\b(?=[^.]{0,60}\\b(?:program|suite|package|revision)\\b)",
+    "family": "quantum-chemistry",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Hartree atomic units internally — \"SCF Done: E(...) = ... A.U.\" — with input geometry in Å by default, harmonic frequencies in cm^-1, and thermochemistry printed in Hartree while relative energies are conventionally quoted in kcal/mol.",
+    "strength": "code identity is decisive",
+    "cue": "\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bkcal/mol\\b|\\bkcal mol\\b|\\bB3LYP\\b|\\b6-31G|\\bcc-pV|\\bdef2-|\\bcm-1\\b",
+    "cueRequired": true,
+    "confidence": 0.9
+  },
+  {
+    "id": "orca",
+    "code": "ORCA",
+    "pattern": "\\bORCA\\b",
+    "family": "quantum-chemistry",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Hartree atomic units: the FINAL SINGLE POINT ENERGY is in Eh and gradients in Eh/bohr, with input geometry in Å by default (an explicit bohr keyword switches it) and spectra printed in cm^-1 or eV.",
+    "strength": "code identity is decisive",
+    "cue": "\\bHartrees?\\b|\\bE_?h\\b|\\ba\\.u\\.\\b|\\bDLPNO\\b|\\bdef2-|\\bcc-pV|\\bkcal/mol\\b|\\bCCSD\\b|\\bTD-?DFT\\b",
+    "cueRequired": true,
+    "confidence": 0.88
+  },
+  {
+    "id": "psi4",
+    "code": "Psi4",
+    "pattern": "\\bPsi4\\b|\\bPSI4\\b|\\bPsi-4\\b",
+    "family": "quantum-chemistry",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Hartree atomic units: energies returned in Eh (energy('scf') is a Hartree float), molecular input in Å by default with `units bohr` available; interaction energies conventionally quoted in kcal/mol.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bHartrees?\\b|\\bE_?h\\b|\\ba\\.u\\.\\b|\\bcc-pV|\\bkcal/mol\\b|\\bSAPT\\b|\\bCCSD\\b|\\bMP2\\b|\\bbasis set\\b",
+    "cueRequired": true,
+    "confidence": 0.88
+  },
+  {
+    "id": "molpro",
+    "code": "Molpro",
+    "pattern": "\\bMOLPRO\\b|\\bMolpro\\b",
+    "family": "quantum-chemistry",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Hartree atomic units, and — unusually — geometry input in BOHR unless the angstrom directive is given, which is the usual source of a stray 1.8897 factor when an input is transcribed into a paper.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bbohr\\b|\\bCCSD\\b|\\bMRCI\\b|\\bCASPT2\\b|\\bcc-pV|\\bkcal/mol\\b",
+    "cueRequired": true,
+    "confidence": 0.78
+  },
+  {
+    "id": "cfour",
+    "code": "CFOUR",
+    "pattern": "\\bCFOUR\\b|\\bCFour\\b|\\bcfour\\b",
+    "family": "quantum-chemistry",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Hartree atomic units (total energies in Eh, gradients in Eh/bohr); the ZMAT input carries an explicit UNITS keyword (ANGSTROM/BOHR) and harmonic frequencies are printed in cm^-1.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bZMAT\\b|\\bCCSD\\b|\\bcc-pV|\\bcm-1\\b|\\bANO\\d?\\b|\\bcoupled[- ]cluster\\b",
+    "cueRequired": true,
+    "confidence": 0.8
+  },
+  {
+    "id": "dalton",
+    "code": "Dalton",
+    "pattern": "\\bDALTON\\b|\\bDalton\\b",
+    "family": "quantum-chemistry",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Hartree atomic units; the .mol geometry file is read in bohr unless the Angstrom keyword appears on the basis line, and response properties (polarizabilities, hyperpolarizabilities) are printed in a.u. — the a.u.→esu bridges the census backlogs (β 8.639e-33, γ 5.037e-40) exist precisely because of this program family.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bresponse\\b|\\bCCSD\\b|\\bMCSCF\\b|\\bcc-pV|\\bbohr\\b|\\bpolarizabilit\\w+\\b",
+    "cueRequired": true,
+    "confidence": 0.78
+  },
+  {
+    "id": "et-program",
+    "code": "eT (e^T)",
+    "pattern": "\\beT\\b|\\be\\^T\\b",
+    "family": "quantum-chemistry",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Hartree atomic units, like every coupled-cluster program: energies in Eh, geometry in Å at the input layer. On 2005.04477 (polaritonic coupled cluster) the paper prints no first-quantized fingerprint at all — no -½∇², no Z/r, no c = 137 — so program identity is the ONLY evidence for m_e = e = ħ = 1.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bcoupled[- ]cluster\\b|\\bCCSD\\b|\\bQED-?CC\\w*\\b|\\bpolaritonic\\b|\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bprogram\\b|\\bcc-pV",
+    "cueRequired": true,
+    "confidence": 0.75
+  },
+  {
+    "id": "nwchem",
+    "code": "NWChem",
+    "pattern": "\\bNWChem\\b|\\bNWCHEM\\b|\\bnwchem\\b",
+    "family": "quantum-chemistry",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Hartree atomic units (total energies in Hartree, gradients in Hartree/bohr); the geometry block defaults to Å with `units au` available.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bCCSD\\b|\\bcc-pV|\\bkcal/mol\\b|\\bDFT\\b|\\bplane[- ]wave\\b|\\bbasis set\\b",
+    "cueRequired": true,
+    "confidence": 0.82
+  },
+  {
+    "id": "pyscf",
+    "code": "PySCF",
+    "pattern": "\\bPySCF\\b|\\bPYSCF\\b|\\bpyscf\\b",
+    "family": "quantum-chemistry",
+    "implies": {
+      "keys": [
+        "hartree",
+        "hartree-gaussian"
+      ]
+    },
+    "nativeUnits": "Hartree atomic units for everything returned (mf.e_tot, one- and two-electron integrals h_pq/g_pqrs), while Mole.unit defaults to Angstrom for the INPUT geometry — an asymmetry that matters because quantum-computing papers quote PySCF-generated Hamiltonians with no unit statement at all.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bMole\\b|\\be_tot\\b|\\bCCSD\\b|\\bcc-pV|\\bSTO-3G\\b|\\bqubit\\b|\\bHamiltonian\\b|\\bkcal/mol\\b",
+    "cueRequired": true,
+    "confidence": 0.85
+  },
+  {
+    "id": "harm",
+    "code": "HARM / iharm3D / harmpi / HARM3D",
+    "pattern": "\\bHARM\\b|\\bHARM3D\\b|\\bharm3d\\b|\\biharm3[Dd]\\b|\\bharmpi\\b|\\bH-AMR\\b",
+    "family": "grmhd",
+    "implies": {
+      "none": "The census's GRMHD code-units row — c; G; M_BH; ε₀ (Heaviside–Lorentz), class quotient + riders, v2 — is NOT a registry row yet. The mechanical sector coincides with \"bh-scale\" (G = c = M = 1), but bh-scale carries no EM generator, so mapping there silently drops the √4π-absorbed-into-B rider and the ℳ_unit density scale. Emit the census row by name and decline the registry key until it is encoded."
+    },
+    "nativeUnits": "G = c = 1 with the black-hole mass as the length and time unit (GM/c² and GM/c³), and the magnetic field in Heaviside–Lorentz form so that the magnetic pressure is b²/2 with NO 4π; the density/accretion scale is a separately assigned ℳ_unit (M_unit) applied in post-processing, and is simply missing for scale-free runs.",
+    "strength": "code identity is decisive",
+    "cue": "\\bGRMHD\\b|\\bgeneral[- ]relativistic\\b|\\bcode units\\b|\\bM_?unit\\b|\\bGM/c\\^?2\\b|\\baccretion\\b|\\bKerr\\b|\\bhorizon\\b|\\bmagnetization\\b",
+    "cueRequired": true,
+    "confidence": 0.87
+  },
+  {
+    "id": "koral",
+    "code": "KORAL",
+    "pattern": "\\bKORAL\\b|\\bKoral\\b",
+    "family": "grmhd",
+    "implies": {
+      "none": "Same as HARM: the census's GRMHD code-units row (c; G; M_BH; ε₀) has no registry key; \"bh-scale\" covers only the mechanical sector and would drop the B-field rider and the radiation-sector scales."
+    },
+    "nativeUnits": "GR radiation-MHD in G = c = 1 with M_BH = 1 (lengths in GM/c², times in GM/c³); the radiation sector adds its own scale, and as in HARM the density normalization enters only through an assigned mass unit.",
+    "strength": "code identity is decisive",
+    "cue": "\\bGRMHD\\b|\\bGRRMHD\\b|\\bradiat\\w+\\b|\\bcode units\\b|\\bM_?unit\\b|\\baccretion\\b|\\bKerr\\b|\\bEddington\\b",
+    "cueRequired": true,
+    "confidence": 0.75
+  },
+  {
+    "id": "bhac",
+    "code": "BHAC",
+    "pattern": "\\bBHAC\\b|\\bBlack Hole Accretion Code\\b",
+    "family": "grmhd",
+    "implies": {
+      "none": "Same GRMHD row as HARM/KORAL — census row present, registry row absent."
+    },
+    "nativeUnits": "GRMHD on adaptive meshes in G = c = M = 1 code units, magnetic field Heaviside–Lorentz-normalized (b²/2 magnetic pressure); like every GRMHD code the density scale is external to the run.",
+    "strength": "code identity is decisive",
+    "cue": "\\bGRMHD\\b|\\bcode units\\b|\\bM_?unit\\b|\\baccretion\\b|\\bKerr\\b|\\bmagnetization\\b|\\badaptive mesh\\b|\\bhorizon\\b",
+    "cueRequired": true,
+    "confidence": 0.75
+  },
+  {
+    "id": "athena",
+    "code": "Athena / Athena++",
+    "pattern": "\\bAthena\\+\\+|\\bAthena\\b(?=[^.]{0,60}\\b(?:code|MHD|simulations?|version|runs?)\\b)",
+    "family": "grmhd",
+    "implies": {
+      "none": "Athena's normalization is the census's \"MHD Alfvénic code units\" row (L₀; ρ₀; B₀; μ₀ with the 1-or-4π fork) — custom per-problem generators, not a registry row. The SI-rooted branch of that fork is the one Athena takes: the 4π is absorbed, so magnetic pressure is B²/2."
+    },
+    "nativeUnits": "Dimensionless code units chosen per problem generator (no fixed physical scale), with the magnetic field defined so that the magnetic pressure is B²/2 and v_A = B/√ρ — i.e. the √4π already absorbed; the GR modules add G = c = M = 1 on top.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bMHD\\b|\\bcode units\\b|\\bmagnetic pressure\\b|\\bAlfv[eé]n\\w*\\b|\\bshearing box\\b|\\bplasma beta\\b|\\bRiemann solver\\b|\\bB\\^?2/2\\b",
+    "cueRequired": true,
+    "confidence": 0.8
+  },
+  {
+    "id": "einstein-toolkit",
+    "code": "Einstein Toolkit / Cactus (McLachlan, Carpet)",
+    "pattern": "\\bEinstein Toolkit\\b|\\bMcLachlan\\b|\\bCactus\\b|\\bCarpet\\b",
+    "family": "numerical-relativity",
+    "implies": {
+      "keys": [
+        "nr-code",
+        "bh-scale"
+      ]
+    },
+    "nativeUnits": "G = c = 1 with the mass unit conventionally M_⊙ (1 code length = 1.4766 km, 1 code time = 4.9255 μs, densities in M_⊙^-2 geometric units); many runs instead normalize to the total ADM mass M, which is bh-scale rather than nr-code — the QUOTED NUMBERS, not the equations, separate the two.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bG = c = 1\\b|\\bgeometri[sz]ed\\b|\\bgeometric(?:al)? units\\b|\\bcode units\\b|\\b(?:M_sun|M_\\\\?odot|solar mass(?:es)?)\\b|\\bBSSN\\b|\\bmoving[- ]puncture\\b|\\bnumerical[- ]relativity\\b|\\bCarpet\\b",
+    "cueRequired": true,
+    "confidence": 0.82
+  },
+  {
+    "id": "spec",
+    "code": "SpEC / SpECTRE (SXS)",
+    "pattern": "\\bSpEC\\b|\\bSpECTRE\\b|\\bSXS\\b",
+    "family": "numerical-relativity",
+    "implies": {
+      "keys": [
+        "bh-scale",
+        "nr-code"
+      ]
+    },
+    "nativeUnits": "G = c = 1 with the total mass M = 1: waveform times, radii and frequencies are in units of M, and the waveform is rescaled to a physical mass only when it is injected — the archetypal imported_artifact, since a strain \"scaled to M = 74.6 M_⊙\" names a convention it never declares.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bnumerical[- ]relativity\\b|\\bbinary black hole\\b|\\bwaveforms?\\b|\\bunits of M\\b|\\bADM mass\\b|\\b(?:M_sun|M_\\\\?odot|solar mass(?:es)?)\\b|\\bcode units\\b|\\bSXS\\b|\\bringdown\\b",
+    "cueRequired": true,
+    "confidence": 0.83
+  },
+  {
+    "id": "gadget",
+    "code": "GADGET (-2/-3/-4)",
+    "pattern": "\\bGADGET(?:-[234])?\\b|\\bGadget(?:-[234])?\\b",
+    "family": "cosmology-nbody",
+    "implies": {
+      "none": "Custom generators, not a registry row: the census's \"GADGET / AREPO / GIZMO cosmological code units\" backlog row is the triple [L] = h⁻¹kpc, [M] = 10¹⁰ h⁻¹M_⊙, [V] = km s⁻¹, which compounds with little-h INSIDE the mass unit. Nothing in CONVENTIONS carries a per-paper length/mass/velocity triple."
+    },
+    "nativeUnits": "A three-parameter code-unit triple set in the parameter file — UnitLength_in_cm = 3.085678e21 (h⁻¹kpc), UnitMass_in_g = 1.989e43 (10¹⁰ h⁻¹M_⊙), UnitVelocity_in_cm_per_s = 1e5 (km/s) — which makes the internal gravitational constant G = 43007.1; positions are comoving and the little-h sits inside the mass unit.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bUnitLength_in_cm\\b|\\bUnitMass_in_g\\b|\\bUnitVelocity_in_cm_per_s\\b|\\b43007\\b|\\bkpc/h\\b|\\bh\\^?-1\\s?kpc\\b|\\bcode units\\b|\\bcomoving\\b|\\bcosmological\\b|\\bsimulation box\\b",
+    "cueRequired": true,
+    "confidence": 0.92
+  },
+  {
+    "id": "arepo",
+    "code": "AREPO",
+    "pattern": "\\bAREPO\\b|\\bArepo\\b",
+    "family": "cosmology-nbody",
+    "implies": {
+      "none": "Same census backlog row as GADGET (custom generators: the h⁻¹kpc / 10¹⁰ h⁻¹M_⊙ / km s⁻¹ triple); no registry row carries a per-paper triple."
+    },
+    "nativeUnits": "Inherits GADGET's three unit parameters verbatim (UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s), so the same h⁻¹kpc / 10¹⁰ h⁻¹M_⊙ / km s⁻¹ default and the same internal G = 43007.1; the moving mesh changes the hydrodynamics, not the units.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bUnitLength_in_cm\\b|\\bUnitMass_in_g\\b|\\bUnitVelocity_in_cm_per_s\\b|\\b43007\\b|\\bkpc/h\\b|\\bcode units\\b|\\bcomoving\\b|\\bmoving mesh\\b|\\bcosmological\\b",
+    "cueRequired": true,
+    "confidence": 0.85
+  },
+  {
+    "id": "gizmo",
+    "code": "GIZMO",
+    "pattern": "\\bGIZMO\\b|\\bGizmo\\b",
+    "family": "cosmology-nbody",
+    "implies": {
+      "none": "Same census backlog row as GADGET/AREPO — custom generators, no registry row."
+    },
+    "nativeUnits": "GADGET-derived unit triple (h⁻¹kpc, 10¹⁰ h⁻¹M_⊙, km s⁻¹ by default, set in the parameter file), same internal G = 43007.1 convention; the meshless finite-mass/volume solvers do not touch the unit system.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bUnitLength_in_cm\\b|\\bUnitMass_in_g\\b|\\bUnitVelocity_in_cm_per_s\\b|\\b43007\\b|\\bkpc/h\\b|\\bcode units\\b|\\bcomoving\\b|\\bmeshless\\b|\\bcosmological\\b",
+    "cueRequired": true,
+    "confidence": 0.85
+  },
+  {
+    "id": "ramses",
+    "code": "RAMSES",
+    "pattern": "\\bRAMSES\\b|\\bRamses\\b",
+    "family": "cosmology-nbody",
+    "implies": {
+      "none": "Custom generators: RAMSES declares its scaling as three cgs conversion factors (units_d, units_l, units_t) in the namelist, which is the census's \"Astrophysical simulation code-unit triples (G ≠ 1)\" row — a per-paper generator set with no registry key."
+    },
+    "nativeUnits": "Dimensionless code units defined by the namelist triple units_d, units_l, units_t (density, length, time in cgs); cosmological runs conventionally scale the box to 1 and the density to the mean matter density, so a printed \"density = 5\" means 5 ρ̄ and the scale lives in the namelist, not the paper.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bunits_d\\b|\\bunits_l\\b|\\bunits_t\\b|\\bAMR\\b|\\bcode units\\b|\\bcomoving\\b|\\bnamelist\\b|\\bboxlen\\b|\\bcosmological\\b",
+    "cueRequired": true,
+    "confidence": 0.72
+  },
+  {
+    "id": "nbody6",
+    "code": "NBODY6 / NBODY7 (Aarseth family)",
+    "pattern": "\\bNBODY\\d(?:\\+\\+)?\\b|\\bNbody\\d(?:\\+\\+)?\\b|\\bnbody\\d(?:\\+\\+)?\\b",
+    "family": "cosmology-nbody",
+    "implies": {
+      "none": "Hénon (N-body standard) units — G = M_tot = 1 with E_tot = −1/4 — are a census row (§3, custom generators, v2) with NO registry key; the two numeric_factor conventions in the census (4·|E| vs −1/4·E) are unreconciled, so an encoder must pick and record one."
+    },
+    "nativeUnits": "Hénon / standard N-body units: G = 1, total cluster mass M = 1, total energy E = −1/4 (equivalently the virial radius = 1), so the crossing time is 2√2; physical times in Myr and masses in M_⊙ appear only through the scaling factors printed at the start of a run.",
+    "strength": "code identity is decisive",
+    "cue": "\\bN-body units\\b|\\bH[eé]non units\\b|\\bG = M = 1\\b|\\bvirial radius\\b|\\bstar cluster\\b|\\bglobular\\b|\\bMyr\\b|\\bcrossing time\\b|\\bcode units\\b",
+    "cueRequired": true,
+    "confidence": 0.83
+  },
+  {
+    "id": "lammps",
+    "code": "LAMMPS",
+    "pattern": "\\bLAMMPS\\b|\\bLammps\\b",
+    "family": "md",
+    "implies": {
+      "keys": [
+        "lj-reduced"
+      ]
+    },
+    "nativeUnits": "Nothing until the input is read: `units lj` gives the reduced set (σ = ε = m = k_B = 1), `real` gives kcal/mol, Å, fs, K, atm, `metal` gives eV, Å, ps, K, bar, `si` and `cgs` are literal, and `electron` is the census's refuse-class hybrid (time fs vs a.u., mass amu vs m_e, velocity bohr per 1.03275 fs — inconsistent on three axes).",
+    "strength": "weak: many codes allow unit switches, e.g. LAMMPS units real/metal/si/electron/lj must be read from the input",
+    "cue": "\\bunits\\s+lj\\b|\\breduced (?:Lennard-Jones|LJ) units\\b|\\bLennard-Jones (?:reduced )?units\\b|\\breduced units\\b",
+    "cueRequired": true,
+    "confidence": 0.9
+  },
+  {
+    "id": "gromacs",
+    "code": "GROMACS",
+    "pattern": "\\bGROMACS\\b|\\bGromacs\\b|\\bgromacs\\b",
+    "family": "md",
+    "implies": {
+      "none": "GROMACS's fixed unit set (nm, ps, u, kJ/mol, e, K, bar) is a lookup-table custom-generator row in the census's MD unit-sets entry, and its molar energy needs N_A as a generator (the \"Quantum-chemistry molar energy conventions\" row). Neither is encoded in CONVENTIONS."
+    },
+    "nativeUnits": "A fixed, non-switchable set: length nm, time ps, mass u (amu), energy kJ/mol, charge e, temperature K, pressure bar — the nm (not Å) and kJ/mol (not kcal/mol) pair is the fastest discriminator against AMBER/NAMD/CHARMM outputs.",
+    "strength": "code identity is decisive",
+    "cue": "\\bkJ/mol\\b|\\bnm\\b|\\bps\\b|\\bnanometers?\\b|\\bbar\\b|\\bamu\\b|\\bforce field\\b|\\bMD\\b",
+    "cueRequired": false,
+    "confidence": 0.92
+  },
+  {
+    "id": "amber",
+    "code": "AMBER",
+    "pattern": "\\bAMBER\\b|\\bAmber\\d\\d\\b|\\bAmberTools\\b|\\bpmemd\\b",
+    "family": "md",
+    "implies": {
+      "none": "Same census row as GROMACS (MD unit sets, lookup-table custom generators) plus the molar-energy N_A row; no registry key."
+    },
+    "nativeUnits": "Å, kcal/mol, amu, e, with the internal time unit 1/20.455 ps ≈ 48.888 fs = √(amu·Å²/(kcal mol⁻¹)) — so a raw internal \"time\" is neither fs nor ps, and the printed trajectory times are already converted.",
+    "strength": "code identity is decisive",
+    "cue": "\\bkcal/mol\\b|\\bff\\d\\d\\w*\\b|\\bforce field\\b|Å|\\b[Aa]ngstroms?\\b|\\bps\\b|\\bamu\\b|\\bpmemd\\b|\\bMD\\b",
+    "cueRequired": true,
+    "confidence": 0.8
+  },
+  {
+    "id": "gene",
+    "code": "GENE",
+    "pattern": "\\bGENE\\b",
+    "family": "gyrokinetic",
+    "implies": {
+      "none": "The census's \"Gyrokinetic normalization, GENE / c_s family\" row (L_ref; c_ref = √(T_ref/m_ref); T_ref; m_ref; n_ref; e; B_ref — quotient + riders, v2) is not encoded in CONVENTIONS."
+    },
+    "nativeUnits": "L_ref (the major radius R₀ or the minor radius a), the reference sound speed c_ref = √(T_ref/m_ref) with NO factor of √2, plus T_ref (energy units, k_B = 1), m_ref, n_ref, B_ref; growth rates and frequencies come out in c_ref/L_ref and lengths in ρ_ref = c_ref m_ref/(eB_ref).",
+    "strength": "code identity is decisive",
+    "cue": "\\bgyrokinetic\\b|\\bflux[- ]tube\\b|\\bturbulen\\w+\\b|\\bITG\\b|\\bion[- ]temperature[- ]gradient\\b|\\bplasma\\b|\\btokamak\\b|\\bc_s\\b|\\brho_s\\b|\\bgrowth rates?\\b",
+    "cueRequired": true,
+    "confidence": 0.85
+  },
+  {
+    "id": "gs2-family",
+    "code": "GS2 / stella / AstroGK",
+    "pattern": "\\bGS2\\b|\\bAstroGK\\b|\\bstella\\b(?=[^.]{0,80}\\b(?:gyrokinetic|code|flux[- ]tube|simulations?|stellarator)\\b)",
+    "family": "gyrokinetic",
+    "implies": {
+      "none": "The census's \"Gyrokinetic normalization, GS2 / stella / AstroGK family\" row (a; √2·v_t,r = √(2T_r/m_r); T_r; m_r; n_r; B_r) is not a registry row — and the round-5 kernel audit found its recorded 6-generator set has rank 4 (same-dimension reference scales), so it needs an anisotropy/symmetry flag before it can be encoded at all."
+    },
+    "nativeUnits": "Same axes as GENE but the reference speed carries the √2: v_t,r = √(2T_r/m_r), with a = the minor radius; a frequency quoted \"in units of v_t/a\" therefore differs from GENE's \"c_s/a\" by exactly √2 at identical physics.",
+    "strength": "code identity is decisive",
+    "cue": "\\bgyrokinetic\\b|\\bflux[- ]tube\\b|\\bv_t\\b|\\bthermal speed\\b|\\bsqrt\\(2\\)|\\bplasma\\b|\\btokamak\\b|\\bstellarator\\b|\\bturbulen\\w+\\b",
+    "cueRequired": true,
+    "confidence": 0.88
+  },
+  {
+    "id": "class-boltzmann",
+    "code": "CLASS",
+    "pattern": "\\bCLASS\\b",
+    "family": "boltzmann",
+    "implies": {
+      "keys": [
+        "c-only"
+      ]
+    },
+    "nativeUnits": "Internally c = 1 with Mpc as BOTH the length and the time unit — conformal time τ and 1/H in Mpc, wavenumbers in Mpc⁻¹ — while outputs are optionally re-rendered in h/Mpc and (Mpc/h)³; ħ and k_B are NOT absorbed (neutrino masses stay in eV, temperatures in K).",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bBoltzmann\\b|\\bCAMB\\b|\\bcosmolog\\w+\\b|\\bpower spectr\\w+\\b|\\btransfer function\\b|\\bMpc\\b|\\bCMB\\b|\\bhi_class\\b|\\bC_?[lL]\\b",
+    "cueRequired": true,
+    "confidence": 0.7
+  },
+  {
+    "id": "camb",
+    "code": "CAMB",
+    "pattern": "\\bCAMB\\b|\\bCAMBsources\\b",
+    "family": "boltzmann",
+    "implies": {
+      "keys": [
+        "c-only"
+      ]
+    },
+    "nativeUnits": "Same convention as CLASS: c = 1 with Mpc as the length and conformal-time unit, k in Mpc⁻¹, with h-scaled output available; masses and temperatures stay in eV and K, so ħ and k_B are explicit.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bcosmolog\\w+\\b|\\bCMB\\b|\\bMpc\\b|\\bpower spectr\\w+\\b|\\btransfer function\\b|\\bBoltzmann\\b|\\bC_?[lL]\\b|\\bCLASS\\b",
+    "cueRequired": true,
+    "confidence": 0.7
+  },
+  {
+    "id": "lalsuite",
+    "code": "LALSuite (LALSimulation / LALInference)",
+    "pattern": "\\bLALSuite\\b|\\bLALSimulation\\b|\\bLALInference\\b|\\bLALSim\\w*\\b|\\bLAL\\b",
+    "family": "gw",
+    "implies": {
+      "keys": [
+        "si"
+      ]
+    },
+    "nativeUnits": "SI at the library boundary: waveform generators take masses in kilograms, distance in metres and times in seconds (GPS), and return dimensionless strain — while the numerical-relativity waveforms the library ingests are in G = c = M = 1 code units, so the SI/code-unit seam sits INSIDE the pipeline.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bSI units\\b|\\bkilograms?\\b|\\bkg\\b|\\bmet(?:er|re)s?\\b|\\bwaveforms?\\b|\\bstrain\\b|\\bGW\\d{6}\\b|\\bIMRPhenom\\w*\\b|\\bSEOBNR\\w*\\b|\\bapproximant\\b",
+    "cueRequired": true,
+    "confidence": 0.8
+  },
+  {
+    "id": "pycbc-bilby",
+    "code": "PyCBC / bilby / RIFT",
+    "pattern": "\\bPyCBC\\b|\\bBilby\\b|\\bbilby\\b|\\bRIFT\\b",
+    "family": "gw",
+    "implies": {
+      "none": "Solar masses, Mpc, seconds and Hz are Cluster D display units — zero generators, nothing to restore — sitting on top of LAL's SI internals. The census's \"Observational cosmology hybrid units\" and \"Stellar and solar reference units\" rows are both numeric-only; no registry key applies."
+    },
+    "nativeUnits": "Priors, samples and posteriors in M_⊙ (detector-frame unless stated), luminosity distance in Mpc, times in GPS seconds, frequencies in Hz — a display layer over LALSimulation's SI calls; the detector-frame/source-frame mass distinction is a FRAME identity tag, not a unit.",
+    "strength": "code identity plus a unit token",
+    "cue": "\\bposterior\\w*\\b|\\bpriors?\\b|\\bMpc\\b|\\b(?:M_sun|M_\\\\?odot|solar mass(?:es)?)\\b|\\bparameter estimation\\b|\\bnested sampling\\b|\\bGW\\d{6}\\b|\\bchirp mass\\b|\\bdetector[- ]frame\\b",
+    "cueRequired": true,
+    "confidence": 0.85
+  },
+  {
+    "id": "lattice-qcd-codes",
+    "code": "Chroma / MILC / QUDA / openQCD",
+    "pattern": "\\bChroma\\b|\\bMILC\\b|\\bQUDA\\b|\\bopenQCD\\b",
+    "family": "lattice",
+    "implies": {
+      "keys": [
+        "lattice"
+      ]
+    },
+    "nativeUnits": "Lattice units a = 1 on top of ħ = c = 1: every printed mass is the dimensionless product am, the coupling enters as β = 6/g₀², and the action is Euclidean — the scale is set afterwards by a separate scale-setting quantity (r₀, w₀, f_π), which is where the physical units actually enter.",
+    "strength": "code identity is decisive",
+    "cue": "\\blattice\\b|\\bQCD\\b|\\bgauge configurations?\\b|\\bWilson\\b|\\bstaggered\\b|\\bdomain[- ]wall\\b|\\bbeta = 6/g\\b|\\bam_?\\w*\\b|\\bensembles?\\b",
+    "cueRequired": true,
+    "confidence": 0.88
+  },
+  {
+    "id": "mesa",
+    "code": "MESA",
+    "pattern": "\\bMESA\\b",
+    "family": "other",
+    "implies": {
+      "none": "Mechanical cgs is a pure unit-magnitude rescaling of SI — numeric-only, zero generators, nothing to restore (the census's class for the whole historical/engineering family). The solar-unit reports (M_⊙, R_⊙, L_⊙) are the separate \"Stellar and solar reference units\" numeric-only row, where GM_⊙ is stored as primary."
+    },
+    "nativeUnits": "cgs throughout — inlist parameters and the internal star structure in g, cm, s, erg, K, with log g in cgs — while the reported quantities are conventionally in M_⊙, R_⊙, L_⊙; every constant (G, c, a_rad, k_B) appears explicitly, so this is a POSITIVE zero-generator assertion, not an absence of evidence.",
+    "strength": "code identity is decisive",
+    "cue": "\\bstellar evolution\\b|\\bModules for Experiments in Stellar Astrophysics\\b|\\binlists?\\b|\\bZAMS\\b|\\b(?:M_sun|M_\\\\?odot|solar mass(?:es)?)\\b|\\bmetallicit\\w+\\b|\\bcgs\\b|\\bmain sequence\\b|\\bopacit\\w+\\b",
+    "cueRequired": true,
+    "confidence": 0.85
+  },
+  {
+    "id": "flash",
+    "code": "FLASH",
+    "pattern": "\\bFLASH4?\\b(?=[^.]{0,60}\\b(?:code|simulations?|version|AMR|hydro\\w*)\\b)|\\bFLASH4\\b",
+    "family": "other",
+    "implies": {
+      "none": "cgs (or MKS) with every constant explicit: a numeric-only unit-magnitude choice with zero generators, selected at runtime by the UnitSystem parameter, so there is no registry row and no restoration to perform — only converter work."
+    },
+    "nativeUnits": "Runtime-selected unit system (a UnitSystem parameter, CGS by default with MKS available) and all physical constants carried explicitly; the astrophysical setups additionally scale lengths to the domain size, which is a per-problem custom generator on top.",
+    "strength": "weak: the unit system is a runtime parameter (CGS default, MKS available), so it must be read from the parameter file rather than inferred from the code name",
+    "cue": "\\bcgs\\b|\\bAMR\\b|\\bUnitSystem\\b|\\bhydrodynamic\\w*\\b|\\bsupernova\\b|\\bcode units\\b|\\bflash\\.par\\b|\\badaptive mesh\\b",
+    "cueRequired": true,
+    "confidence": 0.72
   }
 ]
