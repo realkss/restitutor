@@ -155,6 +155,19 @@ describe("channel 2 — named systems need a declarative frame", () => {
     has(r, "gaussian", "magnetism-emu", "hartree", "geometrized", "reduced-planck")
     lacks(r, "si", "heaviside-lorentz", "hep-hl-kb", "esu")
   })
+  test("an unframed named system never narrows: the mention cannot conflict with the declaration (mutation m29)", () => {
+    const r = inferConventions({ text: "Earlier work reported values in atomic units. We use geometrized units throughout." })
+    assert.strictEqual(r.kind, "narrowed")
+    has(r, "geometrized", "geometrized-gaussian", "geometrized-hl", "bh-scale", "nr-code")
+    lacks(r, "hartree", "rydberg", "si")
+    const au = r.evidence.find((e) => e.label === "atomic (Hartree) units")
+    assert.ok(au && au.kind === "mention")
+  })
+  test("a comparison-only named system leaves the candidate set untouched", () => {
+    const r = inferConventions({ text: "Results are quoted in Gaussian units for comparison." })
+    assert.strictEqual(r.kind, "insufficient")
+    assert.strictEqual(keys(r).length, ALL)
+  })
   test("every named rule with an implication yields a non-empty set", () => {
     for (const rule of NAMED_RULES) if (rule.implies) assert.ok(rule.implies().length > 0, rule.label)
   })
@@ -176,6 +189,23 @@ describe("channel 3 — the §6.1 Einstein-prefactor ladder", () => {
     const r = inferConventions({ equations: ["G_{\\mu\\nu} = 8\\pi G T_{\\mu\\nu}"] })
     has(r, "c-only", "geometrized")
     lacks(r, "si", "hartree")
+  })
+  test("a Cluster A rung is refuted by a body that keeps printing G (mutation m08)", () => {
+    const equations = [
+      "G_{ab} + \\Lambda g_{ab} = 8\\pi T_{ab}",
+      ...Array.from({ length: 3 }, (_, i) => `\\Phi^{(${i})} = -\\frac{G M}{r}`),
+      ...Array.from({ length: 6 }, (_, i) => `R_{ab}^{(${i})} = 0`),
+    ]
+    const r = inferConventions({ equations })
+    assert.strictEqual(r.kind, "narrowed")
+    const c = r.evidence.find((e) => e.kind === "contradicted")
+    assert.ok(c && c.kind === "contradicted", "the rung must be contradicted by the printed G")
+    assert.strictEqual(c.constantTex, "G")
+    assert.strictEqual(c.count, 3)
+    assert.strictEqual(c.of, 10)
+    assert.ok(!r.evidence.some((e) => e.kind === "fingerprint" && e.label.includes("Cluster A")))
+    has(r, "si")
+    lacks(r, "geometrized", "reduced-planck")
   })
   test("κ T is symbolic: recorded, binds nothing", () => {
     const r = inferConventions({ equations: ["G_{\\mu\\nu} = \\kappa T_{\\mu\\nu}"] })

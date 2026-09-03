@@ -103,6 +103,11 @@ describe("what the miner refuses and what it folds", () => {
     assert.strictEqual(resolveNoun("vector potential")?.noun, "vector potential")
     assert.strictEqual(resolveNoun("GUT scale"), null)
   })
+  test("only whitelisted of-tails name the head: an unlisted of-tail declines (mutation m17)", () => {
+    assert.strictEqual(resolveNoun("radius of curvature"), null)
+    assert.strictEqual(resolveNoun("period of oscillation"), null)
+    assert.strictEqual(resolveNoun("speed of light")?.noun, "velocity")
+  })
   test("the registry cross-check follows the engine's lookup: indexed tensors, no bare-letter guesses (review v2)", () => {
     const t = mineDeclarations("where $T_{\\mu\\nu}$ is the stress–energy tensor of the source.").symbols
     assert.strictEqual(t.length, 1)
@@ -115,6 +120,16 @@ describe("what the miner refuses and what it folds", () => {
   test("\"denotes\" and \"represents\" read outside a where-clause (review v2)", () => {
     assert.deepStrictEqual(mineDeclarations("Here $L$ denotes the luminosity of the source.").symbols.map((s) => s.noun.noun), ["luminosity"])
     assert.deepStrictEqual(mineDeclarations("$m$ represents the mass of the particle.").symbols.map((s) => s.noun.noun), ["mass"])
+  })
+  test("the bare appositive stays confined: a plotting sentence declares nothing (mutation m16)", () => {
+    const plot = mineDeclarations("Figure 2 plots the energy E against the magnetic field B.")
+    assert.deepStrictEqual(
+      plot.symbols.map((s) => s.symbol),
+      [],
+      "appositive_the_Y_X must not run in a sentence no other template identified as a declaration",
+    )
+    const caption = mineDeclarations("The magnetic field B is plotted in Figure 2.")
+    assert.deepStrictEqual(caption.symbols.map((s) => s.symbol), [])
   })
   test("sentences split on terminal punctuation, never inside 1.4 GHz or Ref. [4]", () => {
     const s = splitSentences("Sources above $S_\\nu$ at 1.4 GHz follow Ref. [4], where $S_\\nu$ is the flux density. Next sentence.")
