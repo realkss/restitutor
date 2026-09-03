@@ -260,7 +260,7 @@ function forksCard(): HTMLElement | null {
     const li = document.createElement("li")
     const m = document.createElement("span")
     katex.render(f.tex, m, { throwOnError: false })
-    li.append(m, ": " + f.meaning + ".")
+    li.append(m, ": " + f.meaning.replace(/\.\s*$/, "") + ".")
     ul.appendChild(li)
   }
   for (const fork of pageForks.conflicts) {
