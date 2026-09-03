@@ -14,6 +14,7 @@ import { CONVENTIONS } from "../../src/convention"
 import { DetectionReport, DocumentReport, Evidence, Span, inferDocument } from "../../src/detect"
 import { definitionsFromEquations, registryWithDeclarations, registryWithDefinitions, targetFromDetection } from "../../src/bridge"
 import { refuseNonEquation } from "../../src/gate"
+import { ForkReport, detectForks } from "../../src/forks"
 import { MinedDefinition, MinedSymbol, mineDeclarations } from "../../src/mine"
 import { normalizeTex } from "./extract"
 import { renderTranslation } from "../../app/resultView"
@@ -45,6 +46,7 @@ let pageDetection: DetectionReport | null = null
 let pageDocument: DocumentReport | null = null
 let pageSymbols: MinedSymbol[] = []
 let pageDefinitions: MinedDefinition[] = []
+let pageForks: ForkReport | null = null
 
 // The page-conventions card is DERIVED from the evidence the report
 // carries — never a fixed sentence that might name a cause that did not
@@ -241,10 +243,39 @@ function detectionCard(): HTMLElement | null {
 // The page cards (Conventions, Symbols) are rebuilt whenever detection
 // reruns — after a MutationObserver rescan the panel must not keep showing
 // the verdict of the pool as it first stood (review v2).
+// The dimensionless conventions the printed forms fix (census §5, §6.5b):
+// which side of each fork the page is on, and the forks it prints both
+// sides of. Nothing recoverable shows nothing — negative evidence is never
+// rendered as a default.
+function forksCard(): HTMLElement | null {
+  if (!pageForks || pageForks.findings.length === 0) return null
+  const card = document.createElement("div")
+  card.className = "card"
+  const h = document.createElement("h2")
+  h.textContent = "Dimensionless conventions"
+  card.appendChild(h)
+  const ul = document.createElement("ul")
+  ul.className = "reasons"
+  for (const f of pageForks.findings) {
+    const li = document.createElement("li")
+    const m = document.createElement("span")
+    katex.render(f.tex, m, { throwOnError: false })
+    li.append(m, ": " + f.meaning + ".")
+    ul.appendChild(li)
+  }
+  for (const fork of pageForks.conflicts) {
+    const li = document.createElement("li")
+    li.append("Both sides of the " + fork + " fork are printed.")
+    ul.appendChild(li)
+  }
+  card.appendChild(ul)
+  return card
+}
+
 function renderCards(): void {
   if (!panel) return
   for (const old of panel.querySelectorAll(".rst-page-card")) old.remove()
-  const cards = [detectionCard(), symbolsCard()].filter((c): c is HTMLElement => !!c)
+  const cards = [detectionCard(), forksCard(), symbolsCard()].filter((c): c is HTMLElement => !!c)
   for (const card of cards) {
     card.classList.add("rst-page-card")
     if (resultsEl && resultsEl.parentElement === panel) panel.insertBefore(card, resultsEl)
@@ -567,11 +598,18 @@ function documentSpans(): Span[] {
 
 function runDetection(): void {
   try {
-    pageDocument = inferDocument(documentSpans())
+    const spans = documentSpans()
+    pageDocument = inferDocument(spans)
     pageDetection = pageDocument.overall
+    // The dimensionless forks (census §5), recovered from printed forms.
+    pageForks = detectForks({
+      text: spans.map((s) => s.text ?? "").join("\n"),
+      equations: spans.flatMap((s) => s.equations ?? []),
+    })
   } catch {
     pageDocument = null
     pageDetection = null // detection must never take the panel down with it
+    pageForks = null
   }
   seededSpan = null
   if (panel?.isConnected) renderCards()

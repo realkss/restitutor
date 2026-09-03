@@ -2834,3 +2834,22 @@ export const CODE_RULES: CodeRule[] = [
     "confidence": 0.72
   }
 ]
+
+/** A dimensionless-convention fork recovered from a printed form (census §5, §6.5b). */
+export type ForkRule = {
+  id: string
+  /** The census §5 row. */
+  fork: string
+  /** The branch this printed form asserts, and the other side(s). */
+  branch: string
+  rival: string
+  magnitude: string
+  /** Which normalized surface the pattern runs over. */
+  surface: "equation" | "prose" | "either"
+  pattern: string
+  /** The canonical printed form, as TeX. */
+  tex: string
+  meaning: string
+}
+
+export const FORK_RULES: ForkRule[] = []
