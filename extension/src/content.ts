@@ -410,33 +410,73 @@ function decorate(candidates: MathCandidate[]): number {
 // Spans (census section 6.2): on LaTeXML pages every top-level section and
 // appendix is a span, with the equations that sit inside it; the abstract and
 // unclaimed equations form one more. Elsewhere the page is a single span.
-function documentSpans(): Span[] {
-  const ordered = [...pool].sort((a, b) => Number(b.display) - Number(a.display)).slice(0, 500)
+type SectionSpec = { label: string; nodes: Element[]; text: string }
+
+// LaTeXML: every top-level section and appendix, with its paragraphs.
+function latexmlSections(): SectionSpec[] {
   const sections = [...document.querySelectorAll(".ltx_section, .ltx_appendix")].filter(
     (s) => !s.parentElement?.closest(".ltx_section, .ltx_appendix"),
   )
+  return sections.map((sec, i) => {
+    const title = (sec.querySelector(".ltx_title")?.textContent ?? "").replace(/\s+/g, " ").trim()
+    const paras = [...sec.querySelectorAll(".ltx_para")].filter((q) => !q.closest(".ltx_bibliography")).slice(0, 40)
+    return { label: title || "Section " + (i + 1), nodes: [sec], text: paras.map((q) => q.textContent ?? "").join("\n") }
+  })
+}
+
+// Wikipedia: the parser output split at its level-2 headings; the lead
+// paragraphs form a span of their own.
+function wikipediaSections(): SectionSpec[] {
+  const root = document.querySelector(".mw-parser-output")
+  if (!root) return []
+  // Parsoid output wraps every level-2 section (subsections nested inside)
+  // in <section data-mw-section-id>; the lead is section 0.
+  const parsoid = [...root.querySelectorAll(":scope > section[data-mw-section-id]")]
+  if (parsoid.length > 1) {
+    return parsoid.map((sec) => {
+      const h = sec.querySelector(":scope > .mw-heading h2, :scope > h2")
+      const label = (h?.textContent ?? "").replace(/\s+/g, " ").trim() || "Lead"
+      return { label, nodes: [sec], text: (sec.textContent ?? "").slice(0, 120000) }
+    })
+  }
+  const out: SectionSpec[] = []
+  let cur: SectionSpec = { label: "Lead", nodes: [], text: "" }
+  const flush = () => {
+    if (cur.nodes.length) out.push(cur)
+  }
+  for (const el of root.children) {
+    const heading = el.matches(".mw-heading2") ? el.querySelector("h2") : el.matches("h2") ? el : null
+    if (heading) {
+      flush()
+      cur = { label: (heading.textContent ?? "").replace(/\s+/g, " ").trim() || "Section", nodes: [], text: "" }
+      continue
+    }
+    cur.nodes.push(el)
+    if (el.matches("p, ul, ol, dl, blockquote, div")) cur.text += (el.textContent ?? "") + "\n"
+  }
+  flush()
+  return out.length > 1 ? out : []
+}
+
+function documentSpans(): Span[] {
+  const ordered = [...pool].sort((a, b) => Number(b.display) - Number(a.display)).slice(0, 500)
+  let sections = latexmlSections()
+  if (sections.length === 0) sections = wikipediaSections()
   if (sections.length === 0) {
     return [{ id: "page", label: "Page", text: proseSurface(), equations: ordered.map((c) => c.tex) }]
   }
   const spans: Span[] = []
   const claimed = new Set<MathCandidate>()
   sections.forEach((sec, i) => {
-    const title = (sec.querySelector(".ltx_title")?.textContent ?? "").replace(/\s+/g, " ").trim()
     const eqs: string[] = []
     for (const c of ordered) {
       const el = c.displayEl as unknown as Element
-      if (!claimed.has(c) && sec.contains(el)) {
+      if (!claimed.has(c) && sec.nodes.some((n) => n.contains(el))) {
         claimed.add(c)
         eqs.push(c.tex)
       }
     }
-    const paras = [...sec.querySelectorAll(".ltx_para")].filter((q) => !q.closest(".ltx_bibliography")).slice(0, 40)
-    spans.push({
-      id: "s" + i,
-      label: title || "Section " + (i + 1),
-      text: paras.map((q) => q.textContent ?? "").join("\n").slice(0, 120000),
-      equations: eqs,
-    })
+    spans.push({ id: "s" + i, label: sec.label, text: sec.text.slice(0, 120000), equations: eqs })
   })
   const rest = ordered.filter((c) => !claimed.has(c)).map((c) => c.tex)
   const front = document.querySelector(".ltx_abstract")?.textContent ?? ""
@@ -472,7 +512,13 @@ function mathTex(el: Element): string | null {
 
 function miningSurface(): string {
   const ltx = [...document.querySelectorAll(".ltx_para")].filter((p) => !p.closest(".ltx_bibliography"))
-  const roots = ltx.length ? ltx.slice(0, 80) : [...document.querySelectorAll("p")].slice(0, 400)
+  const prose = ltx.length ? ltx.slice(0, 80) : [...document.querySelectorAll("p")].slice(0, 400)
+  // Census §6.5b widens the surface: captions, footnotes and table headers
+  // declare symbols too ("A_⊥/h (MHz)").
+  const roots = [
+    ...prose,
+    ...document.querySelectorAll(".ltx_caption, figcaption, caption, .ltx_note, .reference-text, th"),
+  ].slice(0, 600)
   const parts: string[] = []
   for (const root of roots) {
     const clone = root.cloneNode(true) as Element
