@@ -6,7 +6,7 @@ import test, { describe } from "node:test"
 import assert from "node:assert"
 import katex from "katex"
 import { findRegistryForSlug, translateTex } from "./unitsEngine"
-import { dimQToDim, registryWithDeclarations } from "./bridge"
+import { definitionsFromEquations, dimQToDim, registryWithDeclarations, registryWithDefinitions } from "./bridge"
 import { mineDeclarations } from "./mine"
 import { dimQ } from "./convention"
 
@@ -55,5 +55,55 @@ describe("page declarations extend the registry", () => {
     assert.deepStrictEqual(reg2.exact.m_1.dim, [12, 0, 0, 0, 0])
     assert.strictEqual(reg2.indexed.m, undefined)
     assert.strictEqual(reg2.bare.m.gloss, "mass")
+  })
+})
+
+describe("page definitions extend the registry (the definitions path)", () => {
+  const report = (s: string) => mineDeclarations(s)
+  test("κ = 8πG/c⁴ takes the expression's dimension, and the field equation stops declining", () => {
+    const before = translateTex("G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\kappa T_{\\mu\\nu}", katex, GR)
+    assert.strictEqual(before.kind, "declined")
+    const reg = registryWithDefinitions(
+      GR,
+      report("where $\\kappa = 8\\pi G/c^4$ is the Einstein gravitational constant."),
+      katex,
+    )
+    assert.deepStrictEqual(reg.bare["\\kappa"].dim, [-12, -12, 24, 0, 0])
+    assert.strictEqual(reg.bare["\\kappa"].gloss, "defined in the text; the registry reads surface gravity")
+    assert.strictEqual(reg.bare["\\kappa"].si, "kg⁻¹ m⁻¹ s²")
+    const after = translateTex("G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\kappa T_{\\mu\\nu}", katex, reg)
+    assert.strictEqual(after.kind, "translated", JSON.stringify(after))
+  })
+  test("a dimensionless definition is a ratio, not a reading; a constant is never redefined", () => {
+    const reg = registryWithDefinitions(GR, report("We define $\\eta = n_b/n_\\gamma$, the baryon-to-photon ratio."), katex)
+    assert.strictEqual(reg.bare["\\eta"], GR.bare["\\eta"])
+    const c = registryWithDefinitions(GR, report("We define $c = 3 \\times 10^8$."), katex)
+    assert.strictEqual(c, GR)
+  })
+  test("a display equation defines a derived constant when its right side is constants alone (Wikipedia's κ)", () => {
+    const eqs = [
+      "\\kappa ={\\frac {8\\pi G}{c^{4}}}\\approx 2.07665\\times 10^{-43}\\,{\\textrm {N}}^{-1},",
+      "E = m c^{2}",
+      "G_{\\mu \\nu }+\\Lambda g_{\\mu \\nu }=\\kappa T_{\\mu \\nu },",
+      "M_P = \\sqrt{\\hbar c / G}",
+      "\\eta = 2 \\pi",
+    ]
+    const defs = definitionsFromEquations(eqs, GR, katex)
+    assert.deepStrictEqual(defs.map((d) => d.symbol), ["\\kappa", "M_P"])
+    assert.strictEqual(defs[0].expr, "{\\frac {8\\pi G}{c^{4}}}")
+    const reg = registryWithDefinitions(GR, { symbols: [], definitions: defs }, katex)
+    assert.deepStrictEqual(reg.bare["\\kappa"].dim, [-12, -12, 24, 0, 0])
+    assert.deepStrictEqual(reg.exact.M_P.dim, [12, 0, 0, 0, 0])
+    const after = translateTex("G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\kappa T_{\\mu\\nu}", katex, reg)
+    assert.strictEqual(after.kind, "translated", JSON.stringify(after))
+  })
+  test("definitions apply in page order, so a later one may use an earlier one", () => {
+    const reg = registryWithDefinitions(
+      GR,
+      report("We define $\\rho_c = 3 H^2 / (8\\pi G)$ as the critical density. We define $\\Omega = \\rho / \\rho_c$."),
+      katex,
+    )
+    assert.deepStrictEqual(reg.exact["\\rho_c"].dim, [12, -36, 0, 0, 0])
+    assert.strictEqual(reg.bare["\\Omega"], GR.bare["\\Omega"])
   })
 })

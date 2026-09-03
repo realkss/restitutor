@@ -1,6 +1,7 @@
 import test, { describe } from "node:test"
 import assert from "node:assert"
 import katexDefault from "katex"
+import { dimensionOf } from "./unitsEngine"
 import {
   TargetSpec,
   TranslationResult,
@@ -44,6 +45,34 @@ function rendersInKatex(tex: string) {
 // bump changes one of them the engine goes quietly wrong (0.16.21 → 0.16.47
 // dropped genfrac's `size` field and every \tfrac started emitting \frac), so
 // the shapes are asserted here: a future bump fails loudly, right here, first.
+describe("dimensionOf — the definitions path (census §6.5)", () => {
+  const GR = findRegistryForSlug("Topics/Physics/Relativity-and-Gravitation/")!
+  test("8πG/c⁴ has the dimension of Einstein's constant, with G and c in the legend", () => {
+    const r = dimensionOf("\\frac{8\\pi G}{c^4}", katexDefault, GR)
+    assert.ok(r.kind === "dim", JSON.stringify(r))
+    assert.deepStrictEqual(r.dim, [-12, -12, 24, 0, 0])
+    assert.deepStrictEqual(r.legend.map((e) => e.tex).sort(), ["G", "c"])
+  })
+  test("a sum must already agree; nothing is restored to reconcile a definition", () => {
+    const r = dimensionOf("E + m", katexDefault, GR)
+    assert.ok(r.kind === "declined" && r.reasons[0].includes("different dimension"))
+    const ok = dimensionOf("2 M + r", katexDefault, GR)
+    assert.ok(ok.kind === "declined", "mass plus length is not a definition")
+    const same = dimensionOf("r_s + 2 r", katexDefault, GR)
+    assert.ok(same.kind === "dim" && same.dim[1] === 12)
+  })
+  test("an unknown symbol declines with the symbol named, and a relation is refused", () => {
+    const u = dimensionOf("\\Xi / r", katexDefault, GR)
+    assert.ok(u.kind === "declined" && u.unknown.length === 1)
+    const rel = dimensionOf("\\kappa = 8\\pi G", katexDefault, GR)
+    assert.ok(rel.kind === "declined" && rel.reasons[0].includes("relation"))
+  })
+  test("a pure number is dimensionless, and the style wrapper is peeled first", () => {
+    const n = dimensionOf("{\\displaystyle 2\\pi}", katexDefault, GR)
+    assert.ok(n.kind === "dim" && n.dim.every((x) => x === 0))
+  })
+})
+
 describe("KaTeX parse-tree shape assumptions", () => {
   test("\\tfrac/\\dfrac/\\cfrac are a styling wrapper around a plain genfrac", () => {
     const shapes = [

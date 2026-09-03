@@ -350,6 +350,15 @@ describe("the sets contract (census §6.2) and report hygiene", () => {
     assert.ok(r.evidence.some((e) => e.kind === "declaration"))
     assert.ok(r.evidence.some((e) => e.kind === "visible-constant" && e.strength === "strong" && e.excludes.length > 0))
   })
+  test("Mathematical-Alphanumeric GREEK folds by its real block layout: 𝜅 is κ, 𝜋 is π, never ε or λ", () => {
+    // italic κ α π γ, bold α π ω, and the ϵ variant
+    const italic = String.fromCodePoint(0x1d705, 0x1d6fc, 0x1d70b, 0x1d6fe, 0x1d6c2, 0x1d6d1, 0x1d6da, 0x1d6dc)
+    assert.strictEqual(normalizeProse(italic), "kappa" + "alpha" + "pi" + "γ" + "alpha" + "pi" + "ω" + "epsilon")
+    // and the chain "8πG = 1" survives Chrome's math-italic rendering of MathML
+    const r = inferConventions({ text: "We work in units where 8" + String.fromCodePoint(0x1d70b, 0x1d43a) + " = c = 1." })
+    assert.strictEqual(r.kind, "narrowed")
+    has(r, "reduced-planck", "classical-kappa")
+  })
   test("a vacuum-only GR page leaves the G family undivided (Cluster B honesty)", () => {
     const r = inferConventions({ equations: ["R_{ab} = 0", "ds^2 = -(1 - 2M/r) dt^2"] })
     assert.strictEqual(r.kind, "insufficient")

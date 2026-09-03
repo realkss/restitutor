@@ -12,9 +12,9 @@ import {
 import { defaultProfile } from "../../src/profiles"
 import { CONVENTIONS } from "../../src/convention"
 import { DetectionReport, DocumentReport, Evidence, Span, inferDocument } from "../../src/detect"
-import { registryWithDeclarations, targetFromDetection } from "../../src/bridge"
+import { definitionsFromEquations, registryWithDeclarations, registryWithDefinitions, targetFromDetection } from "../../src/bridge"
 import { refuseNonEquation } from "../../src/gate"
-import { MinedSymbol, mineDeclarations } from "../../src/mine"
+import { MinedDefinition, MinedSymbol, mineDeclarations } from "../../src/mine"
 import { normalizeTex } from "./extract"
 import { renderTranslation } from "../../app/resultView"
 import { MathCandidate, scanForMath } from "./extract"
@@ -44,6 +44,7 @@ let currentTex = ""
 let pageDetection: DetectionReport | null = null
 let pageDocument: DocumentReport | null = null
 let pageSymbols: MinedSymbol[] = []
+let pageDefinitions: MinedDefinition[] = []
 
 // The page-conventions card is DERIVED from the evidence the report
 // carries — never a fixed sentence that might name a cause that did not
@@ -287,7 +288,7 @@ const CAVEAT_TEXT: Record<NonNullable<MinedSymbol["caveat"]>, string> = {
 }
 
 function symbolsCard(): HTMLElement | null {
-  if (!pageSymbols.length) return null
+  if (!pageSymbols.length && !pageDefinitions.length) return null
   const card = document.createElement("div")
   card.className = "card"
   const h = document.createElement("h2")
@@ -305,6 +306,25 @@ function symbolsCard(): HTMLElement | null {
     // comma; the card needs only the reading.
     if (s.registry) li.append(" Registry reads " + s.registry.gloss.split(/\s+[—–]\s+|,\s|\s\(/)[0] + ".")
     if (s.caveat) li.append(" " + CAVEAT_TEXT[s.caveat])
+    // A definition of the same symbol, from the prose or the equations,
+    // joins the symbol's line.
+    const expr = s.expr ?? pageDefinitions.find((d) => d.symbol === s.symbol)?.expr
+    if (expr) {
+      const e = document.createElement("span")
+      katex.render(expr, e, { throwOnError: false })
+      li.append(" Defined as ", e, ".")
+    }
+    ul.appendChild(li)
+  }
+  // Definitions with no gloss: the expression alone fixes the dimension.
+  const glossed = new Set(pageSymbols.map((s) => s.symbol))
+  for (const d of pageDefinitions.filter((d) => !glossed.has(d.symbol)).slice(0, 8)) {
+    const li = document.createElement("li")
+    const m = document.createElement("span")
+    katex.render(d.symbol, m, { throwOnError: false })
+    const e = document.createElement("span")
+    katex.render(d.expr, e, { throwOnError: false })
+    li.append(m, ": defined as ", e, ".")
     ul.appendChild(li)
   }
   card.appendChild(ul)
@@ -390,7 +410,11 @@ function runTranslate(): void {
     // The page's own declarations ("where Σ is the surface density") extend
     // the registry for this page — census §6.5: the declaration wins, and
     // the legend says where each reading came from.
-    const registry = pageSymbols.length ? registryWithDeclarations(profile.registry, pageSymbols) : profile.registry
+    let registry = pageSymbols.length ? registryWithDeclarations(profile.registry, pageSymbols) : profile.registry
+    // A symbol the page DEFINES ("κ = 8πG/c⁴") takes its expression's
+    // dimension, computed by the engine under the readings above.
+    if (pageDefinitions.length || pageSymbols.some((s) => s.expr))
+      registry = registryWithDefinitions(registry, { symbols: pageSymbols, definitions: pageDefinitions }, katex)
     // A named mathematical object (SL(2,R), a set, a map) is refused before
     // the engine can read it as a product of quantities.
     const result = refuseNonEquation(currentTex) ?? translateTex(currentTex, katex, registry, spec)
@@ -555,9 +579,20 @@ function runDetection(): void {
   // translation (whose registry it may extend) are refreshed.
   const mine = () => {
     try {
-      pageSymbols = mineDeclarations(miningSurface()).symbols.slice(0, 12)
+      const mined = mineDeclarations(miningSurface())
+      pageSymbols = mined.symbols.slice(0, 12)
+      // Definitions the prose states, then the ones the equations print
+      // (a lone symbol equated to an expression in constants alone).
+      const fromEquations = definitionsFromEquations(
+        pool.map((c) => c.tex).slice(0, 1500),
+        profile.registry,
+        katex,
+      )
+      const known = new Set(mined.definitions.map((d) => d.symbol))
+      pageDefinitions = [...mined.definitions, ...fromEquations.filter((d) => !known.has(d.symbol))].slice(0, 20)
     } catch {
       pageSymbols = []
+      pageDefinitions = []
     }
     if (panel?.isConnected) {
       renderCards()

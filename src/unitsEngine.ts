@@ -1995,6 +1995,58 @@ function outerBracesArePartners(t: string): boolean {
   return false
 }
 
+export type DimensionResult =
+  | { kind: "dim"; dim: Dim; legend: LegendEntry[] }
+  | { kind: "declined"; reasons: string[]; unknown: string[] }
+
+/**
+ * The dimension of a bare expression under the registry's readings — the
+ * definitions path of census §6.5: "κ = 8πG/c⁴" gives κ the dimension of
+ * 8πG/c⁴. Nothing is restored here: every term of a sum must already carry
+ * one dimension, an unknown symbol declines, and a relation is refused (an
+ * expression is wanted, not an equation).
+ */
+export function dimensionOf(
+  rawTex: string,
+  katex: { __parse: (tex: string, options?: Record<string, unknown>) => any[] },
+  reg: HubRegistry,
+): DimensionResult {
+  let tex = rawTex
+  for (;;) {
+    const next = stripStyleWrapper(stripTrailingPunctuation(tex))
+    if (next === tex) break
+    tex = next
+  }
+  const ctx: Ctx = { input: tex, reg, legend: new Map(), unknown: new Map(), mutated: false, strip: false, mask: false }
+  const legendOut = () =>
+    Array.from(ctx.legend.values()).map((record) => ({
+      tex: record.tex,
+      gloss: record.gloss,
+      unit: legendUnitOf(record, DEFAULT_TARGET),
+    }))
+  try {
+    const nodes = katex.__parse(tex, { strict: false, trust: false, displayMode: true })
+    if (groupDelims(nodes).some((n) => n?.type === "atom" && n.family === "rel")) {
+      throw new Unsupported("a relation — an expression is wanted here, not an equation")
+    }
+    const sum = parseSum(nodes, ctx, { anchor: "none" })
+    if (ctx.unknown.size > 0) {
+      return { kind: "declined", reasons: [], unknown: Array.from(ctx.unknown.values()) }
+    }
+    const target = sumAnchor(sum.terms) ?? ZERO
+    for (const t of sum.terms) {
+      if (t.isZero || t.pureNumeral) continue
+      if (!dimIsZero(dimSub(t.dim, target))) {
+        throw new Unsupported("terms of different dimension — nothing is restored to reconcile a definition")
+      }
+    }
+    return { kind: "dim", dim: target, legend: legendOut() }
+  } catch (error) {
+    const reason = error instanceof Unsupported ? error.reason : "TeX that KaTeX could not parse"
+    return { kind: "declined", reasons: [reason], unknown: Array.from(ctx.unknown.values()) }
+  }
+}
+
 export function translateTex(
   rawTex: string,
   katex: { __parse: (tex: string, options?: Record<string, unknown>) => any[] },

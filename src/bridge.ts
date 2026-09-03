@@ -5,8 +5,9 @@
 // can show the convention-layer diagnosis for whatever target the engine is
 // translating into.
 import type { Dim, HubRegistry, RegEntry, TargetSpec, UnitSystem } from "./unitsEngine"
+import { dimensionOf } from "./unitsEngine"
 import type { DetectionReport } from "./detect"
-import type { MinedSymbol } from "./mine"
+import type { MinedDefinition, MinedSymbol } from "./mine"
 import { EM_FLAVOR } from "./rendering"
 import { CONVENTIONS, Convention, DimQ, Frac } from "./convention"
 
@@ -31,6 +32,9 @@ export function dimQToDim(d: DimQ): Dim | null {
 }
 
 const sameDim = (a: Dim, b: Dim) => a.every((x, i) => x === b[i])
+
+/** The registry's glosses carry their rationale after a dash, a comma or a parenthesis; a legend needs the reading only. */
+const shortGloss = (g: string) => g.split(/\s+[—–]\s+|,\s|\s\(/)[0]
 
 /** The engine's own constants and pure numbers: a page never re-reads these. */
 const ENGINE_CONSTANTS = new Set(["c", "G", "\\hbar", "k_B", "\\pi", "i", "e", "\\infty"])
@@ -72,7 +76,7 @@ export function registryWithDeclarations(reg: HubRegistry, symbols: MinedSymbol[
     if (!dim) continue
     const gloss =
       s.noun.noun +
-      (s.registry ? ` (declared in the text; the registry reads ${s.registry.gloss})` : " (declared in the text)")
+      (s.registry ? ` (declared in the text; the registry reads ${shortGloss(s.registry.gloss)})` : " (declared in the text)")
     const entry: RegEntry = { dim, gloss, si: s.noun.si }
     const m = /^(.+?)_(?:\{([^{}]*)\}|(\\?[A-Za-z0-9]+))$/.exec(s.symbol.replace(/\^.*$/, ""))
     if (m) {
@@ -85,6 +89,107 @@ export function registryWithDeclarations(reg: HubRegistry, symbols: MinedSymbol[
     }
   }
   return changed ? { ...reg, bare, exact, indexed } : reg
+}
+
+const SUP: Record<string, string> = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" }
+const sup = (n: string) => n.split("").map((ch) => SUP[ch] ?? ch).join("")
+
+/** The SI unit string of an engine dimension, in the registry's own style ("kg⁻¹ m⁻¹ s²"). */
+export function siUnitOf(d: Dim): string {
+  const parts: string[] = []
+  const bases = ["kg", "m", "s", "K", "A"]
+  d.forEach((e12, i) => {
+    if (e12 === 0) return
+    if (e12 % 12 === 0) parts.push(e12 === 12 ? bases[i] : bases[i] + sup(String(e12 / 12)))
+    else {
+      const g = gcd(Math.abs(e12), 12)
+      parts.push(`${bases[i]}^(${e12 / g}/${12 / g})`)
+    }
+  })
+  return parts.length ? parts.join(" ") : "1"
+}
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b)
+}
+
+type Katex = { __parse: (tex: string, options?: Record<string, unknown>) => any[] }
+
+const LHS_SYMBOL = /^\s*(\\?[A-Za-z]+(?:_(?:\{[^{}]*\}|\\?[A-Za-z0-9]+))?(?:\^(?:\{[^{}]*\}|[A-Za-z0-9]))?)\s*=(?!=)\s*([\s\S]+)$/
+const NEXT_RELATION = /\\(?:approx|simeq|sim|le|ge|leq|geq|neq|ne|equiv|propto)(?![A-Za-z])|[<>=]|≈|≃|≤|≥/
+
+/**
+ * Definitions read off the page's equations (census §6.5, "the printed
+ * defining expression"): a display equation whose left side is one symbol
+ * and whose right side is built from the registry's CONSTANTS alone
+ * ("κ = 8πG/c⁴ ≈ 2.07665 × 10⁻⁴³ N⁻¹") defines a derived constant. An
+ * equation with variables on the right (E = mc²) is physics, not a
+ * definition, and is left to the translator.
+ */
+export function definitionsFromEquations(equations: string[], reg: HubRegistry, katex: Katex): MinedDefinition[] {
+  const out: MinedDefinition[] = []
+  const seen = new Set<string>()
+  for (const raw of equations) {
+    const m = LHS_SYMBOL.exec(raw.replace(/\\displaystyle|\\textstyle/g, "").trim())
+    if (!m) continue
+    const symbol = m[1].replace(/\s+/g, "")
+    if (seen.has(symbol) || ENGINE_CONSTANTS.has(symbol)) continue
+    let rhs = m[2]
+    const cut = rhs.search(NEXT_RELATION)
+    if (cut >= 0) rhs = rhs.slice(0, cut)
+    rhs = rhs.replace(/[\s,.;]+$/, "").trim()
+    if (!rhs) continue
+    const r = dimensionOf(rhs, katex, reg)
+    if (r.kind !== "dim" || r.dim.every((x) => x === 0)) continue
+    if (!r.legend.every((e) => ENGINE_CONSTANTS.has(e.tex))) continue
+    seen.add(symbol)
+    out.push({ symbol, expr: rhs, sentence: raw.slice(0, 200) })
+  }
+  return out
+}
+
+/**
+ * Definitions feeding the registry (census §6.5, the definitions path): a
+ * symbol the page DEFINES by an expression ("κ = 8πG/c⁴") takes that
+ * expression's dimension under the registry's own readings, computed by the
+ * engine — exact where a gloss could only be read, and available where no
+ * gloss resolves at all. Definitions apply in page order, so a later one
+ * may use an earlier one; a dimensionless definition (a ratio) belongs to no
+ * unit axis and is left alone; the engine's constants are never redefined.
+ */
+export function registryWithDefinitions(
+  reg: HubRegistry,
+  report: { symbols: MinedSymbol[]; definitions: MinedDefinition[] },
+  katex: Katex,
+): HubRegistry {
+  const defs = [
+    ...report.symbols.filter((s) => s.expr).map((s) => ({ symbol: s.symbol, expr: s.expr! })),
+    ...report.definitions.map((d) => ({ symbol: d.symbol, expr: d.expr })),
+  ]
+  let out = reg
+  for (const d of defs) {
+    if (ENGINE_CONSTANTS.has(d.symbol) || /^\s*1\s*$/.test(d.expr)) continue
+    const r = dimensionOf(d.expr, katex, out)
+    if (r.kind !== "dim" || r.dim.every((x) => x === 0)) continue
+    const bare = { ...out.bare }
+    const exact = { ...out.exact }
+    const indexed = { ...out.indexed }
+    let changed = false
+    const place = (table: Record<string, RegEntry>, key: string, prior: RegEntry | undefined) => {
+      if (prior && sameDim(prior.dim, r.dim)) return
+      const gloss = "defined in the text" + (prior ? `; the registry reads ${shortGloss(prior.gloss)}` : "")
+      table[key] = { dim: r.dim, gloss, si: siUnitOf(r.dim) }
+      changed = true
+    }
+    const m = /^(.+?)_(?:\{([^{}]*)\}|(\\?[A-Za-z0-9]+))$/.exec(d.symbol.replace(/\^.*$/, ""))
+    if (m) {
+      const base = m[1]
+      const sub = (m[2] ?? m[3] ?? "").replace(/[{}\s]/g, "")
+      place(exact, `${base}_${sub}`, exact[`${base}_${sub}`])
+      if (INDEX_LIKE.test(sub)) place(indexed, base, indexed[base])
+    } else place(bare, d.symbol, bare[d.symbol])
+    if (changed) out = { ...out, bare, exact, indexed }
+  }
+  return out
 }
 
 /**

@@ -117,6 +117,10 @@ describe("what the miner refuses and what it folds", () => {
     const rs = mineDeclarations("where $R_s$ is the Schwarzschild radius.").symbols
     assert.strictEqual(rs[0].registry, undefined, "the engine declines R_s; the miner must not guess from R")
   })
+  test("\"is defined as [7] $\\kappa = …$\" is a definition, citation bracket and all", () => {
+    const r = mineDeclarations("The Einstein gravitational constant is defined as [ 7 ] $\\kappa = 8\\pi G/c^{4}$.")
+    assert.deepStrictEqual(r.definitions.map((d) => [d.symbol, d.expr]), [["\\kappa", "8\\pi G/c^{4}"]])
+  })
   test("\"denotes\" and \"represents\" read outside a where-clause (review v2)", () => {
     assert.deepStrictEqual(mineDeclarations("Here $L$ denotes the luminosity of the source.").symbols.map((s) => s.noun.noun), ["luminosity"])
     assert.deepStrictEqual(mineDeclarations("$m$ represents the mass of the particle.").symbols.map((s) => s.noun.noun), ["mass"])

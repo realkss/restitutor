@@ -192,9 +192,17 @@ export function foldMathAlphanumeric(s: string): string {
     }
     if (cp >= 0x1d7ce) return String((cp - 0x1d7ce) % 10)
     if (cp >= 0x1d6a8 && cp <= 0x1d7cb) {
+      // Each Greek style is 58 code points: Α…Ω with ϴ (0–24), ∇ (25),
+      // α…ω with ς (26–50), ∂ (51), then ϵ ϑ ϰ ϕ ϱ ϖ (52–57).
       const i = (cp - 0x1d6a8) % 58
+      const upper = "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡϴΣΤΥΦΧΨΩ"
       const lower = "αβγδεζηθικλμνξοπρςστυφχψω"
-      if (i >= 31 && i - 31 < lower.length) return lower[i - 31]
+      const variants: Record<number, string> = { 52: "ε", 53: "θ", 54: "κ", 55: "φ", 56: "ρ", 57: "π" }
+      if (i < 25) return upper[i]
+      if (i === 25) return "∇"
+      if (i >= 26 && i <= 50) return lower[i - 26]
+      if (i === 51) return "∂"
+      return variants[i] ?? ch
     }
     return ch
   })

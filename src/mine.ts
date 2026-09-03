@@ -88,6 +88,8 @@ export const TEMPLATES: Template[] = [
   T("X_paren_the_Y", String.raw`${S}\s*\(\s*the\s+${GLOSS_GREEDY}[^()]{0,40}\)`),
   T("X_eq_expr_is_the_Y", String.raw`${S}\s*=\s*(?<expr>[^,;$]{1,60}?)\$?\s+is\s+the\s+${GLOSS_LAZY}`, { expr: true }),
   T("we_define_X_eq_expr", String.raw`\b[Ww]e\s+(?:define|introduce|write|set)\s+${S}\s*(?:\\equiv|≡|:=|=)\s*${EXPR}(?:\s+as\s+the\s+${GLOSS_LAZY})?`, { expr: true }),
+  // "is defined as [7] $\kappa = 8\pi G/c^4$": the citation bracket may sit between.
+  T("defined_as_X_eq_expr", String.raw`\b(?:defined|given)\s+(?:as|by)\s*(?:\[\s*\d+\s*\]\s*)?${S}\s*(?:\\equiv|≡|:=|=)\s*${EXPR}`, { expr: true }),
   T("X_equiv_expr", String.raw`${S}\s*(?:\\equiv|≡)\s*${EXPR}`, { expr: true }),
   T("X_colon_eq_expr", String.raw`${S}\s*:=\s*${EXPR}`, { expr: true }),
   // The bare appositive ("the Hubble parameter H_0") has the highest recall
