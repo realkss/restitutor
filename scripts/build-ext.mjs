@@ -27,6 +27,7 @@ await build({
 
 cpSync(p("extension/manifest.json"), p("extension/dist/manifest.json"))
 cpSync(p("extension/decorate.css"), p("extension/dist/decorate.css"))
+cpSync(p("extension/icons"), p("extension/dist/icons"), { recursive: true })
 cpSync(p("node_modules/katex/dist/katex.min.css"), p("extension/dist/katex.min.css"))
 cpSync(p("node_modules/katex/dist/fonts"), p("extension/dist/fonts"), { recursive: true })
 

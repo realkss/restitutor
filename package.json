@@ -10,7 +10,8 @@
     "sync-check": "node scripts/check-site-sync.mjs",
     "build:app": "node scripts/build-app.mjs",
     "build:ext": "node scripts/build-ext.mjs",
-    "gen:tables": "node scripts/gen-tables.mjs"
+    "gen:tables": "node scripts/gen-tables.mjs",
+    "package:ext": "node scripts/package-ext.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

@@ -2,3 +2,4 @@ node_modules/
 *.log
 app/dist/
 extension/dist/
+release/
