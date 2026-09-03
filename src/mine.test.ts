@@ -83,6 +83,39 @@ describe("what the miner refuses and what it folds", () => {
     assert.strictEqual(resolveNoun("orbital separations")?.noun, "length")
     assert.strictEqual(resolveNoun("larger")?.noun, undefined)
   })
+  test("primed symbols read, typographic primes fold (review v2)", () => {
+    assert.deepStrictEqual(mineDeclarations("where $t'$ is the retarded time of the source.").symbols.map((s) => s.symbol), ["t'"])
+    assert.deepStrictEqual(mineDeclarations("where t′ is the retarded time.").symbols.map((s) => s.symbol), ["t'"])
+  })
+  test("an undelimited a, A or I is an English word, never a symbol (review v2)", () => {
+    const r = mineDeclarations("where $E$ is the energy and the force a particle feels is small.")
+    assert.deepStrictEqual(r.symbols.map((s) => s.symbol), ["E"])
+    assert.deepStrictEqual(mineDeclarations("where $A$ is the area of the horizon.").symbols.map((s) => s.symbol), ["A"])
+  })
+  test("\"density of states\" is not a mass density: ambiguous nouns carry the caveat and never feed the registry (review v2)", () => {
+    const r = mineDeclarations("where $g$ is the density of states at the Fermi level.")
+    assert.strictEqual(r.symbols.length, 1)
+    assert.strictEqual(r.symbols[0].caveat, "ambiguous")
+    assert.strictEqual(resolveNoun("center of mass"), null)
+    assert.strictEqual(resolveNoun("dielectric constant")?.noun, "relative permittivity")
+    assert.strictEqual(resolveNoun("specific heat")?.noun, "specific heat capacity")
+    assert.strictEqual(resolveNoun("radiative flux")?.noun, "radiative flux")
+    assert.strictEqual(resolveNoun("vector potential")?.noun, "vector potential")
+    assert.strictEqual(resolveNoun("GUT scale"), null)
+  })
+  test("the registry cross-check follows the engine's lookup: indexed tensors, no bare-letter guesses (review v2)", () => {
+    const t = mineDeclarations("where $T_{\\mu\\nu}$ is the stress–energy tensor of the source.").symbols
+    assert.strictEqual(t.length, 1)
+    assert.strictEqual(t[0].registry, undefined, "the registry reads T_{μν} as the stress–energy tensor too")
+    const g = mineDeclarations("where $G_{\\mu\\nu}$ is the Einstein tensor.").symbols
+    assert.strictEqual(g[0].registry, undefined)
+    const rs = mineDeclarations("where $R_s$ is the Schwarzschild radius.").symbols
+    assert.strictEqual(rs[0].registry, undefined, "the engine declines R_s; the miner must not guess from R")
+  })
+  test("\"denotes\" and \"represents\" read outside a where-clause (review v2)", () => {
+    assert.deepStrictEqual(mineDeclarations("Here $L$ denotes the luminosity of the source.").symbols.map((s) => s.noun.noun), ["luminosity"])
+    assert.deepStrictEqual(mineDeclarations("$m$ represents the mass of the particle.").symbols.map((s) => s.noun.noun), ["mass"])
+  })
   test("sentences split on terminal punctuation, never inside 1.4 GHz or Ref. [4]", () => {
     const s = splitSentences("Sources above $S_\\nu$ at 1.4 GHz follow Ref. [4], where $S_\\nu$ is the flux density. Next sentence.")
     assert.strictEqual(s.length, 2)

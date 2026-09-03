@@ -371,6 +371,61 @@ describe("a stated chain weighed against the printed equations", () => {
     has(r, "c-only")
     lacks(r, "sixteen-pi-g", "geometrized")
   })
+  test("a restored k_B never voids an untouched ħ = c = 1: the modifier is contradicted, the rest declares (review v2)", () => {
+    const thermo = ["n = 1/(e^{E/k_B T} - 1)", "S = k_B \\ln \\Omega", "F = -k_B T \\ln Z", "\\langle E \\rangle = (3/2) k_B T"]
+    const r = inferConventions({ text: "Throughout we set hbar = c = k_B = 1.", equations: thermo })
+    assert.ok(r.evidence.some((e) => e.kind === "contradicted" && e.constantTex === "k_B"))
+    assert.ok(r.evidence.some((e) => e.kind === "declaration" && e.label === "ħ = c = 1"))
+    has(r, "hep-hl")
+    lacks(r, "hep-hl-kb", "si")
+  })
+  test("a hedged first occurrence never deletes the adoption that follows (review v2)", () => {
+    const a = inferConventions({ text: "One can set G = c = 1 to simplify the algebra. Throughout this paper we work in units with G = c = 1." })
+    const b = inferConventions({ text: "Throughout this paper we work in units with G = c = 1. One can set G = c = 1 to simplify the algebra." })
+    assert.strictEqual(a.kind, "narrowed")
+    assert.deepStrictEqual(keys(a), keys(b))
+    assert.strictEqual(a.evidence.filter((e) => e.kind === "declaration" || e.kind === "mention").length, 1)
+  })
+  test("a named system's first occurrence in a conversion remark never hides the later adoption (review v2)", () => {
+    const a = inferConventions({
+      text: "Earlier measurements are reported in atomic units, and we converted them for comparison. Throughout this paper we use atomic units.",
+    })
+    const b = inferConventions({ text: "Throughout this paper we use atomic units." })
+    assert.strictEqual(a.kind, "narrowed")
+    assert.deepStrictEqual(keys(a), keys(b))
+  })
+  test("two exclusive chains in adjacent display equations are alternatives, as in prose (review v2)", () => {
+    const r = inferConventions({ equations: ["4\\pi\\varepsilon_0 = 1", "\\varepsilon_0 = 1"] })
+    assert.strictEqual(r.kind, "insufficient")
+    assert.strictEqual(r.evidence.filter((e) => e.kind === "mention").length, 2)
+  })
+  test("equation order never decides the verdict: a contested form stays contested (review v2)", () => {
+    const one = "\\nabla \\cdot E = 4\\pi\\rho"
+    const both = "\\nabla \\cdot E = 4\\pi\\rho \\qquad \\nabla \\cdot D = \\rho"
+    const a = inferConventions({ equations: [one, both] })
+    const b = inferConventions({ equations: [both, one] })
+    assert.strictEqual(a.kind, b.kind)
+    assert.deepStrictEqual(keys(a), keys(b))
+    assert.notStrictEqual(a.kind, "conflict")
+  })
+  test("a span inherits what the document prints: three G's in a short section are still the document's (review v2)", () => {
+    const main = {
+      id: "main",
+      equations: Array.from({ length: 30 }, (_, i) => `G_{ab}^{(${i})} = \\frac{8 \\pi G}{c^{4}} T_{ab}`),
+    }
+    const section = { id: "s", equations: ["S = \\int d^4x \\sqrt{-g} R", "R_{ab} = 0", "\\Box \\phi = 0"] }
+    const doc = inferDocument([main, section])
+    const s = doc.spans.find((x) => x.id === "s")!.report
+    assert.ok(s.evidence.some((e) => e.kind === "contradicted"))
+    assert.ok(!s.sets.flat().includes("sixteen-pi-g") || s.kind !== "narrowed")
+    assert.deepStrictEqual(doc.mixed, [])
+  })
+  test("fractions fold with balanced braces, \\over, and a redundant wrapper (review v2)", () => {
+    assert.strictEqual(normalizeTexForDetection("{\\frac {c^{4}}{16\\pi G}}"), "(c^{4})/(16 pi G)")
+    assert.strictEqual(normalizeTexForDetection("{8\\pi G \\over c^{4}}"), "(8 pi G)/(c^{4})")
+    assert.strictEqual(normalizeTexForDetection("\\tfrac12 R"), "(1)/(2) R")
+    assert.strictEqual(normalizeTexForDetection("\\frac{\\frac{a}{b}}{c}"), "((a)/(b))/(c)")
+  })
   test("\"can be rewritten in units where G = c = 1\" is a rewrite, not an adoption", () => {
     const r = inferConventions({ text: "In geometrized units where G = c = 1, this can be rewritten as a simpler form.", equations: body(0, 4) })
     assert.ok(r.evidence.some((e) => e.kind === "mention" && e.label === "G = c = 1"))

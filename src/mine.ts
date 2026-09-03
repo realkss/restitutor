@@ -12,8 +12,8 @@
 // the decoration means the symbol left physical units).
 import { GLOSSARY_NOUNS, GlossNoun } from "./tables.generated"
 import { DimQ, dimQ } from "./convention"
-import { findRegistryForSlug } from "./unitsEngine"
-import { dimToDimQ } from "./bridge"
+import { findRegistryForSlug, RegEntry } from "./unitsEngine"
+import { INDEX_LIKE, dimToDimQ } from "./bridge"
 import { foldMathAlphanumeric } from "./detect"
 
 export type Caveat = "ambiguous" | "convention-dependent" | "depends-on-d" | "coordinate-convention"
@@ -52,7 +52,9 @@ const STOP =
 // A symbol: a TeX macro (with one optional brace argument, so \mathbf{J}
 // reads) or a single Latin letter, with optional subscript and superscript,
 // optionally inside $…$. \hat, \tilde and \bar are excluded on purpose.
-const SYM = String.raw`(?<![A-Za-z0-9_\\])\$?(?:\\(?!(?:hat|widehat|tilde|widetilde|bar|overline)\b)[A-Za-z]+(?:\{[^{}]{1,16}\})?|[A-Za-z])(?:_(?:\{[^{}]{1,24}\}|\\?[A-Za-z0-9]+))?(?:\^(?:\{[^{}]{1,12}\}|[*'\d]))?\$?(?![A-Za-z0-9_])`
+// Primes are admitted before and after the sub/superscripts (t', x'^\mu):
+// retarded and source variables are the GR/E&M bread and butter (review v2).
+const SYM = String.raw`(?<![A-Za-z0-9_\\])\$?(?:\\(?!(?:hat|widehat|tilde|widetilde|bar|overline)\b)[A-Za-z]+(?:\{[^{}]{1,16}\})?|[A-Za-z])(?:'{1,3})?(?:_(?:\{[^{}]{1,24}\}|\\?[A-Za-z0-9]+))?(?:\^(?:\{[^{}]{1,12}\}|[*'\d]))?(?:'{1,3})?\$?(?![A-Za-z0-9_])`
 const S = String.raw`(?<symbol>${SYM})`
 // A gloss word: anything outside the stopword list.
 const W = String.raw`(?!(?:${STOP})\b)[A-Za-z][A-Za-z-]*`
@@ -74,11 +76,11 @@ export const TEMPLATES: Template[] = [
   T("where_X_is_the_Y", String.raw`\bwhere\s+${S}\s+is\s+the\s+${GLOSS_LAZY}`),
   T("where_X_is_a_Y", String.raw`\bwhere\s+${S}\s+is\s+an?\s+${GLOSS_LAZY}`),
   T("where_X_denotes_the_Y", String.raw`\bwhere\s+${S}\s+(?:denotes|represents|stands\s+for|labels)\s+the\s+${GLOSS_LAZY}`),
-  T("here_X_is_the_Y", String.raw`\b[Hh]ere,?\s+${S}\s+is\s+the\s+${GLOSS_LAZY}`),
+  T("here_X_is_the_Y", String.raw`\b[Hh]ere,?\s+${S}\s+(?:is|denotes|represents|labels|stands\s+for)\s+the\s+${GLOSS_LAZY}`),
   T("let_X_be_the_Y", String.raw`\b[Ll]et\s+${S}\s+(?:be|denote)\s+the\s+${GLOSS_LAZY}`),
   T("with_X_the_Y", String.raw`\bwith\s+${S}\s+the\s+${GLOSS_LAZY}`),
-  T("X_is_the_Y_sentence_initial", String.raw`(?:^|(?<=[.;:]\s))${S}\s+is\s+the\s+${GLOSS_LAZY}`),
-  T("continuation_X_is_the_Y", String.raw`(?:[,;]|\band|\bwhile)\s+${S}\s+is\s+the\s+${GLOSS_LAZY}`),
+  T("X_is_the_Y_sentence_initial", String.raw`(?:^|(?<=[.;:]\s))${S}\s+(?:is|denotes|represents)\s+the\s+${GLOSS_LAZY}`),
+  T("continuation_X_is_the_Y", String.raw`(?:[,;]|\band|\bwhile)\s+${S}\s+(?:is|denotes|represents)\s+the\s+${GLOSS_LAZY}`),
   T("continuation_X_the_Y", String.raw`(?:[,;]|\band)\s+${S}\s+the\s+${GLOSS_LAZY}`),
   T("X_being_the_Y", String.raw`${S}\s+being\s+the\s+${GLOSS_LAZY}`),
   T("X_stands_for_the_Y", String.raw`${S}\s+(?:stands\s+for|refers\s+to|corresponds\s+to)\s+the\s+${GLOSS_LAZY}`),
@@ -120,10 +122,16 @@ export function resolveNoun(gloss: string): GlossNoun | null {
   const phrase = gloss.toLowerCase().replace(/\s+/g, " ").trim()
   const heads = [phrase]
   const of = phrase.indexOf(" of ")
-  if (of > 0) heads.push(phrase.slice(0, of))
+  // Only the whitelisted of-tails name the head ("speed of light" is a
+  // speed); "density of states" is not a density (review v2).
+  if (of > 0 && /^ of (?:light|sound|inertia|gravity|freedom|state|refraction|motion)s?$/.test(phrase.slice(of)))
+    heads.push(phrase.slice(0, of))
   for (const head of heads) {
     const words = head.split(" ")
-    for (let i = 0; i < words.length; i++) {
+    // Leading modifiers drop one at a time, never past an "of": the head of
+    // "center of mass" is "center", and it names nothing here.
+    const limit = words.indexOf("of") > 0 ? words.indexOf("of") : words.length
+    for (let i = 0; i < limit; i++) {
       for (const cand of singulars(words.slice(i).join(" "))) {
         const n = NOUN_INDEX.get(cand)
         if (n) return n
@@ -146,11 +154,27 @@ function caveatOf(n: GlossNoun): Caveat | undefined {
 // ---------------------------------------------------------------------------
 const GR = findRegistryForSlug("Topics/Physics/Relativity-and-Gravitation/00")
 
+/**
+ * The GR registry's reading of a symbol, by the engine's own lookup order:
+ * an exact identity (k_B, T_H, r_s), else the base's INDEXED reading when the
+ * subscript is a run of indices (T_{μν} is the stress–energy tensor, never
+ * the temperature), else the bare reading for a bare symbol. A subscripted
+ * symbol the engine declines is declined here too — never guessed from its
+ * base letter (review v2).
+ */
 export function registryReading(symbol: string): { gloss: string; dim: DimQ } | null {
   if (!GR) return null
-  const base = symbol.replace(/[_^].*$/, "")
-  const entry = GR.exact[symbol] ?? GR.bare[symbol] ?? GR.bare[base]
-  return entry ? { gloss: entry.gloss, dim: dimToDimQ(entry.dim) } : null
+  const read = (e: RegEntry) => ({ gloss: e.gloss, dim: dimToDimQ(e.dim) })
+  if (GR.exact[symbol]) return read(GR.exact[symbol])
+  const m = /^(.+?)(?:_(?:\{([^{}]*)\}|(\\?[A-Za-z0-9]+))(?:\^.*)?|\^.*)$/.exec(symbol)
+  if (m) {
+    const base = m[1]
+    const sub = (m[2] ?? m[3] ?? "").replace(/[{}\s]/g, "")
+    if (sub && GR.exact[`${base}_${sub}`]) return read(GR.exact[`${base}_${sub}`])
+    if (sub && INDEX_LIKE.test(sub) && GR.indexed[base]) return read(GR.indexed[base])
+    return null
+  }
+  return GR.bare[symbol] ? read(GR.bare[symbol]) : null
 }
 
 export const dimEq = (a: DimQ, b: DimQ): boolean => a.every((x, i) => x.eq(b[i]))
@@ -171,7 +195,10 @@ export function mineDeclarations(text: string): MinedReport {
   const symbols: MinedSymbol[] = []
   const definitions: MinedDefinition[] = []
   const seen = new Set<string>()
-  for (const raw of splitSentences(foldMathAlphanumeric(text))) {
+  // Typographic primes and dashes fold to ASCII so t′ and t' share a key
+  // and "stress–energy" reads as one gloss word.
+  const folded = foldMathAlphanumeric(text).replace(/[′″‴]/g, "'").replace(/[–—]/g, "-")
+  for (const raw of splitSentences(folded)) {
     const sentence = raw.length > 200 ? raw.slice(0, 200) : raw
     type Hit = { at: number; symbol: string; gloss?: string; expr?: string; template: string }
     const hits: Hit[] = []
@@ -183,6 +210,9 @@ export function mineDeclarations(text: string): MinedReport {
         for (const s of syms) {
           const symbol = cleanSymbol(s)
           if (!symbol) continue
+          // An undelimited a, A or I is an English word, not a symbol
+          // ("the force a particle feels") — review v2.
+          if (/^[aAI]$/.test(symbol) && !s.includes("$")) continue
           hits.push({ at: m.index ?? 0, symbol, gloss: g.gloss, expr: g.expr?.trim(), template: t.id })
         }
       }

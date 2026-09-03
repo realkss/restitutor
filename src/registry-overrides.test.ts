@@ -45,10 +45,12 @@ describe("page declarations extend the registry", () => {
     assert.strictEqual(reg, GR)
   })
   test("a subscripted declaration is an exact reading; an index-like subscript also reads the base as indexed", () => {
-    const reg = registryWithDeclarations(GR, mined("where $S_\\nu$ is the flux density at 1.4 GHz."))
-    assert.deepStrictEqual(reg.exact["S_\\nu"].dim, [12, 0, -24, 0, 0])
-    assert.ok(reg.indexed.S)
-    assert.strictEqual(GR.exact["S_\\nu"], undefined)
+    const reg = registryWithDeclarations(GR, mined("where $L_\\nu$ is the luminosity at 1.4 GHz."))
+    assert.deepStrictEqual(reg.exact["L_\\nu"].dim, [12, 24, -36, 0, 0])
+    assert.ok(reg.indexed.L)
+    assert.strictEqual(GR.exact["L_\\nu"], undefined)
+    // An ambiguous noun ("flux density": Jy, W m⁻², tesla) never reaches the registry.
+    assert.strictEqual(registryWithDeclarations(GR, mined("where $S_\\nu$ is the flux density at 1.4 GHz.")), GR)
     const reg2 = registryWithDeclarations(GR, mined("where $m_1$ is the mass of the primary."))
     assert.deepStrictEqual(reg2.exact.m_1.dim, [12, 0, 0, 0, 0])
     assert.strictEqual(reg2.indexed.m, undefined)

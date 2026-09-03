@@ -59,10 +59,12 @@ function candidateNode(key: string): HTMLElement {
     span.textContent = key
     return span
   }
-  const cut = c.name.lastIndexOf(" (")
-  const prose = cut > 0 && c.name.endsWith(")") ? c.name.slice(0, cut) : c.name
+  // The registry's names carry a parenthetical formula or a colon annotation
+  // ("SI (2019): the zero-generator baseline"); neither is for the reader.
+  const prose = c.name.replace(/\s*\([^()]*\)$/, "").replace(/:.*$/, "").trim()
   span.append(prose)
-  if (c.generators.length) {
+  // Rows whose generators are alternatives ("m^* or 2m^*") have no chain to typeset.
+  if (c.generators.length && !c.generators.some((g) => g.emits.includes("\\text"))) {
     const unwrap = (s: string) => (s.startsWith("(") && s.endsWith(")") ? s.slice(1, -1) : s)
     const m = document.createElement("span")
     katex.render(c.generators.map((g) => unwrap(g.emits)).join(" = ") + " = 1", m, { throwOnError: false })
@@ -121,9 +123,14 @@ function evidenceItem(e: Evidence): HTMLLIElement {
       )
       break
     }
-    case "mention":
-      li.append(e.label + ": " + (e.note || "mentioned, not declared") + ".")
+    case "mention": {
+      if (e.labelTex) {
+        const m = document.createElement("span")
+        katex.render(e.labelTex, m, { throwOnError: false })
+        li.append(m, ": " + (e.note || "mentioned, not declared") + ".")
+      } else li.append(e.label + ": " + (e.note || "mentioned, not declared") + ".")
       break
+    }
   }
   return li
 }
@@ -151,7 +158,29 @@ function detectionCard(): HTMLElement | null {
   const line = document.createElement("p")
   line.style.margin = "0"
   const lead = document.createElement("span")
-  if (r.kind === "narrowed") {
+  // A mixed document has no document-level winner (census §6.2): the span
+  // verdicts come first, and the evidence follows as on any other page.
+  const isMixed = !!(pageDocument && pageDocument.mixed.length)
+  if (isMixed) {
+    lead.className = "verdict warn"
+    lead.textContent = "Mixed."
+    line.append(lead, " Different parts of the page use different conventions.")
+    card.appendChild(line)
+    const ul = document.createElement("ul")
+    ul.className = "reasons"
+    for (const s of pageDocument!.spans) {
+      if (s.report.kind !== "narrowed") continue
+      const li = document.createElement("li")
+      li.append(s.label + ": ")
+      s.report.sets[0].slice(0, 3).forEach((k, i) => {
+        if (i) li.append(" · ")
+        li.appendChild(candidateNode(k))
+      })
+      if (s.report.sets[0].length > 3) li.append(" · +" + (s.report.sets[0].length - 3))
+      ul.appendChild(li)
+    }
+    card.appendChild(ul)
+  } else if (r.kind === "narrowed") {
     const set = r.sets[0]
     lead.className = "verdict ok"
     lead.textContent = "Consistent with " + set.length + " of " + TOTAL_CONVENTIONS + " conventions"
@@ -164,26 +193,6 @@ function detectionCard(): HTMLElement | null {
       cands.appendChild(candidateNode(k))
     })
     card.appendChild(cands)
-  } else if (pageDocument && pageDocument.mixed.length) {
-    lead.className = "verdict warn"
-    lead.textContent = "Mixed."
-    line.append(lead, " Different parts of the page use different conventions.")
-    card.appendChild(line)
-    const ul = document.createElement("ul")
-    ul.className = "reasons"
-    for (const s of pageDocument.spans) {
-      if (s.report.kind !== "narrowed") continue
-      const li = document.createElement("li")
-      li.append(s.label + ": ")
-      s.report.sets[0].slice(0, 3).forEach((k, i) => {
-        if (i) li.append(" · ")
-        li.appendChild(candidateNode(k))
-      })
-      if (s.report.sets[0].length > 3) li.append(" · +" + (s.report.sets[0].length - 3))
-      ul.appendChild(li)
-    }
-    card.appendChild(ul)
-    return card
   } else if (r.kind === "conflict") {
     lead.className = "verdict warn"
     lead.textContent = "Inconsistent."
@@ -203,7 +212,7 @@ function detectionCard(): HTMLElement | null {
     for (const e of shown) ul.appendChild(evidenceItem(e))
     card.appendChild(ul)
   }
-  if (r.kind === "narrowed" && noted.length) {
+  if ((isMixed || r.kind === "narrowed") && noted.length) {
     const also = document.createElement("p")
     also.className = "unitline"
     also.append("Not used: ")
@@ -214,13 +223,56 @@ function detectionCard(): HTMLElement | null {
         katex.render(e.constantTex, m, { throwOnError: false })
         also.appendChild(m)
       } else if (e.kind === "mention") {
-        also.append(e.label)
+        if (e.labelTex) {
+          const m = document.createElement("span")
+          katex.render(e.labelTex, m, { throwOnError: false })
+          also.appendChild(m)
+        } else also.append(e.label)
       }
     })
     also.append(".")
     card.appendChild(also)
   }
   return card
+}
+
+// The page cards (Conventions, Symbols) are rebuilt whenever detection
+// reruns — after a MutationObserver rescan the panel must not keep showing
+// the verdict of the pool as it first stood (review v2).
+function renderCards(): void {
+  if (!panel) return
+  for (const old of panel.querySelectorAll(".rst-page-card")) old.remove()
+  const cards = [detectionCard(), symbolsCard()].filter((c): c is HTMLElement => !!c)
+  for (const card of cards) {
+    card.classList.add("rst-page-card")
+    if (resultsEl && resultsEl.parentElement === panel) panel.insertBefore(card, resultsEl)
+    else panel.appendChild(card)
+  }
+}
+
+// The translate target follows the span that owns the clicked equation
+// (census §6.2: never a document-level winner on a mixed page); the reader's
+// own choice survives clicks inside the same span.
+const spanOf = new WeakMap<MathCandidate, string>()
+let seededSpan: string | null = null
+
+function reportFor(c: MathCandidate): DetectionReport | null {
+  const id = spanOf.get(c) ?? null
+  const span = id && pageDocument ? pageDocument.spans.find((s) => s.id === id) : undefined
+  if (span && span.report.kind === "narrowed") return span.report
+  if (pageDocument && pageDocument.mixed.length) return null
+  return pageDetection
+}
+
+function seedTarget(c: MathCandidate): void {
+  const id = spanOf.get(c) ?? "page"
+  if (id === seededSpan) return
+  seededSpan = id
+  const report = reportFor(c)
+  if (!report) return
+  const seed = targetFromDetection(report)
+  if (seed.system) systemSel.value = seed.system
+  if (seed.geometrized !== undefined) geomBox.checked = seed.geometrized
 }
 
 // Symbols the text declares (census §6.5): the reading as printed, its
@@ -310,13 +362,7 @@ function buildPanel(): void {
   geomBox.type = "checkbox"
   geomLabel.append(geomBox, " geometrized")
   controls.append(systemSel, geomLabel)
-  // The target follows the page evidence where every candidate agrees
-  // (src/bridge.ts targetFromDetection); the reader can still override.
-  if (pageDetection) {
-    const seed = targetFromDetection(pageDetection)
-    if (seed.system) systemSel.value = seed.system
-    if (seed.geometrized !== undefined) geomBox.checked = seed.geometrized
-  }
+  seededSpan = null
   systemSel.addEventListener("change", runTranslate)
   geomBox.addEventListener("change", runTranslate)
 
@@ -324,12 +370,8 @@ function buildPanel(): void {
   resultsEl.className = "rst-results"
   resultsEl.setAttribute("aria-live", "polite")
 
-  panel.append(head, controls)
-  const detect = detectionCard()
-  if (detect) panel.appendChild(detect)
-  const symbols = symbolsCard()
-  if (symbols) panel.appendChild(symbols)
-  panel.appendChild(resultsEl)
+  panel.append(head, controls, resultsEl)
+  renderCards()
   root.appendChild(panel)
   document.body.appendChild(host)
 }
@@ -374,6 +416,7 @@ function openPanel(c: MathCandidate): void {
   if (!panel || !panel.isConnected) buildPanel()
   currentTex = c.tex
   provenanceEl.textContent = `TeX via ${VIA_LABEL[c.via]} · profile: ${profile.id}`
+  seedTarget(c)
   runTranslate()
 }
 
@@ -459,10 +502,17 @@ function wikipediaSections(): SectionSpec[] {
 }
 
 function documentSpans(): Span[] {
-  const ordered = [...pool].sort((a, b) => Number(b.display) - Number(a.display)).slice(0, 500)
+  // The equation pool is the page's DISPLAY equations when it has them —
+  // inline single symbols are not equations and would dilute every count
+  // ("G explicit in 11 of 499") — and every math element otherwise
+  // (Wikipedia flags nothing as display). The cap applies after selecting.
+  const live = pool.filter((c) => (c.displayEl as unknown as Element).isConnected)
+  const displays = live.filter((c) => c.display)
+  const ordered = (displays.length >= 8 ? displays : live).slice(0, 1500)
   let sections = latexmlSections()
   if (sections.length === 0) sections = wikipediaSections()
   if (sections.length === 0) {
+    for (const c of ordered) spanOf.set(c, "page")
     return [{ id: "page", label: "Page", text: proseSurface(), equations: ordered.map((c) => c.tex) }]
   }
   const spans: Span[] = []
@@ -473,14 +523,16 @@ function documentSpans(): Span[] {
       const el = c.displayEl as unknown as Element
       if (!claimed.has(c) && sec.nodes.some((n) => n.contains(el))) {
         claimed.add(c)
+        spanOf.set(c, "s" + i)
         eqs.push(c.tex)
       }
     }
     spans.push({ id: "s" + i, label: sec.label, text: sec.text.slice(0, 120000), equations: eqs })
   })
-  const rest = ordered.filter((c) => !claimed.has(c)).map((c) => c.tex)
+  const rest = ordered.filter((c) => !claimed.has(c))
+  for (const c of rest) spanOf.set(c, "front")
   const front = document.querySelector(".ltx_abstract")?.textContent ?? ""
-  if (front || rest.length) spans.unshift({ id: "front", label: "Front matter", text: front, equations: rest })
+  if (front || rest.length) spans.unshift({ id: "front", label: "Front matter", text: front, equations: rest.map((c) => c.tex) })
   return spans
 }
 
@@ -492,11 +544,23 @@ function runDetection(): void {
     pageDocument = null
     pageDetection = null // detection must never take the panel down with it
   }
-  try {
-    pageSymbols = mineDeclarations(miningSurface()).symbols.slice(0, 12)
-  } catch {
-    pageSymbols = []
+  seededSpan = null
+  if (panel?.isConnected) renderCards()
+  // The miner runs off the load path; when it lands, the cards and an open
+  // translation (whose registry it may extend) are refreshed.
+  const mine = () => {
+    try {
+      pageSymbols = mineDeclarations(miningSurface()).symbols.slice(0, 12)
+    } catch {
+      pageSymbols = []
+    }
+    if (panel?.isConnected) {
+      renderCards()
+      if (currentTex) runTranslate()
+    }
   }
+  if (typeof requestIdleCallback === "function") requestIdleCallback(() => mine(), { timeout: 2000 })
+  else setTimeout(mine, 0)
 }
 
 // The miner's surface: prose with every math element replaced by its TeX in

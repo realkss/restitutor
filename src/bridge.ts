@@ -35,8 +35,12 @@ const sameDim = (a: Dim, b: Dim) => a.every((x, i) => x === b[i])
 /** The engine's own constants and pure numbers: a page never re-reads these. */
 const ENGINE_CONSTANTS = new Set(["c", "G", "\\hbar", "k_B", "\\pi", "i", "e", "\\infty"])
 
-/** A subscript made only of Greek macros and single letters is a run of indices (g_{\mu\nu}), not an identity (m_1, H_0). */
-const INDEX_LIKE = /^(?:\\[a-zA-Z]+|[a-zA-Z]){1,4}$/
+/**
+ * A subscript made only of Greek macros and the engine's Latin index letters
+ * (a–k) is a run of indices (g_{\mu\nu}, T_{ab}), not an identity (m_1, H_0,
+ * R_s — the engine declines R_s rather than reading it as an indexed R).
+ */
+export const INDEX_LIKE = /^(?:\\[a-zA-Z]+|[a-k]){1,4}$/
 
 /**
  * The registry extended by what the page declares (census §6.5): "where Σ
@@ -60,6 +64,10 @@ export function registryWithDeclarations(reg: HubRegistry, symbols: MinedSymbol[
   }
   for (const s of symbols) {
     if (ENGINE_CONSTANTS.has(s.symbol)) continue
+    // A reading the text has not pinned down is not a registry reading: an
+    // ambiguous noun ("density", "flux") or one whose dimension depends on
+    // the spatial dimension stays in the Symbols card with its caveat.
+    if (s.caveat === "ambiguous" || s.caveat === "depends-on-d") continue
     const dim = dimQToDim(s.dim)
     if (!dim) continue
     const gloss =

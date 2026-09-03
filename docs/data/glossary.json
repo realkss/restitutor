@@ -19,6 +19,57 @@
  },
  "nouns": [
   {
+   "noun": "gravitational constant",
+   "synonyms": [
+    "Newton's constant",
+    "Newtonian constant of gravitation",
+    "Newton's gravitational constant",
+    "Newtonian gravitational constant",
+    "universal gravitational constant"
+   ],
+   "dim": [
+    -1,
+    3,
+    -2,
+    0,
+    0
+   ],
+   "si": "m³ kg⁻¹ s⁻²",
+   "note": "G. Matches CONST_DIM.G in src/convention.ts."
+  },
+  {
+   "noun": "Planck constant",
+   "synonyms": [
+    "reduced Planck constant",
+    "Planck's constant",
+    "Dirac constant"
+   ],
+   "dim": [
+    1,
+    2,
+    -1,
+    0,
+    0
+   ],
+   "si": "J s",
+   "note": "h and hbar share a dimension; the 2pi between them is registry fork #10. Matches CONST_DIM.hbar."
+  },
+  {
+   "noun": "Boltzmann constant",
+   "synonyms": [
+    "Boltzmann's constant"
+   ],
+   "dim": [
+    1,
+    2,
+    -2,
+    -1,
+    0
+   ],
+   "si": "J K⁻¹",
+   "note": "k_B. Matches CONST_DIM.kB."
+  },
+  {
    "noun": "mass",
    "synonyms": [
     "rest mass",
@@ -42,13 +93,13 @@
    "synonyms": [
     "distance",
     "separation",
-    "displacement",
     "size",
-    "scale",
     "lengths",
     "distances",
     "length scale",
-    "characteristic length"
+    "characteristic length",
+    "spatial displacement",
+    "displacement vector"
    ],
    "dim": [
     0,
@@ -266,8 +317,7 @@
    "noun": "angular momentum",
    "synonyms": [
     "spin angular momentum",
-    "orbital angular momentum",
-    "spin"
+    "orbital angular momentum"
    ],
    "dim": [
     1,
@@ -277,7 +327,7 @@
     0
    ],
    "si": "kg m² s⁻¹",
-   "note": "'spin' is a synonym only when it means the angular momentum itself; a dimensionless spin quantum number or a Kerr spin parameter a/M is a different quantity."
+   "note": "'spin' is a synonym only when it means the angular momentum itself; a dimensionless spin quantum number or a Kerr spin parameter a/M is a different quantity. Review v2: bare 'spin' removed — the Kerr a = J/Mc is a length and the spin quantum number a pure number."
   },
   {
    "noun": "action",
@@ -332,14 +382,30 @@
     0
    ],
    "si": "kg m⁻³",
-   "note": "Bare 'density' is the single worst gloss in the corpus: mass, number, energy, charge and probability densities all answer to it. The engine's GR registry already flags rho as a registry CHOICE (an energy density differs by c²) — mined 'density' with no modifier should be emitted with low confidence, never silently."
+   "note": "Bare 'density' is the single worst gloss in the corpus: mass, number, energy, charge and probability densities all answer to it. The engine's GR registry already flags rho as a registry CHOICE (an energy density differs by c²) — mined 'density' with no modifier should be emitted with low confidence, never silently. Review v2: flagged ambiguous — bare 'density' is emitted with a caveat and never fed to the translator's registry.",
+   "ambiguous": true
+  },
+  {
+   "noun": "column density",
+   "synonyms": [
+    "column densities",
+    "column number density"
+   ],
+   "dim": [
+    0,
+    -2,
+    0,
+    0,
+    0
+   ],
+   "si": "m⁻²",
+   "note": "Number per unit area along a line of sight (cm⁻² in practice). A column MASS density is kg m⁻² and belongs to surface density."
   },
   {
    "noun": "number density",
    "synonyms": [
     "particle density",
     "electron density",
-    "column density",
     "number densities"
    ],
    "dim": [
@@ -455,6 +521,26 @@
    ],
    "si": "m²",
    "note": "An area, but almost never quoted as one (barn, a_0², Mb). Under hbar = c = 1 it reads as an inverse squared energy."
+  },
+  {
+   "noun": "stress-energy tensor",
+   "synonyms": [
+    "stress–energy tensor",
+    "energy-momentum tensor",
+    "energy–momentum tensor",
+    "stress energy tensor",
+    "energy momentum tensor",
+    "stress-energy tensors"
+   ],
+   "dim": [
+    1,
+    -1,
+    -2,
+    0,
+    0
+   ],
+   "si": "J m⁻³",
+   "note": "T_{mu nu} as an energy density, the engine's reading. With kappa = 8 pi G / c^2 it would be a mass density (census 6.1)."
   },
   {
    "noun": "energy density",
@@ -599,10 +685,27 @@
    "note": "Dimensionless under k_B = 1 — the S = A/4 form only makes sense there. Same dim as heat capacity."
   },
   {
-   "noun": "heat capacity",
+   "noun": "specific heat capacity",
    "synonyms": [
     "specific heat",
-    "specific heat capacity",
+    "specific heats",
+    "specific heat capacities",
+    "mass heat capacity"
+   ],
+   "dim": [
+    0,
+    2,
+    -2,
+    -1,
+    0
+   ],
+   "si": "J kg⁻¹ K⁻¹",
+   "note": "c = C/m. Bare 'specific heat' also stands for the molar and per-particle readings in the literature; flagged ambiguous so the caveat is shown.",
+   "ambiguous": true
+  },
+  {
+   "noun": "heat capacity",
+   "synonyms": [
     "heat capacities"
    ],
    "dim": [
@@ -696,7 +799,6 @@
   {
    "noun": "voltage",
    "synonyms": [
-    "potential",
     "electric potential",
     "electrostatic potential",
     "potential difference",
@@ -712,6 +814,37 @@
    ],
    "si": "V",
    "note": "Bare 'potential' also means the Newtonian gravitational potential (m² s⁻²) and the interaction potential energy (J) — three different dimensions behind one word.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     1,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "noun": "vector potential",
+   "synonyms": [
+    "magnetic vector potential",
+    "gauge potential",
+    "vector potentials"
+   ],
+   "dim": [
+    1,
+    1,
+    -2,
+    0,
+    -1
+   ],
+   "si": "T m",
+   "note": "A with B = curl A: SI T m = V s m⁻¹. Gaussian: gauss cm, the same half-integer vector as E and B times a length.",
    "conventionDependent": true,
    "gaussianDim": [
     [
@@ -825,7 +958,6 @@
   {
    "noun": "magnetic flux",
    "synonyms": [
-    "flux",
     "magnetic fluxes",
     "flux quantum"
    ],
@@ -977,11 +1109,29 @@
    ]
   },
   {
+   "noun": "relative permittivity",
+   "synonyms": [
+    "dielectric constant",
+    "relative dielectric constant",
+    "static dielectric constant",
+    "relative permittivities"
+   ],
+   "dim": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "si": "1",
+   "note": "epsilon_r = epsilon/epsilon_0, a pure number in every system. Review v2 (2026-09-02): had been a synonym of the absolute permittivity, a 4-axis error on one of the most frequent condensed-matter declarations.",
+   "dimensionless": true
+  },
+  {
    "noun": "permittivity",
    "synonyms": [
     "dielectric permittivity",
-    "vacuum permittivity",
-    "dielectric constant"
+    "vacuum permittivity"
    ],
    "dim": [
     -1,
@@ -1088,6 +1238,37 @@
    ]
   },
   {
+   "noun": "electric displacement",
+   "synonyms": [
+    "electric displacement field",
+    "displacement field",
+    "electric flux density"
+   ],
+   "dim": [
+    0,
+    -2,
+    1,
+    0,
+    1
+   ],
+   "si": "C m⁻²",
+   "note": "D = epsilon_0 E + P. Carries the unrationalized 4pi in Gaussian units.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     -1,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
    "noun": "polarization",
    "synonyms": [
     "electric polarization",
@@ -1150,10 +1331,40 @@
    ]
   },
   {
+   "noun": "surface current density",
+   "synonyms": [
+    "surface current densities",
+    "sheet current density",
+    "sheet current"
+   ],
+   "dim": [
+    0,
+    -1,
+    0,
+    0,
+    1
+   ],
+   "si": "A m⁻¹",
+   "note": "K = I/length. Gaussian: statamp cm⁻¹.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     1,
+     2
+    ],
+    -2,
+    0,
+    0
+   ]
+  },
+  {
    "noun": "current density",
    "synonyms": [
-    "current densities",
-    "surface current density"
+    "current densities"
    ],
    "dim": [
     0,
@@ -1180,11 +1391,41 @@
    ]
   },
   {
+   "noun": "surface charge density",
+   "synonyms": [
+    "surface charge densities",
+    "areal charge density",
+    "sheet charge density"
+   ],
+   "dim": [
+    0,
+    -2,
+    1,
+    0,
+    1
+   ],
+   "si": "C m⁻²",
+   "note": "sigma = Q/A. Gaussian: esu cm⁻² = statvolt cm⁻¹.",
+   "conventionDependent": true,
+   "gaussianDim": [
+    [
+     1,
+     2
+    ],
+    [
+     -1,
+     2
+    ],
+    -1,
+    0,
+    0
+   ]
+  },
+  {
    "noun": "charge density",
    "synonyms": [
     "charge densities",
-    "volume charge density",
-    "surface charge density"
+    "volume charge density"
    ],
    "dim": [
     0,
@@ -1280,6 +1521,45 @@
    "si": "W m⁻²",
    "note": "Radiometric intensity (W m⁻²) collides with the radiative-transfer specific intensity (W m⁻² sr⁻¹ Hz⁻¹) and with a dimensionless line intensity. Low confidence unless the sentence disambiguates.",
    "ambiguous": true
+  },
+  {
+   "noun": "radiative flux",
+   "synonyms": [
+    "heat flux",
+    "energy flux density",
+    "radiative fluxes",
+    "heat fluxes",
+    "bolometric flux",
+    "surface flux"
+   ],
+   "dim": [
+    1,
+    0,
+    -3,
+    0,
+    0
+   ],
+   "si": "W m⁻²",
+   "note": "Power per unit area; the astronomer's F. Distinct from the per-frequency flux density (Jy)."
+  },
+  {
+   "noun": "particle flux",
+   "synonyms": [
+    "number flux",
+    "photon flux",
+    "neutrino flux",
+    "particle fluxes",
+    "flux of particles"
+   ],
+   "dim": [
+    0,
+    -2,
+    -1,
+    0,
+    0
+   ],
+   "si": "m⁻² s⁻¹",
+   "note": "Particles per area per time; Carroll's N^i is one."
   },
   {
    "noun": "irradiance",
@@ -1418,6 +1698,57 @@
    ],
    "si": "s⁻¹",
    "note": "An inverse time, despite always being quoted in km s⁻¹ Mpc⁻¹. The little-h convention hides inside the numeric value, never inside the dimension."
+  },
+  {
+   "noun": "scalar curvature",
+   "synonyms": [
+    "Ricci scalar",
+    "curvature scalar",
+    "Ricci curvature scalar"
+   ],
+   "dim": [
+    0,
+    -2,
+    0,
+    0,
+    0
+   ],
+   "si": "m⁻²",
+   "note": "R, under x^0 = ct coordinates carrying length."
+  },
+  {
+   "noun": "Ricci tensor",
+   "synonyms": [
+    "Ricci curvature tensor",
+    "Ricci curvature",
+    "Riemann tensor",
+    "Riemann curvature tensor",
+    "curvature tensor"
+   ],
+   "dim": [
+    0,
+    -2,
+    0,
+    0,
+    0
+   ],
+   "si": "m⁻²",
+   "note": "R_{mu nu}, index-independent dimension under the engine's coordinate convention."
+  },
+  {
+   "noun": "Einstein tensor",
+   "synonyms": [
+    "Einstein curvature tensor"
+   ],
+   "dim": [
+    0,
+    -2,
+    0,
+    0,
+    0
+   ],
+   "si": "m⁻²",
+   "note": "G_{mu nu} = R_{mu nu} - (1/2) R g_{mu nu}."
   },
   {
    "noun": "cosmological constant",

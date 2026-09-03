@@ -4,8 +4,8 @@
 export type FingerprintImplies =
   | { flavored: string[] }
   | { keys: string[] }
-  | { absorbing: [string, string][] }
-  | { absorbsWithFactor: [string, string] }
+  | { absorbing: [string, string][]; prints?: string[] }
+  | { absorbsWithFactor: [string, string]; prints?: string[] }
 
 export type FingerprintRule = {
   id: string
@@ -35,7 +35,7 @@ export const FINGERPRINT_RULES: FingerprintRule[] = [
     "label": "Coulomb force with an explicit c²",
     "tex": "F = c^2\\,\\frac{q_1 q_2}{r^2}",
     "meaning": "c² in Coulomb's law: EMU, the family's most diagnostic single equation",
-    "pattern": "c\\s*\\^\\s*\\{?\\s*2\\s*\\}?\\s*\\)?\\s*\\(?\\s*q[^=]{0,30}/\\s*\\(?\\s*r\\s*\\^\\s*\\{?\\s*2",
+    "pattern": "(?:^|=|\\()\\s*c\\s*\\^\\s*\\{?\\s*2\\s*\\}?\\s*\\)?\\s*\\(?\\s*q[^=]{0,30}/\\s*\\(?\\s*r\\s*\\^\\s*\\{?\\s*2",
     "implies": {
       "flavored": [
         "emu"
@@ -74,7 +74,7 @@ export const FINGERPRINT_RULES: FingerprintRule[] = [
     "label": "Ampère–Maxwell with (4π/c)J",
     "tex": "\\nabla\\times\\mathbf{H} = \\frac{4\\pi}{c}\\mathbf{J} + \\frac{1}{c}\\frac{\\partial\\mathbf{D}}{\\partial t}",
     "meaning": "4π/c on the current: Gaussian — unrationalized plus the c-rider",
-    "pattern": "(?<![0-9])4\\s*pi\\s*\\)?[^=G]{0,12}?/\\s*\\(?\\s*c(?![A-Za-z_0-9^])",
+    "pattern": "(?<![0-9])4\\s*pi\\s*\\)?[^=G]{0,12}?/\\s*\\(?\\s*c(?![A-Za-z_0-9^])\\s*\\)?\\s*(?:\\\\int[^=]{0,10})?\\s*(?:\\\\(?:mathbf|vec|boldsymbol|bf)\\s*\\{?\\s*J|\\{\\\\bf\\s*J|J(?![A-Za-z_]))",
     "implies": {
       "flavored": [
         "gaussian"
@@ -96,13 +96,26 @@ export const FINGERPRINT_RULES: FingerprintRule[] = [
   },
   {
     "id": "ampere-si",
-    "label": "Ampère–Maxwell with J + Ḋ",
-    "tex": "\\nabla\\times\\mathbf{H} = \\mathbf{J} + \\frac{\\partial\\mathbf{D}}{\\partial t}",
-    "meaning": "current with neither 4π nor 1/c: SI, asserted positively",
-    "pattern": "\\\\nabla\\s*\\\\times[^=]{0,25}=\\s*(?:mu0\\s*)?(?:\\\\[a-zA-Z]+\\s*)?\\{?\\s*J\\s*\\}?\\s*\\+",
+    "label": "Ampère–Maxwell with μ₀J",
+    "tex": "\\nabla\\times\\mathbf{B} = \\mu_0\\mathbf{J} + \\mu_0\\varepsilon_0\\frac{\\partial\\mathbf{E}}{\\partial t}",
+    "meaning": "μ₀ printed on the current: SI, asserted positively",
+    "pattern": "\\\\nabla\\s*\\\\times[^=]{0,25}=\\s*mu0\\s*(?:\\\\[a-zA-Z]+\\s*)?\\{?\\s*J(?![A-Za-z])",
     "implies": {
       "flavored": [
         "si"
+      ]
+    }
+  },
+  {
+    "id": "ampere-rationalized",
+    "label": "Ampère–Maxwell with J + Ḋ",
+    "tex": "\\nabla\\times\\mathbf{H} = \\mathbf{J} + \\frac{\\partial\\mathbf{D}}{\\partial t}",
+    "meaning": "current with neither 4π nor 1/c: rationalized — SI, or Heaviside–Lorentz at c = 1",
+    "pattern": "\\\\nabla\\s*\\\\times[^=]{0,25}=\\s*(?:\\\\[a-zA-Z]+\\s*)?\\{?\\s*J\\s*\\}?(?:\\s*\\^\\s*\\{?[A-Za-z\\\\ ]*\\}?)?\\s*\\+",
+    "implies": {
+      "flavored": [
+        "si",
+        "heaviside-lorentz"
       ]
     }
   },
@@ -147,7 +160,7 @@ export const FINGERPRINT_RULES: FingerprintRule[] = [
     "label": "−F²/16π",
     "tex": "\\mathcal{L} = -\\frac{1}{16\\pi}F_{\\mu\\nu}F^{\\mu\\nu}",
     "meaning": "16π normalizing F²: Gaussian field-strength convention",
-    "pattern": "(?:F(?![A-Za-z])[^=]{0,40}(?<![0-9])16\\s*pi(?!\\s*G(?![A-Za-z_]))|(?<![0-9])16\\s*pi\\s*(?!\\s*G(?![A-Za-z_]))\\)?\\s*[^=]{0,8}F(?![A-Za-z]))",
+    "pattern": "(?:F(?![A-Za-z])[^=]{0,40}(?<![0-9])16\\s*pi(?!\\s*G(?![A-Za-z]))|(?<![0-9])16\\s*pi\\s*(?!\\s*G(?![A-Za-z]))\\)?\\s*[^=]{0,8}F(?![A-Za-z]))",
     "implies": {
       "flavored": [
         "gaussian"
@@ -184,7 +197,7 @@ export const FINGERPRINT_RULES: FingerprintRule[] = [
     "label": "Einstein–Hilbert prefactor c⁴/16πG",
     "tex": "S = \\frac{c^4}{16\\pi G}\\int d^4x\\,\\sqrt{-g}\\,R",
     "meaning": "c and G printed in the action prefactor: neither is absorbed",
-    "pattern": "c\\s*\\^\\s*\\{?\\s*[34]\\s*\\}?\\s*\\)?\\s*/\\s*\\(?\\s*16\\s*pi\\s*G(?![A-Za-z_])",
+    "pattern": "c\\s*\\^\\s*\\{?\\s*[34]\\s*\\}?\\s*\\)?\\s*/\\s*\\(?\\s*16\\s*pi\\s*G(?![A-Za-z])",
     "implies": {
       "keys": [
         "si",
@@ -208,11 +221,29 @@ export const FINGERPRINT_RULES: FingerprintRule[] = [
     }
   },
   {
+    "id": "einstein-hilbert-1-over-16piG",
+    "label": "Einstein–Hilbert prefactor 1/16πG",
+    "tex": "S = \\frac{1}{16\\pi G}\\int d^4x\\,\\sqrt{-g}\\,R",
+    "meaning": "G printed and no c in the action prefactor: c = 1",
+    "pattern": "(?<!c\\s*\\^\\s*\\{?\\s*[34]\\s*\\}?\\s*\\)?\\s*)/\\s*\\(?\\s*16\\s*pi\\s*G(?![A-Za-z])\\s*\\)?\\s*[^=]{0,30}\\\\sqrt\\s*\\{?\\s*-\\s*g(?![A-Za-z])\\s*\\}?[^=0-9\\\\]{0,12}R(?![A-Za-z_^])",
+    "implies": {
+      "absorbing": [
+        [
+          "c",
+          "c"
+        ]
+      ],
+      "prints": [
+        "G"
+      ]
+    }
+  },
+  {
     "id": "einstein-hilbert-1-over-16pi",
     "label": "Einstein–Hilbert prefactor 1/16π",
     "tex": "S = \\frac{1}{16\\pi}\\int d^4x\\,\\sqrt{-g}\\,R",
     "meaning": "16π with no G on √−g R: G = c = 1, Cluster A",
-    "pattern": "/\\s*\\(?\\s*16\\s*pi\\s*(?!\\s*G(?![A-Za-z_]))\\)?\\s*[^=]{0,30}\\\\sqrt\\s*\\{?\\s*-\\s*g(?![A-Za-z])",
+    "pattern": "/\\s*\\(?\\s*16\\s*pi\\s*(?!\\s*G(?![A-Za-z]))\\)?\\s*[^=]{0,30}\\\\sqrt\\s*\\{?\\s*-\\s*g(?![A-Za-z])\\s*\\}?[^=0-9\\\\]{0,12}R(?![A-Za-z_^])",
     "implies": {
       "absorbing": [
         [
@@ -244,7 +275,7 @@ export const FINGERPRINT_RULES: FingerprintRule[] = [
     "label": "Bare ∫√−g (R − 2Λ), no prefactor",
     "tex": "S = \\int d^4x\\,\\sqrt{-g}\\,(R - 2\\Lambda)",
     "meaning": "no prefactor at all on √−g R: 16πG = 1",
-    "pattern": "=\\s*\\\\int[^=]{0,25}\\\\sqrt\\s*\\{?\\s*-\\s*g\\s*\\}?[^=0-9\\\\]{0,12}R(?![A-Za-z])(?!\\s*\\}?\\s*\\)?\\s*/)",
+    "pattern": "=\\s*\\\\int[^=]{0,25}\\\\sqrt\\s*\\{?\\s*-\\s*g\\s*\\}?[^=0-9\\\\]{0,12}R(?![A-Za-z_^])(?!\\s*\\}?\\s*\\)?\\s*/)",
     "implies": {
       "absorbsWithFactor": [
         "G",
@@ -256,8 +287,8 @@ export const FINGERPRINT_RULES: FingerprintRule[] = [
     "id": "bh-thermo-planck",
     "label": "S = A/4 and T_H = 1/8πM",
     "tex": "S = \\frac{A}{4},\\qquad T_H = \\frac{1}{8\\pi M}",
-    "meaning": "bare A/4 or 1/8πM: Planck units, ħ = c = G = 1",
-    "pattern": "(?:(?<![A-Za-z])S[^=]{0,14}=\\s*\\(?\\s*A\\s*\\)?\\s*/\\s*\\(?\\s*4\\s*\\)?(?![0-9A-Za-z\\\\])|(?<![A-Za-z])T[^=]{0,14}=\\s*\\(?\\s*1\\s*\\)?\\s*/\\s*\\(?\\s*8\\s*pi\\s*M(?![A-Za-z_]))",
+    "meaning": "bare A/4 or 1/8πM: Planck units, ħ = c = G = k_B = 1",
+    "pattern": "(?:(?<![A-Za-z])S[^=]{0,14}=\\s*(?:\\(\\s*A\\s*\\)\\s*/\\s*\\(\\s*4\\s*\\)|A\\s*/\\s*4(?![0-9A-Za-z\\\\]))(?!\\s*(?:G|hbar|c|kB|k_B|\\\\ell|\\\\l|l_P|\\\\hbar)(?![A-Za-z]))|(?<![A-Za-z])T[^=]{0,14}=\\s*\\(?\\s*1\\s*\\)?\\s*/\\s*\\(?\\s*8\\s*pi\\s*M(?![A-Za-z_]))",
     "implies": {
       "absorbing": [
         [
@@ -271,6 +302,10 @@ export const FINGERPRINT_RULES: FingerprintRule[] = [
         [
           "G",
           "G"
+        ],
+        [
+          "k_B",
+          "kB"
         ]
       ]
     }
@@ -321,6 +356,54 @@ export type GlossNoun = {
 
 export const GLOSSARY_NOUNS: GlossNoun[] = [
   {
+    "noun": "gravitational constant",
+    "synonyms": [
+      "Newton's constant",
+      "Newtonian constant of gravitation",
+      "Newton's gravitational constant",
+      "Newtonian gravitational constant",
+      "universal gravitational constant"
+    ],
+    "dim": [
+      -1,
+      3,
+      -2,
+      0,
+      0
+    ],
+    "si": "m³ kg⁻¹ s⁻²"
+  },
+  {
+    "noun": "Planck constant",
+    "synonyms": [
+      "reduced Planck constant",
+      "Planck's constant",
+      "Dirac constant"
+    ],
+    "dim": [
+      1,
+      2,
+      -1,
+      0,
+      0
+    ],
+    "si": "J s"
+  },
+  {
+    "noun": "Boltzmann constant",
+    "synonyms": [
+      "Boltzmann's constant"
+    ],
+    "dim": [
+      1,
+      2,
+      -2,
+      -1,
+      0
+    ],
+    "si": "J K⁻¹"
+  },
+  {
     "noun": "mass",
     "synonyms": [
       "rest mass",
@@ -343,13 +426,13 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
     "synonyms": [
       "distance",
       "separation",
-      "displacement",
       "size",
-      "scale",
       "lengths",
       "distances",
       "length scale",
-      "characteristic length"
+      "characteristic length",
+      "spatial displacement",
+      "displacement vector"
     ],
     "dim": [
       0,
@@ -555,8 +638,7 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
     "noun": "angular momentum",
     "synonyms": [
       "spin angular momentum",
-      "orbital angular momentum",
-      "spin"
+      "orbital angular momentum"
     ],
     "dim": [
       1,
@@ -617,14 +699,29 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
       0,
       0
     ],
-    "si": "kg m⁻³"
+    "si": "kg m⁻³",
+    "ambiguous": true
+  },
+  {
+    "noun": "column density",
+    "synonyms": [
+      "column densities",
+      "column number density"
+    ],
+    "dim": [
+      0,
+      -2,
+      0,
+      0,
+      0
+    ],
+    "si": "m⁻²"
   },
   {
     "noun": "number density",
     "synonyms": [
       "particle density",
       "electron density",
-      "column density",
       "number densities"
     ],
     "dim": [
@@ -733,6 +830,25 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
       0
     ],
     "si": "m²"
+  },
+  {
+    "noun": "stress-energy tensor",
+    "synonyms": [
+      "stress–energy tensor",
+      "energy-momentum tensor",
+      "energy–momentum tensor",
+      "stress energy tensor",
+      "energy momentum tensor",
+      "stress-energy tensors"
+    ],
+    "dim": [
+      1,
+      -1,
+      -2,
+      0,
+      0
+    ],
+    "si": "J m⁻³"
   },
   {
     "noun": "energy density",
@@ -869,10 +985,26 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
     "si": "J K⁻¹"
   },
   {
-    "noun": "heat capacity",
+    "noun": "specific heat capacity",
     "synonyms": [
       "specific heat",
-      "specific heat capacity",
+      "specific heats",
+      "specific heat capacities",
+      "mass heat capacity"
+    ],
+    "dim": [
+      0,
+      2,
+      -2,
+      -1,
+      0
+    ],
+    "si": "J kg⁻¹ K⁻¹",
+    "ambiguous": true
+  },
+  {
+    "noun": "heat capacity",
+    "synonyms": [
       "heat capacities"
     ],
     "dim": [
@@ -962,7 +1094,6 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
   {
     "noun": "voltage",
     "synonyms": [
-      "potential",
       "electric potential",
       "electrostatic potential",
       "potential difference",
@@ -977,6 +1108,36 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
       -1
     ],
     "si": "V",
+    "conventionDependent": true,
+    "gaussianDim": [
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        2
+      ],
+      -1,
+      0,
+      0
+    ]
+  },
+  {
+    "noun": "vector potential",
+    "synonyms": [
+      "magnetic vector potential",
+      "gauge potential",
+      "vector potentials"
+    ],
+    "dim": [
+      1,
+      1,
+      -2,
+      0,
+      -1
+    ],
+    "si": "T m",
     "conventionDependent": true,
     "gaussianDim": [
       [
@@ -1087,7 +1248,6 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
   {
     "noun": "magnetic flux",
     "synonyms": [
-      "flux",
       "magnetic fluxes",
       "flux quantum"
     ],
@@ -1233,11 +1393,28 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
     ]
   },
   {
+    "noun": "relative permittivity",
+    "synonyms": [
+      "dielectric constant",
+      "relative dielectric constant",
+      "static dielectric constant",
+      "relative permittivities"
+    ],
+    "dim": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "si": "1",
+    "dimensionless": true
+  },
+  {
     "noun": "permittivity",
     "synonyms": [
       "dielectric permittivity",
-      "vacuum permittivity",
-      "dielectric constant"
+      "vacuum permittivity"
     ],
     "dim": [
       -1,
@@ -1340,6 +1517,36 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
     ]
   },
   {
+    "noun": "electric displacement",
+    "synonyms": [
+      "electric displacement field",
+      "displacement field",
+      "electric flux density"
+    ],
+    "dim": [
+      0,
+      -2,
+      1,
+      0,
+      1
+    ],
+    "si": "C m⁻²",
+    "conventionDependent": true,
+    "gaussianDim": [
+      [
+        1,
+        2
+      ],
+      [
+        -1,
+        2
+      ],
+      -1,
+      0,
+      0
+    ]
+  },
+  {
     "noun": "polarization",
     "synonyms": [
       "electric polarization",
@@ -1400,10 +1607,39 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
     ]
   },
   {
+    "noun": "surface current density",
+    "synonyms": [
+      "surface current densities",
+      "sheet current density",
+      "sheet current"
+    ],
+    "dim": [
+      0,
+      -1,
+      0,
+      0,
+      1
+    ],
+    "si": "A m⁻¹",
+    "conventionDependent": true,
+    "gaussianDim": [
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        2
+      ],
+      -2,
+      0,
+      0
+    ]
+  },
+  {
     "noun": "current density",
     "synonyms": [
-      "current densities",
-      "surface current density"
+      "current densities"
     ],
     "dim": [
       0,
@@ -1429,11 +1665,40 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
     ]
   },
   {
+    "noun": "surface charge density",
+    "synonyms": [
+      "surface charge densities",
+      "areal charge density",
+      "sheet charge density"
+    ],
+    "dim": [
+      0,
+      -2,
+      1,
+      0,
+      1
+    ],
+    "si": "C m⁻²",
+    "conventionDependent": true,
+    "gaussianDim": [
+      [
+        1,
+        2
+      ],
+      [
+        -1,
+        2
+      ],
+      -1,
+      0,
+      0
+    ]
+  },
+  {
     "noun": "charge density",
     "synonyms": [
       "charge densities",
-      "volume charge density",
-      "surface charge density"
+      "volume charge density"
     ],
     "dim": [
       0,
@@ -1524,6 +1789,43 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
     ],
     "si": "W m⁻²",
     "ambiguous": true
+  },
+  {
+    "noun": "radiative flux",
+    "synonyms": [
+      "heat flux",
+      "energy flux density",
+      "radiative fluxes",
+      "heat fluxes",
+      "bolometric flux",
+      "surface flux"
+    ],
+    "dim": [
+      1,
+      0,
+      -3,
+      0,
+      0
+    ],
+    "si": "W m⁻²"
+  },
+  {
+    "noun": "particle flux",
+    "synonyms": [
+      "number flux",
+      "photon flux",
+      "neutrino flux",
+      "particle fluxes",
+      "flux of particles"
+    ],
+    "dim": [
+      0,
+      -2,
+      -1,
+      0,
+      0
+    ],
+    "si": "m⁻² s⁻¹"
   },
   {
     "noun": "irradiance",
@@ -1654,6 +1956,54 @@ export const GLOSSARY_NOUNS: GlossNoun[] = [
       0
     ],
     "si": "s⁻¹"
+  },
+  {
+    "noun": "scalar curvature",
+    "synonyms": [
+      "Ricci scalar",
+      "curvature scalar",
+      "Ricci curvature scalar"
+    ],
+    "dim": [
+      0,
+      -2,
+      0,
+      0,
+      0
+    ],
+    "si": "m⁻²"
+  },
+  {
+    "noun": "Ricci tensor",
+    "synonyms": [
+      "Ricci curvature tensor",
+      "Ricci curvature",
+      "Riemann tensor",
+      "Riemann curvature tensor",
+      "curvature tensor"
+    ],
+    "dim": [
+      0,
+      -2,
+      0,
+      0,
+      0
+    ],
+    "si": "m⁻²"
+  },
+  {
+    "noun": "Einstein tensor",
+    "synonyms": [
+      "Einstein curvature tensor"
+    ],
+    "dim": [
+      0,
+      -2,
+      0,
+      0,
+      0
+    ],
+    "si": "m⁻²"
   },
   {
     "noun": "cosmological constant",

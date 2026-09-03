@@ -53,6 +53,8 @@ export type Evidence =
       /** A system name outside a declarative frame, or a polysemous one. Never narrows. */
       kind: "mention"
       label: string
+      /** The label as TeX where it is a formula (a chain, a matched form). */
+      labelTex?: string
       excerpt: string
       note: string
     }
@@ -217,9 +219,84 @@ const GREEK_WORDS: [RegExp, string][] = [
 export function normalizeProse(text: string): string {
   let t = text
   for (const [re, w] of TEX_WORDS) t = t.replace(re, w)
+  t = foldFractions(t)
   t = foldMathAlphanumeric(t)
   for (const [re, w] of GREEK_WORDS) t = t.replace(re, w)
   return t.replace(/\s+/g, " ")
+}
+
+// One brace-balanced argument (or a single token: \tfrac12, \frac\pi2).
+function braceArg(s: string, i: number): { text: string; end: number } | null {
+  while (i < s.length && s[i] === " ") i++
+  if (s[i] === "{") {
+    let depth = 0
+    for (let j = i; j < s.length; j++) {
+      if (s[j] === "{") depth++
+      else if (s[j] === "}" && --depth === 0) return { text: s.slice(i + 1, j), end: j + 1 }
+    }
+    return null
+  }
+  const m = /^(?:\\[a-zA-Z]+|[^\s{}\\])/.exec(s.slice(i))
+  return m ? { text: m[0], end: i + m[0].length } : null
+}
+
+const FRAC_RE = /\\[dtc]?frac(?![a-zA-Z])/g
+const OVER_RE = /\\over(?![a-zA-Z])/
+
+/**
+ * \frac{a}{b} (\dfrac, \tfrac, \cfrac) with BRACE-BALANCED arguments, innermost
+ * first, to a fixpoint; {a \over b}; and a brace wrapper whose only content
+ * is a folded fraction. Wikipedia's alttext writes every fraction as
+ * {\frac {c^{4}}{16\pi G}} — a brace-free fold never fired on it (review v2).
+ */
+export function foldFractions(input: string): string {
+  let s = input
+  for (let guard = 0; guard < 200; guard++) {
+    let changed = false
+    for (const m of s.matchAll(FRAC_RE)) {
+      const a = braceArg(s, m.index! + m[0].length)
+      if (!a) continue
+      const b = braceArg(s, a.end)
+      if (!b) continue
+      if (/\\[dtc]?frac(?![a-zA-Z])/.test(a.text + b.text)) continue
+      s = s.slice(0, m.index) + "(" + a.text.trim() + ")/(" + b.text.trim() + ")" + s.slice(b.end)
+      changed = true
+      break
+    }
+    if (!changed) break
+  }
+  for (let guard = 0; guard < 50; guard++) {
+    const k = s.search(OVER_RE)
+    if (k < 0) break
+    let start = -1
+    for (let j = k - 1, depth = 0; j >= 0; j--) {
+      if (s[j] === "}") depth++
+      else if (s[j] === "{") {
+        if (depth === 0) {
+          start = j
+          break
+        }
+        depth--
+      }
+    }
+    let end = -1
+    for (let j = k + 5, depth = 0; j < s.length; j++) {
+      if (s[j] === "{") depth++
+      else if (s[j] === "}") {
+        if (depth === 0) {
+          end = j
+          break
+        }
+        depth--
+      }
+    }
+    if (start < 0 || end < 0) {
+      s = s.slice(0, k) + " / " + s.slice(k + 5)
+      continue
+    }
+    s = s.slice(0, start) + "(" + s.slice(start + 1, k).trim() + ")/(" + s.slice(k + 5, end).trim() + ")" + s.slice(end + 1)
+  }
+  return s.replace(/\{\s*(\((?:[^()]|\([^()]*\))*\)\s*\/\s*\((?:[^()]|\([^()]*\))*\))\s*\}/g, "$1")
 }
 
 // A decorated subscript in every shape TeX writes it — _0, _{0}, _{\rm 0},
@@ -243,7 +320,6 @@ const TEX_WORDS: [RegExp, string][] = [
   [/\\alpha\s*(?:'|\^\{?\\prime\}?)/g, " alpha' "],
   [/\\pi\b/g, " pi "],
   [/\\kappa\b/g, " kappa "],
-  [/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1)/($2)"],
   [/\\(?:left|right|big|Big|bigg|Bigg)\b/g, ""],
   [/\\(?:[,;:!> ]|quad|qquad|thinspace)/g, " "],
   [/\\displaystyle|\\textstyle/g, ""],
@@ -328,8 +404,12 @@ const chainTex = (terms: ChainTerm[]) =>
 // ---------------------------------------------------------------------------
 const FRAME =
   /\b(we|our|this (?:paper|work|letter|article)|throughout|hereafter|in what follows|in the following|are (?:used|adopted|employed|assumed|chosen|in)|is (?:used|adopted|employed|assumed|chosen|in)|will be used|adopt|use|using|employ|work(?:ing)? in|written in|expressed in|measured in|given in)\b/i
+// A conversion remark, a comparison, a contrast, or a citation: the name is
+// mentioned, not adopted. "references?" alone matched "reference energies"
+// (the code-identity draft, 2026-09-02), so citations are keyed on their
+// own tokens.
 const ANTI_FRAME =
-  /\b(convert(?:ed|ing|s)?|conversion|to recover|restor\w*|in terms of|quoted in|reported in|compared? (?:to|with)|unlike|whereas|as opposed to|rather than|instead of|for comparison|see also|references?)\b/i
+  /\b(convert(?:ed|ing|s)?|conversion|to recover|restor\w*|in terms of|quoted in|reported in|compared? (?:to|with)|unlike|whereas|as opposed to|rather than|instead of|for comparison|in contrast|by contrast|contrary to|see also|references?\s*(?:\[|\d|therein)|refs?\.|cite[sd]?|citation|et al\.|manual|documentation|available from|distributed by|developed (?:at|by))\b|\[\d+(?:[,–-]\s*\d+)*\]/i
 
 type NamedRule = {
   label: string
@@ -527,9 +607,13 @@ export function fingerprintImplies(rule: FingerprintRule): string[] {
   const imp = rule.implies
   if ("flavored" in imp) return flavored(...(imp.flavored as EmFlavor[]))
   if ("keys" in imp) return imp.keys.filter((k) => k in CONVENTIONS)
-  if ("absorbing" in imp) return absorbing(...imp.absorbing.map(([tex]) => [tex, DIM_OF_TEX[tex]] as [string, DimQ]))
+  // A form that PRINTS a constant (1/16πG prints G) excludes the rows that absorb it.
+  const printsNot = (keys: string[]) =>
+    keys.filter((k) => !(imp.prints ?? []).some((tex) => generatesConstant(k, tex, DIM_OF_TEX[tex])))
+  if ("absorbing" in imp)
+    return printsNot(absorbing(...imp.absorbing.map(([tex]) => [tex, DIM_OF_TEX[tex]] as [string, DimQ])))
   const [tex, factor] = imp.absorbsWithFactor
-  return ALL_KEYS.filter((k) => absorbsWithFactor(k, tex, DIM_OF_TEX[tex], factor))
+  return printsNot(ALL_KEYS.filter((k) => absorbsWithFactor(k, tex, DIM_OF_TEX[tex], factor)))
 }
 
 // ---------------------------------------------------------------------------
@@ -575,7 +659,8 @@ export const CONSTANT_TOKENS: ConstantToken[] = [
     constant: "G (Newton)",
     tex: "G",
     dim: CONST_DIM.G,
-    pattern: /\d*\s*pi\s*G\b|\bG\s*M\b|\bG\b[^=/]{0,10}\)?\s*\/\s*\(?\s*c\s*(?:\^|\)|\b)/,
+    // G_N, G_4, G_D are Newton's constant too: no word boundary after G.
+    pattern: /\d*\s*pi\s*G(?![A-Za-z])|\bG(?:_\{?[A-Za-z0-9]{1,2}\}?)?\s*M(?![A-Za-z])|\bG(?![A-Za-z])[^=/]{0,10}\)?\s*\/\s*\(?\s*c\s*(?:\^|\)|\b)/,
   },
   { constant: "G (bare)", tex: "G", dim: CONST_DIM.G, pattern: /(?<![A-Za-z_])G(?![A-Za-z_])/, weak: true },
   { constant: "c (bare)", tex: "c", dim: CONST_DIM.c, pattern: /c\^|(?<![A-Za-z_])c(?![A-Za-z_])/, weak: true },
@@ -602,10 +687,22 @@ export type DetectionInput = {
   equations?: string[]
 }
 
-export function inferConventions(
-  input: DetectionInput,
-  opts: { candidates?: string[] } = {},
-): DetectionReport {
+/** A constant the body prints at body level — the finding a chain or form is weighed against. */
+export type PrintedConstant = { constant: string; constantTex: string; count: number; of: number }
+
+export type DetectionOptions = {
+  candidates?: string[]
+  /**
+   * Constants printed strongly at DOCUMENT level, for a span-scoped run: a
+   * section that writes G three times among forty equations still belongs
+   * to a document that writes it throughout.
+   */
+  printed?: PrintedConstant[]
+}
+
+const globalOf = (re: RegExp) => new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g")
+
+export function inferConventions(input: DetectionInput, opts: DetectionOptions = {}): DetectionReport {
   const start = [...(opts.candidates ?? ALL_KEYS)]
   let survivors = new Set(start)
   const evidence: Evidence[] = []
@@ -622,7 +719,16 @@ export function inferConventions(
   //    equation is a declaration, not a body equation: it leaves the
   //    visible-constant pool.
   const bodyEquations: string[] = []
-  type Chain = { excerpt: string; sentence: string; src: string; at: number; terms: ChainTerm[]; implies: string[] }
+  type Chain = {
+    excerpt: string
+    sentence: string
+    src: string
+    at: number
+    /** Index of the equation the chain was typeset in, if any. */
+    eq?: number
+    terms: ChainTerm[]
+    implies: string[]
+  }
   const chains: Chain[] = []
   const chainImplies = (terms: ChainTerm[]) => {
     let implies = [...ALL_KEYS]
@@ -642,7 +748,7 @@ export function inferConventions(
       implies: chainImplies(ch.terms),
     })
   }
-  for (const eq of equations) {
+  equations.forEach((eq, i) => {
     const found = findDeclarationChains(eq)
     if (found.length) {
       for (const ch of found)
@@ -651,23 +757,24 @@ export function inferConventions(
           sentence: sentenceAround(eq, ch.index),
           src: eq,
           at: ch.index,
+          eq: i,
           terms: ch.terms,
           implies: chainImplies(ch.terms),
         })
     } else bodyEquations.push(eq)
-  }
-  // Two mutually exclusive chains close together in the same source are
-  // alternatives being discussed ("Gaussian-Planck (4πε₀ = 1): … .
-  // Heaviside-Planck (ε₀ = 1): …"), not a declaration of either.
+  })
+  // Two mutually exclusive chains close together — in the same prose, or in
+  // adjacent display equations — are alternatives being discussed
+  // ("Gaussian-Planck (4πε₀ = 1): … . Heaviside-Planck (ε₀ = 1): …"), not a
+  // declaration of either.
+  const near = (a: Chain, b: Chain) =>
+    a.src === b.src
+      ? Math.abs(a.at - b.at) < 400
+      : a.eq !== undefined && b.eq !== undefined && Math.abs(a.eq - b.eq) <= 2
   const alternatives = new Set<Chain>()
   for (const a of chains)
     for (const b of chains)
-      if (
-        a !== b &&
-        a.src === b.src &&
-        Math.abs(a.at - b.at) < 400 &&
-        !a.implies.some((k) => b.implies.includes(k))
-      ) {
+      if (a !== b && near(a, b) && !a.implies.some((k) => b.implies.includes(k))) {
         alternatives.add(a)
         alternatives.add(b)
       }
@@ -694,62 +801,96 @@ export function inferConventions(
     }
     stats.push({ token, count: inContext.length, strength: prevalent(inContext.length, of) ? "strong" : "isolated" })
   }
-  const printedStrongly = (tex: string) => stats.find((s) => s.strength === "strong" && s.token.tex === tex)
-
-  const seenChains = new Set<string>()
-  for (const ch of chains) {
-    const label = chainLabel(ch.terms)
-    if (seenChains.has(label)) continue
-    seenChains.add(label)
-    const hypothetical = CHAIN_ANTI_FRAME.test(ch.sentence)
-    if (hypothetical || alternatives.has(ch)) {
-      evidence.push({
-        kind: "mention",
-        label,
-        excerpt: ch.sentence.slice(0, 200),
-        note: hypothetical ? "stated hypothetically or in contrast, not adopted" : "one of several alternatives stated",
-      })
-      continue
-    }
-    const printed = ch.terms.map((t) => printedStrongly(CONST_NAMES[t.name].tex)).find((s) => s)
-    if (printed) {
-      evidence.push({
-        kind: "contradicted",
-        label,
-        labelTex: chainTex(ch.terms),
-        excerpt: ch.excerpt.trim(),
-        constant: printed.token.constant,
-        constantTex: printed.token.tex,
-        count: printed.count,
-        of,
-      })
-      continue
-    }
-    evidence.push({
-      kind: "declaration",
-      form: "chain",
-      label,
-      labelTex: chainTex(ch.terms),
-      excerpt: ch.excerpt.trim(),
-      implies: ch.implies,
-    })
-    intersect(ch.implies)
+  const printedStrongly = (tex: string): PrintedConstant | undefined => {
+    const s = stats.find((x) => x.strength === "strong" && x.token.tex === tex)
+    if (s) return { constant: s.token.constant, constantTex: tex, count: s.count, of }
+    return opts.printed?.find((p) => p.constantTex === tex)
   }
 
-  // 2. Named systems, framed or merely mentioned.
+  // Every chain instance is classified first; one instance per label is
+  // kept — a declaration outranks a contradicted one outranks a mention — so
+  // a hedged first occurrence ("one can set G = c = 1") never deletes the
+  // adoption that follows it (review v2).
+  type Verdict = { rank: number; emit: () => void }
+  const best = new Map<string, Verdict>()
+  for (const ch of chains) {
+    const label = chainLabel(ch.terms)
+    const hypothetical = CHAIN_ANTI_FRAME.test(ch.sentence)
+    let v: Verdict
+    if (hypothetical || alternatives.has(ch)) {
+      v = {
+        rank: 0,
+        emit: () =>
+          evidence.push({
+            kind: "mention",
+            label,
+            labelTex: chainTex(ch.terms),
+            excerpt: ch.sentence.slice(0, 200),
+            note: hypothetical ? "stated hypothetically or in contrast, not adopted" : "one of several alternatives stated",
+          }),
+      }
+    } else {
+      // A term the body prints at body level is refuted. A refuted MODIFIER
+      // (k_B, whose own implication is nearly vacuous) leaves the rest of the
+      // chain standing — a restored k_B never voids an untouched ħ = c = 1;
+      // a refuted generator (G printed while "G = c = 1" is stated) refutes
+      // the chain as a unit, since the statement was one claim.
+      let refuted = ch.terms.filter((t) => printedStrongly(CONST_NAMES[t.name].tex))
+      if (refuted.some((t) => !CONST_NAMES[t.name].modifier)) refuted = [refuted.find((t) => !CONST_NAMES[t.name].modifier)!]
+      const kept = refuted.some((t) => !CONST_NAMES[t.name].modifier) ? [] : ch.terms.filter((t) => !refuted.includes(t))
+      const wholeChain = kept.length === 0 && refuted.length > 0
+      v = {
+        rank: refuted.length ? 1 : 2,
+        emit: () => {
+          for (const t of refuted) {
+            const p = printedStrongly(CONST_NAMES[t.name].tex)!
+            evidence.push({
+              kind: "contradicted",
+              label: wholeChain ? label : chainLabel([t]),
+              labelTex: wholeChain ? chainTex(ch.terms) : chainTex([t]),
+              excerpt: ch.excerpt.trim(),
+              constant: p.constant,
+              constantTex: p.constantTex,
+              count: p.count,
+              of: p.of,
+            })
+          }
+          if (kept.length) {
+            const implies = chainImplies(kept)
+            evidence.push({
+              kind: "declaration",
+              form: "chain",
+              label: chainLabel(kept),
+              labelTex: chainTex(kept),
+              excerpt: ch.excerpt.trim(),
+              implies,
+            })
+            intersect(implies)
+          }
+        },
+      }
+    }
+    const prior = best.get(label)
+    if (!prior || v.rank > prior.rank) best.set(label, v)
+  }
+  for (const v of best.values()) v.emit()
+
+  // 2. Named systems, framed or merely mentioned. Every occurrence is judged
+  //    and the first FRAMED one declares, so an early conversion remark never
+  //    hides the adoption that follows it (review v2).
   for (const rule of NAMED_RULES) {
-    const m = rule.pattern.exec(prose)
-    if (!m) continue
-    const sentence = sentenceAround(prose, m.index)
+    const sentences = [...prose.matchAll(globalOf(rule.pattern))].map((m) => sentenceAround(prose, m.index ?? 0))
+    if (sentences.length === 0) continue
     if (!rule.implies) {
-      evidence.push({ kind: "mention", label: rule.label, excerpt: sentence.slice(0, 200), note: rule.note ?? "" })
+      evidence.push({ kind: "mention", label: rule.label, excerpt: sentences[0].slice(0, 200), note: rule.note ?? "" })
       continue
     }
-    if (!(FRAME.test(sentence) && !ANTI_FRAME.test(sentence))) {
+    const framed = sentences.find((s) => FRAME.test(s) && !ANTI_FRAME.test(s))
+    if (!framed) {
       evidence.push({
         kind: "mention",
         label: rule.label,
-        excerpt: sentence.slice(0, 200),
+        excerpt: sentences[0].slice(0, 200),
         note: "mentioned, not declared",
       })
       continue
@@ -759,7 +900,7 @@ export function inferConventions(
       kind: "declaration",
       form: "named",
       label: rule.label,
-      excerpt: sentence.slice(0, 200),
+      excerpt: framed.slice(0, 200),
       implies,
       ...(rule.flavors ? { flavors: rule.flavors } : {}),
     })
@@ -780,10 +921,10 @@ export function inferConventions(
         label: rung.label,
         labelTex: rung.tex,
         excerpt: eq.trim().slice(0, 120),
-        constant: printed.token.constant,
-        constantTex: printed.token.tex,
+        constant: printed.constant,
+        constantTex: printed.constantTex,
         count: printed.count,
-        of,
+        of: printed.of,
       })
       continue
     }
@@ -806,16 +947,22 @@ export function inferConventions(
   //     implications printed in ONE equation string are alternatives being
   //     compared ("Gaussian-Planck: ∇·E = 4πρ. Heaviside-Planck: ∇·E = ρ."),
   //     not the document's form: recorded as mentions, as with chains.
-  const seenRules = new Set<string>()
+  //     Two passes, so that equation order never decides the verdict
+  //     (review v2): a rule asserted on its own somewhere is evidence; one
+  //     that only ever appears beside a disjoint alternative is a mention.
+  type Hit = { rule: FingerprintRule; implies: string[]; flavors: EmFlavor[] | null; eq: string }
+  const firstHit = new Map<string, Hit>()
+  const standalone = new Map<string, Hit>()
   for (const eq of bodyEquations) {
-    const hits = FINGERPRINTS.filter(({ rule, re }) => !seenRules.has(rule.id) && re.test(eq)).map(({ rule }) => ({
+    const hits: Hit[] = FINGERPRINTS.filter(({ re }) => re.test(eq)).map(({ rule }) => ({
       rule,
       implies: fingerprintImplies(rule),
       flavors: "flavored" in rule.implies ? (rule.implies.flavored as EmFlavor[]) : null,
+      eq,
     }))
     // Disjoint on rows, or — since mechanical rows survive every E&M form —
     // disjoint on the flavor axis.
-    const disjoint = (a: (typeof hits)[number], b: (typeof hits)[number]) =>
+    const disjoint = (a: Hit, b: Hit) =>
       !a.implies.some((k) => b.implies.includes(k)) ||
       (!!a.flavors && !!b.flavors && !a.flavors.some((f) => b.flavors!.includes(f)))
     const contested = new Set<string>()
@@ -825,45 +972,50 @@ export function inferConventions(
           contested.add(a.rule.id)
           contested.add(b.rule.id)
         }
-    for (const { rule, implies } of hits) {
-      seenRules.add(rule.id)
-      // A form claiming a constant absorbed while the body prints that
-      // constant at body level (the unnormalized Hilbert action of a
-      // lecture-notes page, with 8πG everywhere else) is contradicted.
-      const printed = fingerprintAbsorbs(rule).map(printedStrongly).find((s) => s)
-      if (printed) {
-        evidence.push({
-          kind: "contradicted",
-          label: rule.label,
-          labelTex: rule.tex,
-          excerpt: eq.trim().slice(0, 120),
-          constant: printed.token.constant,
-          constantTex: printed.token.tex,
-          count: printed.count,
-          of,
-        })
-        continue
-      }
-      if (contested.has(rule.id)) {
-        evidence.push({
-          kind: "mention",
-          label: rule.label,
-          excerpt: eq.trim().slice(0, 120),
-          note: "one of several alternatives stated",
-        })
-        continue
-      }
-      evidence.push({
-        kind: "fingerprint",
-        label: rule.label,
-        tex: rule.tex,
-        meaning: rule.meaning,
-        equation: eq.trim().slice(0, 120),
-        implies,
-        ...("flavored" in rule.implies ? { flavors: rule.implies.flavored as EmFlavor[] } : {}),
-      })
-      intersect(implies)
+    for (const h of hits) {
+      if (!firstHit.has(h.rule.id)) firstHit.set(h.rule.id, h)
+      if (!contested.has(h.rule.id) && !standalone.has(h.rule.id)) standalone.set(h.rule.id, h)
     }
+  }
+  for (const [id, first] of firstHit) {
+    const h = standalone.get(id)
+    if (!h) {
+      evidence.push({
+        kind: "mention",
+        label: first.rule.label,
+        labelTex: first.rule.tex,
+        excerpt: first.eq.trim().slice(0, 120),
+        note: "one of several alternatives stated",
+      })
+      continue
+    }
+    // A form claiming a constant absorbed while the body prints that
+    // constant at body level (the unnormalized Hilbert action of a
+    // lecture-notes page, with 8πG everywhere else) is contradicted.
+    const printed = fingerprintAbsorbs(h.rule).map(printedStrongly).find((s) => s)
+    if (printed) {
+      evidence.push({
+        kind: "contradicted",
+        label: h.rule.label,
+        labelTex: h.rule.tex,
+        excerpt: h.eq.trim().slice(0, 120),
+        constant: printed.constant,
+        constantTex: printed.constantTex,
+        count: printed.count,
+        of: printed.of,
+      })
+      continue
+    }
+    evidence.push({
+      kind: "fingerprint",
+      label: h.rule.label,
+      tex: h.rule.tex,
+      meaning: h.rule.meaning,
+      equation: h.eq.trim().slice(0, 120),
+      implies: h.implies,
+      ...(h.flavors ? { flavors: h.flavors } : {}),
+    })
+    intersect(h.implies)
   }
 
   // Two E&M assertions naming disjoint flavors — declarations or printed
@@ -928,7 +1080,7 @@ export type DocumentReport = {
   mixed: { a: string; b: string }[]
 }
 
-export function inferDocument(spans: Span[], opts: { candidates?: string[] } = {}): DocumentReport {
+export function inferDocument(spans: Span[], opts: DetectionOptions = {}): DocumentReport {
   const overall = inferConventions(
     {
       text: spans.map((s) => s.text ?? "").join("\n"),
@@ -936,7 +1088,18 @@ export function inferDocument(spans: Span[], opts: { candidates?: string[] } = {
     },
     opts,
   )
-  const per = spans.map((s) => ({ id: s.id, label: s.label ?? s.id, report: inferConventions(s, opts) }))
+  // What the whole document prints at body level weighs on every span: a
+  // section's three G's among forty equations are still the document's.
+  const printed: PrintedConstant[] = overall.evidence.flatMap((e) =>
+    e.kind === "visible-constant" && e.strength === "strong"
+      ? [{ constant: e.constant, constantTex: e.constantTex, count: e.count, of: e.of }]
+      : [],
+  )
+  const per = spans.map((s) => ({
+    id: s.id,
+    label: s.label ?? s.id,
+    report: inferConventions(s, { ...opts, printed: [...(opts.printed ?? []), ...printed] }),
+  }))
   const mixed: { a: string; b: string }[] = []
   for (let i = 0; i < per.length; i++)
     for (let j = i + 1; j < per.length; j++) {
