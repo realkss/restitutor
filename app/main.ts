@@ -50,6 +50,7 @@ for (const [label, tex] of SAMPLES) {
 }
 
 import { renderTranslation } from "./resultView"
+import { refuseNonEquation } from "../src/gate"
 
 function run() {
   const spec: TargetSpec = {
@@ -57,7 +58,7 @@ function run() {
     geometrized: geomEl.checked,
   }
   const tex = texEl.value
-  const result = translateTex(tex, katex, registry, spec)
+  const result = refuseNonEquation(tex) ?? translateTex(tex, katex, registry, spec)
   renderTranslation(outEl, result, spec, tex, katex)
   syncInspectorToTarget(spec)
 }

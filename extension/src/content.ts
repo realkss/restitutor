@@ -13,6 +13,7 @@ import { defaultProfile } from "../../src/profiles"
 import { CONVENTIONS } from "../../src/convention"
 import { DetectionReport, DocumentReport, Evidence, Span, inferDocument } from "../../src/detect"
 import { registryWithDeclarations, targetFromDetection } from "../../src/bridge"
+import { refuseNonEquation } from "../../src/gate"
 import { MinedSymbol, mineDeclarations } from "../../src/mine"
 import { normalizeTex } from "./extract"
 import { renderTranslation } from "../../app/resultView"
@@ -390,7 +391,9 @@ function runTranslate(): void {
     // the registry for this page — census §6.5: the declaration wins, and
     // the legend says where each reading came from.
     const registry = pageSymbols.length ? registryWithDeclarations(profile.registry, pageSymbols) : profile.registry
-    const result = translateTex(currentTex, katex, registry, spec)
+    // A named mathematical object (SL(2,R), a set, a map) is refused before
+    // the engine can read it as a product of quantities.
+    const result = refuseNonEquation(currentTex) ?? translateTex(currentTex, katex, registry, spec)
     renderTranslation(resultsEl, result, spec, currentTex, katex)
   } catch (e) {
     resultsEl.textContent = ""
