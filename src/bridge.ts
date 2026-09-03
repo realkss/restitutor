@@ -4,8 +4,9 @@
 // onto Convention objects so the two can be cross-validated and so surfaces
 // can show the convention-layer diagnosis for whatever target the engine is
 // translating into.
-import type { Dim, TargetSpec, UnitSystem } from "./unitsEngine"
+import type { Dim, HubRegistry, RegEntry, TargetSpec, UnitSystem } from "./unitsEngine"
 import type { DetectionReport } from "./detect"
+import type { MinedSymbol } from "./mine"
 import { EM_FLAVOR } from "./rendering"
 import { CONVENTIONS, Convention, DimQ, Frac } from "./convention"
 
@@ -16,6 +17,66 @@ import { CONVENTIONS, Convention, DimQ, Frac } from "./convention"
  */
 export function dimToDimQ(d: Dim): DimQ {
   return d.map((n) => new Frac(BigInt(n), 12n)) as DimQ
+}
+
+/** The other way: engine twelfths, or null where an exponent is not a multiple of 1/12. */
+export function dimQToDim(d: DimQ): Dim | null {
+  const out: number[] = []
+  for (const f of d) {
+    const num = f.n * 12n
+    if (num % f.d !== 0n) return null
+    out.push(Number(num / f.d))
+  }
+  return out as Dim
+}
+
+const sameDim = (a: Dim, b: Dim) => a.every((x, i) => x === b[i])
+
+/** The engine's own constants and pure numbers: a page never re-reads these. */
+const ENGINE_CONSTANTS = new Set(["c", "G", "\\hbar", "k_B", "\\pi", "i", "e", "\\infty"])
+
+/** A subscript made only of Greek macros and single letters is a run of indices (g_{\mu\nu}), not an identity (m_1, H_0). */
+const INDEX_LIKE = /^(?:\\[a-zA-Z]+|[a-zA-Z]){1,4}$/
+
+/**
+ * The registry extended by what the page declares (census §6.5): "where Σ
+ * is the surface density" gives Σ a reading the registry lacked, and "m is
+ * the comoving separation" overrides the registry's mass — the declaration
+ * wins, and the legend says so in the gloss. A reading the registry already
+ * holds adds nothing; the engine's own constants are never re-read; a
+ * subscripted symbol is an exact reading (and, for an index-like subscript,
+ * the base's indexed reading). The input registry is never mutated.
+ */
+export function registryWithDeclarations(reg: HubRegistry, symbols: MinedSymbol[]): HubRegistry {
+  const bare = { ...reg.bare }
+  const exact = { ...reg.exact }
+  const indexed = { ...reg.indexed }
+  let changed = false
+  const place = (table: Record<string, RegEntry>, key: string, entry: RegEntry) => {
+    const prior = table[key]
+    if (prior && sameDim(prior.dim, entry.dim)) return
+    table[key] = entry
+    changed = true
+  }
+  for (const s of symbols) {
+    if (ENGINE_CONSTANTS.has(s.symbol)) continue
+    const dim = dimQToDim(s.dim)
+    if (!dim) continue
+    const gloss =
+      s.noun.noun +
+      (s.registry ? ` (declared in the text; the registry reads ${s.registry.gloss})` : " (declared in the text)")
+    const entry: RegEntry = { dim, gloss, si: s.noun.si }
+    const m = /^(.+?)_(?:\{([^{}]*)\}|(\\?[A-Za-z0-9]+))$/.exec(s.symbol.replace(/\^.*$/, ""))
+    if (m) {
+      const base = m[1]
+      const sub = (m[2] ?? m[3] ?? "").replace(/[{}\s]/g, "")
+      place(exact, `${base}_${sub}`, entry)
+      if (INDEX_LIKE.test(sub)) place(indexed, base, entry)
+    } else {
+      place(bare, s.symbol, entry)
+    }
+  }
+  return changed ? { ...reg, bare, exact, indexed } : reg
 }
 
 /**

@@ -12,7 +12,7 @@ import {
 import { defaultProfile } from "../../src/profiles"
 import { CONVENTIONS } from "../../src/convention"
 import { DetectionReport, DocumentReport, Evidence, Span, inferDocument } from "../../src/detect"
-import { targetFromDetection } from "../../src/bridge"
+import { registryWithDeclarations, targetFromDetection } from "../../src/bridge"
 import { MinedSymbol, mineDeclarations } from "../../src/mine"
 import { normalizeTex } from "./extract"
 import { renderTranslation } from "../../app/resultView"
@@ -342,7 +342,11 @@ function runTranslate(): void {
   // Real pages carry arbitrary TeX; an engine crash must degrade into an
   // honest report, never a dead panel.
   try {
-    const result = translateTex(currentTex, katex, profile.registry, spec)
+    // The page's own declarations ("where Σ is the surface density") extend
+    // the registry for this page — census §6.5: the declaration wins, and
+    // the legend says where each reading came from.
+    const registry = pageSymbols.length ? registryWithDeclarations(profile.registry, pageSymbols) : profile.registry
+    const result = translateTex(currentTex, katex, registry, spec)
     renderTranslation(resultsEl, result, spec, currentTex, katex)
   } catch (e) {
     resultsEl.textContent = ""
