@@ -1,4 +1,4 @@
 {
-  "note": "Empty since 2026-09-06: the fourteen rules parked here after the 2026-09-03 draft were verified (two refuter lenses per rule, a set-level critic, maintainer reconciliation) and merged into forks.json. Park new drafts here until they are verified; a parked rule is never generated into the runtime tables.",
+  "note": "Empty: every drafted rule has been verified (two refuter lenses per rule, then maintainer reconciliation) and merged into forks.json. Park new drafts here until they are verified; a parked rule is never generated into the runtime tables.",
   "rules": []
 }

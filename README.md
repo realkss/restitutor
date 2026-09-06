@@ -43,7 +43,7 @@ Three more things are read off the page and shown in the panel:
 
 - **Declared symbols** (census §6.5). "Where Σ is the surface density" extends the registry for that page, and the legend says so; where the page's reading disagrees with the registry's, the clash is shown. A reading whose dimension the text has not pinned down (an E&M quantity with no named system, a metric with no coordinate convention, an ambiguous noun) is shown with its caveat and kept out of the registry.
 - **Defined symbols.** "κ = 8πG/c⁴", in prose or as a display equation, gives κ the expression's dimension, computed by the engine, so the field equation written with κ translates too. Only an expression built from constants counts: a relation among the page's variables holds in the page's convention, not in SI, and is never read as a dimension.
-- **Dimensionless forks** (census §5). Places where a dimension check passes and the number is still wrong (the reduced versus unreduced Planck mass, α = e²/4π versus e², the Fourier kernel, the ½ on a trace norm) are recovered from the printed form, 39 verified rules today; a page where none is recoverable is reported as negative evidence, not defaulted.
+- **Dimensionless forks** (census §5). Places where a dimension check passes and the number is still wrong (the reduced versus unreduced Planck mass, α = e²/4π versus e², the Fourier kernel, the ½ on a trace norm) are recovered from the printed form, 40 verified rules today; a page where none is recoverable is reported as negative evidence, not defaulted.
 
 On Wikipedia's field-equations article, whose κ the page defines as 8πG/c⁴, the panel reads the definition and reports the equation as already in SI form:
 
@@ -81,7 +81,7 @@ const result = translateTex("r_s = 2M", katex, registry, { system: "si", geometr
 | | Today |
 | --- | --- |
 | Translation | The general-relativity profile: a registry of GR readings whose source convention is geometrized (G = c = 1, ħ and k_B kept explicit), translated into six targets: SI, Gaussian, or Heaviside–Lorentz, each with c and G restored or stripped. |
-| Detection | Document- and section-level detection over 36 conventions: declaration chains, named systems, 22 equation-form fingerprints, the Einstein-prefactor ladder, visible constants, 38 code identities, 39 dimensionless-fork rules. |
+| Detection | Document- and section-level detection over 36 conventions: declaration chains, named systems, 22 equation-form fingerprints, the Einstein-prefactor ladder, visible constants, 38 code identities, 40 dimensionless-fork rules. |
 | Pages | Math whose TeX the page carries: `<math alttext>` (LaTeXML: ar5iv, arXiv HTML, Wikipedia in any language, including right-to-left ones), KaTeX's `x-tex` annotation, MathJax v2's `math/tex` script. MathJax v3 pages carry no TeX and are marked, not clickable. |
 | Declines | Unknown symbols, terms with no c–G completion, temperature dimensions the profile keeps explicit (k_B is never reinserted), named mathematical objects, sets and maps, TeX that does not parse. Every decline names its reason. |
 | Not there | Other profiles (natural units, atomic units, cosmology): profiles are corpus-driven and none but GR has been built. PDFs and OCR. Anything that infers a reading rather than looking it up. |
