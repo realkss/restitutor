@@ -12,7 +12,13 @@ import {
 import { defaultProfile } from "../../src/profiles"
 import { CONVENTIONS } from "../../src/convention"
 import { DetectionReport, DocumentReport, Evidence, Span, inferDocument } from "../../src/detect"
-import { definitionsFromEquations, registryWithDeclarations, registryWithDefinitions, targetFromDetection } from "../../src/bridge"
+import {
+  definitionsFromEquations,
+  registryWithDeclarations,
+  registryWithDefinitions,
+  targetFromDetection,
+  usableDefinitions,
+} from "../../src/bridge"
 import { refuseNonEquation } from "../../src/gate"
 import { ForkReport, detectForks } from "../../src/forks"
 import { MinedDefinition, MinedSymbol, mineDeclarations } from "../../src/mine"
@@ -231,6 +237,7 @@ function detectionCard(): HTMLElement | null {
           const m = document.createElement("span")
           katex.render(e.labelTex, m, { throwOnError: false })
           also.appendChild(m)
+          if (e.note) also.append(" (" + e.note + ")")
         } else also.append(e.label)
       }
     })
@@ -629,7 +636,15 @@ function runDetection(): void {
         katex,
       )
       const known = new Set(mined.definitions.map((d) => d.symbol))
-      pageDefinitions = [...mined.definitions, ...fromEquations.filter((d) => !known.has(d.symbol))].slice(0, 20)
+      // Only a definition built from constants (and from earlier such
+      // definitions) reaches the registry or the card: a relation among the
+      // page's variables holds in the page's convention, not in SI
+      // (bridge.usableDefinitions).
+      pageDefinitions = usableDefinitions(
+        profile.registry,
+        { symbols: pageSymbols, definitions: [...mined.definitions, ...fromEquations.filter((d) => !known.has(d.symbol))] },
+        katex,
+      ).slice(0, 20)
     } catch {
       pageSymbols = []
       pageDefinitions = []

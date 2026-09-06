@@ -12,6 +12,7 @@ import {
   registryTrusts,
   registryWithDeclarations,
   registryWithDefinitions,
+  usableDefinitions,
 } from "./bridge"
 import { mineDeclarations } from "./mine"
 import { dimQ } from "./convention"
@@ -134,10 +135,26 @@ describe("page definitions extend the registry (the definitions path)", () => {
   test("definitions apply in page order, so a later one may use an earlier one", () => {
     const reg = registryWithDefinitions(
       GR,
-      report("We define $\\rho_c = 3 H^2 / (8\\pi G)$ as the critical density. We define $\\Omega = \\rho / \\rho_c$."),
+      report("We define $\\kappa = 8\\pi G / c^4$. We define $\\ell = \\kappa \\hbar c$. We define $\\Omega = \\rho / \\rho_c$."),
       katex,
     )
-    assert.deepStrictEqual(reg.exact["\\rho_c"].dim, [12, -36, 0, 0, 0])
+    assert.deepStrictEqual(reg.bare["\\kappa"].dim, [-12, -12, 24, 0, 0])
+    assert.deepStrictEqual(reg.bare["\\ell"].dim, [0, 24, 0, 0, 0])
     assert.strictEqual(reg.bare["\\Omega"], GR.bare["\\Omega"])
+  })
+  test("a relation among the page's variables never defines a dimension: it holds in the page's convention, not in SI", () => {
+    // Carroll, c = 1: "the paths defined by x = ±t", "t = x tanh φ",
+    // "p^μ = mU^μ". Read in, t would become a length and x = ±t would
+    // translate to SI unchanged; the SI form is x = ±ct.
+    const r = report(
+      "The paths defined by $x = \\pm t$ are null. The $x'$ axis is given by $t = x \\tanh\\phi$. " +
+        "The four-momentum is defined by $p^{\\mu} = m U^{\\mu}$. We define $\\rho_c = 3 H^2 / (8\\pi G)$ as the critical density.",
+    )
+    assert.ok(r.definitions.length >= 2, JSON.stringify(r.definitions))
+    assert.deepStrictEqual(usableDefinitions(GR, r, katex), [])
+    const reg = registryWithDefinitions(GR, r, katex)
+    assert.strictEqual(reg, GR)
+    const si = translateTex("x = t", katex, reg, { system: "si", geometrized: false })
+    assert.ok(si.kind === "translated" && si.changed && /c/.test(si.restoredTex), JSON.stringify(si))
   })
 })

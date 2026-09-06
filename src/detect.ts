@@ -558,10 +558,10 @@ function ladderRung(prefix: string): Rung | null {
   const coef = p.match(/(\d+)\s*pi/)?.[1] ?? (hasPi ? "8" : "")
   if (/kappa/.test(p))
     return {
-      label: "G_μν = κ T_μν — κ symbolic, bind per paper",
+      label: "G_μν = κ T_μν, κ symbolic",
       tex: "G_{\\mu\\nu} = \\kappa\\, T_{\\mu\\nu}",
       meaning: "κ symbolic; the units of T₀₀ fix it",
-      note: "κ has three literature expansions of different dimension (census §6.1)",
+      note: "κ symbolic, with three literature expansions of different dimension; bound per paper",
     }
   if (hasG && hasC) return null // constants explicit: the visible-constant channel speaks
   if (hasG && hasPi)
@@ -1000,7 +1000,13 @@ export function inferConventions(input: DetectionInput, opts: DetectionOptions =
       })
       intersect(rung.implies)
     } else {
-      evidence.push({ kind: "mention", label: rung.label, excerpt: eq.trim().slice(0, 120), note: rung.note ?? "" })
+      evidence.push({
+        kind: "mention",
+        label: rung.label,
+        labelTex: rung.tex,
+        excerpt: eq.trim().slice(0, 120),
+        note: rung.note ?? "",
+      })
     }
   }
 

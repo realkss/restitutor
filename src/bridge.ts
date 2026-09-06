@@ -193,20 +193,56 @@ export function registryWithDefinitions(
   report: { symbols: MinedSymbol[]; definitions: MinedDefinition[] },
   katex: Katex,
 ): HubRegistry {
-  const defs = [
-    ...report.symbols.filter((s) => s.expr).map((s) => ({ symbol: s.symbol, expr: s.expr! })),
-    ...report.definitions.map((d) => ({ symbol: d.symbol, expr: d.expr })),
-  ]
   let out = reg
-  for (const d of defs) {
-    if (ENGINE_CONSTANTS.has(d.symbol) || /^\s*1\s*$/.test(d.expr)) continue
+  for (const d of usableDefinitions(reg, report, katex)) {
     const r = dimensionOf(d.expr, katex, out)
-    if (r.kind !== "dim" || r.dim.every((x) => x === 0)) continue
+    if (r.kind !== "dim") continue
     out = withReading(out, d.symbol, r.dim, (prior) => ({
       dim: r.dim,
       gloss: "defined in the text" + (prior ? `; the registry reads ${shortGloss(prior.gloss)}` : ""),
       si: siUnitOf(r.dim),
     }))
+  }
+  return out
+}
+
+const symbolKey = (tex: string) => tex.replace(/[{}\s]/g, "")
+
+/**
+ * The other half of the trust boundary, for definitions. A defining
+ * expression is usable only when it is built from the engine's constants and
+ * from symbols the page itself defined the same way earlier ("κ = 8πG/c⁴",
+ * then "ℓ² = κħc"). A relation among the page's variables — "x = ±t",
+ * "t = x tanh φ", "p^μ = mU^μ" — holds in the page's own convention, where
+ * the suppressed constants are absent, so the dimension it would hand the
+ * left side is that convention's reading, not the SI reading the registry
+ * promises: read in, it would restore the wrong constants without a word.
+ * Constants carry their dimensions in every convention, so a constants-only
+ * expression is safe wherever it was printed. Definitions are taken in page
+ * order; a dimensionless one (a ratio) and a redefinition of a constant are
+ * left out. What comes back is exactly what the registry will use, and what
+ * the Symbols card shows as a definition.
+ */
+export function usableDefinitions(
+  reg: HubRegistry,
+  report: { symbols: MinedSymbol[]; definitions: MinedDefinition[] },
+  katex: Katex,
+): MinedDefinition[] {
+  const candidates: MinedDefinition[] = [
+    ...report.symbols.filter((s) => s.expr).map((s) => ({ symbol: s.symbol, expr: s.expr!, sentence: s.sentence })),
+    ...report.definitions,
+  ]
+  const out: MinedDefinition[] = []
+  const derived = new Set<string>()
+  let registry = reg
+  for (const d of candidates) {
+    if (ENGINE_CONSTANTS.has(d.symbol) || /^\s*1\s*$/.test(d.expr)) continue
+    const r = dimensionOf(d.expr, katex, registry)
+    if (r.kind !== "dim" || r.dim.every((x) => x === 0)) continue
+    if (!r.legend.every((e) => ENGINE_CONSTANTS.has(e.tex) || derived.has(symbolKey(e.tex)))) continue
+    derived.add(symbolKey(d.symbol))
+    registry = withReading(registry, d.symbol, r.dim, () => ({ dim: r.dim, gloss: "defined in the text", si: siUnitOf(r.dim) }))
+    out.push(d)
   }
   return out
 }
