@@ -2856,7 +2856,7 @@ export type ForkRule = {
 export const FORK_RULES: ForkRule[] = [
   {
     "id": "analytic-signal-half-plus-cc",
-    "fork": "Analytic-signal ½ (= Re) vs bare +c.c.; engineering j = −i",
+    "fork": "Analytic-signal amplitude: ½Ẽe^{−iωt} + c.c. (= Re) vs bare Ẽe^{−iωt} + c.c.",
     "branch": "half-plus-c.c. convention: the field-definition line prints E = ½Ẽe^{−iωt} + c.c. (identically E = Re[Ẽe^{−iωt}]), so Ẽ is the PEAK field and I = ½ncε₀|Ẽ|²",
     "rival": "bare-c.c. convention (Boyd): E = Ẽe^{−iωt} + c.c. with no ½, so the peak field is 2|Ẽ| and I = 2ncε₀|Ẽ|² — envelopes differ by 2, intensities by 4. NOTE: Re[Ẽe^{−iωt}] is NOT the rival; ½z + c.c. ≡ Re z, so the Re form is the SAME branch (verified numerically: ⟨E²⟩ ratio 1 : 1 : 4 for ½+c.c. : Re : bare+c.c.).",
     "magnitude": "×2 in Ẽ, ×4 in I, and one ×2 per field in χ⁽ⁿ⁾",
@@ -2867,7 +2867,7 @@ export const FORK_RULES: ForkRule[] = [
   },
   {
     "id": "engineering-j-time-convention",
-    "fork": "Analytic-signal ½ vs Re; engineering j = −i",
+    "fork": "Time convention: engineering e^{+jωt} (j = −i) vs physics e^{−iωt}",
     "branch": "engineering time convention, phasors e^{+jωt}: the lossy permittivity prints as ε′ − jε″ and the propagation constant as γ = α + jβ, so every printed imaginary part is the complex conjugate of the physics-convention one (j ↦ −i)",
     "rival": "physics time convention e^{−iωt} — including papers that write the imaginary unit as j and still keep e^{−jωt} (Goodman-school optics), for which the lossy permittivity is ε′ + iε″ (ε′ + jε″)",
     "magnitude": "sign of ε″ (and of every imaginary part downstream)",
@@ -2927,20 +2927,20 @@ export const FORK_RULES: ForkRule[] = [
     "rival": "angular frequency with 1/2π on the inverse, or 1/√(2π) on both transforms",
     "magnitude": "2π per transform, and a Jacobian 2π on every spectral density derived from it",
     "surface": "equation",
-    "pattern": "(?:\\\\int|∫)(?:(?!\\\\sum|∑|=(?![0-9]))[\\s\\S]){0,80}?e\\s*\\^\\s*\\{?\\s*[-+]?\\s*(?:2\\s*pi\\s*(?:\\\\imath|\\\\mathrm\\s*i|\\{\\s*\\\\rm\\s*i\\s*\\}|[ij])|(?:\\\\imath|\\\\mathrm\\s*i|\\{\\s*\\\\rm\\s*i\\s*\\}|[ij])\\s*2\\s*pi)\\s*(?:\\\\(?:tilde|widetilde|bar|hat)\\s*)?\\{?\\s*(?:f(?![A-Za-z])|\\\\nu(?![A-Za-z])|\\\\xi(?![A-Za-z])|[νξ])",
+    "pattern": "(?:\\\\int|∫)(?:(?!\\\\sum|∑|=(?![0-9])|e\\s*\\^|\\\\exp|;|\\\\q?quad)[\\s\\S]){0,80}?e\\s*\\^\\s*\\{?\\s*[-+]?\\s*(?:2\\s*pi\\s*(?:\\\\imath|\\\\mathrm\\s*i|\\{\\s*\\\\rm\\s*i\\s*\\}|[ij])|(?:\\\\imath|\\\\mathrm\\s*i|\\{\\s*\\\\rm\\s*i\\s*\\}|[ij])\\s*2\\s*pi)\\s*(?:\\\\(?:tilde|widetilde|bar|hat)\\s*)?\\{?\\s*(?:f(?![A-Za-z])|\\\\nu(?![A-Za-z])|\\\\xi(?![A-Za-z])|[νξ])",
     "tex": "\\tilde h(f) = \\int_{-\\infty}^{\\infty} h(t)\\,e^{-2\\pi i f t}\\,dt",
-    "meaning": "A transform integral whose kernel is e^{∓2πift}: the frequency variable is ordinary frequency (ν/f/ξ), not angular frequency, and the 2π lives in the exponent rather than in a prefactor."
+    "meaning": "A 2π inside the kernel of a printed transform INTEGRAL whose frequency variable is ordinary frequency (ν, f, ξ): the 2π lives in the exponent, and this transform carries no 2π prefactor. Outside an integrand the same exponent is inert — ω ≡ 2πν identically, so a bare phasor e^{−2πiν₀t} is a change of variable, not a convention."
   },
   {
     "id": "fourier-ordinary-frequency-kernel",
     "fork": "Fourier triple, 2π placement",
     "branch": "ordinary frequency: 2π in the exponent, no prefactor",
     "rival": "angular frequency with 1/2π on the inverse, or 1/√(2π) on both transforms",
-    "magnitude": "2π's",
+    "magnitude": "2π per transform, and a Jacobian 2π on every spectral density derived from it",
     "surface": "equation",
-    "pattern": "(?:\\\\int|∫)(?:(?!e\\s*\\^|\\\\exp|;|\\\\q?quad|\\\\to\\b|\\\\mapsto|\\\\text|\\\\Longrightarrow|\\\\implies)[\\s\\S]){0,80}?(?:e\\s*\\^\\s*\\{?|e(?=\\s*[-+−])|\\\\exp\\s*[\\(\\[\\{]?|(?<=[\\s(=])\\^\\s*\\{?)\\s*[-+−]?\\s*(?:2\\s*pi\\s*i|i\\s*2\\s*pi)\\s*(?:\\\\?(?:nu|xi|f)|[νξ])(?=[\\s tx}_^\\\\,)]|$)",
+    "pattern": "(?:\\\\int|∫)(?:(?!e\\s*\\^|\\\\exp|;|\\\\q?quad|\\\\to\\b|\\\\mapsto|\\\\text|\\\\Longrightarrow|\\\\implies|\\\\sum|∑)[\\s\\S]){0,80}?(?:e\\s*\\^\\s*\\{?|e(?=\\s*[-+−])|\\\\exp\\s*[\\(\\[\\{]?|(?<=[\\s(=])\\^\\s*\\{?)\\s*[-+−]?\\s*(?:2\\s*pi\\s*i|i\\s*2\\s*pi)\\s*(?:\\\\?(?:nu|xi|f)|[νξ])(?=[\\s tx}_^\\\\,)]|$)",
     "tex": "\\hat f(\\xi)=\\int_{-\\infty}^{\\infty} f(t)\\,e^{-2\\pi i\\xi t}\\,dt",
-    "meaning": "A 2π inside the kernel of a printed transform INTEGRAL whose frequency variable is ordinary frequency: the transform is the unitary ν-convention and carries no 2π prefactor anywhere. Outside an integrand the same exponent is inert — ω ≡ 2πν identically, so a bare phasor e^{−2πiν₀t} is a change of variable, not a convention."
+    "meaning": "A 2π inside the kernel of a printed transform INTEGRAL whose frequency variable is ordinary frequency (ν, f, ξ): the 2π lives in the exponent, and this transform carries no 2π prefactor. Outside an integrand the same exponent is inert — ω ≡ 2πν identically, so a bare phasor e^{−2πiν₀t} is a change of variable, not a convention."
   },
   {
     "id": "fourier-unitary-sqrt-2pi",
@@ -3010,7 +3010,7 @@ export const FORK_RULES: ForkRule[] = [
   },
   {
     "id": "phi4-quartic-over-4-factorial",
-    "fork": "Interaction normalizations: λφ⁴/4!, Yukawa √2, χ⁽ⁿ⁾ degeneracy, ¼FF̃",
+    "fork": "Real-scalar quartic normalization: λφ⁴/4! vs λφ⁴/4 vs λφ⁴/2 vs bare λφ⁴",
     "branch": "λ/4! quartic for a REAL, single-component scalar: the 4! symmetry factor is divided out, so the tree-level 4-point vertex is −iλ",
     "rival": "λ/4 quartic (vertex −6iλ, so λ_{4!} = 6 λ_{/4}); λ/2 (vertex −12iλ, ×12); bare λφ⁴ with no divisor (vertex −24iλ, ×24)",
     "magnitude": "×6 vs λ/4, ×12 vs λ/2, ×24 vs bare λφ⁴ (the census headline '×24' is the bare-λ leg)",
@@ -3112,11 +3112,11 @@ export const FORK_RULES: ForkRule[] = [
     "fork": "Strain response: differential ΔL/L vs per-arm δL/L",
     "branch": "differential strain: h = ΔL/L with ΔL = L_x − L_y",
     "rival": "per-arm strain δL/L (×2 in h, ×4 in S_h)",
-    "magnitude": "×2 (×4 in S_h)",
+    "magnitude": "×2 in h, ×4 in S_h",
     "surface": "equation",
     "pattern": "(?:h\\s*(?:\\(\\s*t\\s*\\))?\\s*(?:=|≡|\\\\equiv)\\s*\\(\\s*(?:(?:\\\\[Dd]elta|Δ|δ)\\s*)?L\\s*_\\s*\\{?\\s*(?:[xX1]|\\\\mathrm\\{[xX]\\})\\s*\\}?\\s*(?:\\(\\s*t\\s*\\))?\\s*-\\s*(?:(?:\\\\[Dd]elta|Δ|δ)\\s*)?L\\s*_\\s*\\{?\\s*(?:[yY2]|\\\\mathrm\\{[yY]\\})\\s*\\}?\\s*(?:\\(\\s*t\\s*\\))?\\s*\\)\\s*/\\s*\\(\\s*L\\s*\\)(?![A-Za-z_0-9])|(?<![A-Za-z_\\\\])[Dd]\\s*[\\^_]\\s*\\{?\\s*(?:[a-z]{2}|\\\\(?:mu\\s*\\\\nu|alpha\\s*\\\\beta|imath\\s*\\\\jmath))\\s*\\}?\\s*(?:=|≡|\\\\equiv)\\s*(?:\\(\\s*1\\s*\\)\\s*/\\s*\\(\\s*2\\s*\\)|\\\\[dt]?frac\\s*\\{?\\s*1\\s*\\}?\\s*\\{?\\s*2\\s*\\}?|1\\s*/\\s*2)\\s*(?:\\\\(?:left|bigl|Bigl|biggl|Biggl)\\s*)?\\(\\s*(?:\\\\hat\\s*)?\\{?\\s*\\\\?([A-Za-z]+)\\b[^-+()]{0,30}?-\\s*(?:\\\\hat\\s*)?\\{?\\s*\\\\?(?!\\1\\b)[A-Za-z])",
     "tex": "h(t)=\\frac{\\Delta L_x(t)-\\Delta L_y(t)}{L},\\qquad D^{ab}=\\tfrac{1}{2}\\left(\\hat{x}^a\\hat{x}^b-\\hat{y}^a\\hat{y}^b\\right)",
-    "meaning": "the numerator prints the DIFFERENCE of the two arms over a bare L (the rival prints the same difference over 2L), and the detector tensor carries the matching ½ on x̂x̂ − ŷŷ: h is the differential strain, not the per-arm δL/L"
+    "meaning": "The numerator prints the DIFFERENCE of the two arms over a bare L (the rival prints the same difference over 2L — the denominator is the discriminator), or the response tensor is built from the difference of two arm dyads, x̂x̂ − ŷŷ: h is the differential strain, not one arm's. A bare h = ΔL/L is house style, not a tell, and the ½ alone is not one either — the one-arm response carries it too."
   },
   {
     "id": "gw-strain-differential-arm",
@@ -3125,9 +3125,9 @@ export const FORK_RULES: ForkRule[] = [
     "rival": "per-arm strain δL/L (×2 in h, ×4 in S_h)",
     "magnitude": "×2 in h, ×4 in S_h",
     "surface": "both",
-    "pattern": "(?:[Dd]\\s*[\\^_]\\s*\\{?\\s*(?:ab|ij|AB|IJ|\\\\mu\\\\nu)\\s*\\}?\\s*(?:\\([^()]{0,12}\\)\\s*)?=\\s*(?:\\(\\s*1\\s*\\)\\s*/\\s*\\(\\s*2\\s*\\)\\s*)?(?:\\\\[bB]igg?[lrm]\\s*)?\\(?\\s*\\\\hat\\s*\\{?\\s*([A-Za-z])\\s*\\}?\\s*[\\^_]\\s*\\{?\\s*[A-Za-z]\\s*\\}?\\s*\\\\hat\\s*\\{?\\s*\\1\\s*\\}?\\s*[\\^_]\\s*\\{?\\s*[A-Za-z]\\s*\\}?\\s*-\\s*(?:\\\\[bB]igg?[lrm]\\s*)?\\(?\\s*\\\\hat|(?:\\\\Delta|Δ)\\s*L\\s*(?:\\([^()]{0,8}\\)\\s*)?(?:=|\\\\equiv)\\s*(?:\\\\[Dd]elta\\s*)?L\\s*_\\s*\\{?\\s*(?:\\\\(?:rm|mathrm)\\s*)?(?:x|X)\\s*\\}?\\s*(?:\\([^()]{0,8}\\)\\s*)?-\\s*(?:\\\\[Dd]elta\\s*)?L\\s*_\\s*\\{?\\s*(?:\\\\(?:rm|mathrm)\\s*)?(?:y|Y)\\s*\\}?\\s*(?:\\([^()]{0,8}\\)\\s*)?|h\\s*(?:\\([^()]{0,8}\\)\\s*)?(?:=|\\\\equiv)\\s*\\(\\s*(?:\\\\Delta|Δ)\\s*L\\s*(?:\\([^()]{0,8}\\))?\\s*\\)\\s*/\\s*\\(\\s*L\\s*(?:_\\s*\\{?\\s*0\\s*\\}?\\s*)?\\)|h\\s*(?:\\([^()]{0,8}\\)\\s*)?=\\s*Δ\\s*L\\s*(?:\\([^()]{0,8}\\)\\s*)?\\s*/\\s*L(?![A-Za-z]))",
+    "pattern": "(?:[Dd]\\s*[\\^_]\\s*\\{?\\s*(?:ab|ij|AB|IJ|\\\\mu\\\\nu)\\s*\\}?\\s*(?:\\([^()]{0,12}\\)\\s*)?=\\s*(?:\\(\\s*1\\s*\\)\\s*/\\s*\\(\\s*2\\s*\\)\\s*)?(?:\\\\[bB]igg?[lrm]\\s*)?\\(?\\s*\\\\hat\\s*\\{?\\s*([A-Za-z])\\s*\\}?\\s*[\\^_]\\s*\\{?\\s*[A-Za-z]\\s*\\}?\\s*\\\\hat\\s*\\{?\\s*\\1\\s*\\}?\\s*[\\^_]\\s*\\{?\\s*[A-Za-z]\\s*\\}?\\s*-\\s*(?:\\\\[bB]igg?[lrm]\\s*)?\\(?\\s*\\\\hat|(?:\\\\Delta|Δ)\\s*L\\s*(?:\\([^()]{0,8}\\)\\s*)?(?:=|\\\\equiv)\\s*(?:\\\\[Dd]elta\\s*)?L\\s*_\\s*\\{?\\s*(?:\\\\(?:rm|mathrm)\\s*)?(?:x|X)\\s*\\}?\\s*(?:\\([^()]{0,8}\\)\\s*)?-\\s*(?:\\\\[Dd]elta\\s*)?L\\s*_\\s*\\{?\\s*(?:\\\\(?:rm|mathrm)\\s*)?(?:y|Y)\\s*\\}?\\s*(?:\\([^()]{0,8}\\)\\s*)?|h\\s*(?:\\([^()]{0,8}\\)\\s*)?(?:=|\\\\equiv)\\s*\\(\\s*(?:\\\\Delta|Δ)\\s*L\\s*(?:\\([^()]{0,8}\\))?\\s*\\)\\s*/\\s*\\(\\s*L\\s*\\)[\\s\\S]{0,60}?(?:\\\\Delta|Δ)\\s*L\\s*(?:\\([^()]{0,8}\\)\\s*)?(?:=|\\\\equiv)\\s*(?:\\\\[Dd]elta\\s*)?L\\s*_\\s*\\{?\\s*(?:\\\\(?:rm|mathrm)\\s*)?(?:x|X|1)\\s*\\}?\\s*(?:\\([^()]{0,8}\\)\\s*)?-\\s*(?:\\\\[Dd]elta\\s*)?L\\s*_\\s*\\{?\\s*(?:\\\\(?:rm|mathrm)\\s*)?(?:y|Y|2)\\s*\\}?\\s*(?:\\([^()]{0,8}\\)\\s*)?)",
     "tex": "D^{ab} = \\tfrac{1}{2}\\left(\\hat x^{a}\\hat x^{b} - \\hat y^{a}\\hat y^{b}\\right),\\qquad h = \\frac{\\Delta L}{L},\\ \\Delta L = L_x - L_y",
-    "meaning": "The response tensor is built from the DIFFERENCE of two arm dyads, or ΔL is printed as an arm difference, or the strain is defined as ΔL/L: the strain is the differential response, not one arm's. The ½ alone is not the tell — the one-arm response carries it too."
+    "meaning": "The numerator prints the DIFFERENCE of the two arms over a bare L (the rival prints the same difference over 2L — the denominator is the discriminator), or the response tensor is built from the difference of two arm dyads, x̂x̂ − ŷŷ: h is the differential strain, not one arm's. A bare h = ΔL/L is house style, not a tell, and the ½ alone is not one either — the one-arm response carries it too."
   },
   {
     "id": "mulliken-two-electron-integral",
