@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "restitutor",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Restore, strip, and dimension-check the constants in equations. Lookup, never inference - the unvouched-for declines loudly.",
   "homepage_url": "https://github.com/realkss/restitutor",
   "icons": {
