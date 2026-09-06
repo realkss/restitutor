@@ -48,6 +48,6 @@ Source and issue tracker: https://github.com/realkss/restitutor (MIT).
 ## Hand-off checklist
 
 1. Register the developer account at https://chrome.google.com/webstore/devconsole (Google sign-in, one-time fee).
-2. `npm run build:ext && npm run package:ext`, upload `release/restitutor-0.2.1.zip`.
+2. `npm run build:ext && npm run package:ext`, upload `release/restitutor-0.2.2.zip`.
 3. Paste the listing above; upload the icon and screenshots; set visibility (unlisted for a first pass is fine).
 4. Fill the privacy tab from the section above; submit for review. Reviews for a no-permission, no-remote-code extension usually clear within a few days.

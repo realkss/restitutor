@@ -1,6 +1,6 @@
 {
   "name": "restitutor",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "type": "module",
   "description": "Deterministic unit-convention restoration and dimensional lint for physics literature. Lookup, never inference.",
