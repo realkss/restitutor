@@ -3128,5 +3128,159 @@ export const FORK_RULES: ForkRule[] = [
     "pattern": "(?:[Dd]\\s*[\\^_]\\s*\\{?\\s*(?:ab|ij|AB|IJ|\\\\mu\\\\nu)\\s*\\}?\\s*(?:\\([^()]{0,12}\\)\\s*)?=\\s*(?:\\(\\s*1\\s*\\)\\s*/\\s*\\(\\s*2\\s*\\)\\s*)?(?:\\\\[bB]igg?[lrm]\\s*)?\\(?\\s*\\\\hat\\s*\\{?\\s*([A-Za-z])\\s*\\}?\\s*[\\^_]\\s*\\{?\\s*[A-Za-z]\\s*\\}?\\s*\\\\hat\\s*\\{?\\s*\\1\\s*\\}?\\s*[\\^_]\\s*\\{?\\s*[A-Za-z]\\s*\\}?\\s*-\\s*(?:\\\\[bB]igg?[lrm]\\s*)?\\(?\\s*\\\\hat|(?:\\\\Delta|Δ)\\s*L\\s*(?:\\([^()]{0,8}\\)\\s*)?(?:=|\\\\equiv)\\s*(?:\\\\[Dd]elta\\s*)?L\\s*_\\s*\\{?\\s*(?:\\\\(?:rm|mathrm)\\s*)?(?:x|X)\\s*\\}?\\s*(?:\\([^()]{0,8}\\)\\s*)?-\\s*(?:\\\\[Dd]elta\\s*)?L\\s*_\\s*\\{?\\s*(?:\\\\(?:rm|mathrm)\\s*)?(?:y|Y)\\s*\\}?\\s*(?:\\([^()]{0,8}\\)\\s*)?|h\\s*(?:\\([^()]{0,8}\\)\\s*)?(?:=|\\\\equiv)\\s*\\(\\s*(?:\\\\Delta|Δ)\\s*L\\s*(?:\\([^()]{0,8}\\))?\\s*\\)\\s*/\\s*\\(\\s*L\\s*(?:_\\s*\\{?\\s*0\\s*\\}?\\s*)?\\)|h\\s*(?:\\([^()]{0,8}\\)\\s*)?=\\s*Δ\\s*L\\s*(?:\\([^()]{0,8}\\)\\s*)?\\s*/\\s*L(?![A-Za-z]))",
     "tex": "D^{ab} = \\tfrac{1}{2}\\left(\\hat x^{a}\\hat x^{b} - \\hat y^{a}\\hat y^{b}\\right),\\qquad h = \\frac{\\Delta L}{L},\\ \\Delta L = L_x - L_y",
     "meaning": "The response tensor is built from the DIFFERENCE of two arm dyads, or ΔL is printed as an arm difference, or the strain is defined as ΔL/L: the strain is the differential response, not one arm's. The ½ alone is not the tell — the one-arm response carries it too."
+  },
+  {
+    "id": "mulliken-two-electron-integral",
+    "fork": "Two-electron integral notation: Mulliken vs Dirac vs antisymmetrized",
+    "branch": "Mulliken (chemists') notation (pq|rs): the bracket pairs p–q and r–s, i.e. the two indices of each electron sit together",
+    "rival": "Dirac (physicists') ⟨pq|rs⟩, which pairs p–r and q–s: the middle index pair swaps, (pq|rs) = ⟨pr|qs⟩ and ⟨pq|rs⟩ = (pr|qs). And the antisymmetrized ⟨pq||rs⟩ = ⟨pq|rs⟩ − ⟨pq|sr⟩ = (pr|qs) − (ps|qr), whose Mulliken-order printings (pq||rs) and [pq|rs] this rule does not match.",
+    "magnitude": "J ↔ K swap: the same four-index string is Coulomb in one convention and exchange in the other — (ij|ij) is K_ij while ⟨ij|ij⟩ is J_ij (hydrogenic 1s/2s at charge Z: J = 17Z/81 Ha, K = 16Z/729 Ha, so J/K = 153/16 = 9.56). Plus a hidden difference of terms: an antisymmetrized ⟨pq||rs⟩ read as ⟨pq|rs⟩ drops the exchange leg, J instead of J − K, 153/137 = 1.12 for that same pair.",
+    "surface": "equation",
+    "pattern": "(?:(?<![A-Za-z])|(?<=\\\\bigl)|(?<=\\\\Bigl)|(?<=\\\\biggl)|(?<=\\\\Biggl))\\((?!\\s*[0-9])\\s*(?:\\\\(?:mu|nu|lambda|sigma|rho|tau|kappa|alpha|beta)(?![a-zA-Z])|(?:kappa|pi|alpha|mu|epsilon)(?![a-zA-Z])|[a-z])\\s*(?:\\\\(?:mu|nu|lambda|sigma|rho|tau|kappa|alpha|beta)(?![a-zA-Z])|(?:kappa|pi|alpha|mu|epsilon)(?![a-zA-Z])|[a-z])\\s*(?:\\\\(?:middle|bigm|Bigm|biggm|Biggm))?\\s*\\|\\s*(?:\\\\(?:mu|nu|lambda|sigma|rho|tau|kappa|alpha|beta)(?![a-zA-Z])|(?:kappa|pi|alpha|mu|epsilon)(?![a-zA-Z])|[a-z])\\s*(?:\\\\(?:mu|nu|lambda|sigma|rho|tau|kappa|alpha|beta)(?![a-zA-Z])|(?:kappa|pi|alpha|mu|epsilon)(?![a-zA-Z])|[a-z])\\s*(?:\\\\(?:bigr|Bigr|biggr|Biggr))?\\s*\\)",
+    "tex": "(pq|rs)=\\int\\!\\!\\int \\phi_p^*(1)\\phi_q(1)\\,\\frac{1}{r_{12}}\\,\\phi_r^*(2)\\phi_s(2)\\,d\\tau_1\\,d\\tau_2",
+    "meaning": "Round brackets, one bar, two single-symbol indices per side: Mulliken pairing, so the first pair is electron 1's charge distribution and J_pq = (pp|qq), K_pq = (pq|qp)."
+  },
+  {
+    "id": "einstein-b-coefficient-rho-nu",
+    "fork": "Einstein B-coefficient basis (ρ_ν/ρ_ω/ρ_ν̃/J̄_ν)",
+    "branch": "B is defined against the spectral energy density per unit frequency ρ_ν: A₂₁ = (8πhν³/c³)B₂₁",
+    "rival": "the ρ_ω basis A = (ħω³/π²c³)B (B_ω = 2π B_ρν), the mean-intensity J̄_ν basis A = (2hν³/c²)B (B_J̄ = (4π/c)B_ρν, since ρ_ν = (4π/c)J̄_ν), and the per-wavenumber ρ_ν̃ basis A = 8πhcν̃³B (B_ν̃ = B_ρν/c)",
+    "magnitude": "up to ~1.5×10¹⁰ between two quantities both printed as 'B₂₁': the ρ_ω↔J̄_ν pair is exactly c/2 = 1.4990×10¹⁰ (c in cm/s), the census's figure; ρ_ν↔ρ_ω is 2π, ρ_ν↔ρ_ν̃ is c",
+    "surface": "equation",
+    "pattern": "(?:[AB]\\s*_\\s*(?:\\{[^{}=]{0,12}\\}|[A-Za-z0-9]{1,4})[^=]{0,12}?(?:[=/]|\\\\equiv(?![a-zA-Z]))\\s*\\(*\\s*8\\s*pi\\s*h\\s*(?:\\\\nu|ν)\\s*(?:_\\s*(?:\\{[^{}]{0,8}\\}|[A-Za-z0-9]{1,4}))?\\s*\\^?\\s*\\{?\\s*3\\s*\\}?\\s*\\)*\\s*/\\s*\\(*\\s*c\\s*\\^\\s*\\{?\\s*3\\s*\\}?|\\(*\\s*8\\s*pi\\s*h\\s*(?:\\\\nu|ν)\\s*(?:_\\s*(?:\\{[^{}]{0,8}\\}|[A-Za-z0-9]{1,4}))?\\s*\\^?\\s*\\{?\\s*3\\s*\\}?\\s*\\)*\\s*/\\s*\\(*\\s*c\\s*\\^\\s*\\{?\\s*3\\s*\\}?\\s*\\)*\\s*[AB]\\s*_|[AB]\\s*_\\s*(?:\\{[^{}=]{0,12}\\}|[A-Za-z0-9]{1,4})[^=]{0,12}?(?:[=/]|\\\\equiv(?![a-zA-Z]))\\s*\\(*\\s*c\\s*\\^\\s*\\{?\\s*3\\s*\\}?\\s*\\)*\\s*/\\s*\\(*\\s*8\\s*pi\\s*h\\s*(?:\\\\nu|ν)\\s*(?:_\\s*(?:\\{[^{}]{0,8}\\}|[A-Za-z0-9]{1,4}))?\\s*\\^?\\s*\\{?\\s*3\\s*\\}?)",
+    "tex": "A_{21}=\\frac{8\\pi h\\nu^3}{c^3}B_{21}",
+    "meaning": "the A–B bridge carries 8πhν³/c³: B multiplies the spectral energy density per unit frequency ρ_ν, in J⁻¹ m³ s⁻²"
+  },
+  {
+    "id": "mixing-sin-squared-double-angle",
+    "fork": "Mixing amplitude: sin²2θ vs sin²θ vs |U_αi|²",
+    "branch": "the double-angle amplitude: the factor of 2 is inside the sine, so the number carried by this printed form is sin²2θ_ij",
+    "rival": "sin²θ_ij, the PDG/NuFIT global-fit form, with sin²2θ = 4 sin²θ (1 − sin²θ); or the matrix element |U_αi|², where |U_e3|² = sin²θ₁₃",
+    "magnitude": "the conversion factor is 4cos²θ, rising to 4 as θ → 0: sin²2θ₁₃ = 0.0851 ↔ sin²θ₁₃ = 0.02174 (×3.91); sin²2θ₁₂ = 0.851 ↔ 0.307 (×2.77); sin²2θ₂₃ = 0.9787 ↔ 0.573 (×1.71) or 0.427 (×2.29), the two octant solutions themselves differing by ×1.34",
+    "surface": "equation",
+    "pattern": "\\\\sin\\s*\\^\\s*\\{?\\s*2\\s*\\}?\\s*\\(?\\s*2\\s*\\\\theta\\s*_\\s*\\{?\\s*(?:\\\\(?:rm|it|mathrm|mathsf|text|textrm)\\s*\\{?\\s*)?(?:[1-4]\\s*[1-4]|(?:e|\\\\mu|\\\\tau)\\s*(?:e|\\\\mu|\\\\tau)|atm|sol|new|LSND)|\\\\sin\\s*\\^\\s*\\{?\\s*2\\s*\\}?\\s*\\(?\\s*2\\s*\\\\theta(?![A-Za-z])[^=]{0,80}?\\\\Delta\\s*m\\s*(?:\\^\\s*\\{?\\s*2|_\\s*\\{?\\s*[0-9])",
+    "tex": "P(\\bar\\nu_e\\to\\bar\\nu_e) \\simeq 1 - \\sin^2 2\\theta_{13}\\,\\sin^2\\!\\left(\\frac{\\Delta m^2_{31}L}{4E}\\right)",
+    "meaning": "The 2 sits inside the sine: the printed amplitude is sin²2θ = 4 sin²θ cos²θ, up to 4 times the sin²θ a global fit reports."
+  },
+  {
+    "id": "dm2-31-label",
+    "fork": "Δm² labels ₃₁ / ₃₂ / ₃ℓ / ee / μμ / atm",
+    "branch": "the 1–3 pair: the printed splitting is m₃² − m₁² under the near-universal index order Δm²_ij ≡ m_i² − m_j². The label fixes the PAIR, not the sign — under the opposite index order (§5 round-3 C128, 'Δm²_ji ≡ m²_j − m²_i vs Δm²_ij', a live v1 sign-axis fork) the same token denotes m₁² − m₃², and the ordering decides the sign of the number: Δm²₃₁ > 0 in NO, < 0 in IO.",
+    "rival": "Δm²₃₂ = Δm²₃₁ − Δm²₂₁; the ordering-dependent Δm²₃ℓ (ℓ = 1 for NO, 2 for IO, so ₃ℓ is ₃₁ only under NO); the unqualified Δm²_atm, which different papers set to ₃₁, to ₃₂ or to an effective splitting; and the two effective splittings, the reactor Δm²_ee = cos²θ₁₂Δm²₃₁ + sin²θ₁₂Δm²₃₂ = Δm²₃₁ − sin²θ₁₂Δm²₂₁ and the νμ-disappearance Δm²_μμ = sin²θ₁₂Δm²₃₁ + cos²θ₁₂Δm²₃₂ + cos δ sinθ₁₃ sin2θ₁₂ tanθ₂₃ Δm²₂₁ = Δm²₃₁ − (cos²θ₁₂ − cos δ sinθ₁₃ sin2θ₁₂ tanθ₂₃)Δm²₂₁.",
+    "magnitude": "Δm²₃₂ lies Δm²₂₁/Δm²₃₁ = 7.42×10⁻⁵/2.515×10⁻³ = 2.95% below Δm²₃₁; Δm²_ee sin²θ₁₂ of that, 0.90% below; Δm²_μμ 2.39% below at δ = 224°, but 1.59%–2.52% across δ — δ-dependent, not a fixed relabel. Signed, Δm²₃₁ > Δm²_ee > Δm²_μμ > Δm²₃₂ in both orderings; the percentages are NO against Δm²₃₁ (IO: 3.06% / 0.93% / 2.48% of |Δm²₃₁|, where |Δm²₃₂| is the LARGER).",
+    "surface": "equation",
+    "pattern": "(?<!\\\\Delta\\s*m\\s*(?:\\^\\s*\\{?\\s*2\\s*\\}?\\s*_\\s*|_\\s*)(?:\\{\\s*\\}|\\{?\\s*(?:ee|3\\\\ell|\\\\mu\\\\mu|\\\\rm\\s*atm|atm|32)\\s*\\}?)[\\s\\S]*)(?![\\s\\S]*\\\\Delta\\s*m\\s*(?:\\^\\s*\\{?\\s*2\\s*\\}?\\s*_\\s*|_\\s*)(?:\\{\\s*\\}|\\{?\\s*(?:ee|3\\\\ell|\\\\mu\\\\mu|\\\\rm\\s*atm|atm|32)\\s*\\}?))\\\\Delta\\s*m\\s*(?:\\^\\s*\\{?\\s*2\\s*\\}?\\s*_\\s*\\{?\\s*31\\s*\\}?|_\\s*\\{?\\s*31\\s*\\}?\\s*\\^\\s*\\{?\\s*2\\s*\\}?)(?![0-9])",
+    "tex": "\\Delta m^2_{31} \\equiv m_3^2 - m_1^2 = 2.515\\times10^{-3}\\,\\mathrm{eV}^2",
+    "meaning": "The subscript is 31: the splitting is the 1–3 pair, 2.95% above the Δm²₃₂ a neighbouring table prints and 0.90% above the reactor Δm²_ee, with the sign set by the index order and the mass ordering rather than by the label."
+  },
+  {
+    "id": "majorana-phase-halved",
+    "fork": "Majorana-phase halving: e^(iα₂₁/2) vs e^(iα₂) in the diagonal phase matrix",
+    "branch": "halved exponent: the diagonal Majorana matrix carries e^{iα₂₁/2}",
+    "rival": "unhalved e^{iα₂}, where the same numerical α means twice the physical phase",
+    "magnitude": "factor 2 in the phase: a printed α₂₁ = π is m_ββ = 18.35 meV in this branch and 48.35 meV read unhalved (×2.635), at IO with m₃ = 0; halving a phase that was already the relative one gives 36.57 meV",
+    "surface": "equation",
+    "pattern": "e\\s*\\^\\s*\\{\\s*i\\s*\\\\?alpha\\s*_\\s*(?:\\{\\s*(?:21|31)\\s*\\}|(?:21|31)(?![0-9}]))\\s*\\/\\s*2(?![0-9]|\\s*pi)|e\\s*\\^\\s*[\\{(]\\s*i\\s*\\(?\\s*\\\\?alpha\\s*_\\s*(?:\\{\\s*(?:21|31)\\s*\\}|(?:21|31)(?![0-9}]))\\s*\\)?\\s*\\/\\s*\\(\\s*2\\s*\\)|\\\\exp\\s*\\(\\s*i\\s*\\(?\\s*\\\\?alpha\\s*_\\s*(?:\\{\\s*(?:21|31)\\s*\\}|(?:21|31)(?![0-9}]))\\s*\\)?\\s*\\/\\s*\\(?\\s*2(?![0-9]|\\s*pi)",
+    "tex": "P = \\mathrm{diag}\\!\\left(1,\\; e^{i\\alpha_{21}/2},\\; e^{i\\alpha_{31}/2}\\right)",
+    "meaning": "The exponent is halved: α₂₁ is twice the phase that multiplies the mass eigenstate, so m_ββ folds cos(α₂₁) not cos(2α₂)."
+  },
+  {
+    "id": "fidelity-squared-jozsa",
+    "fork": "Fidelity F vs F² (Uhlmann/Nielsen–Chuang vs Jozsa/Wilde)",
+    "branch": "squared (Jozsa/Wilde) fidelity: F's printed definition carries an outer square on the nested root √(√ρ σ √ρ), so F = |⟨ψ|φ⟩|² for pure states",
+    "rival": "the root fidelity F = Tr√(√ρ σ √ρ) with no outer square (Nielsen–Chuang, Watrous), = |⟨ψ|φ⟩| for pure states; the label 'Uhlmann' rides both sides — his 1976 transition probability is itself the squared one — so only the print decides",
+    "magnitude": "F_squared = F_root²: the infidelities differ by 1+√F, → 2 near unity. A quoted F = 99.9% is 1−F = 1.0×10⁻³ read as squared, or 1−0.999² = 2.0×10⁻³ read as root",
+    "surface": "equation",
+    "pattern": "(?:^|[^A-Za-z])F[^=^]{0,24}(?:=|\\\\equiv)[^=]{0,40}?\\\\sqrt\\s*\\{[\\s{]*(?:\\\\sqrt|\\\\(?:varrho|rho|sigma)\\s*\\^\\s*\\{?\\s*1\\s*/\\s*2)[^=]{0,30}?\\\\(?:varrho|rho|sigma)[^=]{0,80}?\\}[\\s}]*(?:(?:\\\\[Bb]igg?r\\s*)?[\\)\\]]\\s*)+\\^\\s*\\{?\\s*2",
+    "tex": "F(\\rho,\\sigma) = \\left(\\mathrm{Tr}\\sqrt{\\sqrt{\\rho}\\,\\sigma\\sqrt{\\rho}}\\right)^{2}",
+    "meaning": "The definition of F carries the outer square: F is the squared (Jozsa) fidelity, and its infidelity 1−F is (1+√F) times the root convention's — twice it near unity."
+  },
+  {
+    "id": "trace-distance-half",
+    "fork": "Trace-distance ½ convention: D = ½‖ρ−σ‖₁ vs ‖ρ−σ‖₁",
+    "branch": "the ½ is printed on the DEFINING line: D(ρ,σ) = ½‖ρ−σ‖₁ = ½Tr|ρ−σ|, so D runs 0 to 1",
+    "rival": "the bare trace norm ‖ρ−σ‖₁ (= Tr|ρ−σ|) with no ½ on its defining line, running 0 to 2 — a quoted 'trace distance 0.4' there is 0.2 here. The rival school still PRINTS ½‖ρ−σ‖₁ inside Fuchs–van de Graaf, Helstrom and Pinsker, which is why only the defining line decides.",
+    "magnitude": "exactly ×2 on the trace distance: max 1 vs 2, and every ε-closeness statement halves or doubles with it. The negativity ½ ((‖ρ^{T_B}‖₁−1)/2, giving N = 0.5 where E_N = 1 ebit) and the diamond ½ are set INDEPENDENTLY of this one and are not decided by this finding — a chained diamond → trace argument can be off by 4.",
+    "surface": "equation",
+    "pattern": "(?:^|[^A-Za-z0-9_])(?:\\\\mathcal\\s*\\{\\s*)?[DTd]\\s*\\}?\\s*(?:_\\s*\\{[^{}=]{0,8}\\}|_[A-Za-z0-9])?\\s*(?:\\(\\s*[^()=]{0,24}\\))?\\s*(?::?=|\\\\equiv)\\s*\\(\\s*1\\s*\\)\\s*\\/\\s*\\(\\s*2\\s*\\)\\s*[^=]{0,30}?(?:\\\\\\|+|\\\\lVert|\\\\Vert|\\|+)\\s*\\\\rho\\s*(?:_\\s*\\{?[A-Za-z0-9]{1,4}\\}?)?\\s*-\\s*\\\\sigma(?![\\s\\S]{0,20}?(?:\\\\\\|+|\\\\rVert|\\\\Vert|\\|+)\\s*_\\s*\\{?\\s*(?:2|F|HS|\\\\infty))",
+    "tex": "D(\\rho,\\sigma) = \\tfrac{1}{2}\\,\\lVert\\rho-\\sigma\\rVert_1 = \\tfrac{1}{2}\\mathrm{Tr}\\,|\\rho-\\sigma|",
+    "meaning": "The ½ is printed on the trace norm: D is normalized to 1 at perfect distinguishability, half the bare-norm number."
+  },
+  {
+    "id": "depolarizing-per-pauli",
+    "fork": "Depolarizing channel: uniform-mixing p vs per-Pauli p",
+    "branch": "per-Pauli p: E(ρ) = (1−p)ρ + (p/3)Σ_{P∈{X,Y,Z}} PρP — p is the TOTAL probability that a Pauli error occurs, split p/3 to each (the Cirq / PennyLane convention)",
+    "rival": "uniform mixing E(ρ) = (1−q)ρ + q·I/d (the Qiskit convention), where the same letter p usually carries q's meaning; the twirl Σ_{P≠I}PρP = d·I − ρ gives q = p·d²/(d²−1), i.e. q = 4p/3 at d = 2",
+    "magnitude": "q_uniform = d²/(d²−1) · p_perPauli: exactly 4/3 for a qubit, 16/15 for two qubits — equivalently the per-Pauli p is 3/4 and 15/16 of the uniform one. A uniform '1% threshold' is 0.75% per-Pauli; a per-Pauli 1% is 1.33% uniform.",
+    "surface": "equation",
+    "pattern": "(?<![0-9A-Za-z])(?:\\(\\s*p\\s*\\)\\s*\\/\\s*\\(\\s*3\\s*\\)|p\\s*\\/\\s*3(?![0-9.^_A-Za-z]))(?:[^=]{0,28}?(?:[XYZP]\\s*(?:\\\\rho|ρ)\\s*[XYZP]|(?:\\\\sigma|σ)\\s*_\\s*\\{?\\s*\\\\?[a-z0-9]{1,6}\\s*\\}?\\s*(?:\\\\rho|ρ))|[^=]{0,12}?\\\\sum.{0,45}?(?:[XYZP]\\s*(?:\\\\rho|ρ)\\s*[XYZP]|(?:\\\\sigma|σ)\\s*_\\s*\\{?\\s*\\\\?[a-z0-9]{1,6}\\s*\\}?\\s*(?:\\\\rho|ρ)))",
+    "tex": "\\mathcal{E}(\\rho) = (1-p)\\rho + \\frac{p}{3}\\left(X\\rho X + Y\\rho Y + Z\\rho Z\\right)",
+    "meaning": "The p is divided by three across the three Pauli terms: p is the total Pauli-error probability, and it is 3/4 of the p a uniform-mixing paper prints."
+  },
+  {
+    "id": "entropy-log-base-two",
+    "fork": "Entropy/information log base (bits vs nats vs dits) as a unit, not a factor",
+    "branch": "base 2: the entropy is counted in bits (shannons)",
+    "rival": "natural log (nats), or log₁₀ (dits/hartleys)",
+    "magnitude": "1 nat = 1.442695 bits, 1 dit = 3.321928 bits; 1 bit = k_B ln 2 = 9.5699×10⁻²⁴ J/K; Landauer 17.92 meV at 300 K against k_BT = 25.85 meV, a 31% shortfall in work",
+    "surface": "equation",
+    "pattern": "(?:(?:(?<![A-Za-z\\\\])[Pp](?![A-Za-z])\\s*(?:_\\s*\\{?[A-Za-z0-9]{1,3}\\}?|\\([^()]{0,12}\\))?|\\\\rho\\s*(?:_\\s*\\{?[A-Za-z0-9]{1,3}\\}?)?|\\\\lambda\\s*_\\s*\\{?[A-Za-z0-9]{1,3}\\}?)(?:\\^\\s*\\{?\\s*2\\s*\\}?)?\\s*\\\\log\\s*_\\s*\\{?\\s*2\\s*\\}?|\\\\log\\s*_\\s*\\{?\\s*2\\s*\\}?\\s*\\(?\\s*(?:(?<![A-Za-z\\\\])[Pp](?![A-Za-z])\\s*[_(]|\\\\rho(?![a-zA-Z])|\\\\lambda\\s*_)|\\\\log\\s*_\\s*\\{?\\s*2\\s*\\}?\\s*(?:\\\\sum|\\\\max)[^=]{0,25}?(?<![A-Za-z\\\\])[Pp](?![A-Za-z])\\s*[_(])",
+    "tex": "S(\\rho) = -\\mathrm{Tr}\\,\\rho\\log_2\\rho,\\qquad H(X) = -\\sum_x p(x)\\log_2 p(x)",
+    "meaning": "The logarithm acting on the probability (or density matrix) carries base 2: the entropy is in bits, 1.442695 times the same quantity in nats."
+  },
+  {
+    "id": "first-law-work-by-system",
+    "fork": "First-law work sign: dU = δQ − δW (W by the system) vs dU = δQ + δW (W on the system)",
+    "branch": "W is work done BY the system: dU = δQ − δW (Clausius; the heat-engine reading, as in Fermi and Landau–Lifshitz)",
+    "rival": "W done ON the system: dU = δQ + δW, with W_on = −W_by exactly and Q into the system in both (IUPAC Green Book — and equally Callen and Kittel–Kroemer, so this is not a chemistry-only branch)",
+    "magnitude": "exact sign flip on every W-valued number — W, W_ext, W_diss, and a one-bit isothermal RT ln 2 = 1.729 kJ/mol (300 K) quoted ±. η = W/Q_H changes sign in the formula only: a Carnot engine between 500 and 300 K is reported at 0.400 either way. The census row's tabulated E° (Zn²⁺/Zn ∓0.76 V) is NOT set by this fork — that sign is the reduction-vs-oxidation-potential convention, and ΔG° = −nFE° = −212.3 kJ/mol flips its work while E°cell stays +1.10 V.",
+    "surface": "equation",
+    "pattern": "^(?![\\s\\S]*=\\s*(?:\\\\delta\\s*|δ\\s*|\\\\(?:bar|overline)\\s*\\{\\s*d\\s*\\}\\s*|d|đ)?\\s*Q\\s*\\+\\s*(?:\\\\delta\\s*|δ\\s*|\\\\(?:bar|overline)\\s*\\{\\s*d\\s*\\}\\s*|d|đ)?\\s*W(?![A-Za-z]))[\\s\\S]*?(?<![A-Za-z\\\\_^])(?:d|\\\\Delta\\s*|Δ\\s*)?\\s*U\\s*(?:_\\s*\\{?[^{}=]{0,12}\\}?)?\\s*=\\s*(?:\\\\delta\\s*|δ\\s*|\\\\(?:bar|overline)\\s*\\{\\s*d\\s*\\}\\s*|d|đ)?\\s*Q\\s*(?:_\\s*\\{?[^{}=]{0,12}\\}?)?\\s*[-−]\\s*(?:\\\\delta\\s*|δ\\s*|\\\\(?:bar|overline)\\s*\\{\\s*d\\s*\\}\\s*|d|đ)?\\s*W(?![A-Za-z])",
+    "tex": "dU = \\delta Q - \\delta W \\qquad (W \\text{ done } \\textit{by}\\text{ the system})",
+    "meaning": "The work term enters with a minus sign: W is the work done by the system, so every W-valued number on the page carries the sign opposite to the IUPAC dU = δQ + δW convention."
+  },
+  {
+    "id": "stratonovich-circ-product",
+    "fork": "Stochastic-calculus prescription (Itô / Stratonovich / Hänggi–Klimontovich)",
+    "branch": "Stratonovich: the midpoint product ∘ is printed on the noise increment",
+    "rival": "Itô (plain product, no ∘) or Hänggi–Klimontovich (anti-Itô / post-point)",
+    "magnitude": "p_ss ∝ D(x)^(α−1) with α = 0 (Itô), ½ (Stratonovich), 1 (Hänggi–Klimontovich): D^(−1), D^(−1/2), uniform. The reweighting between two prescriptions is exactly D(x)^(α−α′), independent of the drift — over a 3× spread in D, Stratonovich sits √3 = 1.73 from each of Itô and HK, which differ by 3.",
+    "surface": "equation",
+    "pattern": "(?<!\\^)(?<!\\^\\{)\\\\circ\\s*(?:d\\s*(?:\\\\(?:mathbf|boldsymbol|bm|vec|hat|tilde|widehat|widetilde)\\s*\\{?\\s*)?[WB](?![A-Za-z])|\\\\(?:xi|eta)\\s*(?:_\\s*\\{?[a-z0-9,]{1,3}\\}?\\s*)?(?:\\(\\s*[^()]{0,14}?[ts]\\s*\\)|_\\s*\\{?\\s*[ts]\\s*\\}?(?![A-Za-z0-9])))",
+    "tex": "dX_t = a(X_t)\\,dt + b(X_t)\\circ dW_t",
+    "meaning": "The ∘ marks a midpoint product: the SDE is Stratonovich, and its drift differs from the Itô one by ½ b ∂_x b."
+  },
+  {
+    "id": "spl-reference-20-micropascal",
+    "fork": "Sound-pressure level reference: 20 μPa (air) vs 1 μPa (water) vs 1 μbar (pre-SI)",
+    "branch": "airborne acoustics: the 0 dB reference pressure is 20 μPa = 2×10⁻⁵ Pa",
+    "rival": "the underwater 1 μPa, on which the same pressure reads 26.02 dB higher; the pre-SI 1 μbar = 1 dyn/cm² = 0.1 Pa, on which it reads 73.98 dB lower (that scale itself sitting exactly 100 dB below the 1 μPa one); or a sound-power reference 1 pW, which is not a pressure at all — L_W − L_p is geometry-dependent, ≈11 dB at 1 m from a point source",
+    "magnitude": "26.02 dB = 20 log₁₀ 20 to the underwater 1 μPa (the same 26.02 for squared references: 10 log₁₀ 400); 73.98 dB = 20 log₁₀ 5000 to 1 μbar. The census's 100.0 dB is the rival-to-rival μbar↔1 μPa gap, and its 61.5 dB air↔water is this 26.02 dB plus ≈35.6 dB = 10 log₁₀(Z_water/Z_air), not a reference change",
+    "surface": "prose",
+    "pattern": "(?<!(?:\\b1\\s*(?:\\\\mu|mu|u)\\s*(?:Pa|bar)|\\b0\\.0002\\s*dyn|\\b1\\s*pW|microbar|\\bmubar)[^.]{0,120})\\b(?:[Rr]eferenced\\s+to|[Rr]elative\\s+to|[Rr]eferred\\s+to|REFERENCED\\s+TO|RELATIVE\\s+TO|REFERRED\\s+TO|[Rr]ef|REF|[Rr]e|RE)[.:]?\\s*\\$?\\s*(?:20\\s*(?:\\\\mu|mu|u)\\s*(?:Pa|PA)(?![A-Za-z])|20\\s*(?:(?:\\\\mu|mu|u)\\s*|micro\\s*)pascals?(?![A-Za-z])|2\\s*(?:\\\\times|×|x|\\*)\\s*10\\s*(?:\\^\\s*\\{?\\s*-\\s*5\\s*\\}?|⁻⁵)\\s*Pa(?![A-Za-z])|0\\.00002\\s*Pa(?![A-Za-z])|(?<=dB[^.]{0,24})20\\s*\\\\mu(?!\\s*[A-Za-z]))(?![^.]{0,120}(?:\\b1\\s*(?:\\\\mu|mu|u)\\s*(?:Pa|bar)|\\b0\\.0002\\s*dyn|\\b1\\s*pW|microbar|\\bmubar))",
+    "tex": "L_p = 20\\log_{10}\\!\\left(\\frac{p_{\\rm rms}}{20\\,\\mu\\mathrm{Pa}}\\right)\\,\\mathrm{dB}",
+    "meaning": "The stated reference is the airborne 20 μPa: every level here reads 26.02 dB below the same quantity referenced to 1 μPa."
+  },
+  {
+    "id": "amplitude-statistic-peak-to-peak",
+    "fork": "Amplitude statistic (rms / 0-peak / peak-to-peak / average) as a mandatory tag",
+    "branch": "peak-to-peak: the tagged amplitude spans trough to crest — for a sinusoid 2√2 times the rms of the same signal",
+    "rival": "rms (pk-pk ÷ 2√2 for a sinusoid), 0-peak (÷2), or the full-wave rectified average (÷π)",
+    "magnitude": "sinusoid: pk-pk/rms = 2√2 (9.031 dB), pk-pk/0-peak = 2 (6.021 dB), pk-pk/rectified-average = π (9.943 dB); the sibling 0-peak/rms leg is √2 (3.010 dB). In machinery vibration 2√2 is one or two ISO 20816 severity zones (Group-1 rigid-support boundaries 2.3 / 4.5 / 7.1 mm/s rms, successive ratios 1.96 and 1.58).",
+    "surface": "prose",
+    "pattern": "(?<!\\b(?:not|never|rather than|instead of|as opposed to)\\b(?:\\s+\\w+){0,2}\\s+)(?<!\\bhalf(?:\\s+of)?\\s+(?:the\\s+|a\\s+)?)(?<!\\b(?:line ?width|linewidth)\\b[^.]{0,24})\\b(?:[Pp][Ee][Aa][Kk][\\s­‐-―−-]*[Tt][Oo][\\s­‐-―−-]*[Pp][Ee][Aa][Kk]|[Pp][Kk](?:\\s*[­‐-―−-]\\s*|[\\s­‐-―−-]*[Tt][Oo][\\s­‐-―−-]*)[Pp][Kk]|pk\\s+pk)\\b(?![\\s­‐-―−-]*(?:line ?width|linewidth|width|separation|spacing|distance|interval|delay|period|duration|area)\\b)",
+    "tex": "A_{\\rm pk\\text{-}pk} = 2\\,A_{\\rm 0\\text{-}pk} = 2\\sqrt{2}\\,A_{\\rm rms}\\quad(\\text{sinusoid});\\qquad 20\\log_{10}2\\sqrt{2} = 9.031\\,\\mathrm{dB}",
+    "meaning": "The amplitude tag is peak-to-peak: this number spans trough to crest, twice the 0-peak value and, for a sinusoid, 2√2 times the rms."
+  },
+  {
+    "id": "higgs-quartic-half-lambda",
+    "fork": "Higgs quartic normalization: ½λ(Φ†Φ)² vs λ(Φ†Φ)²",
+    "branch": "½λ(Φ†Φ)²: the quartic carries an explicit ½, so with ⟨Φ⟩ = (0, v/√2) and v = 246 GeV the Higgs mass is m_h² = λv², i.e. λ = 0.259",
+    "rival": "λ(Φ†Φ)² with no ½, where m_h² = 2λv² and the same m_h is fitted by half this λ (λ = 0.129); a third normalization, λ/4 with the shifted field (Φ†Φ − v²/2)², gives m_h² = λv²/2",
+    "magnitude": "×2 in λ: this potential's λ = m_h²/v² = 0.259, the no-½ potential's λ = m_h²/(2v²) = 0.129 (m_h = 125.25 GeV, v = 246.22 GeV)",
+    "surface": "equation",
+    "pattern": "(?:(?:\\(\\s*(?:\\\\lambda(?:\\s*_\\s*(?:\\{\\s*[Hh]\\s*\\}|[Hh](?![A-Za-z])))?(?![A-Za-z_])|λ)\\s*\\)\\s*\\/\\s*\\(\\s*2\\s*\\)|\\(\\s*1\\s*\\)\\s*\\/\\s*\\(\\s*2\\s*\\)\\s*(?:\\\\lambda(?:\\s*_\\s*(?:\\{\\s*[Hh]\\s*\\}|[Hh](?![A-Za-z])))?(?![A-Za-z_])|λ))\\s*[^=]{0,14}?(?:\\(\\s*(?:\\\\?(?:var)?[Pp]hi(?![A-Za-z])|[φϕΦ]|[Hh](?![A-Za-z]))\\s*\\^\\s*\\{?\\s*\\\\dagger\\s*\\}?\\s*(?:\\\\?(?:var)?[Pp]hi(?![A-Za-z])|[φϕΦ]|[Hh](?![A-Za-z]))(?:\\s*-\\s*[^=]{0,24}?)?\\s*\\)\\s*\\^\\s*\\{?\\s*2(?![0-9])|\\|\\s*(?:\\\\Phi(?![A-Za-z])|Φ|H(?![A-Za-z]))\\s*\\|\\s*\\^\\s*\\{?\\s*4(?![0-9]))|(?:\\\\lambda(?:\\s*_\\s*(?:\\{\\s*[Hh]\\s*\\}|[Hh](?![A-Za-z])))?(?![A-Za-z_])|λ)\\s*\\/\\s*2(?![0-9!])\\s*[^=]{0,14}?\\(\\s*(?:\\\\?(?:var)?[Pp]hi(?![A-Za-z])|[φϕΦ]|[Hh](?![A-Za-z]))\\s*\\^\\s*\\{?\\s*\\\\dagger\\s*\\}?\\s*(?:\\\\?(?:var)?[Pp]hi(?![A-Za-z])|[φϕΦ]|[Hh](?![A-Za-z]))(?:\\s*-\\s*[^=]{0,24}?)?\\s*\\)\\s*\\^\\s*\\{?\\s*2(?![0-9]))",
+    "tex": "V(\\Phi) = -\\mu^2\\,\\Phi^\\dagger\\Phi + \\frac{\\lambda}{2}\\left(\\Phi^\\dagger\\Phi\\right)^2,\\qquad m_h^2 = \\lambda v^2",
+    "meaning": "The quartic is printed with an explicit ½, so m_h² = λv² and this λ is twice the one a no-½ potential quotes for the same Higgs mass."
   }
 ]
