@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # The runtime tables are generated from docs/data/*.json; a stale
+      # commit of src/tables.generated.ts fails here rather than shipping.
+      - run: npm run gen:tables
+      - run: git diff --exit-code -- src/tables.generated.ts
+      - run: npm run build:app
+      - run: npm run build:ext
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-dist
+          path: extension/dist/
+          if-no-files-found: error

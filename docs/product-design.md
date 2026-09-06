@@ -19,19 +19,38 @@ Each stage is independently useful and independently showable; no stage bets the
 
 ## 3. Architecture
 
+One package; the layering below is enforced by what imports what, not by directories. (The original sketch of a `packages/*` monorepo was superseded when stage 2 landed in the same tree; the layers it named are these.)
+
 ```
-packages/core        — the engine: AST layer (KaTeX-parser based, dependency-injected),
-                       dimensional solve, generator/convention machinery, rider tables,
-                       sign-convention layer, identity-tag layer, lint rules, decline vocabulary
-packages/profiles/*  — symbol tables as data ("gr" first = today's GR_REGISTRY;
-                       later: qft-natural, cosmology, atomic, condensed-matter, ...)
-packages/convert     — the numeric converter graph (separate structure; shared constants
-                       tables with CODATA-vintage tags; reciprocal edge E = hc/λ with medium tag)
-benchmarks/          — the census-mined seed + curated executable tests (census §10 taxonomy)
-docs/                — the census, this document, decision log
-apps/ / adapters/    — stage 1 web app; the site floater becomes a thin consumer;
-                       extension and viewer land here later
+src/unitsEngine.ts       — the engine: KaTeX-AST reading, the dimensional solve, the decline
+                           vocabulary, and the GR registry. Imports NOTHING; KaTeX is injected.
+                           Frozen: the site vendors it byte-identical (scripts/check-site-sync.mjs).
+src/convention.ts        — census §2 as data: 36 conventions as generator records over exact
+src/rendering.ts           rational dimension vectors, validation with named implied groups, the
+                           restoration solve, riders under the span rule, the rendering partition.
+src/signs.ts             — the sign-convention axis and the identity-metadata tag vector.
+src/identity.ts
+src/converter.ts         — the numeric equivalence graph and the unit-contract detector.
+src/contract.ts
+src/detect.ts            — census §6: document- and span-level convention detection over
+src/forks.ts               normalized prose and equations; §5/§6.5b fork recovery; the §6.5
+src/mine.ts                declaration miner; the refusal of named mathematical objects.
+src/gate.ts
+src/bridge.ts            — engine ↔ convention layer, and the TRUST BOUNDARY (registryTrusts):
+                           every reading a page contributes passes this one gate (§3.1).
+src/profiles.ts          — corpus-driven symbol tables mounted as profiles (GR today).
+src/tables.generated.ts  — generated from docs/data/*.json by `npm run gen:tables`; never edited.
+app/                     — stage 1, the paste box.
+extension/               — stage 2, the Manifest V3 content script and its panel.
+docs/                    — the census, this document, the store listing, the privacy policy;
+                           docs/data/ the evidence base the runtime tables are generated from.
 ```
+
+### 3.1 The evidence boundary
+
+Everything a page contributes to a translation arrives as a *reading*: a symbol, a noun from the glossary, the verbatim sentence, and, where the text gave one, a defining expression. Today the readings come from two deterministic sources: the declaration miner (templates over sentences, §6.5) and the definitions path (a printed expression whose dimension the engine itself computes). Each enters the registry through one gate in `src/bridge.ts`. Declarations pass `registryTrusts`, which admits only a reading whose dimension the text has pinned down: any caveat (an ambiguous noun, an E&M quantity with no named system, a dimension that depends on the spatial dimension or the coordinate convention) keeps the reading on the Symbols card, where the caveat is shown, and out of the registry. The gate is an allowlist: a caveat added to the miner later is refused until the gate admits it by name. Definitions pass `usableDefinitions`, which admits only an expression built from the engine's constants and from symbols the page defined the same way earlier: a relation among the page's variables ("x = ±t" on a c = 1 page) holds in the page's convention, not in SI, and the dimension it would hand the left side is the wrong one.
+
+This is the seam for anything that reads context later — a reader's confirmation in the panel, a retrieval scout that shows the sentences mentioning an unknown symbol, or a language model proposing what a sentence declares. Such a source is a *recall* device and nothing more: it may point at a sentence, it may name a glossary noun, it may not assert a dimension, and its output takes exactly the shape a template match takes and passes exactly the same gate. The dimension always comes from the glossary or from the engine's own computation, never from the source of the reading; the sentence must exist verbatim on the page; the engine, the registry, and the gate import nothing from any such layer, and a test pins that. Whether such a layer is worth building is an empirical question the decline reasons answer: an unknown symbol the page defines in words the templates missed is the case it would rescue; a term admitting no completion over the ambient constants is not, and no reader helps there.
 
 The census's fourteen data-model verdicts (§2 there) are binding on `core`: generator records with `kind`/`role` and symbolic restoration; the rank check with named Π-groups; riders activated by the generator-span rule; the dimensionless-conventions registry; composable convention switches with span-scoped state; the sign-convention axis with the Euclidean tag; the identity-metadata tag vector; the unit-contract equation detector; the refuse classes with named reasons; residual-rank honesty.
 
@@ -67,15 +86,17 @@ Document-level first (aggregate fingerprints — far better posed than per-equat
 
 ## 7. Extraction mechanics (repo birth)
 
-- `git filter-repo` over the engine + test paths of the hypomnemata repo; all touching commits verified Keeper-authored, so history survives pseudonymously. Commit messages reviewed for site internals before any future public flip.
-- Private repo under `realkss`; local `user.name = Keeper` as in the site repo.
+(Historical: how the repository was born, 2026-08-20. It went public under `realkss` on 2026-08-27; the gate that decision passed is recorded under §9.)
+
+- `git filter-repo` over the engine + test paths of the hypomnemata repo; all touching commits verified Keeper-authored, so history survives pseudonymously. Commit messages reviewed for site internals before the public flip.
+- Repo under `realkss`, private at birth; local `user.name = Keeper` as in the site repo.
 - The site keeps a **vendored copy** of the engine file(s) with a byte-diff sync check (CF Pages cannot cleanly consume a second private repo on the free tier); the standalone repo is the source of record from day one.
 - KaTeX pinned to the **same exact version** in both repos — the 0.16.47 genfrac regression is the standing lesson that patch bumps break AST consumers while all TeX still renders.
 - The floater's UI (`unitsFloater.inline.ts`) and the latex transformer stay in the site; only the DOM-free engine, registry (→ `profiles/gr`), and tests move.
 
 ## 8. Testing
 
-Census §10 governs: the five benchmark classes, the mined 404-item seed (`benchmarks-seed.json`), and the two hand-written obligations (class-A signature/fermion pairs, class-D property tests). The floater's existing 70 engine tests migrate with the engine. CI note: GitHub Actions on a private repo has been blocked by the $0 billing budget before — tests must stay runnable with a plain local `npx tsx --test`, CI treated as optional sugar.
+Census §10 governs: the five benchmark classes, the mined 404-item seed (`benchmarks-seed.json`), and the two hand-written obligations (class-A signature/fermion pairs, class-D property tests). The floater's existing 70 engine tests migrate with the engine. CI: `.github/workflows/ci.yml` runs the suite, regenerates the runtime tables and fails on drift, and builds both surfaces on every push (the repository is public, so Actions minutes are free); the suite must nonetheless stay runnable with a plain local `npx tsx --test`, since a private fork loses the minutes.
 
 ## 9. Open owner decisions
 

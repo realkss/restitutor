@@ -39,10 +39,10 @@ Source and issue tracker: https://github.com/realkss/restitutor (MIT).
 ## Assets
 
 - Icon: `extension/icons/icon128.png` (also 16/32/48 in the package).
-- Screenshots (1280×800 or 640×400, at least one, up to five): take them from the loaded extension on
-  1. the English Wikipedia article "Einstein field equations" with the panel open on G + Λg = κT (shows Conventions, Symbols with the defined κ, and a translation);
-  2. Carroll's lecture notes on ar5iv (gr-qc/9712019) with the panel open on any display equation (shows the contradiction line: the stated bare action against the printed G);
-  3. the Arabic Wikipedia article on the field equations (right-to-left page, left-to-right panel).
+- Screenshots (1280×800 or 640×400, at least one, up to five). Two are ready in `docs/images/`, taken from the loaded extension on the live pages at 1280×800:
+  1. `panel-carroll-efe.png` — Carroll's lecture notes on ar5iv (gr-qc/9712019), the panel open on G_μν = 8πG T_μν: the contradiction line (the stated bare action against the printed G) and the restoration to SI with its legend;
+  2. `panel-wikipedia-efe.png` — the English Wikipedia article "Einstein field equations", the panel open on G + Λg = κT: the Symbols card with κ defined in the text, and the translation.
+  3. Still to take: the Arabic Wikipedia article on the field equations (right-to-left page, left-to-right panel).
 - Promotional tile (optional, 440×280): the icon on the warm-paper background with the name set in IBM Plex Serif.
 
 ## Hand-off checklist
