@@ -7,6 +7,7 @@ import {
   UnitSystem,
   translateTex,
 } from "../src/unitsEngine"
+import { overToFrac } from "../src/tex"
 
 const katex = katexDefault as unknown as {
   render: (tex: string, el: HTMLElement, opts?: Record<string, unknown>) => void
@@ -57,7 +58,7 @@ function run() {
     system: systemEl.value as UnitSystem,
     geometrized: geomEl.checked,
   }
-  const tex = texEl.value
+  const tex = overToFrac(texEl.value)
   const result = refuseNonEquation(tex) ?? translateTex(tex, katex, registry, spec)
   renderTranslation(outEl, result, spec, tex, katex)
   syncInspectorToTarget(spec)

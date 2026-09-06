@@ -55,6 +55,12 @@ describe("normalizeTex", () => {
     assert.strictEqual(normalizeTex("E = m c^{2} \\label{eq:emc}"), "E = m c^{2}")
     assert.strictEqual(normalizeTex("G_{ab} +%\n \\Lambda g_{ab}"), "G_{ab} +\\Lambda g_{ab}")
   })
+  test("rewrites Wikipedia's {a \\over b} to the \\frac the engine reproduces, inside the unwrapped wrapper", () => {
+    assert.strictEqual(
+      normalizeTex("{\\displaystyle G_{\\mu \\nu }={8\\pi G \\over c^{4}}T_{\\mu \\nu }.}"),
+      "G_{\\mu \\nu }={\\frac{8\\pi G}{c^{4}}}T_{\\mu \\nu }",
+    )
+  })
   test("does not rewrite math it has no rule for", () => {
     assert.strictEqual(normalizeTex(`  ${EINSTEIN}  `), EINSTEIN)
   })

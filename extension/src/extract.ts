@@ -10,6 +10,7 @@
 // The DOM types here are structural minimums so the adapters are unit-testable
 // under node:test without a DOM implementation; real Elements satisfy them.
 import { stripTrailingPunctuation } from "../../src/unitsEngine"
+import { overToFrac } from "../../src/tex"
 
 export type TexVia = "alttext" | "mml-annotation" | "mathjax2-script"
 
@@ -56,6 +57,9 @@ export function normalizeTex(raw: string): string {
   t = t.replace(/(\\*)%\s*\n\s*/g, (m, bs: string) => (bs.length % 2 === 1 ? m : bs))
   // Equation labels are document plumbing, not math
   t = t.replace(/\\label\{[^}]*\}/g, "")
+  // TeX's primitive {a \over b}, one Wikipedia display equation in ten, in
+  // the form the engine's emitter reproduces.
+  t = overToFrac(t)
   return stripTrailingPunctuation(t.trim())
 }
 
