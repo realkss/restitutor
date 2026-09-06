@@ -56,39 +56,71 @@ export const INDEX_LIKE = /^(?:\\[a-zA-Z]+|[a-k]){1,4}$/
  * the base's indexed reading). The input registry is never mutated.
  */
 export function registryWithDeclarations(reg: HubRegistry, symbols: MinedSymbol[]): HubRegistry {
-  const bare = { ...reg.bare }
-  const exact = { ...reg.exact }
-  const indexed = { ...reg.indexed }
-  let changed = false
-  const place = (table: Record<string, RegEntry>, key: string, entry: RegEntry) => {
-    const prior = table[key]
-    if (prior && sameDim(prior.dim, entry.dim)) return
-    table[key] = entry
-    changed = true
-  }
+  let out = reg
   for (const s of symbols) {
-    if (ENGINE_CONSTANTS.has(s.symbol)) continue
-    // A reading the text has not pinned down is not a registry reading: an
-    // ambiguous noun ("density", "flux") or one whose dimension depends on
-    // the spatial dimension stays in the Symbols card with its caveat.
-    if (s.caveat === "ambiguous" || s.caveat === "depends-on-d") continue
+    if (!registryTrusts(s)) continue
     const dim = dimQToDim(s.dim)
     if (!dim) continue
     const gloss =
       s.noun.noun +
       (s.registry ? ` (declared in the text; the registry reads ${shortGloss(s.registry.gloss)})` : " (declared in the text)")
-    const entry: RegEntry = { dim, gloss, si: s.noun.si }
-    const m = /^(.+?)_(?:\{([^{}]*)\}|(\\?[A-Za-z0-9]+))$/.exec(s.symbol.replace(/\^.*$/, ""))
-    if (m) {
-      const base = m[1]
-      const sub = (m[2] ?? m[3] ?? "").replace(/[{}\s]/g, "")
-      place(exact, `${base}_${sub}`, entry)
-      if (INDEX_LIKE.test(sub)) place(indexed, base, entry)
-    } else {
-      place(bare, s.symbol, entry)
-    }
+    out = withReading(out, s.symbol, dim, () => ({ dim, gloss, si: s.noun.si }))
   }
-  return changed ? { ...reg, bare, exact, indexed } : reg
+  return out
+}
+
+/**
+ * The trust boundary between what a page says and what the engine translates
+ * with. A reading enters the registry only when the text has pinned its
+ * dimension down: any caveat — an ambiguous noun, a dimension that depends
+ * on the E&M system, on the spatial dimension, or on the coordinate
+ * convention — keeps the reading on the Symbols card, where its caveat is
+ * shown, and out of the registry, where a wrong dimension would restore
+ * the wrong constants without a word. The engine's own constants are never
+ * re-read. This is an allowlist on purpose: a caveat the miner grows
+ * tomorrow is refused here until this gate admits it by name, and every
+ * source of readings — the miner today, a reader's confirmation or a
+ * context scout later — passes through this one function.
+ */
+export function registryTrusts(s: MinedSymbol): boolean {
+  return s.caveat === undefined && !ENGINE_CONSTANTS.has(s.symbol)
+}
+
+type ReadingTable = "bare" | "exact" | "indexed"
+
+/**
+ * Where a symbol's reading lives: a subscripted symbol is an exact reading,
+ * and an index-like subscript (T_{ab}, g_{\mu\nu}) also reads the base as
+ * indexed; anything else is a bare reading.
+ */
+function placementsOf(symbol: string): { table: ReadingTable; key: string }[] {
+  const m = /^(.+?)_(?:\{([^{}]*)\}|(\\?[A-Za-z0-9]+))$/.exec(symbol.replace(/\^.*$/, ""))
+  if (!m) return [{ table: "bare", key: symbol }]
+  const base = m[1]
+  const sub = (m[2] ?? m[3] ?? "").replace(/[{}\s]/g, "")
+  const out: { table: ReadingTable; key: string }[] = [{ table: "exact", key: `${base}_${sub}` }]
+  if (INDEX_LIKE.test(sub)) out.push({ table: "indexed", key: base })
+  return out
+}
+
+/**
+ * The registry with one reading placed. The input is never mutated, and the
+ * same object comes back when every table already holds this dimension for
+ * the symbol; `entry` sees the prior reading so its gloss can name the clash.
+ */
+function withReading(
+  reg: HubRegistry,
+  symbol: string,
+  dim: Dim,
+  entry: (prior: RegEntry | undefined) => RegEntry,
+): HubRegistry {
+  let out = reg
+  for (const { table, key } of placementsOf(symbol)) {
+    const prior = out[table][key]
+    if (prior && sameDim(prior.dim, dim)) continue
+    out = { ...out, [table]: { ...out[table], [key]: entry(prior) } }
+  }
+  return out
 }
 
 const SUP: Record<string, string> = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" }
@@ -170,24 +202,11 @@ export function registryWithDefinitions(
     if (ENGINE_CONSTANTS.has(d.symbol) || /^\s*1\s*$/.test(d.expr)) continue
     const r = dimensionOf(d.expr, katex, out)
     if (r.kind !== "dim" || r.dim.every((x) => x === 0)) continue
-    const bare = { ...out.bare }
-    const exact = { ...out.exact }
-    const indexed = { ...out.indexed }
-    let changed = false
-    const place = (table: Record<string, RegEntry>, key: string, prior: RegEntry | undefined) => {
-      if (prior && sameDim(prior.dim, r.dim)) return
-      const gloss = "defined in the text" + (prior ? `; the registry reads ${shortGloss(prior.gloss)}` : "")
-      table[key] = { dim: r.dim, gloss, si: siUnitOf(r.dim) }
-      changed = true
-    }
-    const m = /^(.+?)_(?:\{([^{}]*)\}|(\\?[A-Za-z0-9]+))$/.exec(d.symbol.replace(/\^.*$/, ""))
-    if (m) {
-      const base = m[1]
-      const sub = (m[2] ?? m[3] ?? "").replace(/[{}\s]/g, "")
-      place(exact, `${base}_${sub}`, exact[`${base}_${sub}`])
-      if (INDEX_LIKE.test(sub)) place(indexed, base, indexed[base])
-    } else place(bare, d.symbol, bare[d.symbol])
-    if (changed) out = { ...out, bare, exact, indexed }
+    out = withReading(out, d.symbol, r.dim, (prior) => ({
+      dim: r.dim,
+      gloss: "defined in the text" + (prior ? `; the registry reads ${shortGloss(prior.gloss)}` : ""),
+      si: siUnitOf(r.dim),
+    }))
   }
   return out
 }

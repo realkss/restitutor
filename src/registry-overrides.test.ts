@@ -6,7 +6,13 @@ import test, { describe } from "node:test"
 import assert from "node:assert"
 import katex from "katex"
 import { findRegistryForSlug, translateTex } from "./unitsEngine"
-import { definitionsFromEquations, dimQToDim, registryWithDeclarations, registryWithDefinitions } from "./bridge"
+import {
+  definitionsFromEquations,
+  dimQToDim,
+  registryTrusts,
+  registryWithDeclarations,
+  registryWithDefinitions,
+} from "./bridge"
 import { mineDeclarations } from "./mine"
 import { dimQ } from "./convention"
 
@@ -55,6 +61,34 @@ describe("page declarations extend the registry", () => {
     assert.deepStrictEqual(reg2.exact.m_1.dim, [12, 0, 0, 0, 0])
     assert.strictEqual(reg2.indexed.m, undefined)
     assert.strictEqual(reg2.bare.m.gloss, "mass")
+  })
+  test("the trust boundary is an allowlist: every caveated reading stays on the card and out of the registry", () => {
+    // E&M nouns: the dimension depends on a unit system the page never named,
+    // so the SI reading would restore the wrong constants without a word.
+    const em = mined("where $E$ is the electric field and $q$ is the charge of the particle.")
+    assert.deepStrictEqual(
+      em.map((s) => [s.symbol, s.caveat]),
+      [
+        ["E", "convention-dependent"],
+        ["q", "convention-dependent"],
+      ],
+    )
+    assert.ok(em.every((s) => !registryTrusts(s)))
+    assert.strictEqual(registryWithDeclarations(GR, em), GR)
+    // The metric and the scale factor: dimensionless or a length, by the coordinate convention.
+    const gr = mined("where $g_{\\mu\\nu}$ is the metric and $a$ is the scale factor.")
+    assert.deepStrictEqual(
+      gr.map((s) => s.caveat),
+      ["coordinate-convention", "coordinate-convention"],
+    )
+    assert.strictEqual(registryWithDeclarations(GR, gr), GR)
+    // A reading with no caveat passes; the engine's own constants never do,
+    // and a caveat the gate has not met by name is refused, not admitted.
+    const [sigma] = mined("where $\\Sigma$ is the surface density of the disk.")
+    assert.ok(registryTrusts(sigma))
+    assert.ok(!registryTrusts({ ...sigma, symbol: "c" }))
+    assert.ok(!registryTrusts({ ...sigma, caveat: "depends-on-d" }))
+    assert.ok(!registryTrusts({ ...sigma, caveat: "some-future-caveat" as never }))
   })
 })
 

@@ -310,12 +310,14 @@ function seedTarget(c: MathCandidate): void {
 
 // Symbols the text declares (census §6.5): the reading as printed, its
 // dimension's noun, and the registry's own reading wherever it disagrees —
-// the declaration wins, the clash is shown.
+// the declaration wins, the clash is shown. A caveated reading is shown
+// with its caveat and stays out of the registry (bridge.registryTrusts):
+// the card says so, since the translation will not use it.
 const CAVEAT_TEXT: Record<NonNullable<MinedSymbol["caveat"]>, string> = {
-  ambiguous: "Ambiguous noun.",
-  "convention-dependent": "Dimension depends on the E&M system.",
-  "depends-on-d": "Dimension depends on the spatial dimension.",
-  "coordinate-convention": "Depends on the coordinate convention.",
+  ambiguous: "Ambiguous noun; not used for translation.",
+  "convention-dependent": "Dimension depends on the E&M system; not used for translation.",
+  "depends-on-d": "Dimension depends on the spatial dimension; not used for translation.",
+  "coordinate-convention": "Depends on the coordinate convention; not used for translation.",
 }
 
 function symbolsCard(): HTMLElement | null {
