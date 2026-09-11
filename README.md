@@ -102,7 +102,7 @@ The domain specification is the [unit-systems census](docs/unit-systems-census.m
 - `extension/` — the stage-2 browser extension (Manifest V3): a content script that finds math whose TeX the page carries and translates it on click in an in-page panel, with the extraction provenance shown. `extension/src/page.ts` reads the page — spans, the miner's surface, the page's readings — against the standard DOM only, so the same code runs in the browser and in node.
 - `test/fixtures/wikipedia/` — two Wikipedia articles as served (CC BY-SA, see the README there). `extension/src/page.real.test.ts` runs the whole page reading over them in node and pins what the browser shows on those pages; `scripts/verify-live.py` does the same inside headless Edge on a live page, with the panel rendered.
 - `docs/` — the census, the product design, the store listing, the privacy policy; `docs/data/` the evidence base.
-- `scripts/` — the builds, the table generator, the store packager, and `check-site-sync.mjs` (`npm run sync-check`), which verifies the site's vendored engine is identical to `src/` up to line endings and BOM. This repository is the source of record.
+- `scripts/` — the builds, the table generator, the store packager, `check-site-sync.mjs` (`npm run sync-check`), which verifies the site's vendored engine is identical to `src/` up to line endings and BOM, and `ledger.ts`, the decline ledger: it runs the page reading over a corpus of captured pages and names every outcome by the engine's own reason. `docs/decline-ledger.md` is its output over 19 pages, and product-design §10 reads it: why the tool says no, and what that decides. This repository is the source of record.
 
 ## Toolchain notes
 

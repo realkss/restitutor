@@ -4,3 +4,4 @@ app/dist/
 extension/dist/
 release/
 .probe/
+corpus/
