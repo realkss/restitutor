@@ -98,6 +98,8 @@ Document-level first (aggregate fingerprints — far better posed than per-equat
 
 Census §10 governs: the five benchmark classes, the mined 404-item seed (`benchmarks-seed.json`), and the two hand-written obligations (class-A signature/fermion pairs, class-D property tests). The floater's existing 70 engine tests migrate with the engine. CI: `.github/workflows/ci.yml` runs the suite, regenerates the runtime tables and fails on drift, and builds both surfaces on every push (the repository is public, so Actions minutes are free); the suite must nonetheless stay runnable with a plain local `npx tsx --test`, since a private fork loses the minutes.
 
+**The browser boundary.** The extension's page reading (`extension/src/page.ts`: spans, the miner's surface, the page's readings) takes the document as an argument and uses the standard DOM only, so `extension/src/page.real.test.ts` runs it in node, with linkedom, over the two Wikipedia captures in `test/fixtures/wikipedia/` and pins what the browser shows on those pages: carrier counts, the display-first pool, Parsoid sections as spans, the declared and defined symbols, the verdict set, the contradiction on the Arabic page, and the translations under the page's registry. The captures are CC BY-SA and carry their own license note; the ar5iv and arXiv captures used in development are the authors' and stay out of the repository. `scripts/verify-live.py` is the browser-side counterpart: headless Edge with `extension/dist` loaded, driven over the DevTools protocol, dumps the rendered panel on a live page (Chrome 137+ ignores `--load-extension` on branded builds, which is why it is Edge).
+
 ## 9. Open owner decisions
 
 | # | Decision | Options / notes |

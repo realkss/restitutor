@@ -99,7 +99,8 @@ The domain specification is the [unit-systems census](docs/unit-systems-census.m
 - `src/tables.generated.ts` — generated from `docs/data/*.json` by `npm run gen:tables`; never edited by hand.
 - `src/*.test.ts` — the suite (`npm test`), including the mutation-testing survivors pinned as tests.
 - `app/` — the stage-1 paste box over the engine. `app/fixtures/stage2.html` exercises the extension's content script in a plain tab.
-- `extension/` — the stage-2 browser extension (Manifest V3): a content script that finds math whose TeX the page carries and translates it on click in an in-page panel, with the extraction provenance shown.
+- `extension/` — the stage-2 browser extension (Manifest V3): a content script that finds math whose TeX the page carries and translates it on click in an in-page panel, with the extraction provenance shown. `extension/src/page.ts` reads the page — spans, the miner's surface, the page's readings — against the standard DOM only, so the same code runs in the browser and in node.
+- `test/fixtures/wikipedia/` — two Wikipedia articles as served (CC BY-SA, see the README there). `extension/src/page.real.test.ts` runs the whole page reading over them in node and pins what the browser shows on those pages; `scripts/verify-live.py` does the same inside headless Edge on a live page, with the panel rendered.
 - `docs/` — the census, the product design, the store listing, the privacy policy; `docs/data/` the evidence base.
 - `scripts/` — the builds, the table generator, the store packager, and `check-site-sync.mjs` (`npm run sync-check`), which verifies the site's vendored engine is identical to `src/` up to line endings and BOM. This repository is the source of record.
 

@@ -16,6 +16,7 @@
   "devDependencies": {
     "esbuild": "^0.28.2",
     "katex": "0.16.47",
+    "linkedom": "^0.18.13",
     "tsx": "^4.19.0"
   }
 }
