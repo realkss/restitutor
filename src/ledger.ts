@@ -40,10 +40,15 @@ const STRUCTURAL: [RegExp, OutcomeClass][] = [
   [/name of a mathematical object|a set or an algebra|relation between sets or maps/, "refused"],
   [/reassembly fault/, "reassembly"],
   [/KaTeX could not parse|unbalanced delimiters/, "parse"],
+  // A trailing "d" the engine reads as a derivative, and a bar inside
+  // parentheses it reads as a relation (p(d | H)), are the reader's, not
+  // the carrier's; they are tried before the fragment wordings they share.
+  [/reads as a derivative|relation nested inside a group/, "unsupported"],
   // The carrier was not one equation: an alignment block, a list of
-  // statements, a row cut at its relation, a trailing operator, nothing,
-  // a relation inside a group.
-  [/lists or multiple statements|a row that begins at|a trailing .* with nothing after it|an empty expression|relation nested inside a group/, "fragment"],
+  // statements, a row cut at its relation, a trailing operator, nothing.
+  // After the extractor rejoins equation-group rows, what remains here is
+  // mostly the engine reading an argument comma as a list separator.
+  [/lists or multiple statements|a row that begins at|a trailing .* with nothing after it|an empty expression/, "fragment"],
   [/a proportionality/, "proportional"],
   // The equation IS a units declaration (c = G = 1): nothing to restore.
   [/a relation between the constants themselves/, "declaration"],

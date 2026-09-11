@@ -10,7 +10,7 @@
 // The DOM types here are structural minimums so the adapters are unit-testable
 // under node:test without a DOM implementation; real Elements satisfy them.
 import { stripTrailingPunctuation } from "../../src/unitsEngine"
-import { overToFrac } from "../../src/tex"
+import { foldRows, overToFrac, splitStatements } from "../../src/tex"
 
 export type TexVia = "alttext" | "mml-annotation" | "mathjax2-script"
 
@@ -35,6 +35,14 @@ export type MathCandidate = {
   el: MinimalEl
   /** The visible element to decorate and listen on (differs for KaTeX/MathJax). */
   displayEl: MinimalEl
+  /**
+   * The statements the carrier holds — one, or the rows of an aligned
+   * environment, or the pieces of a line joined by "and" (src/tex.ts
+   * splitStatements). Detection, definitions and translation run over these.
+   */
+  statements: string[]
+  /** For a statement folded from an equation group's rows: every row it spans, all to be decorated. */
+  rows?: MinimalEl[]
 }
 
 /**
@@ -106,13 +114,49 @@ export function texFromMathEl(el: MinimalEl): { tex: string; via: TexVia } | nul
 export function scanForMath(root: MinimalRoot): MathCandidate[] {
   const out: MathCandidate[] = []
   const seen = new Set<MinimalEl>()
-  const push = (c: MathCandidate) => {
+  const push = (c: Omit<MathCandidate, "statements">) => {
     if (seen.has(c.displayEl)) return
     seen.add(c.displayEl)
-    out.push(c)
+    out.push({ ...c, statements: splitStatements(c.tex) })
   }
 
+  // LaTeXML (ar5iv, arXiv HTML) renders an eqnarray or align as a table
+  // whose CELLS are separate math elements — "s² = …" | "=" | "…" on one
+  // row, "=" | "…" on the next — so read one cell at a time the engine sees
+  // only fragments. The cells of a row are rejoined and the rows of a group
+  // folded into statements (src/tex.ts foldRows); each statement is one
+  // candidate, decorated on every row it spans.
+  type Cell = { el: MinimalEl; tex: string; via: TexVia }
+  const groups = new Map<MinimalEl, Map<MinimalEl, Cell[]>>()
+  const groupOf = (el: MinimalEl) => el.closest("table.ltx_equationgroup")
   for (const el of root.querySelectorAll("math")) {
+    const group = groupOf(el)
+    if (!group) continue
+    const row = el.closest("tr")
+    if (!row) continue
+    const got = texFromMathEl(el)
+    if (!got) continue
+    if (!groups.has(group)) groups.set(group, new Map())
+    const rows = groups.get(group)!
+    if (!rows.has(row)) rows.set(row, [])
+    rows.get(row)!.push({ el, ...got })
+  }
+  const emitted = new Set<MinimalEl>()
+
+  for (const el of root.querySelectorAll("math")) {
+    const group = groupOf(el)
+    if (group) {
+      if (emitted.has(group)) continue
+      emitted.add(group)
+      const rows = [...groups.get(group)!.entries()]
+      const texts = rows.map(([, cells]) => cells.map((c) => c.tex).filter((t) => t.trim()).join(" "))
+      for (const s of foldRows(texts)) {
+        const spanned = s.rows.map((i) => rows[i][0])
+        const first = rows[s.rows[0]][1][0]
+        push({ tex: s.tex, via: first.via, display: true, el: first.el, displayEl: spanned[0], rows: spanned })
+      }
+      continue
+    }
     const got = texFromMathEl(el)
     if (!got) continue
     // KaTeX nests its MathML inside the rendered span; Wikipedia hides the

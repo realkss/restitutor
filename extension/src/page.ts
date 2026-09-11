@@ -87,9 +87,12 @@ export function documentSpans(doc: Document, pool: MathCandidate[]): { spans: Sp
   const spanIdOf = new Map<MathCandidate, string>()
   let sections = latexmlSections(doc)
   if (sections.length === 0) sections = wikipediaSections(doc)
+  // A span's equations are the STATEMENTS its carriers hold: the rows of an
+  // equation group, the pieces of a line joined by "and".
+  const statements = (cs: MathCandidate[]) => cs.flatMap((c) => c.statements)
   if (sections.length === 0) {
     for (const c of pool) spanIdOf.set(c, "page")
-    return { spans: [{ id: "page", label: "Page", text: proseSurface(doc), equations: pool.map((c) => c.tex) }], spanIdOf }
+    return { spans: [{ id: "page", label: "Page", text: proseSurface(doc), equations: statements(pool) }], spanIdOf }
   }
   const spans: Span[] = []
   const claimed = new Set<MathCandidate>()
@@ -100,7 +103,7 @@ export function documentSpans(doc: Document, pool: MathCandidate[]): { spans: Sp
       if (!claimed.has(c) && sec.nodes.some((n) => n.contains(el))) {
         claimed.add(c)
         spanIdOf.set(c, "s" + i)
-        eqs.push(c.tex)
+        eqs.push(...c.statements)
       }
     }
     spans.push({ id: "s" + i, label: sec.label, text: sec.text.slice(0, 120000), equations: eqs })
@@ -108,7 +111,7 @@ export function documentSpans(doc: Document, pool: MathCandidate[]): { spans: Sp
   const rest = pool.filter((c) => !claimed.has(c))
   for (const c of rest) spanIdOf.set(c, "front")
   const front = doc.querySelector(".ltx_abstract")?.textContent ?? ""
-  if (front || rest.length) spans.unshift({ id: "front", label: "Front matter", text: front, equations: rest.map((c) => c.tex) })
+  if (front || rest.length) spans.unshift({ id: "front", label: "Front matter", text: front, equations: statements(rest) })
   return { spans, spanIdOf }
 }
 
@@ -192,7 +195,7 @@ export function pageReadings(
   const mined = mineDeclarations(miningSurface(doc))
   const symbols = mined.symbols.slice(0, 12)
   const fromEquations = definitionsFromEquations(
-    candidates.map((c) => c.tex).slice(0, 3000),
+    candidates.flatMap((c) => c.statements).slice(0, 3000),
     registry,
     katex,
   )

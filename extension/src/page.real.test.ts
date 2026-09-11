@@ -52,10 +52,11 @@ describe("the English article on the field equations, as served", () => {
     assert.strictEqual(page.spans[0].label, "Lead")
     assert.ok(page.spans.some((s) => s.label === "Mathematical form"))
     assert.strictEqual(page.spans.length, 13)
-    assert.strictEqual(
-      page.spans.reduce((n, s) => n + (s.equations?.length ?? 0), 0),
-      page.pool.length,
-    )
+    // Spans hold STATEMENTS: four of the pooled carriers are aligned blocks
+    // whose rows count one each.
+    const statements = page.pool.reduce((n, c) => n + c.statements.length, 0)
+    assert.strictEqual(page.spans.reduce((n, s) => n + (s.equations?.length ?? 0), 0), statements)
+    assert.ok(statements > page.pool.length)
     for (const c of page.pool) assert.ok(page.spanIdOf.get(c)?.startsWith("s"), "pooled equation without a span")
   })
   test("the page declares its symbols; a caveated reading stays off the registry, the definition of κ gets on", () => {

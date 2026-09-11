@@ -127,6 +127,41 @@ describe("texFromMathEl", () => {
 })
 
 describe("scanForMath", () => {
+  test("LaTeXML equation-group cells are rejoined by row and the rows folded into statements, each decorated on its rows", () => {
+    // eqnarray on ar5iv: row 1 = "s^2 = a" | "=" | "b"; row 2 = "=" | "c"; row 3 = "d =" | "e +" then row 4 = "f".
+    const table = new Stub({ tagName: "table", attrs: { class: "ltx_equationgroup ltx_eqn_eqnarray ltx_eqn_table" } })
+    const rows = [1, 2, 3, 4].map(() => new Stub({ tagName: "tr", attrs: { class: "ltx_eqn_row" } }))
+    const cell = (row: Stub, alttext: string) =>
+      new Stub({ attrs: { alttext, display: "inline" }, closestMap: { "table.ltx_equationgroup": table, tr: row } })
+    const cells = [
+      cell(rows[0], "\\displaystyle s^{2}=a"),
+      cell(rows[0], "\\displaystyle="),
+      cell(rows[0], "\\displaystyle b\\ ,"),
+      cell(rows[1], "\\displaystyle="),
+      cell(rows[1], "\\displaystyle c"),
+      cell(rows[2], "\\displaystyle d="),
+      cell(rows[2], "\\displaystyle e+"),
+      cell(rows[3], "\\displaystyle f\\ ."),
+    ]
+    const lone = new Stub({ attrs: { alttext: EINSTEIN, display: "block" } })
+    const found = scanForMath(root({ math: [...cells, lone] }))
+    assert.deepStrictEqual(
+      found.map((c) => c.tex),
+      ["s^{2}=a = b", "s^{2} = c", "d= e+ f", EINSTEIN],
+    )
+    assert.strictEqual(found[0].displayEl, rows[0])
+    assert.deepStrictEqual(found[1].rows, [rows[1]])
+    assert.deepStrictEqual(found[2].rows, [rows[2], rows[3]])
+    assert.ok(found.slice(0, 3).every((c) => c.display && c.via === "alttext"))
+    assert.deepStrictEqual(found[3].statements, [EINSTEIN])
+    assert.strictEqual(found[3].rows, undefined)
+  })
+  test("a carrier holding several statements reports them", () => {
+    const el = new Stub({ attrs: { alttext: "D=26\\ \\ \\ {\\rm and}\\ \\ \\ a=1", display: "block" } })
+    const [c] = scanForMath(root({ math: [el] }))
+    assert.deepStrictEqual(c.statements, ["D=26", "a=1"])
+    assert.strictEqual(c.tex, "D=26\\ \\ \\ {\\rm and}\\ \\ \\ a=1")
+  })
   test("collects all three flavors with the right display targets", () => {
     const ar5iv = new Stub({ attrs: { alttext: EINSTEIN, display: "block" } })
     const katexWrapper = new Stub({ tagName: "span" })

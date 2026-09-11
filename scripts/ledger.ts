@@ -79,10 +79,13 @@ for (const dir of dirs) {
     let registry = readings.symbols.length ? registryWithDeclarations(GR, readings.symbols) : GR
     if (readings.definitions.length || readings.symbols.some((s) => s.expr)) registry = registryWithDefinitions(registry, readings, kx)
     const ledger = emptyLedger()
-    for (const c of pool) {
+    // Statements, not carriers: an equation group's rows and a line joined
+    // by "and" each count once (extension/src/extract.ts, src/tex.ts).
+    const statements = pool.flatMap((c) => c.statements)
+    for (const tex of statements) {
       let outcome
       try {
-        outcome = classifyOutcome(refuseNonEquation(c.tex) ?? translateTex(c.tex, kx, registry, SI))
+        outcome = classifyOutcome(refuseNonEquation(tex) ?? translateTex(tex, kx, registry, SI))
       } catch (e) {
         outcome = { class: "other" as OutcomeClass, reason: "engine threw: " + String(e).slice(0, 80), unknown: [] }
       }
@@ -95,7 +98,7 @@ for (const dir of dirs) {
     rows.push({
       file: f,
       carriers: candidates.length,
-      pooled: pool.length,
+      pooled: statements.length,
       spans: spans.length,
       verdict,
       ledger,

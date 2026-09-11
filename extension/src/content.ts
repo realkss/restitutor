@@ -42,6 +42,7 @@ let provenanceEl: HTMLElement
 let systemSel: HTMLSelectElement
 let geomBox: HTMLInputElement
 let currentTex = ""
+let currentStatements: string[] = []
 let pageDetection: DetectionReport | null = null
 let pageDocument: DocumentReport | null = null
 let pageSymbols: MinedSymbol[] = []
@@ -450,9 +451,28 @@ function runTranslate(): void {
     if (pageDefinitions.length || pageSymbols.some((s) => s.expr))
       registry = registryWithDefinitions(registry, { symbols: pageSymbols, definitions: pageDefinitions }, katex)
     // A named mathematical object (SL(2,R), a set, a map) is refused before
-    // the engine can read it as a product of quantities.
-    const result = refuseNonEquation(currentTex) ?? translateTex(currentTex, katex, registry, spec)
-    renderTranslation(resultsEl, result, spec, currentTex, katex)
+    // the engine can read it as a product of quantities. A carrier holding
+    // several statements (an equation group's rows, a line joined by "and")
+    // gets one result per statement.
+    if (currentStatements.length <= 1) {
+      const result = refuseNonEquation(currentTex) ?? translateTex(currentTex, katex, registry, spec)
+      renderTranslation(resultsEl, result, spec, currentTex, katex)
+    } else {
+      resultsEl.textContent = ""
+      currentStatements.forEach((tex, i) => {
+        const part = document.createElement("div")
+        part.className = "rst-statement"
+        const label = document.createElement("p")
+        label.className = "unitline"
+        label.textContent = `Statement ${i + 1} of ${currentStatements.length}`
+        part.appendChild(label)
+        const box = document.createElement("div")
+        part.appendChild(box)
+        const result = refuseNonEquation(tex) ?? translateTex(tex, katex, registry, spec)
+        renderTranslation(box, result, spec, tex, katex)
+        resultsEl.appendChild(part)
+      })
+    }
   } catch (e) {
     resultsEl.textContent = ""
     const card = document.createElement("div")
@@ -478,6 +498,7 @@ function openPanel(c: MathCandidate): void {
   // (SPA re-renders, cleanup scripts) — a disconnected panel means rebuild.
   if (!panel || !panel.isConnected) buildPanel()
   currentTex = c.tex
+  currentStatements = c.statements
   provenanceEl.textContent = `TeX via ${VIA_LABEL[c.via]} · profile: ${profile.id}`
   seedTarget(c)
   runTranslate()
@@ -494,17 +515,23 @@ function decorate(candidates: MathCandidate[]): number {
     decorated.add(target)
     pool.push(c)
     added++
-    target.classList.add("rst-math")
-    // title on a MathML element shows nothing in Chrome; hang the tooltip on
-    // the nearest HTML ancestor (ar5iv: td.ltx_eqn_cell) in that case.
-    const tipHost =
-      target.tagName.toLowerCase() === "math" ? (target.parentElement ?? target) : target
-    if (!tipHost.hasAttribute("title")) tipHost.setAttribute("title", "restitutor: click to translate")
-    target.addEventListener("click", (ev) => {
-      ev.preventDefault()
-      ev.stopPropagation()
-      openPanel(c)
-    })
+    // A statement folded from an equation group's rows is decorated on every
+    // row it spans; a click on any of them opens the same statement.
+    const targets = (c.rows ?? [c.displayEl]) as unknown as HTMLElement[]
+    for (const t of targets) {
+      if (!(t instanceof Element)) continue
+      decorated.add(t)
+      t.classList.add("rst-math")
+      // title on a MathML element shows nothing in Chrome; hang the tooltip on
+      // the nearest HTML ancestor (ar5iv: td.ltx_eqn_cell) in that case.
+      const tipHost = t.tagName.toLowerCase() === "math" ? (t.parentElement ?? t) : t
+      if (!tipHost.hasAttribute("title")) tipHost.setAttribute("title", "restitutor: click to translate")
+      t.addEventListener("click", (ev) => {
+        ev.preventDefault()
+        ev.stopPropagation()
+        openPanel(c)
+      })
+    }
   }
   return added
 }

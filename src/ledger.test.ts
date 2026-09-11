@@ -28,7 +28,8 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("E \\propto M").class, "proportional")
     assert.strictEqual(outcome("\\int \\rho \\, dV = M").class, "unsupported")
     assert.strictEqual(outcome("c = G = 1").class, "declaration")
-    assert.strictEqual(outcome("(r_s = 2M)").class, "fragment")
+    assert.strictEqual(outcome("(r_s = 2M)").class, "unsupported") // a bar or relation inside a group is the reader's
+    assert.strictEqual(outcome("r_s = 2M, \\quad T_H = 1").class, "fragment")
     assert.strictEqual(outcome("\\sin(x").class, "parse")
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
