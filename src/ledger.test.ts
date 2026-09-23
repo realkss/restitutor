@@ -30,6 +30,9 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("c = G = 1").class, "declaration")
     assert.strictEqual(outcome("(r_s = 2M)").class, "unsupported") // a bar or relation inside a group is the reader's
     assert.strictEqual(outcome("r_s = 2M, \\quad T_H = 1").class, "fragment")
+    // Two statements set side by side with only spacing between them.
+    assert.strictEqual(outcome("t = 0 \\qquad r = 2M").class, "fragment")
+    assert.strictEqual(outcome("r = 2M \\qquad (1)").class, "fragment")
     assert.strictEqual(outcome("\\sin(x").class, "parse")
   })
   test("nothing the engine says on these pages lands outside the classes", () => {

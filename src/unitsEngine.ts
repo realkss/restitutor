@@ -952,7 +952,7 @@ function emitSum(
     .join("")
 }
 
-function parseSum(nodes: any[], ctx: Ctx, mode: SumMode): SumInfo {
+function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing | null = null): SumInfo {
   const grouped = groupDelims(nodes)
   const termNodeLists: any[][] = []
   const ops: string[] = []
@@ -987,7 +987,7 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode): SumInfo {
   termNodeLists.push(current)
   signs.push(pendingSign)
 
-  const terms = termNodeLists.map((list, idx) => analyzeTerm(list, signs[idx], ctx))
+  const terms = termNodeLists.map((list, idx) => analyzeTerm(list, signs[idx], ctx, spacing))
 
   const multiTerm = terms.length > 1
   let insertions: ({ a: number; b: number } | null)[] = terms.map(() => null)
@@ -1004,11 +1004,111 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode): SumInfo {
   return { terms, ops, dim: target, emit, multiTerm }
 }
 
-function analyzeTerm(nodes: any[], sign: string, ctx: Ctx): TermInfo {
+/**
+ * Explicit spacing between two factors of a term — the two-statements trap.
+ *
+ * Authors set two statements side by side with nothing but space between them:
+ * `t = 0 \qquad r = 2M` means "t = 0, and r = 2M". The row splitter sees one
+ * chain with two relations, and the space lands inside the middle side as glue
+ * between the factors 0 and r, so the chain reads t = 0·r = 2M and gets
+ * restored as t = \frac{0r}{c} = \frac{2GM}{c^{3}}. Nothing in the parse tree
+ * says which reading the author meant; a run of `\;`, `~` or `\ ` does the same
+ * job as `\qquad` for some authors, and a thin space between factors is
+ * ordinary product typography for others. The engine therefore never picks:
+ * where the two-statements reading is live, spacing between factors declines.
+ *
+ * It is live in two cases, and the side's terms are told which one holds:
+ * - "any": the row holds more than one relation, so a second statement has
+ *   somewhere to stand. Any positive space between two factors declines,
+ *   `\,` included — `E = m\,c^2 = M` is the price of refusing to guess.
+ * - "wide": any other row. A run of spacing totalling at least a quad is
+ *   never product typography, so it declines too (`r = 2M \qquad (1)`, an
+ *   equation label, would otherwise multiply the right side by (1)).
+ * Only a row's own sides are guarded. Spacing inside a fraction, a root or a
+ * bracket sits between delimiters that already make it one expression.
+ * Spacing between a function head and its argument (`\sin\,\theta`) is inside
+ * one factor, and zero-width break hints and negative kerns separate nothing.
+ */
+type FactorSpacing = "wide" | "any"
+
+const SPACING_REASON = "explicit spacing between two factors — two statements or one product? (select a single equation)"
+
+/** Width in em at the text size, per KaTeX's unit table (1em = 10pt, 1ex = 0.431em, 1mu = 1/18em). */
+const EM_PER_UNIT: Record<string, number> = {
+  em: 1,
+  ex: 0.431,
+  mu: 1 / 18,
+  pt: 0.1,
+  px: 0.1 * (803 / 800),
+  bp: 0.1 * (803 / 800),
+  pc: 0.1 * 12,
+  dd: 0.1 * (1238 / 1157),
+  cc: 0.1 * (14856 / 1157),
+  nd: 0.1 * (685 / 642),
+  nc: 0.1 * (1370 / 107),
+  sp: 0.1 / 65536,
+  mm: 0.1 * (7227 / 2540),
+  cm: 0.1 * (7227 / 254),
+  in: 0.1 * 72.27,
+}
+
+/**
+ * The width of one spacing node in em. An interword space (`\ `, `~`,
+ * `\space`) counts as a third of an em, TeX's own interword width; a spacing
+ * node whose width cannot be read counts as wide, so it can only decline.
+ */
+function skipEm(n: any): number {
+  if (n.type === "kern") {
+    const per = EM_PER_UNIT[n.dimension?.unit]
+    const num = n.dimension?.number
+    return per == null || typeof num !== "number" ? Number.POSITIVE_INFINITY : num * per
+  }
+  if (n.type === "spacing") {
+    if (n.text === "\\nobreak" || n.text === "\\allowbreak") return 0
+    return 1 / 3
+  }
+  return Number.POSITIVE_INFINITY
+}
+
+/** Whether a term's node list carries guarded spacing between two of its factors. */
+function spacedBetweenFactors(nodes: any[], spacing: FactorSpacing): boolean {
+  let seenFactor = false
+  let afterHead = false
+  let run = 0
+  let spaced = false
+  let wide = false
+  for (const raw of nodes) {
+    const n = unwrap(raw)
+    if (n == null) continue
+    if (SKIP_TYPES.has(n.type)) {
+      if (!seenFactor || afterHead) continue
+      const em = skipEm(n)
+      run += em
+      if (em > 0) spaced = true
+      if (run >= 1 - 1e-9) wide = true
+      continue
+    }
+    run = 0
+    afterHead = false
+    const glue =
+      (n.type === "atom" && n.family === "bin" && (n.text === "\\cdot" || n.text === "\\times")) ||
+      (n.type === "textord" && n.text === "/")
+    if (glue) continue
+    if (wide || (spacing === "any" && spaced)) return true
+    seenFactor = true
+    spaced = false
+    wide = false
+    afterHead = isFuncHead(n)
+  }
+  return false
+}
+
+function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacing | null): TermInfo {
   const factors: Factor[] = []
   let slashIdx = -1
   let i = 0
   const push = (f: Factor) => factors.push(f)
+  const spacedFactors = spacing != null && spacedBetweenFactors(nodes, spacing)
 
   while (i < nodes.length) {
     const raw = nodes[i]
@@ -1093,6 +1193,10 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx): TermInfo {
     push(analyzeFactor(raw, ctx))
     i += 1
   }
+
+  // Thrown only once every factor has been read, so a truer reason (\text
+  // content, an unsupported construct) is the one the reader sees.
+  if (spacedFactors) throw new Unsupported(SPACING_REASON)
 
   const numDim = factors.slice(0, slashIdx < 0 ? factors.length : slashIdx)
   const denDim = slashIdx < 0 ? [] : factors.slice(slashIdx + 1)
@@ -1879,15 +1983,16 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
 
   if (rels.length === 0) {
     // No relation: analyze for the legend, but there is nothing to anchor.
-    parseSum(grouped, ctx, { anchor: "none" })
+    parseSum(grouped, ctx, { anchor: "none" }, "wide")
     const src = srcOfNodes(nodes, ctx)
     return { emitSides: () => [src], rels: [], tabAtRel: [], target: ZERO, hadRel: false }
   }
 
+  const spacing: FactorSpacing = rels.length > 1 ? "any" : "wide"
   const sums = sides.map((side) =>
     side.length === 0 || side.every((n) => isEmptyOrdgroup(n) || SKIP_TYPES.has(n?.type))
       ? null
-      : parseSum(side, ctx, { anchor: "none" }),
+      : parseSum(side, ctx, { anchor: "none" }, spacing),
   )
 
   // Anchor on the first side that has a non-zero term (literal zeros carry any

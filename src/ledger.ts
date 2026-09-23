@@ -47,8 +47,10 @@ const STRUCTURAL: [RegExp, OutcomeClass][] = [
   // The carrier was not one equation: an alignment block, a list of
   // statements, a row cut at its relation, a trailing operator, nothing.
   // After the extractor rejoins equation-group rows, what remains here is
-  // mostly the engine reading an argument comma as a list separator.
-  [/lists or multiple statements|a row that begins at|a trailing .* with nothing after it|an empty expression/, "fragment"],
+  // mostly the engine reading an argument comma as a list separator. Spacing
+  // between two factors is the same question asked of a chain: two
+  // statements set side by side, or one product.
+  [/lists or multiple statements|a row that begins at|a trailing .* with nothing after it|an empty expression|explicit spacing between two factors/, "fragment"],
   [/a proportionality/, "proportional"],
   // The equation IS a units declaration (c = G = 1): nothing to restore.
   [/a relation between the constants themselves/, "declaration"],

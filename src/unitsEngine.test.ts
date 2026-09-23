@@ -1189,3 +1189,73 @@ describe("pre-parse normalization (2026-08-29 review fixes)", () => {
     assert.strictEqual(restored("E = m c^{2}\\,."), restored("E = m c^{2}"))
   })
 })
+
+describe("explicit spacing between two factors (the two-statements trap)", () => {
+  const SPACING = "explicit spacing between two factors — two statements or one product? (select a single equation)"
+  const declinesOnSpacing = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+    if (result.kind === "declined") assert.deepStrictEqual(result.reasons, [SPACING], tex)
+  }
+
+  test("two statements set side by side decline instead of multiplying", () => {
+    // Read as the chain t = 0·r = 2M, these shipped t = \frac{0r}{c} = \frac{2GM}{c^{3}},
+    // or declined only by accident, or (\ \ \ at GEO) the corrupt t = 0\\\r = 2M.
+    for (const tex of [
+      "t = 0 \\qquad r = 2M",
+      "t = 0 \\quad r = 2M",
+      "t = 0 \\;\\;\\; r = 2M",
+      "t = 0 ~~~~ r = 2M",
+      "t = 0 \\ \\ \\ r = 2M",
+      // The relations reviewer's counterexamples: runs narrower than a quad.
+      "t = 0 \\enspace\\enspace r = 2M",
+      "t = 0 \\hspace{0.9em} r = 2M",
+      "t = 0 \\, r = 2M",
+      "\\begin{aligned} t &= 0 \\qquad r = 2M \\end{aligned}",
+    ]) {
+      declinesOnSpacing(tex)
+      declinesOnSpacing(tex, GEO)
+    }
+  })
+
+  test("a run a quad wide between factors declines in any row", () => {
+    // An equation label, not a factor: this shipped r = \frac{2GM(1)}{c^{2}}.
+    declinesOnSpacing("r = 2M \\qquad (1)")
+    declinesOnSpacing("E = mc^2 \\qquad (1)")
+    declinesOnSpacing("r = 2M \\quad r")
+    declinesOnSpacing("r = 2M \\qquad t")
+    // The run is totalled: three interword spaces make a quad, as do 18mu and 10pt.
+    declinesOnSpacing("r = 2M ~~~ r")
+    declinesOnSpacing("r = 2M \\enspace\\enspace r")
+    declinesOnSpacing("r = 2M \\mkern18mu r")
+    declinesOnSpacing("r = 2M \\kern10pt r")
+  })
+
+  test("in a chain, even a thin space between factors declines", () => {
+    declinesOnSpacing("E = m\\,c^2 = M")
+    declinesOnSpacing("E = m \\cdot \\, c^2 = M")
+    declinesOnSpacing("ds^2 = -c^2\\,dt^2 + dx^2 = 0")
+  })
+
+  test("a truer reason read inside the term wins", () => {
+    const result = run("r = 2M \\quad \\text{for} \\quad t > 0")
+    assert.strictEqual(result.kind, "declined", JSON.stringify(result))
+    if (result.kind === "declined") assert.deepStrictEqual(result.reasons, ["\\text content inside the equation"])
+  })
+
+  test("product typography outside the guard still translates", () => {
+    // One relation, and no run as wide as a quad: ordinary product typography.
+    assert.strictEqual(restored("ds^2 = -c^2\\,dt^2 + dx^2"), "ds^2=-c^{2}dt^2+dx^2")
+    assert.strictEqual(restored("ds^2 = -c^2\\,dt^2 + dx^2", GEO), "ds^2=-dt^2+dx^2")
+    assert.strictEqual(restored("E = m\\,c^2"), "E=mc^{2}")
+    // Spacing between a function head and its argument is inside one factor.
+    assert.strictEqual(restored("x = r\\sin\\,\\theta = r\\sin\\theta"), "x=r\\sin\\theta=r\\sin\\theta")
+    // A negative kern separates nothing; a bracket already makes one expression.
+    assert.strictEqual(run("E = m\\!c^2 = M").kind, "translated")
+    assert.strictEqual(run("E = \\left(m \\, c^{2}\\right) = M").kind, "translated")
+    // Unknown symbols still decline on their own, with no spacing reason.
+    const unknown = run("\\psi_4 = \\chi \\, \\Xi^{ab} \\, T_{ab}")
+    assert.strictEqual(unknown.kind, "declined")
+    if (unknown.kind === "declined") assert.ok(!unknown.reasons.includes(SPACING), JSON.stringify(unknown))
+  })
+})
