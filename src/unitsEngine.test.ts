@@ -137,18 +137,29 @@ describe("KaTeX parse-tree shape assumptions", () => {
     return node.mathml[0]
   }
 
-  test("an op node has a name and no loc, and only a written \\limits sets alwaysHandleSupSub", () => {
+  // A rebuilt op head re-emits `\limits` or `\nolimits` exactly when the source
+  // wrote one. KaTeX marks both spellings the same way, with alwaysHandleSupSub,
+  // and only `limits` tells them apart, so the pin holds both halves: reading
+  // the flag alone as "\limits was written" would turn `\int\nolimits` into
+  // `\int\limits`.
+  test("an op node has a name and no loc, and only a written \\limits or \\nolimits sets alwaysHandleSupSub, with limits telling them apart", () => {
     const [op] = parse("\\int x")
     assert.strictEqual(op.type, "op")
     assert.strictEqual(op.name, "\\int")
     assert.strictEqual(op.loc, undefined, "op nodes grew a loc")
-    assert.notStrictEqual(op.alwaysHandleSupSub, true, "a bare \\int is marked as written \\limits")
-    const [scripted] = parse("\\int\\limits_0^1 x")
-    assert.strictEqual(scripted.type, "supsub")
-    assert.strictEqual(scripted.base.type, "op")
-    assert.strictEqual(scripted.base.loc, undefined)
-    assert.strictEqual(scripted.base.alwaysHandleSupSub, true)
-    assert.strictEqual(scripted.base.limits, true)
+    assert.notStrictEqual(op.alwaysHandleSupSub, true, "a bare \\int is marked as a written \\limits or \\nolimits")
+    const [limits] = parse("\\int\\limits_0^1 x")
+    assert.strictEqual(limits.type, "supsub")
+    assert.strictEqual(limits.base.type, "op")
+    assert.strictEqual(limits.base.loc, undefined)
+    assert.strictEqual(limits.base.alwaysHandleSupSub, true)
+    assert.strictEqual(limits.base.limits, true)
+    const [nolimits] = parse("\\int\\nolimits_0^1 x")
+    assert.strictEqual(nolimits.type, "supsub")
+    assert.strictEqual(nolimits.base.type, "op")
+    assert.strictEqual(nolimits.base.loc, undefined)
+    assert.strictEqual(nolimits.base.alwaysHandleSupSub, true, "a written \\nolimits no longer sets alwaysHandleSupSub")
+    assert.strictEqual(nolimits.base.limits, false, "a written \\nolimits no longer clears limits")
   })
 
   test("~, \\cdots and \\implies carry foreign-lexer locs", () => {
