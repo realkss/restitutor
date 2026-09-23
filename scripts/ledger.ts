@@ -41,6 +41,8 @@ type PageRow = {
 }
 
 const rows: PageRow[] = []
+const seenPages = new Map<string, Set<string>>()
+const skipped: string[] = []
 const reasonTally = new Map<string, number>()
 const tally = (reason: string) => {
   const key = reason.replace(/\(term “[^”]*”\)|“[^”]*”/g, "").replace(/\s+/g, " ").trim().slice(0, 90)
@@ -65,6 +67,22 @@ for (const dir of dirs) {
     }
     const candidates = scanForMath(doc as never)
     if (!candidates.length) continue
+    // The same paper captured twice is counted once. ar5iv and arXiv HTML
+    // render one paper with different carriers and spacing, so pages are
+    // compared by the overlap of their non-trivial equations (braces and
+    // spaces dropped): renderings of one paper share 74–100% of the smaller
+    // set, distinct pages at most 17% (the English and Arabic field-equation
+    // articles).
+    const keys = new Set(candidates.map((c) => c.tex.replace(/[\s{}]/g, "")).filter((t) => t.length >= 12))
+    const twin = [...seenPages].find(([, seen]) => {
+      const shared = [...keys].filter((k) => seen.has(k)).length
+      return shared / Math.max(1, Math.min(keys.size, seen.size)) >= 0.5
+    })
+    if (twin) {
+      skipped.push(`${f} (same equations as ${twin[0]})`)
+      continue
+    }
+    seenPages.set(f, keys)
     const pool = equationPool(candidates)
     const { spans } = documentSpans(doc, pool)
     let verdict = "?"
@@ -126,6 +144,7 @@ const pooledTotal = rows.reduce((n, r) => n + r.pooled, 0)
 
 const lines: string[] = []
 lines.push(`# Decline ledger`, ``, `${rows.length} pages, ${pooledTotal} pooled equations, translated to SI under each page's own registry.`, ``)
+if (skipped.length) lines.push(`Skipped as duplicates: ${skipped.map((s) => s.replace(/\\/g, "/")).join("; ")}.`, ``)
 lines.push(`| Page | Carriers | Pooled | Spans | Verdict | Symbols | Definitions | ${OUTCOME_ORDER.join(" | ")} |`)
 lines.push(`| --- | ---: | ---: | ---: | --- | ---: | ---: | ${OUTCOME_ORDER.map(() => "---:").join(" | ")} |`)
 for (const r of rows)

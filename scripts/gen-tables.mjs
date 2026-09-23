@@ -72,6 +72,8 @@ export type CodeRule = {
   family: string
   implies: { keys: string[] } | { none: string }
   nativeUnits: string
+  /** The panel's short label for the units, where the first clause of nativeUnits is not one. */
+  unitsLabel?: string
   strength: string
   /** Case-insensitive; a co-occurring token that confirms the reading. */
   cue: string | null

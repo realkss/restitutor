@@ -1,0 +1,436 @@
+{
+  "about": "Ground truth for convention detection over the 16 ar5iv papers of the decline-ledger corpus (docs/decline-ledger.md), established 2026-09-23 by one reader per paper (workflow wf_d1a4b365-a71) and adjudicated by the maintainer. truthKeys: the census conventions consistent with how each paper actually writes its equations (empty where no census convention applies). No quotations from the papers are kept here. Rescore with `npx tsx scripts/recall.ts <corpus dir>`.",
+  "papers": [
+    {
+      "id": "0908.0333",
+      "arxiv": "0908.0333",
+      "paper": "Tong (2009), \"Lectures on String Theory\"",
+      "scope": "physical-constants-convention",
+      "truthKeys": [
+        "hep-hl-kb",
+        "kolb-turner",
+        "hep-hl"
+      ],
+      "declaresInText": [
+        {
+          "section": "0.1 Quantum Gravity",
+          "censusKeys": [
+            "hep-hl",
+            "hep-hl-kb",
+            "gaussian-natural",
+            "kolb-turner",
+            "reduced-planck",
+            "planck-gaussian",
+            "planck-hl",
+            "sixteen-pi-g",
+            "string-alpha-prime",
+            "string-ls-2pi",
+            "lattice",
+            "dirac-atomic"
+          ]
+        },
+        {
+          "section": "4 Introducing Conformal Field Theory",
+          "censusKeys": [
+            "hep-hl",
+            "hep-hl-kb",
+            "gaussian-natural",
+            "kolb-turner",
+            "reduced-planck",
+            "planck-gaussian",
+            "planck-hl",
+            "sixteen-pi-g",
+            "string-alpha-prime",
+            "string-ls-2pi",
+            "lattice",
+            "dirac-atomic"
+          ]
+        }
+      ],
+      "ruling": "Declares ħ = c = 1 for the whole notes; G (through M_pl, κ) and α′ stay explicit. The central charge c = 1 and the Veneziano a + b + c = 1 are not declarations.",
+      "agentVerdictBefore": "missed-declaration"
+    },
+    {
+      "id": "1004.0279",
+      "arxiv": "1004.0279",
+      "paper": "Numata, Howes, Tatsuno, Barnes, Dorland (2010), \"AstroGK: Astrophysical Gyrokinetics Code\"",
+      "scope": "mixed",
+      "truthKeys": [
+        "kb-only"
+      ],
+      "declaresInText": [
+        {
+          "section": "Appendix A (Table 1 caption: Symbols in the gyrokinetic-Maxwell equations)",
+          "censusKeys": [
+            "kb-only"
+          ]
+        },
+        {
+          "section": "Appendix A (Table 1, last row)",
+          "censusKeys": [
+            "si",
+            "kb-only"
+          ]
+        }
+      ],
+      "ruling": "Normalized gyrokinetic units, with k_B = 1 stated in the caption of the symbol table; the rest of the normalization is per problem, outside the census rows.",
+      "agentVerdictBefore": "missed-declaration"
+    },
+    {
+      "id": "1008.4884",
+      "arxiv": "1008.4884",
+      "paper": "Grzadkowski, Iskrzynski, Misiak, Rosiek (2010), \"Dimension-Six Terms in the Standard Model Lagrangian\"",
+      "scope": "physical-constants-convention",
+      "truthKeys": [
+        "hep-hl",
+        "hep-hl-kb"
+      ],
+      "declaresInText": [],
+      "ruling": "Standard Model operator basis in implicit natural units; nothing declared, so silence is correct.",
+      "agentVerdictBefore": "partly-correct"
+    },
+    {
+      "id": "1311.1526",
+      "arxiv": "1311.1526",
+      "paper": "Schumacher et al., \"Resolving the fine-scale structure in turbulent Rayleigh-Bénard convection\"",
+      "scope": "nondimensionalized",
+      "truthKeys": [
+        "ns-inertial"
+      ],
+      "declaresInText": [
+        {
+          "section": "2.1 Boussinesq equations and further non-dimensional relations",
+          "censusKeys": [
+            "ns-inertial"
+          ]
+        },
+        {
+          "section": "2.1",
+          "censusKeys": [
+            "ns-inertial"
+          ]
+        }
+      ],
+      "ruling": "Rayleigh–Bénard convection nondimensionalized by the cell height, the free-fall velocity and the temperature difference: per-problem scales, silence is correct.",
+      "agentVerdictBefore": "partly-correct"
+    },
+    {
+      "id": "1508.04989",
+      "arxiv": "1508.04989",
+      "paper": "Herr, Gorodetsky, Kippenberg, \"Dissipative Kerr solitons in optical microresonators\"",
+      "scope": "mixed",
+      "truthKeys": [
+        "si"
+      ],
+      "declaresInText": [],
+      "ruling": "Review of Kerr solitons in SI with explicit ħ, ε₀, c, plus a dimensionless normalization of the Lugiato–Lefever equation.",
+      "agentVerdictBefore": "partly-correct"
+    },
+    {
+      "id": "1706.08388",
+      "arxiv": "1706.08388",
+      "paper": "Brubaker et al. (2017), \"The HAYSTAC Axion Search Analysis Procedure\"",
+      "scope": "display-units-only",
+      "truthKeys": [
+        "si"
+      ],
+      "declaresInText": [],
+      "ruling": "HAYSTAC analysis procedure in SI with physical constants explicit; a normalized weight μ^c = 1 is not c = 1.",
+      "agentVerdictBefore": "truth-excluded"
+    },
+    {
+      "id": "1904.04923",
+      "arxiv": "1904.04923",
+      "paper": "Porth et al. (2019), \"The Event Horizon General Relativistic Magnetohydrodynamic Code Comparison Project\"",
+      "scope": "physical-constants-convention",
+      "truthKeys": [
+        "bh-scale",
+        "geometrized-hl"
+      ],
+      "declaresInText": [
+        {
+          "section": "II.1 GRMHD system of equations",
+          "censusKeys": [
+            "geometrized",
+            "geometrized-gaussian",
+            "geometrized-hl",
+            "bh-scale",
+            "nr-code",
+            "planck-gaussian",
+            "planck-hl"
+          ]
+        },
+        {
+          "section": "II.1",
+          "censusKeys": [
+            "geometrized-hl",
+            "bh-scale"
+          ]
+        },
+        {
+          "section": "II.1",
+          "censusKeys": [
+            "bh-scale"
+          ]
+        },
+        {
+          "section": "V.1 Diagnostics",
+          "censusKeys": [
+            "geometrized",
+            "geometrized-gaussian",
+            "geometrized-hl",
+            "planck-gaussian",
+            "planck-hl",
+            "bh-scale",
+            "nr-code"
+          ]
+        }
+      ],
+      "ruling": "GRMHD code comparison in G = c = 1 with the black-hole mass as unit and the magnetic field Heaviside–Lorentz normalized.",
+      "agentVerdictBefore": "missed-declaration"
+    },
+    {
+      "id": "1908.11170",
+      "arxiv": "1908.11170",
+      "paper": "LIGO Scientific and Virgo Collaborations (2019), \"A guide to LIGO-Virgo detector noise and extraction of transient gravitational-wave signals\"",
+      "scope": "not-applicable",
+      "truthKeys": [],
+      "declaresInText": [],
+      "ruling": "LIGO–Virgo data-analysis guide; a catalog waveform's provenance is not the page's convention. Nothing in scope.",
+      "agentVerdictBefore": "partly-correct"
+    },
+    {
+      "id": "2005.04477",
+      "arxiv": "2005.04477",
+      "paper": "Haugland, Ronca, Kjønstad, Rubio, Koch (2020), \"Coupled Cluster Theory for Molecular Polaritons: Changing Ground and Excited States\"",
+      "scope": "physical-constants-convention",
+      "truthKeys": [
+        "hartree"
+      ],
+      "declaresInText": [
+        {
+          "section": "Figure 9 caption",
+          "censusKeys": [
+            "hartree"
+          ]
+        },
+        {
+          "section": "IV.2 Charge transfer molecules (Figure 3 caption)",
+          "censusKeys": [
+            "hartree"
+          ]
+        },
+        {
+          "section": "IV Molecular Polaritons",
+          "censusKeys": [
+            "hartree"
+          ]
+        }
+      ],
+      "ruling": "QED coupled cluster in Hartree atomic units, stated only as 'a.u.' tags, which are also arbitrary units: silence is correct.",
+      "agentVerdictBefore": "missed-declaration"
+    },
+    {
+      "id": "2102.10399",
+      "arxiv": "2102.10399",
+      "paper": "Dias, \"Molecular Dynamics Simulations of Active Matter using LAMMPS\"",
+      "scope": "mixed",
+      "truthKeys": [
+        "lj-reduced"
+      ],
+      "declaresInText": [
+        {
+          "section": "II.5 Reduced Units",
+          "censusKeys": [
+            "lj-reduced"
+          ]
+        },
+        {
+          "section": "II.5 Reduced Units, Table 1",
+          "censusKeys": [
+            "lj-reduced"
+          ]
+        },
+        {
+          "section": "III.2 Running LAMMPS; repeated in III.3 and IV",
+          "censusKeys": [
+            "lj-reduced"
+          ]
+        },
+        {
+          "section": "III.2 Running LAMMPS",
+          "censusKeys": [
+            "lj-reduced"
+          ]
+        }
+      ],
+      "ruling": "LAMMPS tutorial in Lennard-Jones reduced units, while the Langevin formulas keep k_B T symbolic: a conflict with both sides shown is the honest report.",
+      "agentVerdictBefore": "partly-correct"
+    },
+    {
+      "id": "2301.05178",
+      "arxiv": "2301.05178",
+      "paper": "Bento, Chakraborty, Parameswaran, Zavala (2023), \"A guide to frames, 2π's, scales and corrections in string compactifications\"",
+      "scope": "physical-constants-convention",
+      "truthKeys": [
+        "hep-hl",
+        "hep-hl-kb",
+        "gaussian-natural"
+      ],
+      "declaresInText": [],
+      "ruling": "Guide to frames and 2π's in string compactifications, in implicit ħ = c = 1; nothing declared.",
+      "agentVerdictBefore": "partly-correct"
+    },
+    {
+      "id": "2409.01939",
+      "arxiv": "2409.01939",
+      "paper": "Aurrekoetxea, Clough, Lim (2024), \"Cosmology using numerical relativity\"",
+      "scope": "mixed",
+      "truthKeys": [
+        "c-only",
+        "kolb-turner",
+        "hep-hl",
+        "hep-hl-kb",
+        "gaussian-natural",
+        "geometrized",
+        "nr-code",
+        "bh-scale"
+      ],
+      "declaresInText": [
+        {
+          "section": "2.7 Units",
+          "censusKeys": [
+            "kolb-turner",
+            "hep-hl",
+            "hep-hl-kb",
+            "gaussian-natural",
+            "reduced-planck"
+          ]
+        },
+        {
+          "section": "2.7 Units",
+          "censusKeys": [
+            "geometrized",
+            "nr-code",
+            "bh-scale"
+          ]
+        },
+        {
+          "section": "2.7 Units (footnote 10)",
+          "censusKeys": [
+            "reduced-planck",
+            "classical-kappa"
+          ]
+        },
+        {
+          "section": "2.7 Units",
+          "censusKeys": [
+            "bh-scale"
+          ]
+        }
+      ],
+      "ruling": "Review mixing cosmology (ħ = c = 1, G explicit) with numerical relativity (G = c = 1) by section; the overall set follows the cosmology sections.",
+      "agentVerdictBefore": "partly-correct"
+    },
+    {
+      "id": "2409.03787",
+      "arxiv": "2409.03787",
+      "paper": "Mohr, Newell, Taylor, Tiesinga (2024), \"CODATA Recommended Values of the Fundamental Physical Constants: 2022\"",
+      "scope": "physical-constants-convention",
+      "truthKeys": [
+        "si"
+      ],
+      "declaresInText": [
+        {
+          "section": "II.4 Mass ratios from frequency measurements in HD+",
+          "censusKeys": [
+            "hartree"
+          ]
+        },
+        {
+          "section": "III Atomic hydrogen and deuterium transition energies",
+          "censusKeys": [
+            "si"
+          ]
+        }
+      ],
+      "ruling": "CODATA 2022 in SI; its 'in atomic units' describes a cited calculation and is contradicted by the ħ printed throughout.",
+      "agentVerdictBefore": "truth-excluded"
+    },
+    {
+      "id": "astro-ph_0210603",
+      "arxiv": "astro-ph/0210603",
+      "paper": "Maldacena (2002), \"Non-Gaussian features of primordial fluctuations in single field inflationary models\"",
+      "scope": "physical-constants-convention",
+      "truthKeys": [
+        "reduced-planck"
+      ],
+      "declaresInText": [
+        {
+          "section": "2. Review of the quadratic computation",
+          "censusKeys": [
+            "reduced-planck",
+            "classical-kappa"
+          ]
+        }
+      ],
+      "ruling": "Maldacena's non-Gaussianity paper: M_pl⁻² ≡ 8πG_N = 1 declared in a footnote, ħ = c = 1 implicit.",
+      "agentVerdictBefore": "missed-declaration"
+    },
+    {
+      "id": "astro-ph_9905116",
+      "arxiv": "astro-ph/9905116",
+      "paper": "Hogg (1999), \"Distance measures in cosmology\"",
+      "scope": "display-units-only",
+      "truthKeys": [
+        "si",
+        "gaussian",
+        "esu",
+        "emu",
+        "heaviside-lorentz",
+        "magnetism-emu",
+        "kb-only"
+      ],
+      "declaresInText": [],
+      "ruling": "Hogg's distance measures, with c written out; its geometric-units remark describes other cosmologists. Silence is correct.",
+      "agentVerdictBefore": "partly-correct"
+    },
+    {
+      "id": "gr-qc_9712019",
+      "arxiv": "gr-qc/9712019",
+      "paper": "Carroll (1997), \"Lecture Notes on General Relativity\"",
+      "scope": "physical-constants-convention",
+      "truthKeys": [
+        "c-only"
+      ],
+      "declaresInText": [
+        {
+          "section": "1 Special Relativity and Flat Spacetime (eq. 1.6)",
+          "censusKeys": [
+            "c-only"
+          ]
+        },
+        {
+          "section": "1 Special Relativity and Flat Spacetime",
+          "censusKeys": [
+            "c-only"
+          ]
+        },
+        {
+          "section": "4 Gravitation",
+          "censusKeys": [
+            "c-only"
+          ]
+        },
+        {
+          "section": "7 The Schwarzschild Solution and Black Holes",
+          "censusKeys": [
+            "c-only"
+          ]
+        }
+      ],
+      "ruling": "Carroll's lecture notes in c = 1 with G explicit, Gaussian electromagnetism.",
+      "agentVerdictBefore": "correct"
+    }
+  ]
+}

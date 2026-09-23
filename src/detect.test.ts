@@ -64,6 +64,85 @@ describe("channel 1 — declaration chains read their numeric prefixes", () => {
       assert.deepStrictEqual(keys(r), ["classical-kappa", "reduced-planck"], text)
     }
   })
+  test("Newton's constant with its subscript, and a chain joined by ≡, are chains too (Maldacena's footnote)", () => {
+    for (const text of [
+      "We have set $M_{pl}^{-2}\\equiv 8\\pi G_{N}=1$.",
+      "We have set M_{pl}^{-2} ≡ 8πG_N = 1.",
+      "with 8\\pi G_{\\rm N} = 1 throughout",
+    ]) {
+      const r = inferConventions({ text })
+      assert.strictEqual(r.kind, "narrowed", text)
+      assert.deepStrictEqual(keys(r), ["classical-kappa", "reduced-planck"], text)
+    }
+    has(inferConventions({ text: "We work in units \\hbar \\equiv c \\equiv 1." }), "hep-hl", "gaussian-natural")
+    // A subscript other than N is not Newton's constant in a declaration.
+    assert.strictEqual(inferConventions({ text: "with G_{ab} = 1 on the boundary" }).kind, "insufficient")
+  })
+  test("a lone c = 1 declares only when its clause talks about units (the recall pass's three false parses)", () => {
+    // Tong's central charge, the Veneziano exponents, HAYSTAC's glued MathML text of μ^c_{k'} = 1.
+    for (const text of [
+      "The central charge is $c=1$ for one boson and $c=1/2$ for one fermion.",
+      "Each of these contributes c = 1 to the total.",
+      "where a+b+c=1 .",
+      "so μk′c=1 when the axion power falls in one bin",
+    ])
+      assert.strictEqual(inferConventions({ text }).evidence.filter((e) => e.kind === "declaration" || e.kind === "mention").length, 0, text)
+    // With units in the clause it declares, as in Carroll's notes.
+    has(inferConventions({ text: "We choose units with c = 1 from here on." }), "c-only", "geometrized")
+    // A named constant alone is no homograph.
+    assert.strictEqual(inferConventions({ equations: ["\\varepsilon_0 = 1"] }).kind, "narrowed")
+  })
+  test("a display equation ends the sentence: an earlier clause's hedge does not void the adoption (Tong)", () => {
+    const text = "Newton's constant can be written through the Planck mass ¶ 8 pi G_N = hbar c / M_pl^2 ¶ In these notes we set $\\hbar=c=1$ everywhere."
+    const r = inferConventions({ text })
+    assert.ok(r.evidence.some((e) => e.kind === "declaration" && e.label === "ħ = c = 1"), JSON.stringify(r.evidence))
+    has(r, "hep-hl", "hep-hl-kb")
+  })
+  test("a comparison opening a later clause is about something else (EHT's code units)", () => {
+    const text =
+      "The codes evolve the equations in code units (the gravitational constant and the speed of light both set to unity, $G=c=1$ ) where, compared with Gaussian cgs, a further $1/\\sqrt{4\\pi}$ goes into the magnetic field."
+    const r = inferConventions({ text })
+    assert.ok(r.evidence.some((e) => e.kind === "declaration" && e.label === "G = c = 1"), JSON.stringify(r.evidence))
+    has(r, "geometrized", "bh-scale")
+  })
+  test("declarations in words: constants set to unity, Boltzmann's constant absorbed, temperature in energy units", () => {
+    const eht = inferConventions({ text: "we set the gravitational constant and the speed of light to unity" })
+    assert.ok(eht.evidence.some((e) => e.kind === "declaration" && e.label === "G = c = 1"))
+    // m, σ, ε have no census term and are passed over; k_B is kept.
+    const lammps = inferConventions({ text: "In LAMMPS the lj style sets $m$ , $\\sigma$ , $\\epsilon$ and $k_{B}$ to unity." })
+    assert.ok(lammps.evidence.some((e) => e.kind === "declaration" && e.label === "k_B = 1"), JSON.stringify(lammps.evidence))
+    has(lammps, "lj-reduced", "kb-only")
+    for (const text of [
+      "Boltzmann's constant is absorbed, so temperature carries energy units.",
+      "and Boltzmann’s constant is absorbed into T.", // typographic apostrophe, as in AstroGK's table caption
+      "Temperatures are measured in energy units.",
+    ]) {
+      const r = inferConventions({ text })
+      assert.ok(r.evidence.some((e) => e.kind === "declaration" && e.label === "k_B = 1"), text)
+    }
+    // A list that names no constant is nothing; e.g. is not the charge.
+    assert.strictEqual(inferConventions({ text: "We set the time step to one." }).kind, "insufficient")
+    assert.strictEqual(inferConventions({ text: "We set, e.g., the box size to unity." }).kind, "insufficient")
+  })
+  test("k_B folds in an implicit product (2k_BT, mk_BT), not inside a control word", () => {
+    for (const s of ["2k_{B}T\\gamma", "\\sqrt{2mk_{B}T}"]) assert.ok(/\bkB\b/.test(normalizeProse(s)), s)
+  })
+  test("a hypothetical names a system without adopting it (a LAMMPS tutorial)", () => {
+    const r = inferConventions({ text: "If we decided to adopt SI units instead, every number would be tiny." })
+    assert.ok(!r.evidence.some((e) => e.kind === "declaration"))
+    // "unless otherwise stated" still adopts.
+    assert.ok(inferConventions({ text: "We use Gaussian units unless otherwise stated." }).evidence.some((e) => e.kind === "declaration"))
+  })
+  test("a named system every reading of which absorbs a printed constant is contradicted, not a conflict (CODATA)", () => {
+    const hbar = Array.from({ length: 12 }, (_, i) => `E_{${i}} = \\hbar \\omega_{${i}} + \\frac{\\hbar^{2} k^{2}}{2 m_{e}}`)
+    const r = inferConventions({
+      text: "Three-body eigenvalues were first computed numerically in atomic units, energies expressed in hartrees.",
+      equations: hbar,
+    })
+    assert.notStrictEqual(r.kind, "conflict")
+    assert.ok(r.evidence.some((e) => e.kind === "contradicted" && /atomic/.test(e.label)), JSON.stringify(r.evidence))
+    has(r, "si")
+  })
   test("16πG = c = 1 derives sixteen-pi-g from the registry, not a hand list", () => {
     const r = inferConventions({ text: "with 16\\pi G = c = 1" })
     assert.deepStrictEqual(keys(r), ["sixteen-pi-g"])
@@ -341,14 +420,24 @@ describe("the sets contract (census §6.2) and report hygiene", () => {
     assert.deepStrictEqual(keys(r), ["geometrized"])
   })
   test("a genuine conflict is a finding with both sides attached", () => {
+    // Two declarations no convention satisfies at once ("SI units" names the
+    // E&M flavor only, so it would not do: SI electromagnetism with G = c = 1
+    // is the geometrized row).
+    const r = inferConventions({ text: "Throughout we use atomic units. In the gravitational sector we set G = c = 1." })
+    assert.strictEqual(r.kind, "conflict")
+    assert.strictEqual(r.sets.length, 0)
+    assert.strictEqual(r.evidence.filter((e) => e.kind === "declaration").length, 2)
+  })
+  test("a named system the body contradicts is recorded as such, like a chain: the equations govern (recall pass)", () => {
     const r = inferConventions({
       text: "We use geometrized units throughout.",
       equations: ["G_{ab} = \\frac{8\\pi G}{c^{4}} T_{ab}", "\\Box h = -\\frac{16 \\pi G}{c^{4}} T"],
     })
-    assert.strictEqual(r.kind, "conflict")
-    assert.strictEqual(r.sets.length, 0)
-    assert.ok(r.evidence.some((e) => e.kind === "declaration"))
-    assert.ok(r.evidence.some((e) => e.kind === "visible-constant" && e.strength === "strong" && e.excludes.length > 0))
+    assert.strictEqual(r.kind, "narrowed")
+    assert.ok(r.evidence.some((e) => e.kind === "contradicted" && e.label.startsWith("geometrized units") && !e.labelTex))
+    assert.ok(!r.evidence.some((e) => e.kind === "declaration"))
+    lacks(r, "geometrized")
+    has(r, "si")
   })
   test("Mathematical-Alphanumeric GREEK folds by its real block layout: 𝜅 is κ, 𝜋 is π, never ε or λ", () => {
     // italic κ α π γ, bold α π ω, and the ϵ variant

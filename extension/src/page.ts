@@ -4,7 +4,7 @@
 // touches only the standard DOM, so the same code runs in the extension and
 // in the node tests over captured pages (test/fixtures/), which is where the
 // browser boundary is actually verified.
-import type { Span } from "../../src/detect"
+import { BLOCK, type Span } from "../../src/detect"
 import { definitionsFromEquations, usableDefinitions } from "../../src/bridge"
 import { MinedDefinition, MinedSymbol, mineDeclarations } from "../../src/mine"
 import type { HubRegistry } from "../../src/unitsEngine"
@@ -14,6 +14,23 @@ type Katex = { __parse: (tex: string, options?: Record<string, unknown>) => unkn
 
 export type SectionSpec = { label: string; nodes: Element[]; text: string }
 
+const BLOCKS = "p, table, div, figure, ul, ol, blockquote, pre"
+
+/**
+ * A LaTeXML paragraph's text with the block mark (detect.ts BLOCK) between
+ * its parts: a display equation carries no period, so without the mark the
+ * prose before it and the prose after it read as one sentence to the
+ * detector's frame tests.
+ */
+export function blockText(el: Element): string {
+  let out = ""
+  for (const n of el.childNodes) {
+    const isBlock = n.nodeType === 1 && (n as Element).matches(BLOCKS)
+    out += isBlock ? BLOCK + (n.textContent ?? "") + BLOCK : (n.textContent ?? "")
+  }
+  return out
+}
+
 /** LaTeXML: every top-level section and appendix, with its paragraphs. */
 export function latexmlSections(doc: Document): SectionSpec[] {
   const sections = [...doc.querySelectorAll(".ltx_section, .ltx_appendix")].filter(
@@ -22,7 +39,15 @@ export function latexmlSections(doc: Document): SectionSpec[] {
   return sections.map((sec, i) => {
     const title = (sec.querySelector(".ltx_title")?.textContent ?? "").replace(/\s+/g, " ").trim()
     const paras = [...sec.querySelectorAll(".ltx_para")].filter((q) => !q.closest(".ltx_bibliography")).slice(0, 40)
-    return { label: title || "Section " + (i + 1), nodes: [sec], text: paras.map((q) => q.textContent ?? "").join("\n") }
+    // Captions declare too (census §6.5b: AstroGK absorbs Boltzmann's
+    // constant into the temperature only in the caption of its symbol
+    // table), and LaTeXML floats sit outside the paragraphs.
+    const captions = [...sec.querySelectorAll(".ltx_caption")].filter((c) => !c.closest(".ltx_para, .ltx_bibliography")).slice(0, 20)
+    return {
+      label: title || "Section " + (i + 1),
+      nodes: [sec],
+      text: [...paras.map(blockText), ...captions.map((c) => c.textContent ?? "")].join("\n" + BLOCK),
+    }
   })
 }
 
@@ -164,14 +189,14 @@ export function proseSurface(doc: Document): string {
     let n = 0
     for (const p of paras) {
       if (p.closest(".ltx_bibliography")) continue
-      parts.push(p.textContent ?? "")
+      parts.push(blockText(p))
       if (++n >= 60) break
     }
     for (const sec of doc.querySelectorAll(".ltx_section, .ltx_subsection, .ltx_appendix")) {
       const title = sec.querySelector(".ltx_title")?.textContent ?? ""
       if (/convention|notation|units/i.test(title)) parts.push(sec.textContent ?? "")
     }
-    return parts.join("\n").slice(0, 300000)
+    return parts.join("\n" + BLOCK).slice(0, 300000)
   }
   const body = doc.body as (HTMLElement & { innerText?: string }) | null
   return (body?.innerText ?? body?.textContent ?? "").slice(0, 300000)

@@ -121,6 +121,7 @@
     "family": "dft",
     "implies": { "keys": ["hartree", "hartree-gaussian"] },
     "nativeUnits": "Atomic (Hartree) units internally — the ENERGY| lines print total energies in a.u. — while input keywords carry explicit bracketed unit tags ([eV], [angstrom]) whose ABSENCE means atomic units, with the notorious exception that the plane-wave CUTOFF is read in Ry by default.",
+    "unitsLabel": "Hartree atomic units internally",
     "strength": "code identity plus a unit token",
     "cue": "\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bRy\\b|\\bGPW\\b|\\bGaussian and plane[- ]waves?\\b|\\bCUTOFF\\b|\\bbohr\\b|\\[eV\\]|\\[angstrom\\]",
     "cueRequired": true,
@@ -213,6 +214,7 @@
     "family": "quantum-chemistry",
     "implies": { "keys": ["hartree", "hartree-gaussian"] },
     "nativeUnits": "Hartree atomic units, and — unusually — geometry input in BOHR unless the angstrom directive is given, which is the usual source of a stray 1.8897 factor when an input is transcribed into a paper.",
+    "unitsLabel": "Hartree atomic units",
     "strength": "code identity plus a unit token",
     "cue": "\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bbohr\\b|\\bCCSD\\b|\\bMRCI\\b|\\bCASPT2\\b|\\bcc-pV|\\bkcal/mol\\b",
     "cueRequired": true,
@@ -398,7 +400,7 @@
     "implies": { "none": "Same GRMHD row as HARM/KORAL — census row present, registry row absent." },
     "nativeUnits": "GRMHD on adaptive meshes in G = c = M = 1 code units, magnetic field Heaviside–Lorentz-normalized (b²/2 magnetic pressure); like every GRMHD code the density scale is external to the run.",
     "strength": "code identity is decisive",
-    "cue": "\\bGRMHD\\b|\\bcode units\\b|\\bM_?unit\\b|\\baccretion\\b|\\bKerr\\b|\\bmagnetization\\b|\\badaptive mesh\\b|\\bhorizon\\b",
+    "cue": "\\bGRMHD\\b|\\bcode units\\b|\\bM_?unit\\b|\\baccretion\\b|\\bKerr\\b|\\bmagnetization\\b|\\badaptive mesh\\b|\\bhorizon\\b|\\bmagnetically arrested\\b|\\bSANE\\b",
     "cueRequired": true,
     "positives": [
       "The simulations were run with BHAC on an adaptive mesh in G = c = M = 1 code units.",
@@ -411,7 +413,7 @@
     ],
     "census": "§3 gr-cosmo-astro GRMHD code units; §2.14 C24; §6.2 Cluster A (numbers quoted, horizon/ISCO numerics, are the separators — a = 0.9375 ⇒ r_h = 1.348 M, ISCO 2.044 M).",
     "confidence": 0.75,
-    "notes": "FLAGGED: same caveat as KORAL — the G = c = M = 1 claim is safe for the code class, the specific B normalization is inferred from the GRMHD family convention rather than read from BHAC's paper."
+    "notes": "FLAGGED: same caveat as KORAL — the G = c = M = 1 claim is safe for the code class, the specific B normalization is inferred from the GRMHD family convention rather than read from BHAC's paper. RECALL PASS (2026-09-23): a cue is context, never the name itself ('accretion' inside 'Black Hole Accretion Code' no longer counts), so the GRMHD accretion-state words (magnetically arrested, SANE) join the cue."
   },
   {
     "id": "athena",
@@ -444,7 +446,7 @@
     "implies": { "keys": ["nr-code", "bh-scale"] },
     "nativeUnits": "G = c = 1 with the mass unit conventionally M_⊙ (1 code length = 1.4766 km, 1 code time = 4.9255 μs, densities in M_⊙^-2 geometric units); many runs instead normalize to the total ADM mass M, which is bh-scale rather than nr-code — the QUOTED NUMBERS, not the equations, separate the two.",
     "strength": "code identity plus a unit token",
-    "cue": "\\bG = c = 1\\b|\\bgeometri[sz]ed\\b|\\bgeometric(?:al)? units\\b|\\bcode units\\b|\\b(?:M_sun|M_\\\\?odot|solar mass(?:es)?)\\b|\\bBSSN\\b|\\bmoving[- ]puncture\\b|\\bnumerical[- ]relativity\\b|\\bCarpet\\b",
+    "cue": "\\bG = c = 1\\b|\\bgeometri[sz]ed\\b|\\bgeometric(?:al)? units\\b|\\bcode units\\b|\\b(?:M_sun|M_\\\\?odot|solar mass(?:es)?)\\b|\\bBSSN\\b|\\bmoving[- ]puncture\\b|\\bnumerical[- ]relativity\\b",
     "cueRequired": true,
     "positives": [
       "The evolutions used the Einstein Toolkit with BSSN and moving-puncture gauge conditions in units where G = c = 1.",
@@ -453,11 +455,12 @@
     ],
     "negatives": [
       "A cactus grows outside the control building at the site.",
-      "Unlike the Einstein Toolkit, our code uses a generalized harmonic formulation in code units."
+      "Unlike the Einstein Toolkit, our code uses a generalized harmonic formulation in code units.",
+      "Runs used a Cartesian mesh-refinement grid built on the Cactus/Carpet infrastructure."
     ],
     "census": "§3 gr-cosmo-astro \"Numerical-relativity code units (G = c = M_⊙ = 1)\" and its nondim twin (G; c; M — total ADM mass, or M_⊙); §6.2 Cluster A (separators are never equation form: 1.4766 km vs 4.9255 μs vs 1); §2.14 C25 (imported_artifact).",
     "confidence": 0.82,
-    "notes": "The set answer {nr-code, bh-scale} is the correct output, not a guess between them — this is Cluster A behaviour: the field equations are identical and only a quoted number or an explicit M discriminates. FLAGGED: whether a given Einstein Toolkit paper means M_⊙ or M_ADM is a per-paper fact the code identity cannot settle."
+    "notes": "The set answer {nr-code, bh-scale} is the correct output, not a guess between them — this is Cluster A behaviour: the field equations are identical and only a quoted number or an explicit M discriminates. FLAGGED: whether a given Einstein Toolkit paper means M_⊙ or M_ADM is a per-paper fact the code identity cannot settle. RECALL PASS (2026-09-23): Carpet is one of the rule's own names, so it no longer counts as its cue."
   },
   {
     "id": "spec",
@@ -467,7 +470,7 @@
     "implies": { "keys": ["bh-scale", "nr-code"] },
     "nativeUnits": "G = c = 1 with the total mass M = 1: waveform times, radii and frequencies are in units of M, and the waveform is rescaled to a physical mass only when it is injected — the archetypal imported_artifact, since a strain \"scaled to M = 74.6 M_⊙\" names a convention it never declares.",
     "strength": "code identity plus a unit token",
-    "cue": "\\bnumerical[- ]relativity\\b|\\bbinary black hole\\b|\\bwaveforms?\\b|\\bunits of M\\b|\\bADM mass\\b|\\b(?:M_sun|M_\\\\?odot|solar mass(?:es)?)\\b|\\bcode units\\b|\\bSXS\\b|\\bringdown\\b",
+    "cue": "\\bunits of (?:the )?(?:total )?(?:ADM )?mass\\b|\\bADM mass\\b|\\bcode units\\b|\\bG\\s*=\\s*c\\s*=\\s*M\\s*=\\s*1\\b|\\bG\\s*=\\s*c\\s*=\\s*1\\b|\\bgeometri[sz]ed\\b|\\bgeometric(?:al)? units\\b",
     "cueRequired": true,
     "positives": [
       "The waveforms were produced with SpEC and are given in units of the total ADM mass M.",
@@ -476,11 +479,12 @@
     ],
     "negatives": [
       "The spec sheet lists the sampling rate of the digitizer.",
-      "For comparison with SpEC waveforms we rescale to physical units."
+      "For comparison with SpEC waveforms we rescale to physical units.",
+      "The injected signal is the catalog waveform SXS:BBH:0305, scaled to a total mass of 74.6 solar masses in the detector frame."
     ],
     "census": "§2.14 C25 verbatim (\"A waveform generated in G = c = M = 1 code units and reported only as 'scaled to M = 74.6 M_⊙' carries a convention never named\"); §3 \"Black-hole scale units\" and \"Numerical-relativity code units\"; §6.2 Cluster A.",
     "confidence": 0.83,
-    "notes": "bh-scale is listed first because SpEC's mass unit is the binary's total mass, not M_⊙; nr-code is retained in the set for papers that quote everything in solar masses. Case-sensitivity is what blocks \"spec sheet\"."
+    "notes": "bh-scale is listed first because SpEC's mass unit is the binary's total mass, not M_⊙; nr-code is retained in the set for papers that quote everything in solar masses. Case-sensitivity is what blocks \"spec sheet\". RECALL PASS (2026-09-23): the cue no longer contains SXS, which is also the pattern, so cueRequired was vacuous and a citation of a catalog waveform (SXS:BBH:0305 on the LIGO-Virgo noise guide) declared the page's units; the generic GW vocabulary (waveform, binary black hole, ringdown, numerical relativity, solar masses) is gone too, since it appears on every data-analysis page. The cue now names a unit statement."
   },
   {
     "id": "gadget",
@@ -604,6 +608,7 @@
     "family": "md",
     "implies": { "keys": ["lj-reduced"] },
     "nativeUnits": "Nothing until the input is read: `units lj` gives the reduced set (σ = ε = m = k_B = 1), `real` gives kcal/mol, Å, fs, K, atm, `metal` gives eV, Å, ps, K, bar, `si` and `cgs` are literal, and `electron` is the census's refuse-class hybrid (time fs vs a.u., mass amu vs m_e, velocity bohr per 1.03275 fs — inconsistent on three axes).",
+    "unitsLabel": "set by the input; units lj is σ = ε = m = k_B = 1",
     "strength": "weak: many codes allow unit switches, e.g. LAMMPS units real/metal/si/electron/lj must be read from the input",
     "cue": "\\bunits\\s+lj\\b|\\breduced (?:Lennard-Jones|LJ) units\\b|\\bLennard-Jones (?:reduced )?units\\b|\\breduced units\\b",
     "cueRequired": true,
@@ -627,6 +632,7 @@
     "family": "md",
     "implies": { "none": "GROMACS's fixed unit set (nm, ps, u, kJ/mol, e, K, bar) is a lookup-table custom-generator row in the census's MD unit-sets entry, and its molar energy needs N_A as a generator (the \"Quantum-chemistry molar energy conventions\" row). Neither is encoded in CONVENTIONS." },
     "nativeUnits": "A fixed, non-switchable set: length nm, time ps, mass u (amu), energy kJ/mol, charge e, temperature K, pressure bar — the nm (not Å) and kJ/mol (not kcal/mol) pair is the fastest discriminator against AMBER/NAMD/CHARMM outputs.",
+    "unitsLabel": "nm, ps, amu, kJ/mol, e, K, bar",
     "strength": "code identity is decisive",
     "cue": "\\bkJ/mol\\b|\\bnm\\b|\\bps\\b|\\bnanometers?\\b|\\bbar\\b|\\bamu\\b|\\bforce field\\b|\\bMD\\b",
     "cueRequired": false,
@@ -650,6 +656,7 @@
     "family": "md",
     "implies": { "none": "Same census row as GROMACS (MD unit sets, lookup-table custom generators) plus the molar-energy N_A row; no registry key." },
     "nativeUnits": "Å, kcal/mol, amu, e, with the internal time unit 1/20.455 ps ≈ 48.888 fs = √(amu·Å²/(kcal mol⁻¹)) — so a raw internal \"time\" is neither fs nor ps, and the printed trajectory times are already converted.",
+    "unitsLabel": "Å, kcal/mol, amu, e",
     "strength": "code identity is decisive",
     "cue": "\\bkcal/mol\\b|\\bff\\d\\d\\w*\\b|\\bforce field\\b|Å|\\b[Aa]ngstroms?\\b|\\bps\\b|\\bamu\\b|\\bpmemd\\b|\\bMD\\b",
     "cueRequired": true,
@@ -673,6 +680,7 @@
     "family": "gyrokinetic",
     "implies": { "none": "The census's \"Gyrokinetic normalization, GENE / c_s family\" row (L_ref; c_ref = √(T_ref/m_ref); T_ref; m_ref; n_ref; e; B_ref — quotient + riders, v2) is not encoded in CONVENTIONS." },
     "nativeUnits": "L_ref (the major radius R₀ or the minor radius a), the reference sound speed c_ref = √(T_ref/m_ref) with NO factor of √2, plus T_ref (energy units, k_B = 1), m_ref, n_ref, B_ref; growth rates and frequencies come out in c_ref/L_ref and lengths in ρ_ref = c_ref m_ref/(eB_ref).",
+    "unitsLabel": "normalized to L_ref, c_ref, T_ref, m_ref, n_ref, B_ref",
     "strength": "code identity is decisive",
     "cue": "\\bgyrokinetic\\b|\\bflux[- ]tube\\b|\\bturbulen\\w+\\b|\\bITG\\b|\\bion[- ]temperature[- ]gradient\\b|\\bplasma\\b|\\btokamak\\b|\\bc_s\\b|\\brho_s\\b|\\bgrowth rates?\\b",
     "cueRequired": true,

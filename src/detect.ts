@@ -92,7 +92,8 @@ export type Evidence =
        */
       kind: "contradicted"
       label: string
-      labelTex: string
+      /** The label as TeX where it is a formula (a chain, a form); absent for a named system or a code. */
+      labelTex?: string
       excerpt: string
       constant: string
       constantTex: string
@@ -322,7 +323,9 @@ const TEX_WORDS: [RegExp, string][] = [
   [/\\(?:hbar|hslash)\b/g, " hbar "],
   [new RegExp(`\\\\(?:var)?epsilon${SUB("0")}`, "g"), " epsilon0 "],
   [new RegExp(`\\\\mu${SUB("0")}`, "g"), " mu0 "],
-  [new RegExp(`\\bk${SUB("B")}`, "g"), " kB "],
+  // k_B in an implicit product (2k_BT, mk_BT) has no word boundary before
+  // it; only a control word (\blank_B) keeps it from folding.
+  [new RegExp(`(?<!\\\\[A-Za-z]*)k${SUB("B")}`, "g"), " kB "],
   [new RegExp(`\\bm${SUB("e")}`, "g"), " me "],
   [/\\(?:mathrm|text|textrm|operatorname|mathsf)\s*\{[^{}]*\}/g, " "], // unit/text groups are not math
   [/\\alpha\s*(?:'|\^\{?\\prime\}?)/g, " alpha' "],
@@ -351,11 +354,18 @@ const CONST_NAMES: Record<string, { tex: string; dim: DimQ; modifier?: boolean }
   epsilon0: { tex: "\\varepsilon_0", dim: CONST_DIM.eps0 },
   mu0: { tex: "\\mu_0", dim: CONST_DIM.mu0 },
 }
-const TERM = String.raw`(?:(\d+)\s*pi\s*)?(hbar|kB|me|epsilon0|mu0|c|G|e)`
+// Newton's constant is often written with its subscript in a declaration
+// ("M_pl⁻² ≡ 8πG_N = 1", Maldacena 2003): G_N, G_{N}, G_{\rm N} are G.
+const TERM = String.raw`(?:(\d+)\s*pi\s*)?(hbar|kB|me|epsilon0|mu0|c|G|e)(?:(?<=G)\s*_\s*\{?\s*(?:\\rm\s*)?N\s*\}?)?`
+// A chain is joined by "=" or by "≡" ("M_pl⁻² ≡ 8πG_N = 1", "ħ ≡ c ≡ 1").
+const EQ = String.raw`(?:=|\\equiv(?![A-Za-z])|≡)`
 // The right boundary rejects a NUMBER continuing (1.38, 10, 1,5, 1 × 10⁻²³)
-// and a FRACTION (ε₀ = 1/4π, G = 1/m_P²), not a sentence's own period.
+// and a FRACTION (ε₀ = 1/4π, G = 1/m_P²), not a sentence's own period. The
+// left boundary rejects a term inside a sum or a difference (the Veneziano
+// exponents a + b + c = 1) and a superscript letter glued to a primed or
+// bracketed symbol (MathML text of μ^c_{k'} = 1 reads "μk′c=1").
 const CHAIN_RE = new RegExp(
-  String.raw`(?<![A-Za-z0-9_\\])(${TERM}(?:\s*=\s*${TERM})*)\s*=\s*1(?!\d|[.,]\d|\s*[×x]\s*10|\s*/|\s*\\over\b|\s*\^)`,
+  String.raw`(?<![A-Za-z0-9_\\+\-−)'′])(${TERM}(?:\s*${EQ}\s*${TERM})*)\s*${EQ}\s*1(?!\d|[.,]\d|\s*[×x]\s*10|\s*/|\s*\\over\b|\s*\^)`,
   "g",
 )
 
@@ -363,7 +373,8 @@ const CHAIN_RE = new RegExp(
 // is not the document's declaration (census §6.4: classify from the body).
 const CHAIN_ANTI_FRAME =
   /\b(if|would|were|unless|not fixed by|does not fix|do not fix|orthogonal to|also sets?|(?:third|another|other|second) variant|variant sets|instead|alternatively|rather than|unlike|whereas|as opposed to|compared|in contrast|a different row|note that|one (?:may|can|could|might)|is not (?:unity|set)|not unity|only if|provided that|corresponds to|would (?:be|read|give)|(?:can|may|could|might) (?:also |then |equivalently )?be (?:re)?(?:written|expressed|cast|stated|put))\b/i
-const TERM_RE = new RegExp(TERM, "g")
+// Terms are read as whole tokens: the e inside \equiv is not the charge.
+const TERM_RE = new RegExp(String.raw`(?<![A-Za-z\\])${TERM}(?![A-Za-z])`, "g")
 
 function parseTerms(chain: string): ChainTerm[] {
   const out: ChainTerm[] = []
@@ -391,6 +402,42 @@ function termImplies(t: ChainTerm): string[] {
   return ALL_KEYS.filter((k) => declaresGenerator(k, c.tex, factor))
 }
 
+// Declarations written in words: the gravitational constant and the speed
+// of light set to unity (EHT 2019), a list of m, σ, ε and k_B set to unity
+// (a LAMMPS tutorial), Boltzmann's constant said to be absorbed (AstroGK). The
+// constants a list names are read as chain terms; symbols the census has
+// no term for (m, σ, ε) are passed over, never guessed.
+const WORD_TERMS: [RegExp, string][] = [
+  [/\bspeed\s+of\s+light\b/i, "c"],
+  [/\b(?:Newton['’]?s?|gravitational)\s+constant\b/i, "G"],
+  [/\b(?:reduced\s+)?Planck['’]?s?\s+constant\b/i, "hbar"],
+  [/\bBoltzmann['’]?s?\s+constant\b/i, "kB"],
+  [/\belectron(?:['’]s)?\s+mass\b|\bmass\s+of\s+the\s+electron\b/i, "me"],
+  [/\b(?:elementary|electron(?:ic)?)\s+charge\b/i, "e"],
+]
+const SYMBOL_TERM = /(?<![A-Za-z\\])(hbar|kB|me|epsilon0|mu0|c|G|e)(?![A-Za-z]|\.[a-z])/g
+const TO_UNITY = String.raw`(?:equal\s+)?to\s+(?:unity|one|1)(?!\d|\.\d)`
+const SET_LIST_RE = new RegExp(String.raw`\bset(?:s|ting)?\s+((?:(?!\.\s)[^;]){1,160}?)\s+${TO_UNITY}`, "gi")
+const IS_UNITY_RE = new RegExp(
+  String.raw`\b(Boltzmann['’]?s?\s+constant|Planck['’]?s?\s+constant|speed\s+of\s+light|(?:Newton['’]?s?|gravitational)\s+constant|kB|hbar)\s+(?:is|are)\s+(?:(?:hereafter|henceforth|then)\s+)?(?:absorbed|set\s+${TO_UNITY})`,
+  "gi",
+)
+const TEMPERATURE_AS_ENERGY = /\btemperatures?\s+(?:is\s+|are\s+)?(?:measured\s+|expressed\s+|given\s+)?in\s+(?:units\s+of\s+)?energy\b/gi
+
+function termsNamedIn(list: string): ChainTerm[] {
+  const found: { at: number; name: string }[] = []
+  for (const [re, name] of WORD_TERMS) {
+    const m = re.exec(list)
+    if (m) found.push({ at: m.index, name })
+  }
+  for (const m of list.matchAll(SYMBOL_TERM)) found.push({ at: m.index ?? 0, name: m[1] })
+  const seen = new Set<string>()
+  return found
+    .sort((a, b) => a.at - b.at)
+    .filter((f) => !seen.has(f.name) && seen.add(f.name))
+    .map((f) => ({ name: f.name, coef: "" }))
+}
+
 export function findDeclarationChains(
   normalized: string,
 ): { text: string; terms: ChainTerm[]; index: number }[] {
@@ -398,6 +445,16 @@ export function findDeclarationChains(
   for (const m of normalized.matchAll(CHAIN_RE)) {
     out.push({ text: m[0], terms: parseTerms(m[1]), index: m.index ?? 0 })
   }
+  for (const m of normalized.matchAll(SET_LIST_RE)) {
+    const terms = termsNamedIn(m[1])
+    if (terms.length) out.push({ text: m[0], terms, index: m.index ?? 0 })
+  }
+  for (const m of normalized.matchAll(IS_UNITY_RE)) {
+    const terms = termsNamedIn(m[1])
+    if (terms.length) out.push({ text: m[0], terms, index: m.index ?? 0 })
+  }
+  for (const m of normalized.matchAll(TEMPERATURE_AS_ENERGY))
+    out.push({ text: m[0], terms: [{ name: "kB", coef: "" }], index: m.index ?? 0 })
   return out
 }
 
@@ -416,8 +473,10 @@ const FRAME =
 // mentioned, not adopted. "references?" alone matched "reference energies"
 // (the code-identity draft, 2026-09-02), so citations are keyed on their
 // own tokens.
+// A hypothetical (what the numbers would look like if one decided on SI, in
+// a LAMMPS tutorial) adopts nothing either.
 const ANTI_FRAME =
-  /\b(convert(?:ed|ing|s)?|conversion|to recover|restor\w*|in terms of|quoted in|reported in|compared? (?:to|with)|unlike|whereas|as opposed to|rather than|instead of|for comparison|in contrast|by contrast|contrary to|see also|references?\s*(?:\[|\d|therein)|refs?\.\s*(?:\[|\d)|cited (?:as|in)|manual|documentation|available from|distributed by|developed (?:at|by))\b/i
+  /\b(convert(?:ed|ing|s)?|conversion|to recover|restor\w*|in terms of|quoted in|reported in|compared? (?:to|with)|unlike|whereas|as opposed to|rather than|instead of|for comparison|in contrast|by contrast|contrary to|see also|references?\s*(?:\[|\d|therein)|refs?\.\s*(?:\[|\d)|cited (?:as|in)|manual|documentation|available from|distributed by|developed (?:at|by)|if\s+(?:we|one|you)\s+(?:decide|decided|were|want|wanted|wish|choose|chose|had|instead)|decide to|suppose|supposing)\b/i
 
 // Census §6.5b: the program a paper ran, as evidence of its native units.
 const CODES = CODE_RULES.map((r) => ({
@@ -425,7 +484,7 @@ const CODES = CODE_RULES.map((r) => ({
   re: new RegExp(r.pattern, "g"),
   cue: r.cue ? new RegExp(r.cue, "i") : null,
 }))
-const codeUnits = (r: CodeRule) => r.nativeUnits.split(/[:;—(]/)[0].trim().replace(/\.$/, "")
+const codeUnits = (r: CodeRule) => r.unitsLabel ?? r.nativeUnits.split(/[:;—(]/)[0].trim().replace(/\.$/, "")
 /** The usage frame for a program: what the calculations were performed with. */
 const CODE_USAGE =
   /\b(performed|carried out|computed|calculated|obtained|implemented|run|ran|simulated|solved|evolved|generated|relaxed|optimi[sz]ed|converged)\b/i
@@ -526,14 +585,52 @@ export const NAMED_RULES: NamedRule[] = [
   },
 ]
 
-function sentenceAround(text: string, index: number): string {
+/**
+ * A block boundary the page reader puts between paragraphs and display
+ * equations (extension/src/page.ts). A display equation usually carries no
+ * period, so without it a sentence saying Newton's constant can be written
+ * as the equation and the adoption of ħ = c = 1 after the equation read as
+ * one sentence (Tong's lecture notes: the hedge "can be written" voided the
+ * adoption).
+ */
+export const BLOCK = " ¶ "
+const unpara = (s: string) => s.replace(/\s*¶\s*/g, " ")
+
+function sentenceBounds(text: string, index: number): [number, number] {
   // The previous sentence's ". " boundary belongs to IT: start after it.
   const prev = Math.max(text.lastIndexOf(". ", index), text.lastIndexOf("; ", index))
-  const start = prev < 0 ? 0 : prev + 2
-  const ends = [text.indexOf(". ", index), text.indexOf("; ", index)].filter((i) => i >= 0)
+  const block = text.lastIndexOf("¶", index)
+  const start = Math.max(prev < 0 ? 0 : prev + 2, block < 0 ? 0 : block + 1)
+  const ends = [text.indexOf(". ", index), text.indexOf("; ", index), text.indexOf("¶", index)].filter((i) => i >= 0)
   const end = ends.length ? Math.min(...ends) + 1 : text.length
-  return text.slice(start, end).trim()
+  return [start, end]
 }
+
+function sentenceAround(text: string, index: number): string {
+  const [start, end] = sentenceBounds(text, index)
+  return unpara(text.slice(start, end)).trim()
+}
+
+/**
+ * The part of a sentence that governs a chain: everything before it, the
+ * chain, and what follows up to the next clause boundary. A contrast or a
+ * comparison opening a LATER clause is about something else — EHT's "code
+ * units (i.e. setting G = c = 1) where, compared to the Gauss cgs system,
+ * the factor 1/√4π is absorbed" adopts G = c = 1 — while "G = c = 1 would
+ * give" and "G = c = 1 can be rewritten" keep their hedge.
+ */
+function clauseOf(text: string, index: number, length: number): string {
+  const [start, end] = sentenceBounds(text, index)
+  const after = text.slice(index + length, end)
+  // Not a comma: "In geometrized units where G = c = 1, this can be
+  // rewritten" still hedges the chain.
+  const cut = after.search(/[;:)]|\bwhere\b|\bwhile\b/)
+  return unpara(text.slice(start, index + length) + (cut < 0 ? after : after.slice(0, cut))).trim()
+}
+
+// A clause that talks about units: what a lone "X = 1" needs to declare.
+const UNITS_CUE =
+  /\b(units?|set|sets|setting|choos\w*|chosen|adopt\w*|work(?:ing)?\s+(?:in|with)|throughout|conventions?|absorbed|natural|geometri[sz]ed|temperatures?\s+(?:is\s+|are\s+)?(?:\w+\s+)?in\s+energy)\b/i
 
 // ---------------------------------------------------------------------------
 // Channel 3: the §6.1 Einstein-prefactor ladder.
@@ -741,6 +838,8 @@ export function inferConventions(input: DetectionInput, opts: DetectionOptions =
   type Chain = {
     excerpt: string
     sentence: string
+    /** The part of the sentence that governs the chain (clauseOf). */
+    clause: string
     src: string
     at: number
     /** Index of the equation the chain was typeset in, if any. */
@@ -759,8 +858,9 @@ export function inferConventions(input: DetectionInput, opts: DetectionOptions =
   }
   for (const ch of findDeclarationChains(prose)) {
     chains.push({
-      excerpt: prose.slice(Math.max(0, ch.index - 40), ch.index + ch.text.length + 40),
+      excerpt: unpara(prose.slice(Math.max(0, ch.index - 40), ch.index + ch.text.length + 40)),
       sentence: sentenceAround(prose, ch.index),
+      clause: clauseOf(prose, ch.index, ch.text.length),
       src: prose,
       at: ch.index,
       terms: ch.terms,
@@ -774,6 +874,7 @@ export function inferConventions(input: DetectionInput, opts: DetectionOptions =
         chains.push({
           excerpt: eq,
           sentence: sentenceAround(eq, ch.index),
+          clause: clauseOf(eq, ch.index, ch.text.length),
           src: eq,
           at: ch.index,
           eq: i,
@@ -782,6 +883,17 @@ export function inferConventions(input: DetectionInput, opts: DetectionOptions =
         })
     } else bodyEquations.push(eq)
   })
+  // A lone "c = 1" is a central charge, a sum's last term, a normalized
+  // weight as often as a units statement: a single-LETTER constant alone
+  // (c, e, G) declares only in a clause that talks about units (Tong's
+  // central charge of a free boson, HAYSTAC's μ^c_{k'} = 1), and otherwise is no
+  // evidence at all. ħ, k_B, ε₀, μ₀, m_e are tokens nothing else is named,
+  // and a chain naming two or more constants is unambiguous.
+  const LETTERS = new Set(["c", "e", "G"])
+  for (let i = chains.length - 1; i >= 0; i--) {
+    const t = chains[i].terms
+    if (t.length === 1 && LETTERS.has(t[0].name) && !t[0].coef && !UNITS_CUE.test(chains[i].clause)) chains.splice(i, 1)
+  }
   // Two mutually exclusive chains close together — in the same prose, or in
   // adjacent display equations — are alternatives being discussed
   // ("Gaussian-Planck (4πε₀ = 1): … . Heaviside-Planck (ε₀ = 1): …"), not a
@@ -825,6 +937,21 @@ export function inferConventions(input: DetectionInput, opts: DetectionOptions =
     if (s) return { constant: s.token.constant, constantTex: tex, count: s.count, of }
     return opts.printed?.find((p) => p.constantTex === tex)
   }
+  // Named systems and code identities are weighed like chains (census §6.4,
+  // the equations govern): a declaration EVERY reading of which absorbs a
+  // constant the body prints at body level is contradicted, not applied.
+  // CODATA's "in atomic units", describing a cited calculation, emptied the
+  // candidate set against a body that prints ħ throughout. k_B is a
+  // modifier and never voids a declaration on its own.
+  const printedAgainst = (implies: string[]): PrintedConstant | undefined => {
+    if (!implies.length) return undefined
+    for (const token of CONSTANT_TOKENS) {
+      if (token.tex === "k_B" || token.weak) continue
+      const p = printedStrongly(token.tex)
+      if (p && implies.every((k) => generatesConstant(k, token.tex, token.dim))) return p
+    }
+    return undefined
+  }
 
   // Every chain instance is classified first; one instance per label is
   // kept — a declaration outranks a contradicted one outranks a mention — so
@@ -834,7 +961,7 @@ export function inferConventions(input: DetectionInput, opts: DetectionOptions =
   const best = new Map<string, Verdict>()
   for (const ch of chains) {
     const label = chainLabel(ch.terms)
-    const hypothetical = CHAIN_ANTI_FRAME.test(ch.sentence)
+    const hypothetical = CHAIN_ANTI_FRAME.test(ch.clause)
     let v: Verdict
     if (hypothetical || alternatives.has(ch)) {
       v = {
@@ -915,6 +1042,11 @@ export function inferConventions(input: DetectionInput, opts: DetectionOptions =
       continue
     }
     const implies = rule.implies()
+    const against = printedAgainst(implies)
+    if (against) {
+      evidence.push({ kind: "contradicted", label: rule.label, excerpt: framed.slice(0, 200), ...against })
+      continue
+    }
     evidence.push({
       kind: "declaration",
       form: "named",
@@ -940,7 +1072,11 @@ export function inferConventions(input: DetectionInput, opts: DetectionOptions =
       const at = m.index ?? 0
       const sentence = sentenceAround(prose, at)
       if (ANTI_FRAME.test(sentence)) continue
-      if (rule.cueRequired && cue && !cue.test(prose.slice(Math.max(0, at - 300), at + 300))) continue
+      // The cue must come from the context, not from the name itself: "SXS"
+      // was both SpEC's pattern and its cue, so a citation of a catalog
+      // waveform (SXS:BBH:0305) declared the page's units.
+      const window = prose.slice(Math.max(0, at - 300), at) + " " + prose.slice(at + m[0].length, at + m[0].length + 300)
+      if (rule.cueRequired && cue && !cue.test(window)) continue
       if (FRAME.test(sentence) || CODE_USAGE.test(sentence)) framed ??= sentence
       else plain ??= sentence
     }
@@ -948,6 +1084,11 @@ export function inferConventions(input: DetectionInput, opts: DetectionOptions =
     const units = codeUnits(rule)
     if (framed && "keys" in rule.implies && rule.confidence >= 0.8) {
       const implies = rule.implies.keys.filter((k) => k in CONVENTIONS)
+      const against = printedAgainst(implies)
+      if (against) {
+        evidence.push({ kind: "contradicted", label: `${rule.code} (${units})`, excerpt: framed.slice(0, 200), ...against })
+        continue
+      }
       evidence.push({
         kind: "declaration",
         form: "named",

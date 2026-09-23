@@ -2238,6 +2238,8 @@ export type CodeRule = {
   family: string
   implies: { keys: string[] } | { none: string }
   nativeUnits: string
+  /** The panel's short label for the units, where the first clause of nativeUnits is not one. */
+  unitsLabel?: string
   strength: string
   /** Case-insensitive; a co-occurring token that confirms the reading. */
   cue: string | null
@@ -2338,6 +2340,7 @@ export const CODE_RULES: CodeRule[] = [
       ]
     },
     "nativeUnits": "Atomic (Hartree) units internally — the ENERGY| lines print total energies in a.u. — while input keywords carry explicit bracketed unit tags ([eV], [angstrom]) whose ABSENCE means atomic units, with the notorious exception that the plane-wave CUTOFF is read in Ry by default.",
+    "unitsLabel": "Hartree atomic units internally",
     "strength": "code identity plus a unit token",
     "cue": "\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bRy\\b|\\bGPW\\b|\\bGaussian and plane[- ]waves?\\b|\\bCUTOFF\\b|\\bbohr\\b|\\[eV\\]|\\[angstrom\\]",
     "cueRequired": true,
@@ -2406,6 +2409,7 @@ export const CODE_RULES: CodeRule[] = [
       ]
     },
     "nativeUnits": "Hartree atomic units, and — unusually — geometry input in BOHR unless the angstrom directive is given, which is the usual source of a stray 1.8897 factor when an input is transcribed into a paper.",
+    "unitsLabel": "Hartree atomic units",
     "strength": "code identity plus a unit token",
     "cue": "\\bHartrees?\\b|\\ba\\.u\\.\\b|\\bbohr\\b|\\bCCSD\\b|\\bMRCI\\b|\\bCASPT2\\b|\\bcc-pV|\\bkcal/mol\\b",
     "cueRequired": true,
@@ -2534,7 +2538,7 @@ export const CODE_RULES: CodeRule[] = [
     },
     "nativeUnits": "GRMHD on adaptive meshes in G = c = M = 1 code units, magnetic field Heaviside–Lorentz-normalized (b²/2 magnetic pressure); like every GRMHD code the density scale is external to the run.",
     "strength": "code identity is decisive",
-    "cue": "\\bGRMHD\\b|\\bcode units\\b|\\bM_?unit\\b|\\baccretion\\b|\\bKerr\\b|\\bmagnetization\\b|\\badaptive mesh\\b|\\bhorizon\\b",
+    "cue": "\\bGRMHD\\b|\\bcode units\\b|\\bM_?unit\\b|\\baccretion\\b|\\bKerr\\b|\\bmagnetization\\b|\\badaptive mesh\\b|\\bhorizon\\b|\\bmagnetically arrested\\b|\\bSANE\\b",
     "cueRequired": true,
     "confidence": 0.75
   },
@@ -2565,7 +2569,7 @@ export const CODE_RULES: CodeRule[] = [
     },
     "nativeUnits": "G = c = 1 with the mass unit conventionally M_⊙ (1 code length = 1.4766 km, 1 code time = 4.9255 μs, densities in M_⊙^-2 geometric units); many runs instead normalize to the total ADM mass M, which is bh-scale rather than nr-code — the QUOTED NUMBERS, not the equations, separate the two.",
     "strength": "code identity plus a unit token",
-    "cue": "\\bG = c = 1\\b|\\bgeometri[sz]ed\\b|\\bgeometric(?:al)? units\\b|\\bcode units\\b|\\b(?:M_sun|M_\\\\?odot|solar mass(?:es)?)\\b|\\bBSSN\\b|\\bmoving[- ]puncture\\b|\\bnumerical[- ]relativity\\b|\\bCarpet\\b",
+    "cue": "\\bG = c = 1\\b|\\bgeometri[sz]ed\\b|\\bgeometric(?:al)? units\\b|\\bcode units\\b|\\b(?:M_sun|M_\\\\?odot|solar mass(?:es)?)\\b|\\bBSSN\\b|\\bmoving[- ]puncture\\b|\\bnumerical[- ]relativity\\b",
     "cueRequired": true,
     "confidence": 0.82
   },
@@ -2582,7 +2586,7 @@ export const CODE_RULES: CodeRule[] = [
     },
     "nativeUnits": "G = c = 1 with the total mass M = 1: waveform times, radii and frequencies are in units of M, and the waveform is rescaled to a physical mass only when it is injected — the archetypal imported_artifact, since a strain \"scaled to M = 74.6 M_⊙\" names a convention it never declares.",
     "strength": "code identity plus a unit token",
-    "cue": "\\bnumerical[- ]relativity\\b|\\bbinary black hole\\b|\\bwaveforms?\\b|\\bunits of M\\b|\\bADM mass\\b|\\b(?:M_sun|M_\\\\?odot|solar mass(?:es)?)\\b|\\bcode units\\b|\\bSXS\\b|\\bringdown\\b",
+    "cue": "\\bunits of (?:the )?(?:total )?(?:ADM )?mass\\b|\\bADM mass\\b|\\bcode units\\b|\\bG\\s*=\\s*c\\s*=\\s*M\\s*=\\s*1\\b|\\bG\\s*=\\s*c\\s*=\\s*1\\b|\\bgeometri[sz]ed\\b|\\bgeometric(?:al)? units\\b",
     "cueRequired": true,
     "confidence": 0.83
   },
@@ -2667,6 +2671,7 @@ export const CODE_RULES: CodeRule[] = [
       ]
     },
     "nativeUnits": "Nothing until the input is read: `units lj` gives the reduced set (σ = ε = m = k_B = 1), `real` gives kcal/mol, Å, fs, K, atm, `metal` gives eV, Å, ps, K, bar, `si` and `cgs` are literal, and `electron` is the census's refuse-class hybrid (time fs vs a.u., mass amu vs m_e, velocity bohr per 1.03275 fs — inconsistent on three axes).",
+    "unitsLabel": "set by the input; units lj is σ = ε = m = k_B = 1",
     "strength": "weak: many codes allow unit switches, e.g. LAMMPS units real/metal/si/electron/lj must be read from the input",
     "cue": "\\bunits\\s+lj\\b|\\breduced (?:Lennard-Jones|LJ) units\\b|\\bLennard-Jones (?:reduced )?units\\b|\\breduced units\\b",
     "cueRequired": true,
@@ -2681,6 +2686,7 @@ export const CODE_RULES: CodeRule[] = [
       "none": "GROMACS's fixed unit set (nm, ps, u, kJ/mol, e, K, bar) is a lookup-table custom-generator row in the census's MD unit-sets entry, and its molar energy needs N_A as a generator (the \"Quantum-chemistry molar energy conventions\" row). Neither is encoded in CONVENTIONS."
     },
     "nativeUnits": "A fixed, non-switchable set: length nm, time ps, mass u (amu), energy kJ/mol, charge e, temperature K, pressure bar — the nm (not Å) and kJ/mol (not kcal/mol) pair is the fastest discriminator against AMBER/NAMD/CHARMM outputs.",
+    "unitsLabel": "nm, ps, amu, kJ/mol, e, K, bar",
     "strength": "code identity is decisive",
     "cue": "\\bkJ/mol\\b|\\bnm\\b|\\bps\\b|\\bnanometers?\\b|\\bbar\\b|\\bamu\\b|\\bforce field\\b|\\bMD\\b",
     "cueRequired": false,
@@ -2695,6 +2701,7 @@ export const CODE_RULES: CodeRule[] = [
       "none": "Same census row as GROMACS (MD unit sets, lookup-table custom generators) plus the molar-energy N_A row; no registry key."
     },
     "nativeUnits": "Å, kcal/mol, amu, e, with the internal time unit 1/20.455 ps ≈ 48.888 fs = √(amu·Å²/(kcal mol⁻¹)) — so a raw internal \"time\" is neither fs nor ps, and the printed trajectory times are already converted.",
+    "unitsLabel": "Å, kcal/mol, amu, e",
     "strength": "code identity is decisive",
     "cue": "\\bkcal/mol\\b|\\bff\\d\\d\\w*\\b|\\bforce field\\b|Å|\\b[Aa]ngstroms?\\b|\\bps\\b|\\bamu\\b|\\bpmemd\\b|\\bMD\\b",
     "cueRequired": true,
@@ -2709,6 +2716,7 @@ export const CODE_RULES: CodeRule[] = [
       "none": "The census's \"Gyrokinetic normalization, GENE / c_s family\" row (L_ref; c_ref = √(T_ref/m_ref); T_ref; m_ref; n_ref; e; B_ref — quotient + riders, v2) is not encoded in CONVENTIONS."
     },
     "nativeUnits": "L_ref (the major radius R₀ or the minor radius a), the reference sound speed c_ref = √(T_ref/m_ref) with NO factor of √2, plus T_ref (energy units, k_B = 1), m_ref, n_ref, B_ref; growth rates and frequencies come out in c_ref/L_ref and lengths in ρ_ref = c_ref m_ref/(eB_ref).",
+    "unitsLabel": "normalized to L_ref, c_ref, T_ref, m_ref, n_ref, B_ref",
     "strength": "code identity is decisive",
     "cue": "\\bgyrokinetic\\b|\\bflux[- ]tube\\b|\\bturbulen\\w+\\b|\\bITG\\b|\\bion[- ]temperature[- ]gradient\\b|\\bplasma\\b|\\btokamak\\b|\\bc_s\\b|\\brho_s\\b|\\bgrowth rates?\\b",
     "cueRequired": true,

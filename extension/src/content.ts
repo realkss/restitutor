@@ -115,8 +115,10 @@ function evidenceItem(e: Evidence): HTMLLIElement {
       break
     }
     case "contradicted": {
+      // A chain or a form is TeX; a named system or a code is a name.
       const chain = document.createElement("span")
-      katex.render(e.labelTex, chain, { throwOnError: false })
+      if (e.labelTex) katex.render(e.labelTex, chain, { throwOnError: false })
+      else chain.textContent = e.label
       const k = document.createElement("span")
       katex.render(e.constantTex, k, { throwOnError: false })
       li.append(
