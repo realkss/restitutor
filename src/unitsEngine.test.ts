@@ -117,6 +117,170 @@ describe("KaTeX parse-tree shape assumptions", () => {
       )
     }
   })
+
+  // The pins below record shapes that the engine's source reconstruction has to
+  // respect. Three kinds of node matter. Some carry no `loc` at all, so their
+  // spelling cannot be sliced from the source and must be rebuilt from the node.
+  // Some come out of a macro expansion and carry a "foreign" `loc`, whose offsets
+  // index the macro body rather than the equation, so slicing the equation with
+  // them returns garbage. And some relations arrive as `htmlmathml` pairs that
+  // are recognized only by their MathML character.
+  const parse = (tex: string) =>
+    katex.__parse(tex, { strict: false, trust: false, displayMode: true })
+  const withoutLocs = (tree: unknown) =>
+    JSON.parse(JSON.stringify(tree, (key, value) => (key === "loc" ? undefined : value)))
+  const isForeign = (node: any, source: string) =>
+    node.loc !== undefined && node.loc.lexer.input !== source
+  const loneMathml = (node: any) => {
+    assert.strictEqual(node.type, "htmlmathml")
+    assert.strictEqual(node.mathml.length, 1)
+    return node.mathml[0]
+  }
+
+  test("an op node has a name and no loc, and only a written \\limits sets alwaysHandleSupSub", () => {
+    const [op] = parse("\\int x")
+    assert.strictEqual(op.type, "op")
+    assert.strictEqual(op.name, "\\int")
+    assert.strictEqual(op.loc, undefined, "op nodes grew a loc")
+    assert.notStrictEqual(op.alwaysHandleSupSub, true, "a bare \\int is marked as written \\limits")
+    const [scripted] = parse("\\int\\limits_0^1 x")
+    assert.strictEqual(scripted.type, "supsub")
+    assert.strictEqual(scripted.base.type, "op")
+    assert.strictEqual(scripted.base.loc, undefined)
+    assert.strictEqual(scripted.base.alwaysHandleSupSub, true)
+    assert.strictEqual(scripted.base.limits, true)
+  })
+
+  test("~, \\cdots and \\implies carry foreign-lexer locs", () => {
+    const tilde = parse("a~b")
+    assert.strictEqual(tilde[1].type, "spacing")
+    assert.strictEqual(tilde[1].text, "\\nobreakspace")
+    assert.ok(isForeign(tilde[1], "a~b"), "~ now carries a loc into the equation")
+
+    const dots = parse("T_{a\\cdots b}")[0].sub.body[1]
+    assert.strictEqual(dots.type, "atom")
+    assert.strictEqual(dots.text, "\\@cdots")
+    assert.ok(isForeign(dots, "T_{a\\cdots b}"), "\\cdots now carries a loc into the equation")
+
+    const implies = parse("a \\implies b").filter((n: any) => n.type === "atom")
+    assert.strictEqual(implies.length, 1)
+    assert.strictEqual(implies[0].family, "rel")
+    assert.strictEqual(implies[0].text, "\\Longrightarrow")
+    assert.ok(isForeign(implies[0], "a \\implies b"), "\\implies now carries a loc into the equation")
+  })
+
+  test("\\neq, \\coloneqq and \\not are htmlmathml relations; := is two rel atoms", () => {
+    const neq = loneMathml(parse("a \\neq b")[1])
+    assert.strictEqual(neq.type, "mclass")
+    assert.strictEqual(neq.mclass, "mrel")
+    assert.deepStrictEqual(
+      neq.body.map((n: any) => [n.type, n.text]),
+      [["textord", "≠"]],
+    )
+
+    const coloneqq = loneMathml(parse("a \\coloneqq b")[1])
+    assert.strictEqual(coloneqq.type, "op")
+    assert.deepStrictEqual(
+      coloneqq.body.map((n: any) => [n.type, n.text]),
+      [["textord", "≔"]],
+    )
+
+    const notEq = parse("a \\not= b")
+    assert.deepStrictEqual(
+      [loneMathml(notEq[1]).type, loneMathml(notEq[1]).text],
+      ["textord", "̸"],
+    )
+    assert.deepStrictEqual([notEq[2].type, notEq[2].family, notEq[2].text], ["atom", "rel", "="])
+
+    const define = parse("a := b")
+    assert.deepStrictEqual(
+      define.slice(1, 3).map((n: any) => [n.type, n.family, n.text]),
+      [
+        ["atom", "rel", ":"],
+        ["atom", "rel", "="],
+      ],
+    )
+  })
+
+  test("delimsizing and \\qquad carry no loc, and \\pm is a bin atom", () => {
+    const [sized] = parse("\\bigl( a")
+    assert.strictEqual(sized.type, "delimsizing")
+    assert.deepStrictEqual([sized.size, sized.mclass, sized.delim], [1, "mopen", "("])
+    assert.strictEqual(sized.loc, undefined, "delimsizing grew a loc")
+
+    const [, kern] = parse("a \\qquad b")
+    assert.strictEqual(kern.type, "kern")
+    assert.deepStrictEqual(kern.dimension, { number: 2, unit: "em" })
+    assert.strictEqual(kern.loc, undefined, "\\qquad grew a loc")
+
+    const signs = parse("a = \\pm b \\pm c").filter((n: any) => n.text === "\\pm")
+    assert.strictEqual(signs.length, 2, "\\pm after = and between terms")
+    for (const pm of signs) assert.deepStrictEqual([pm.type, pm.family], ["atom", "bin"])
+  })
+
+  test("a shorthand ' is a loc-less textord \\prime, and x'_\\mu and x_\\mu' parse alike", () => {
+    const [shorthand] = parse("x'")
+    assert.strictEqual(shorthand.sup.type, "ordgroup")
+    assert.strictEqual(shorthand.sup.loc, undefined)
+    assert.deepStrictEqual(
+      shorthand.sup.body.map((n: any) => [n.type, n.text, n.loc]),
+      [["textord", "\\prime", undefined]],
+    )
+    const [explicit] = parse("x^\\prime")
+    assert.strictEqual(explicit.sup.text, "\\prime")
+    assert.notStrictEqual(explicit.sup.loc, undefined, "a written \\prime lost its loc")
+    assert.deepStrictEqual(withoutLocs(parse("x'_\\mu")), withoutLocs(parse("x_\\mu'")))
+  })
+
+  test("^\\text{…} and ^\\mathrm{…} give script bodies without a loc", () => {
+    const [text] = parse("T^\\text{out}")
+    assert.strictEqual(text.sup.type, "text")
+    assert.strictEqual(text.sup.font, "\\text")
+    assert.strictEqual(text.sup.loc, undefined, "an unbraced \\text script grew a loc")
+    const [roman] = parse("T^\\mathrm{T}")
+    assert.strictEqual(roman.sup.type, "font")
+    assert.strictEqual(roman.sup.font, "mathrm")
+    assert.strictEqual(roman.sup.loc, undefined, "an unbraced \\mathrm script grew a loc")
+  })
+
+  test("\\boldsymbol is mclass → font → ordgroup", () => {
+    const [bold] = parse("\\boldsymbol{R}")
+    assert.strictEqual(bold.type, "mclass")
+    assert.strictEqual(bold.mclass, "mord")
+    assert.strictEqual(bold.body.length, 1)
+    assert.strictEqual(bold.body[0].type, "font")
+    assert.strictEqual(bold.body[0].font, "boldsymbol")
+    assert.strictEqual(bold.body[0].body.type, "ordgroup")
+    assert.deepStrictEqual(
+      bold.body[0].body.body.map((n: any) => [n.type, n.text]),
+      [["mathord", "R"]],
+    )
+  })
+
+  test("{T^{ab}}_{;b} is a supsub whose base is an ordgroup holding the tensor's supsub", () => {
+    const nodes = parse("{T^{ab}}_{;b}")
+    assert.strictEqual(nodes.length, 1)
+    const [outer] = nodes
+    assert.strictEqual(outer.type, "supsub")
+    assert.strictEqual(outer.sup, undefined)
+    assert.strictEqual(outer.base.type, "ordgroup")
+    assert.strictEqual(outer.base.body.length, 1)
+    const inner = outer.base.body[0]
+    assert.strictEqual(inner.type, "supsub")
+    assert.strictEqual(inner.base.text, "T")
+    assert.strictEqual(inner.sub, undefined)
+    assert.deepStrictEqual(
+      inner.sup.body.map((n: any) => n.text),
+      ["a", "b"],
+    )
+    assert.deepStrictEqual(
+      outer.sub.body.map((n: any) => [n.type, n.family, n.text]),
+      [
+        ["atom", "punct", ";"],
+        ["mathord", undefined, "b"],
+      ],
+    )
+  })
 })
 
 describe("registry routing", () => {
