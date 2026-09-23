@@ -1259,3 +1259,152 @@ describe("explicit spacing between two factors (the two-statements trap)", () =>
     if (unknown.kind === "declined") assert.ok(!unknown.reasons.includes(SPACING), JSON.stringify(unknown))
   })
 })
+
+describe("source fidelity: foreign-lexer locs, spacing as written, control spaces", () => {
+  // restored() strips whitespace, which would erase the difference between a
+  // control space `\ ` and a line break `\\`; these tests compare raw output.
+  const rawRestored = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = (result as Extract<TranslationResult, { kind: "translated" }>).restoredTex
+    rendersInKatex(out)
+    return out
+  }
+  const parse = (tex: string) =>
+    katex.__parse(tex, { strict: false, trust: false, displayMode: true })
+
+  test("the spacing nodes the engine re-emits: own spans, except ~, located in its macro body", () => {
+    // Every spelling of a control space parses to one spacing node "\ " with a
+    // span into the equation; a slice of it ends in the whitespace itself.
+    for (const tex of ["r\\ r", "r\\\tr", "r\\\nr"]) {
+      const node = parse(tex)[1]
+      assert.strictEqual(node.type, "spacing", tex)
+      assert.strictEqual(node.text, "\\ ", tex)
+      assert.strictEqual(node.loc.lexer.input, tex, `${tex}: a control space lost its own loc`)
+    }
+    for (const [tex, text] of [
+      ["r\\space r", "\\space"],
+      ["r\\nobreak r", "\\nobreak"],
+      ["r\\nobreakspace r", "\\nobreakspace"],
+    ]) {
+      const node = parse(tex)[1]
+      assert.strictEqual(node.type, "spacing", tex)
+      assert.strictEqual(node.text, text, tex)
+      assert.strictEqual(node.loc.lexer.input, tex, `${tex}: lost its own loc`)
+    }
+    // spacingTexOf reads `~` back from exactly this: the node KaTeX's `~` macro
+    // expands to is located in the macro body "\nobreakspace".
+    const tilde = parse("r~r")[1]
+    assert.strictEqual(tilde.type, "spacing")
+    assert.strictEqual(tilde.text, "\\nobreakspace")
+    assert.strictEqual(tilde.loc.lexer.input, "\\nobreakspace", "the ~ macro body changed")
+  })
+
+  test("a control space is re-emitted as a control space, never as a line break", () => {
+    // Trimmed to a lone backslash, the control space fused with the next
+    // command: these shipped r\\sqrt{r^{2}} and r\\frac{M}{M} (line breaks),
+    // m\\cdot, and the text-mode ring accent \r.
+    for (const target of [SI, GEO]) {
+      assert.strictEqual(rawRestored("x^{2} = r\\ \\sqrt{r^{2}}", target), "x^{2} = r\\ \\sqrt{r^{2}}")
+      assert.strictEqual(rawRestored("x = r\\ \\frac{M}{M}", target), "x = r\\ \\frac{M}{M}")
+      assert.strictEqual(rawRestored("x = r\\,\\ r/r", target), "x = r\\ r/r")
+    }
+    assert.strictEqual(rawRestored("E = m\\ \\cdot c^2"), "E = m\\ \\cdot c^{2}")
+    // A control space by tab or newline is the same token, re-emitted as `\ `.
+    assert.strictEqual(rawRestored("E = m\\\tc^2"), "E = m\\ c^{2}")
+    assert.strictEqual(rawRestored("E = m\\\nc^2"), "E = m\\ c^{2}")
+    // At the end of a braced script, where the braces are peeled off.
+    assert.strictEqual(rawRestored("E = mc^{2\\ }"), "E = mc^{2\\ }")
+    // Inside a nested sum, and in every row of an array.
+    assert.strictEqual(rawRestored("x = \\sqrt{r\\ r}"), "x = \\sqrt{r\\ r}")
+    assert.strictEqual(
+      rawRestored("\\begin{aligned} E &= m\\ c^2 \\\\ &= M\\ c^2 \\end{aligned}"),
+      "\\begin{aligned}\nE &= m\\ c^{2} \\\\\n&= M\\ c^{2}\n\\end{aligned}",
+    )
+  })
+
+  test("\\space, \\nobreak and a spelled-out \\nobreakspace still translate verbatim", () => {
+    // The big-operator reviewer's counterexamples: a rebuild that maps these to
+    // "" or to `~` turned three translations into reassembly faults.
+    for (const tex of ["E = M\\space c^{2}", "x = r\\nobreak r/r", "x = r\\nobreakspace r/r"]) {
+      const result = run(tex)
+      assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "translated") {
+        assert.strictEqual(result.restoredTex, tex)
+        assert.strictEqual(result.changed, false, tex)
+      }
+    }
+  })
+
+  test("~ is re-emitted as ~, where it used to be sliced as a copy of the equation", () => {
+    for (const tex of [
+      "E = m~c^2",
+      "E = (m~c^2)",
+      "E = \\left(m~c^2\\right)",
+      "E = \\frac{m~c^2}{1}",
+    ]) {
+      const result = run(tex)
+      assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "translated") assert.strictEqual(result.changed, false, tex)
+    }
+    assert.strictEqual(rawRestored("E = m~c^2"), "E = m~c^{2}")
+    assert.strictEqual(rawRestored("E = m~c^2", GEO), "E = m~")
+    assert.strictEqual(rawRestored("x = r ~ \\frac{M}{M}"), "x = r~\\frac{M}{M}")
+  })
+
+  test("a macro-built token no longer slices the equation: keys and quotes are the source's", () => {
+    // \cdots is located in its macro body; the subscript used to key itself as
+    // T_{T_{a\cdots b}}, an entry no registry could ever hold.
+    const dots = run("T_{a\\cdots b} = r")
+    assert.strictEqual(dots.kind, "declined", JSON.stringify(dots))
+    if (dots.kind === "declined") assert.deepStrictEqual(dots.unknown, ["T_{a\\cdots b}"])
+    // The term was quoted as “ar = a~bb”; a group keeps its own span too.
+    for (const [tex, quoted] of [
+      ["r = a~b", "“a~b”"],
+      ["x = (r~r)", "“(r~r)”"],
+    ]) {
+      const result = run(tex)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") assert.ok(result.reasons[0].includes(quoted), JSON.stringify(result.reasons))
+    }
+  })
+
+  test("a control space the emitter drops is a divergence, not inert whitespace", () => {
+    // The function-argument emission drops glue after \sin. With control spaces
+    // deleted in the comparison, `r\sin\theta` would pass for `r\sin\ \theta`; the
+    // sentinel makes it a divergence, so the result either keeps the space or
+    // declines.
+    for (const target of [SI, GEO]) {
+      const result = run("x = r\\sin\\ \\theta", target)
+      if (result.kind === "translated") assert.ok(result.restoredTex.includes("\\ \\theta"), result.restoredTex)
+      else assert.strictEqual(result.kind, "declined")
+    }
+  })
+
+  test("spacing emitted as written does not unmask two statements set side by side", () => {
+    // The integration probe: rebuilding `~` and `\ ` faithfully turned these
+    // accidental reassembly faults into t = \frac{0~~~~r}{c} = \frac{2GM}{c^{3}}.
+    // The between-factors guard (step 1) must still be what declines them.
+    const SPACING = "explicit spacing between two factors — two statements or one product? (select a single equation)"
+    for (const tex of ["t = 0 ~~~~ r = 2M", "t = 0 \\ \\ \\ r = 2M", "t = 0 ~ r = 2M", "t = 0 \\ r = 2M"]) {
+      for (const target of [SI, GEO]) {
+        const result = run(tex, target)
+        assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+        if (result.kind === "declined") assert.deepStrictEqual(result.reasons, [SPACING], tex)
+      }
+    }
+  })
+
+  test("geometrized stripping that leaves only glue empties the product", () => {
+    // Spacing and product signs join factors; with every factor stripped they
+    // are dropped, and the empty-side rule applies as it does without them.
+    assert.strictEqual(rawRestored("r_s = \\frac{2GM}{c^2\\ }", GEO), "r_{s} = 2M")
+    assert.strictEqual(rawRestored("r_s = \\frac{2GM}{c^2~}", GEO), "r_{s} = 2M")
+    assert.strictEqual(rawRestored("E = \\sqrt{c^4\\ }m", GEO), "E = \\sqrt{1}m")
+    assert.strictEqual(rawRestored("E = m{c~}^2", GEO), "E = m{1}^{2}")
+    assert.strictEqual(rawRestored("E = m{c\\space}^2", GEO), "E = m{1}^{2}")
+    assert.strictEqual(rawRestored("v = c\\cdot", GEO), "v = 1")
+    // A surviving factor keeps the glue around it.
+    assert.strictEqual(rawRestored("E = m\\ c^2", GEO), "E = m\\ ")
+  })
+})

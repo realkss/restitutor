@@ -475,7 +475,26 @@ const GREEK_INDICES = new Set([
 ])
 const DIGIT_INDICES = new Set(["0", "1", "2", "3"])
 
-function spanOf(node: unknown): [number, number] | null {
+/**
+ * Whether a node's `loc` indexes the equation itself. KaTeX gives the tokens a
+ * macro expands to a `loc` into the *macro body*: `~` becomes a `\nobreakspace`
+ * spacing node located in the string "\nobreakspace", and `\cdots` an atom
+ * located in "\@cdots". Slicing the equation with those offsets returns
+ * whatever happens to sit there (`r = a~b` quoted its term as “ar = a~bb”, and
+ * `T_{a\cdots b}` keyed itself as `T_{T_{a\cdots b}}`). Such a node contributes
+ * no span; its located neighbours still do, and a fragment with none left
+ * declines as unrecoverable instead of being sliced into garbage.
+ */
+function locIsOwn(loc: any, input: string): boolean {
+  return (
+    loc != null &&
+    typeof loc.start === "number" &&
+    typeof loc.end === "number" &&
+    (loc.lexer == null || loc.lexer.input === input)
+  )
+}
+
+function spanOf(node: unknown, input: string): [number, number] | null {
   let s = Infinity
   let e = -Infinity
   const visit = (n: any): void => {
@@ -484,7 +503,7 @@ function spanOf(node: unknown): [number, number] | null {
       for (const child of n) visit(child)
       return
     }
-    if (n.loc && typeof n.loc.start === "number" && typeof n.loc.end === "number") {
+    if (locIsOwn(n.loc, input)) {
       s = Math.min(s, n.loc.start)
       e = Math.max(e, n.loc.end)
     }
@@ -500,16 +519,29 @@ function spanOf(node: unknown): [number, number] | null {
 // spans include it — `\Sigma ` and `\Sigma\n  ` and `\Sigma` are the same symbol
 // but three different slices, which showed up as three legend rows and as raw
 // newlines inside decline sentences. Every slice is trimmed at the source.
+//
+// Except where the whitespace *is* the token. A control space is a backslash
+// followed by a space, tab or newline, and trimming it leaves a lone backslash
+// that fuses with whatever is emitted next: `r\ \sqrt{r^{2}}` shipped as
+// `r\\sqrt{r^{2}}`, a line break, and `x = r\,\ r/r` as `x = r\r/r`, KaTeX's
+// ring accent. A slice that ends in an odd run of backslashes ended in a
+// control space, so the space goes back on (an even run is a line break, `\\`).
+function keepControlSpace(slice: string): string {
+  const trimmed = slice.trim()
+  const run = /\\+$/.exec(trimmed)?.[0].length ?? 0
+  return run % 2 === 1 ? `${trimmed} ` : trimmed
+}
+
 function srcOf(node: unknown, ctx: Ctx): string {
-  const span = spanOf(node)
+  const span = spanOf(node, ctx.input)
   if (!span) throw new Unsupported("a fragment whose source position could not be recovered")
-  return ctx.input.slice(span[0], span[1]).trim()
+  return keepControlSpace(ctx.input.slice(span[0], span[1]))
 }
 
 function srcOfNodes(nodes: unknown[], ctx: Ctx): string {
-  const span = spanOf(nodes)
+  const span = spanOf(nodes, ctx.input)
   if (!span) return ""
-  return ctx.input.slice(span[0], span[1]).trim()
+  return keepControlSpace(ctx.input.slice(span[0], span[1]))
 }
 
 function unwrap(node: any): any {
@@ -567,7 +599,7 @@ function stylingWrapperOf(node: any): any {
  * for fractions whose numerator has no recoverable position.
  */
 function fracCmdOf(rawNode: any, genfrac: any, ctx: Ctx): string {
-  const span = spanOf(genfrac.numer)
+  const span = spanOf(genfrac.numer, ctx.input)
   if (span) {
     const written = /\\([a-zA-Z]+)\s*$/.exec(ctx.input.slice(0, span[0]))
     if (written && FRAC_CMDS.has(`\\${written[1]}`)) return `\\${written[1]}`
@@ -634,8 +666,14 @@ function groupDelims(nodes: any[]): any[] {
     stack.pop()
     const parent = stack[stack.length - 1]
     const group = parent[parent.length - 1]
+    // The group spans opener to closer only when both are located in the same
+    // text; a span stitched from two lexers would index neither, and dropping
+    // the lexer would pass it off as the equation's own.
     if (group.loc && closeAtom.loc) {
-      group.loc = { start: group.loc.start, end: closeAtom.loc.end }
+      group.loc =
+        group.loc.lexer === closeAtom.loc.lexer
+          ? { lexer: group.loc.lexer, start: group.loc.start, end: closeAtom.loc.end }
+          : null
     }
     return group
   }
@@ -1118,7 +1156,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
       continue
     }
     if (SKIP_TYPES.has(n.type)) {
-      const text = safeSrc(raw, ctx)
+      const text = spacingTexOf(raw, ctx)
       push({ kind: "glue", dim: ZERO, emit: () => text })
       i += 1
       continue
@@ -1236,6 +1274,25 @@ function safeSrc(node: any, ctx: Ctx): string {
   } catch {
     return ""
   }
+}
+
+/**
+ * A spacing node emitted as it was written. `\ `, `\space`, `\nobreak` and a
+ * spelled-out `\nobreakspace` carry their own span and are sliced. `~` does
+ * not: it is KaTeX's macro for `\nobreakspace`, so its node is located in that
+ * macro body, and a node located there with that text can only have been
+ * written as `~` (KaTeX defines no other macro with that body). Kerns carry no
+ * span at all and are dropped: the backstop's comparison ignores the ones it
+ * can name (`\,`, `\;`, `\quad`, …), and any other (`\enspace`, `\hspace`)
+ * leaves the rebuilt equation short of the source, so it declines.
+ */
+function spacingTexOf(raw: any, ctx: Ctx): string {
+  const own = safeSrc(raw, ctx)
+  if (own) return own
+  const n = unwrap(raw)
+  const fromTilde =
+    n?.type === "spacing" && n.text === "\\nobreakspace" && n.loc?.lexer?.input === "\\nobreakspace"
+  return fromTilde ? "~" : ""
 }
 
 /**
@@ -1454,8 +1511,8 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const emit = () => {
         // Stripped constants may empty a side: \frac{c^4}{4GM} → \frac{1}{4M},
         // \frac{v}{c} → v.
-        const numTex = joinTex(frac.num.map((f) => f.emit())) || "1"
-        const denTex = joinTex(frac.den.map((f) => f.emit()))
+        const numTex = joinFactors(frac.num) || "1"
+        const denTex = joinFactors(frac.den)
         if (denTex === "") return numTex
         return `${cmd}{${numTex}}{${denTex}}`
       }
@@ -1540,7 +1597,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
 
 /** Source of a sub/superscript with its outer brace pair (if any) removed. */
 function scriptSrc(node: any, ctx: Ctx): string {
-  const src = srcOf(node, ctx).trim()
+  const src = srcOf(node, ctx)
   if (src.startsWith("{") && src.endsWith("}")) {
     let depth = 0
     for (let idx = 0; idx < src.length; idx += 1) {
@@ -1550,7 +1607,7 @@ function scriptSrc(node: any, ctx: Ctx): string {
         if (depth === 0 && idx < src.length - 1) return src // outer pair closes early
       }
     }
-    return src.slice(1, -1).trim()
+    return keepControlSpace(src.slice(1, -1))
   }
   return src
 }
@@ -1710,16 +1767,30 @@ function formatExp(tex: string, e12: number): string {
   return `${tex}^{${p}/${q}}`
 }
 
+/**
+ * The emitted product of `factors`, or "" when nothing but glue survives.
+ * Geometrized stripping can empty a product down to the spacing and product
+ * signs written between its factors, and glue with nothing left to join is not
+ * a factor: kept, it turned `r_s = \frac{2GM}{c^2\ }` into 2M over a
+ * denominator of `\ `, and `v = c\cdot` into `v = \cdot`. Returning "" hands the
+ * product to the caller's empty-side rule (a bare 1, or no denominator).
+ */
+function joinFactors(factors: Factor[]): string {
+  const parts = factors.map((f) => ({ glue: f.kind === "glue", tex: f.emit() }))
+  if (!parts.some((p) => !p.glue && p.tex !== "")) return ""
+  return joinTex(parts.map((p) => p.tex))
+}
+
 function emitTerm(t: TermInfo): string {
   // Stripped constants may leave a side of a "/" (or the whole term) empty.
   if (t.slashIdx >= 0) {
-    const num = joinTex(t.factors.slice(0, t.slashIdx).map((f) => f.emit()))
-    const den = joinTex(t.factors.slice(t.slashIdx + 1).map((f) => f.emit()))
+    const num = joinFactors(t.factors.slice(0, t.slashIdx))
+    const den = joinFactors(t.factors.slice(t.slashIdx + 1))
     if (den === "") return num === "" ? "1" : num
     if (num === "") return `1/${den}`
     return `${num}/${den}`
   }
-  return joinTex(t.factors.map((f) => f.emit())) || "1"
+  return joinFactors(t.factors) || "1"
 }
 
 /**
@@ -2152,6 +2223,9 @@ export function dimensionOf(
   }
 }
 
+/** Stands in for a control space (`\ `) in the backstop's comparison; no TeX source contains it. */
+const CONTROL_SPACE_SENTINEL = "\u0000"
+
 export function translateTex(
   rawTex: string,
   katex: { __parse: (tex: string, options?: Record<string, unknown>) => any[] },
@@ -2228,8 +2302,20 @@ export function translateTex(
   // For comparing a rebuilt equation against its source: whitespace, braces, and
   // pure-spacing commands are typographically inert. Adjacent signs are folded on
   // both sides, because the emitter folds them too (`a - -b` re-emits as `a + b`).
+  //
+  // A control space is not whitespace. Stripping its space with the rest left a
+  // lone backslash, so `r\ \sqrt{…}` normalized to the same string as the
+  // corrupt `r\\sqrt{…}` (a line break), and `r\ r` to the same as `r\r`, and
+  // the backstop passed both. Deleting the whole control space instead would
+  // equate `r\ r` with `rr`. Each one — a backslash after an even run of
+  // backslashes, then a space, tab or newline — becomes a sentinel, so a
+  // control space that goes missing, or fuses into another token, is a
+  // divergence.
   const cmpNorm = (s: string) => {
-    let out = s.replace(/\\qquad|\\quad|\\[,;!:]/g, "").replace(/[\s{}]/g, "")
+    let out = s
+      .replace(/(?<!\\)((?:\\\\)*)\\\s/g, `$1${CONTROL_SPACE_SENTINEL}`)
+      .replace(/\\qquad|\\quad|\\[,;!:]/g, "")
+      .replace(/[\s{}]/g, "")
     for (;;) {
       const folded = out
         .replace(/--/g, "+")
