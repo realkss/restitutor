@@ -1349,7 +1349,9 @@ function analyzeDifferential(
     if (baseText == null) throw new Unsupported(`an unsupported differential “${wholeSrc()}”`)
     const sup = opU.sup != null ? classifySup(opU.sup) : null
     if (opU.sub != null) {
-      operandDim = resolveSymbol(baseText, srcOf(opU, ctx), ctx, {
+      const display = srcOf(opU, ctx)
+      angularIndexGuard(baseText, opU, display, ctx)
+      operandDim = resolveSymbol(baseText, display, ctx, {
         sub: opU.sub,
         differential: prefix === "d",
       })
@@ -1413,7 +1415,7 @@ function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
     if (head.sub != null || typeof sup !== "object") {
       throw new Unsupported("a decorated function the engine cannot read")
     }
-    headTex += `^{${scriptSrc(head.sup, ctx)}}`
+    headTex += scriptsTex(head, ctx)
   }
   const argSum = parseSum(argNodes, ctx, { anchor: "forced", target: ZERO })
   const emit = () => {
@@ -1612,12 +1614,31 @@ function scriptSrc(node: any, ctx: Ctx): string {
   return src
 }
 
+/**
+ * Whether the superscript was written before the subscript. `X^{a}_{b}` and
+ * `X_{b}^{a}` typeset identically and KaTeX parses both to the same node, so
+ * the order survives only in the scripts' spans. Superscript first is the
+ * dominant spelling of mixed tensors (\Gamma^{\rho}_{\mu\nu}, \delta^{\mu}_{\nu},
+ * T^{\alpha}_{\ \alpha}); rebuilding every one of them subscript first made the
+ * reassembly backstop decline them all as divergent.
+ */
+function supWrittenFirst(n: any, ctx: Ctx): boolean {
+  if (n.sub == null || n.sup == null) return false
+  const sub = spanOf(n.sub, ctx.input)
+  const sup = spanOf(n.sup, ctx.input)
+  return sub != null && sup != null && sup[0] < sub[0]
+}
+
+/** The scripts of a supsub, in the order they were written. */
+function scriptsTex(n: any, ctx: Ctx): string {
+  const sub = n.sub != null ? `_{${scriptSrc(n.sub, ctx)}}` : ""
+  const sup = n.sup != null ? `^{${scriptSrc(n.sup, ctx)}}` : ""
+  return supWrittenFirst(n, ctx) ? sup + sub : sub + sup
+}
+
 /** Reconstruct `base_{sub}^{sup}` from parts — supsub/font nodes carry no reliable own span. */
 function supsubTex(baseTex: string, n: any, ctx: Ctx): string {
-  let out = baseTex
-  if (n.sub != null) out += `_{${scriptSrc(n.sub, ctx)}}`
-  if (n.sup != null) out += `^{${scriptSrc(n.sup, ctx)}}`
-  return out
+  return baseTex + scriptsTex(n, ctx)
 }
 
 /** Emission for a supsub base: plain symbols slice their span; font wraps reconstruct. */
@@ -1630,6 +1651,57 @@ function baseTexOf(rawBase: any, ctx: Ctx): string | null {
   const u = unwrap(rawBase)
   if (u && (u.type === "mathord" || u.type === "textord")) return srcOf(u, ctx)
   return null
+}
+
+/**
+ * The angular guard. The registry gives an indexed tensor one dimension for all
+ * of its components, and that holds only because x⁰ = ct makes every coordinate
+ * a length. θ and φ break the premise: Γ^r_{θθ} is a length and Γ^θ_{φφ} is
+ * dimensionless, where the registry says m⁻¹ for both. The error is a pure power
+ * of length, which no c–G insertion can absorb, so it can never place a wrong
+ * constant; it does ship an unchanged translation under a wrong unit banner
+ * (`\Gamma^{\mu}_{\theta\theta} = 0` as m⁻¹, `T^{0}_{\theta} = 0` as a pressure).
+ *
+ * The CEO ruling of 2026-08-17 admits θ and φ as subscript indices, and it
+ * stands: a component with a subscript alone (g_{\theta\theta}, \partial_\phi)
+ * still reads through it. A component that also carries a superscript was out
+ * of reach while every superscript-first tensor declined as a reassembly fault;
+ * emitting scripts in source order brings it in, and the ruling never covered
+ * it. So an indexed reading with a superscript and θ or φ in either script
+ * declines by name — in either script order, so the spelling never decides the
+ * reading. An identity the registry spells out (an `exact` entry) is not an
+ * indexed reading and is left alone, as is a subscript that is not an index
+ * list, and a superscript that is neither a power nor an index list keeps its
+ * own reason.
+ *
+ * A power on \partial or \nabla is a derivative order, not a component, and it
+ * is the ruling's own case: the Teukolsky operator's \partial_\phi^2 is among the
+ * equations the ruling was drawn from. It reads as the ruling reads it.
+ */
+const ANGULAR_LABELS = new Set(["\\theta", "\\phi", "\\varphi"])
+
+function angularIndexGuard(baseText: string, n: any, displayTex: string, ctx: Ctx): void {
+  if (n.sub == null || n.sup == null) return
+  if (ctx.reg.exact[`${baseText}_${subKeyText(n.sub, ctx)}`] || !ctx.reg.indexed[baseText]) return
+  const indexList = (nodes: any[]): boolean => {
+    try {
+      return allIndexTokens(nodes, true)
+    } catch {
+      return false
+    }
+  }
+  const subNodes = nodeListOf(n.sub)
+  const supNodes = nodeListOf(n.sup)
+  if (!indexList(subNodes)) return
+  const sup = classifySup(n.sup)
+  if (typeof sup === "object") {
+    if (baseText === "\\partial" || baseText === "\\nabla") return
+  } else if (sup !== "index" && !indexList(supNodes)) return
+  if ([...subNodes, ...supNodes].some((x) => ANGULAR_LABELS.has(textOf(x) ?? ""))) {
+    throw new Unsupported(
+      `an angular coordinate index on “${displayTex}” — components along θ and φ do not share the registry's length dimension`,
+    )
+  }
 }
 
 function analyzeSupsub(n: any, ctx: Ctx): Factor {
@@ -1660,6 +1732,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
 
   // Symbol with a subscript: identity, indices, or unknown.
   if (baseText != null && wholeTex != null && n.sub != null) {
+    angularIndexGuard(baseText, n, wholeTex, ctx)
     const d = resolveSymbol(baseText, wholeTex, ctx, { sub: n.sub })
     if (sup == null || sup === "index") return { kind: "sym", dim: d, emit: () => wholeTex }
     if (typeof sup === "object") {
@@ -1718,9 +1791,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
       const inner = analyzeFactor(n.base, ctx)
       const scaled =
         typeof sup === "object" && sup != null ? dimScale(inner.dim, sup.p, sup.q) : inner.dim
-      const scripts =
-        (n.sub != null ? `_{${scriptSrc(n.sub, ctx)}}` : "") +
-        (n.sup != null ? `^{${scriptSrc(n.sup, ctx)}}` : "")
+      const scripts = scriptsTex(n, ctx)
       return { kind: "group", dim: scaled, emit: () => `${inner.emit()}${scripts}` }
     }
   }

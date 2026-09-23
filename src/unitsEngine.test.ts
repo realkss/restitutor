@@ -268,6 +268,22 @@ describe("KaTeX parse-tree shape assumptions", () => {
     )
   })
 
+  test("X^{a}_{b} and X_{b}^{a} parse alike; only the scripts' locs keep the written order", () => {
+    // scriptsTex reads the order from these spans; nothing else in the tree has it.
+    assert.deepStrictEqual(withoutLocs(parse("X^{a}_{b}")), withoutLocs(parse("X_{b}^{a}")))
+    for (const [tex, supFirst] of [
+      ["X^{a}_{b}", true],
+      ["X_{b}^{a}", false],
+      ["X^a_b", true],
+    ] as const) {
+      const [n] = parse(tex)
+      assert.strictEqual(n.type, "supsub", tex)
+      assert.notStrictEqual(n.sup.loc, undefined, `${tex}: the superscript lost its loc`)
+      assert.notStrictEqual(n.sub.loc, undefined, `${tex}: the subscript lost its loc`)
+      assert.strictEqual(n.sup.loc.start < n.sub.loc.start, supFirst, tex)
+    }
+  })
+
   test("{T^{ab}}_{;b} is a supsub whose base is an ordgroup holding the tensor's supsub", () => {
     const nodes = parse("{T^{ab}}_{;b}")
     assert.strictEqual(nodes.length, 1)
@@ -734,12 +750,13 @@ describe("review regressions", () => {
   })
 
   test("the reassembly backstop covers mutating translations, not just no-ops", () => {
-    // supsubTex always writes the subscript first, so `p^a_b` re-emits as
-    // `p_{b}^{a}`. With a constant to insert, that rewrite used to ride out
-    // unchecked (`E = 2p^a_b` shipped as `E = 2p_{b}^{a}c`); replaying the
-    // emission with the insertion masked makes it visible, and declining is the
-    // contract-correct outcome.
-    const result = run("E = 2p^a_b")
+    // \enspace is a kern with no span, so the emitter drops it, and the
+    // comparison keeps it (it is not one of the kerns it can name). With a
+    // constant to insert, a dropped token like this used to ride out unchecked;
+    // replaying the emission with the insertion masked makes it visible, and
+    // declining is the contract-correct outcome. (The witness was E = 2p^a_b,
+    // re-emitted subscript first until scripts kept their written order.)
+    const result = run("E = m\\enspace v")
     assert.strictEqual(result.kind, "declined", JSON.stringify(result))
     if (result.kind === "declined") {
       assert.ok(
@@ -747,8 +764,7 @@ describe("review regressions", () => {
         JSON.stringify(result.reasons),
       )
     }
-    // The same equation without anything to insert already declined, and still does.
-    assert.strictEqual(run("p^a_b = 0").kind, "declined")
+    assert.strictEqual(restored("E = 2p^a_b"), "E=2p^{a}_{b}c")
   })
 
   test("insertion scaffolding is not mistaken for a divergence", () => {
@@ -1406,5 +1422,107 @@ describe("source fidelity: foreign-lexer locs, spacing as written, control space
     assert.strictEqual(rawRestored("v = c\\cdot", GEO), "v = 1")
     // A surviving factor keeps the glue around it.
     assert.strictEqual(rawRestored("E = m\\ c^2", GEO), "E = m\\ ")
+  })
+})
+
+describe("script order and the angular guard", () => {
+  const ANGULAR = (tex: string) =>
+    `an angular coordinate index on “${tex}” — components along θ and φ do not share the registry's length dimension`
+  const declinesAngular = (tex: string, quoted: string) => {
+    for (const target of [SI, GEO]) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [ANGULAR(quoted)], tex)
+        assert.deepStrictEqual(result.unknown, [], tex)
+      }
+    }
+  }
+  const verbatim = (tex: string) => {
+    for (const target of [SI, GEO]) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "translated") {
+        assert.strictEqual(result.restoredTex, tex)
+        assert.strictEqual(result.changed, false, tex)
+      }
+    }
+  }
+
+  test("superscript-first scripts are re-emitted superscript first", () => {
+    // Every X^{a}_{b} was rebuilt as X_{b}^{a} and declined as a reassembly fault.
+    assert.strictEqual(restored("E = 2p^a_b"), "E=2p^{a}_{b}c")
+    assert.strictEqual(restored("E = 2p^a_b", GEO), "E=2p^{a}_{b}")
+    verbatim("\\Gamma^{\\rho}_{\\mu\\nu} = \\Gamma^{\\rho}_{\\nu\\mu}")
+    verbatim("T^{0}_{i} = 0")
+    verbatim("\\delta^{\\mu}_{\\nu} = \\delta_{\\nu}^{\\mu}")
+    // The legend and the unknown list quote the symbol in its written order too.
+    const gamma = run("\\Gamma^{\\rho}_{\\mu\\nu} = \\Gamma^{\\rho}_{\\nu\\mu}")
+    assert.strictEqual(gamma.kind, "translated")
+    if (gamma.kind === "translated") {
+      assert.deepStrictEqual(
+        gamma.legend.map((l) => l.tex),
+        ["\\Gamma^{\\rho}_{\\mu\\nu}", "\\Gamma^{\\rho}_{\\nu\\mu}"],
+      )
+    }
+    const xi = run("\\Xi^{a}_{b} = 0")
+    assert.strictEqual(xi.kind, "declined")
+    if (xi.kind === "declined") assert.deepStrictEqual(xi.unknown, ["\\Xi^{a}_{b}"])
+  })
+
+  test("riders and compound bases keep the written order", () => {
+    verbatim("T_{a}{}^{b}_{c} = 0")
+    verbatim("E = \\left(p\\right)^{2}_{a}/m")
+    verbatim("E = \\left(v\\right)^{2}_{a}m")
+  })
+
+  test("an indexed component with a superscript and θ or φ in either script declines by name", () => {
+    // Unblocked by script order, these became unchanged translations under a
+    // banner of m⁻¹ and of a pressure: Γ^μ_{θθ} and T^0_θ are neither.
+    declinesAngular("\\Gamma^{\\mu}_{\\theta\\theta} = 0", "\\Gamma^{\\mu}_{\\theta\\theta}")
+    declinesAngular("T^{0}_{\\theta} = 0", "T^{0}_{\\theta}")
+    declinesAngular("\\Gamma^{\\theta}_{rr} = 0", "\\Gamma^{\\theta}_{rr}")
+    declinesAngular("\\Gamma^{r}_{\\theta\\theta} = -r", "\\Gamma^{r}_{\\theta\\theta}")
+    declinesAngular("\\Gamma^{\\theta}_{r\\theta} = \\frac{1}{r}", "\\Gamma^{\\theta}_{r\\theta}")
+    declinesAngular("x^{\\mu}_{\\varphi} = 0", "x^{\\mu}_{\\varphi}")
+    // The spelling never decides the reading: subscript first declines as well,
+    // though it used to translate.
+    declinesAngular("\\Gamma_{\\theta\\theta}^{\\mu} = 0", "\\Gamma_{\\theta\\theta}^{\\mu}")
+    // A power is a superscript too.
+    declinesAngular("E = g_{\\phi\\phi}^{2}", "g_{\\phi\\phi}^{2}")
+    // Every indexed lookup, the differential's operand included.
+    declinesAngular("ds = dx^{\\mu}_{\\theta}", "x^{\\mu}_{\\theta}")
+  })
+
+  test("the guard leaves the 2026-08-17 subscript ruling and other reasons alone", () => {
+    // A subscript alone still reads θ and φ as indices.
+    verbatim("g_{\\theta\\phi} = 0")
+    // A power on ∂ is a derivative order: the Teukolsky operator's ∂_φ², one of
+    // the equations the ruling was drawn from, still stops only on unknown ψ.
+    for (const tex of ["\\partial_\\phi^2\\psi = 0", "\\nabla_\\theta^{2}\\psi = 0"]) {
+      const order = run(tex)
+      assert.strictEqual(order.kind, "declined", tex)
+      if (order.kind === "declined") {
+        assert.deepStrictEqual(order.reasons, [], tex)
+        assert.deepStrictEqual(order.unknown, ["\\psi"], tex)
+      }
+    }
+    // A superscript that is neither a power nor an index list keeps its own reason.
+    const exponent = run("g_{\\theta\\theta}^{n} = 0")
+    assert.strictEqual(exponent.kind, "declined")
+    if (exponent.kind === "declined") {
+      assert.deepStrictEqual(exponent.reasons, ["an exponent on “g_{\\theta\\theta}^{n}” that could not be read"])
+    }
+    // No indexed reading, no guard: an unknown base is reported as unknown.
+    const unknown = run("\\Xi^{\\mu}_{\\theta} = 0")
+    assert.strictEqual(unknown.kind, "declined")
+    if (unknown.kind === "declined") {
+      assert.deepStrictEqual(unknown.reasons, [])
+      assert.deepStrictEqual(unknown.unknown, ["\\Xi^{\\mu}_{\\theta}"])
+    }
+    // θ and φ in an exponent are not indices.
+    const phase = run("x = e^{i\\phi}")
+    assert.strictEqual(phase.kind, "declined")
+    if (phase.kind === "declined") assert.ok(!phase.reasons.some((r) => r.includes("angular")), JSON.stringify(phase))
   })
 })

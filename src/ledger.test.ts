@@ -34,6 +34,8 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("t = 0 \\qquad r = 2M").class, "fragment")
     assert.strictEqual(outcome("r = 2M \\qquad (1)").class, "fragment")
     assert.strictEqual(outcome("\\sin(x").class, "parse")
+    // An indexed component along θ or φ that carries a superscript: the angular guard.
+    assert.strictEqual(outcome("\\Gamma^{\\mu}_{\\theta\\theta} = 0").class, "unsupported")
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)

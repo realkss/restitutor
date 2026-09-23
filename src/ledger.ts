@@ -56,7 +56,7 @@ const STRUCTURAL: [RegExp, OutcomeClass][] = [
   [/a relation between the constants themselves/, "declaration"],
   // Constructs the engine's reader does not handle, in its several wordings.
   [
-    /not supported|could not be read|could not read|cannot read|floating super\/subscript|symbolic exponent|unsupported (?:relation|accent|differential)|closing delimiter|cannot pair with its partner|in this position|primed symbol|time derivative of a compound|integrals, sums, and limits/,
+    /not supported|could not be read|could not read|cannot read|floating super\/subscript|symbolic exponent|unsupported (?:relation|accent|differential)|closing delimiter|cannot pair with its partner|in this position|primed symbol|time derivative of a compound|integrals, sums, and limits|an angular coordinate index/,
     "unsupported",
   ],
 ]
