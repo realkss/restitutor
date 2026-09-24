@@ -1322,11 +1322,11 @@ function isGenuineIndex(node: any): boolean {
  * on a compound base (a group, a fraction, a root) is not read with these:
  * there a superscript that could be an index list could as well be a
  * symbolic power, no indexed entry vouches for the index reading, and the
- * base's dimension passed through unchanged would then be wrong. The plain
- * letters keep their older reading there, which already misreads
- * `(\frac{r}{M})^{\alpha}` as an index; these tokens do not extend it to
- * `(\frac{t}{M})^{\alpha_1}`, `(\frac{r}{M})^{\beta'}` or `(t/M)^{{2}}`, which
- * decline as unreadable scripts. On a symbol, braced or not (`{r}^{\alpha_1}`
+ * base's dimension passed through unchanged would then be wrong. Plain
+ * letters and digits are read there only where analyzeScriptedCompound's
+ * rule (R10) vouches for them; these tokens are not read at all, and
+ * `(\frac{t}{M})^{\alpha_1}` and `(\frac{r}{M})^{\beta'}` decline as
+ * unreadable scripts. On a symbol, braced or not (`{r}^{\alpha_1}`
  * is r^{α₁}), the index reading goes through the dictionary's indexed
  * entries, which is what vouches for it.
  */
@@ -1430,6 +1430,17 @@ function classifySupNodes(nodes: any[]): { p: number; q: number } | "index" | "s
       const q = intOf(nodeListOf(u.denom))
       if (p != null && q != null && q !== 0) return { p: sign * p, q }
     }
+  }
+  // A digit run, a slash and a digit run write a rational as \frac does
+  // (R1): `r^{3/2}` is r^{\frac{3}{2}}. The engine writes its own half-integer
+  // restorations so (`G^{1/2}`), and read as anything else they did not read
+  // back: `v = \left(\frac{M}{r}\right)^{\frac{1}{2}}` declined as a reassembly
+  // fault. A second slash (`1/2/2`) is no rational written this way.
+  const slash = rest.findIndex((x) => textOf(x) === "/")
+  if (slash > 0) {
+    const p = intOf(rest.slice(0, slash))
+    const q = intOf(rest.slice(slash + 1))
+    if (p != null && q != null && q !== 0) return { p: sign * p, q }
   }
   // Unsigned all-digit superscripts of the component-index shape are indices,
   // not powers: T^{00}, u^0, x^0. Only a single digit 1–3 stays a power (r²).
@@ -3022,6 +3033,8 @@ function evaluationBarReason(scripted: any | null): string {
   if (scripted.sub != null && containsRel(nodeListOf(scripted.sub))) {
     return "an evaluation condition in a subscript, which is not supported yet"
   }
+  // A subscript alone is the point it is evaluated at, not limits.
+  if (scripted.sup == null) return "an evaluation point in a subscript, which is not supported yet"
   return "evaluation limits, which are not supported yet"
 }
 
@@ -4351,14 +4364,134 @@ function analyzeScriptedSymbol(
   }
   // Expression exponent: legal only on a dimensionless base; the exponent is
   // itself a geometrized expression restored against a dimensionless target.
-  const baseDim =
-    baseText === "e" || baseText === "\\pi" || baseText === "i" ? ZERO : resolveSymbol(baseText, baseTex, ctx, {})
-  if (!dimIsZero(baseDim)) {
-    throw new Unsupported(`a symbolic exponent on the dimensional base “${baseTex}”`)
-  }
+  const pureNumber = baseText === "e" || baseText === "\\pi" || baseText === "i"
+  const baseDim = pureNumber ? ZERO : resolveSymbol(baseText, baseTex, ctx, {})
+  if (!dimIsZero(baseDim)) throw new Unsupported(unreadExponentReason(n.sup, baseTex, ctx))
+  // An unknown base gives no dimension to say whether its superscript is an
+  // exponent at all, so the superscript is not read: `h = h^{s}` blamed a
+  // missing completion on the term “s”, where the unknown h is the whole story.
+  if (!pureNumber && ctx.reg.bare[baseText] == null) return { kind: "sym", dim: ZERO, emit: () => wholeTex }
   const expSum = parseSum(nodeListOf(n.sup), ctx, { anchor: "forced", target: ZERO })
   const emit = () => `${baseTex}^{${expSum.emit()}}`
   return { kind: "sym", dim: ZERO, emit }
+}
+
+/**
+ * Why a superscript on a dimensional base is not read, in the words its shape
+ * allows (Part 3 of the symbolic-exponent design; its exponent algebra, Part
+ * 1, is not built). The old wording, "a symbolic exponent on the dimensional
+ * base", was false for most of what it named: across the corpus that
+ * superscript was a label, a primed or elided index list, or a number the
+ * engine did not parse, far more often than a symbolic power.
+ *
+ * - A power of numerals and symbols, summed and scaled by rationals
+ *   (`\Delta^{-s}`, `r^{-(2s+1)}`, `t^{2p_{1}}`), is a symbolic power, and says
+ *   so. Nothing is looked up to say it: whether its letters are pure numbers is
+ *   what the unbuilt algebra would have to know.
+ * - A superscript holding a number or an operator the grammar does not admit
+ *   (`r^{1.5}`, `r^{(2s+1)/2}`, `r^{-s-i\sigma}`, `p^{{2}}`) is an exponent
+ *   the engine cannot read. A digit, a decimal point or an operator makes it
+ *   one: nothing else is written with them in a superscript.
+ * - Anything else — a lone letter (`x^{I}`, `r^{n}`, `R^{\theta}`), letters
+ *   side by side (`\zeta^{cl}`), an ellipsis, a mark (`\mathbf{y}^{\intercal}`)
+ *   — is a power or a label alike, and says that. A lone letter is where the
+ *   two meet: `T^{n}` is a time level as often as a power, and no dictionary
+ *   entry decides it. So is a superscript wholly in parentheses, an order or
+ *   a frame label (`e^{(\theta)}`) as often as a power, and a list
+ *   (`\mathbf{R}^{1,3}`) is no power at all.
+ */
+function unreadExponentReason(sup: any, baseQuote: string, ctx: Ctx): string {
+  const nodes = nodeListOf(sup).filter(isMeaningfulNode)
+  const opened = openBraces(nodes)
+  const supTex = scriptSrc(sup, ctx)
+  const label = `the superscript “${supTex}” on “${baseQuote}”, which the engine cannot read as a power or an index`
+  const isListPunctuation = (x: any) => unwrap(x)?.type === "atom" && unwrap(x).family === "punct"
+  if (isParenthesized(nodes) || opened.some(isListPunctuation)) return label
+  const symbols = affineSymbolCount(nodes)
+  if (symbols != null && symbols > 0 && !(nodes.length === 1 && isExponentSymbol(nodes[0]))) {
+    return `a symbolic power on “${baseQuote}”, which is not supported yet`
+  }
+  if (opened.some(isArithmetic)) return `an exponent “${supTex}” on “${baseQuote}” that the engine cannot read`
+  return label
+}
+
+/** A node list that is one parenthesized group, `(…)`. */
+function isParenthesized(nodes: any[]): boolean {
+  let grouped: any[]
+  try {
+    grouped = groupDelims(nodes.filter(isMeaningfulNode))
+  } catch {
+    return false
+  }
+  const u = grouped.length === 1 ? grouped[0] : null
+  return (u?.type === "__group" && u.open === "(") || (u?.type === "leftright" && u.left === "(")
+}
+
+/** A node list with its plain brace groups opened; a font, which is content, stays whole. */
+function openBraces(nodes: any[]): any[] {
+  return nodes.flatMap((x) => {
+    const u = peelStyles(x)
+    return u?.type === "ordgroup" ? openBraces(u.body.filter(isMeaningfulNode)) : [x]
+  })
+}
+
+/** Binary operators of arithmetic; a transpose (`\intercal`) or a star is a mark, not one. */
+const ARITHMETIC_OPS = new Set(["+", "-", "\\pm", "\\mp", "\\cdot", "\\times", "\\div"])
+
+/** A numeral, a decimal point, a slash, an arithmetic operator, a fraction, a root or a delimiter. */
+function isArithmetic(x: any): boolean {
+  const u = peelStyles(x)
+  if (u?.type === "genfrac" || u?.type === "sqrt" || u?.type === "leftright") return true
+  if (u?.type === "atom") return ARITHMETIC_OPS.has(u.text) || u.family === "open" || u.family === "close"
+  return /^[0-9./]$/.test(textOf(u) ?? "")
+}
+
+/**
+ * A letter an exponent could hold as a pure number, in italic type: a Latin or
+ * Greek letter, bare or with a subscript (`p_{1}`). A font makes it a label.
+ */
+function isExponentSymbol(x: any): boolean {
+  const u = peelStyles(x)
+  if (u?.type === "supsub") return u.sup == null && u.sub != null && isExponentSymbol(u.base)
+  if (u?.type !== "mathord" && u?.type !== "textord") return false
+  const text: string = u.text
+  return /^(?:\\[a-zA-Z]+|[A-Za-z])$/.test(text) && text !== "\\prime" && !BAR_FAMILY[text] && !ELLIPSES.has(text)
+}
+
+/**
+ * The number of symbols in an affine exponent — a sum of numerals, symbols,
+ * their rational multiples (`2s`, `s/2`, `\frac{s}{2}`) and parenthesized
+ * such sums, each under at most one sign — or null for anything else. A
+ * double sign (`--s`) is no such sum.
+ */
+function affineSymbolCount(nodes: any[]): number | null {
+  const terms = summandsOf(nodes)
+  if (terms == null) return null
+  let symbols = 0
+  for (const term of terms) {
+    const count = affineTermSymbolCount(term)
+    if (count == null) return null
+    symbols += count
+  }
+  return symbols
+}
+
+/** One term of an affine exponent: `k`, `k/d`, `ks`, `ks/d`, `k(…)` or `\frac{…}{d}`; its symbol count, or null. */
+function affineTermSymbolCount(term: any[]): number | null {
+  let lead = 0
+  while (lead < term.length && /^[0-9]$/.test(textOf(term[lead]) ?? "")) lead += 1
+  const rest = term.slice(lead)
+  const divisor = (nodes: any[]) => nodes.length > 1 && textOf(nodes[0]) === "/" && (intOf(nodes.slice(1)) ?? 0) > 0
+  if (rest.length === 0) return lead > 0 ? 0 : null
+  if (lead > 0 && divisor(rest)) return 0
+  if (isExponentSymbol(rest[0]) && (rest.length === 1 || divisor(rest.slice(1)))) return 1
+  if (rest.length !== 1) return null
+  const u = unwrap(rest[0])
+  if (u?.type === "__group" && u.open === "(") return affineSymbolCount(u.body)
+  if (lead === 0 && u?.type === "genfrac" && u.hasBarLine !== false && (intOf(nodeListOf(u.denom)) ?? 0) > 0) {
+    return affineSymbolCount(nodeListOf(u.numer))
+  }
+  return null
 }
 
 /** A group in brackets or parentheses, not a bar pair or an evaluation bar. */
@@ -4367,12 +4500,120 @@ function isBracketGroup(u: any): boolean {
   return u?.type === "__group" && u.bar == null
 }
 
+/** `\left. … \right|`, the evaluation bar. */
+function isEvaluationBar(u: any): boolean {
+  return u?.type === "leftright" && u.left === "." && EVALUATION_BARS.has(u.right)
+}
+
+/** A group in square brackets, however sized (`[`, `\left[`, `\bigl[`, `\lbrack`). */
+function isSquareBracketGroup(u: any): boolean {
+  const open: string = u?.type === "leftright" ? u.left : u?.type === "__group" ? u.open : ""
+  return /(?:\[|\\lbrack)$/.test(open)
+}
+
+/** Whether a node, or anything under it, satisfies `test`. */
+function containsDeep(node: any, test: (n: any) => boolean): boolean {
+  if (node == null || typeof node !== "object") return false
+  if (Array.isArray(node)) return node.some((x) => containsDeep(x, test))
+  if (test(node)) return true
+  return ["body", "numer", "denom", "base", "sup", "sub", "index"].some((key) => containsDeep(node[key], test))
+}
+
+/**
+ * Whether every summand of a group is one tensor read through the
+ * dictionary's indexed entry (`(k_{1} + k_{2})^{\mu}`, the staggered
+ * `{F^{\alpha}}^{\psi}`): an index superscript on such a group is the index
+ * of every summand, which is a fact of the notation, and the group keeps
+ * their dimension.
+ */
+function isTensorSum(group: any, ctx: Ctx): boolean {
+  const terms = summandsOf(Array.isArray(group.body) ? group.body : [])
+  return terms != null && terms.every((term) => term.length === 1 && isIndexedTensor(term[0], ctx))
+}
+
+/**
+ * A symbol carrying index scripts and read through its indexed entry, or a
+ * braced stagger of one (`{{T^{a}}_{b}}`), whose outer scripts are indices too.
+ */
+function isIndexedTensor(node: any, ctx: Ctx): boolean {
+  const u = unwrap(node)
+  if (u?.type === "ordgroup") {
+    const body = u.body.filter(isMeaningfulNode)
+    return body.length === 1 && isIndexedTensor(body[0], ctx)
+  }
+  if (u?.type !== "supsub") return false
+  const reading = u.sup != null ? classifySup(u.sup) : null
+  if (u.sup != null && reading !== "index") return false
+  try {
+    const symbol = symbolBaseOf(u.base, ctx)
+    if (symbol != null) return symbol.accent == null && readsIndexed(symbol.text, u, reading, ctx)
+    return (u.sub == null || allIndexTokens(nodeListOf(u.sub), true)) && isIndexedTensor(u.base, ctx)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * A node list cut at its top-level plus and minus signs, a leading sign set
+ * aside, or null when its delimiters do not pair. A sign with no term after
+ * it, or a double sign, leaves an empty summand.
+ */
+function summandsOf(nodes: any[]): any[][] | null {
+  let grouped: any[]
+  try {
+    grouped = groupDelims(nodes.filter(isMeaningfulNode))
+  } catch {
+    return null
+  }
+  const terms: any[][] = [[]]
+  for (const x of grouped) {
+    if (isPlusMinus(x) != null) terms.push([])
+    else terms[terms.length - 1].push(x)
+  }
+  if (terms[0].length === 0 && terms.length > 1) terms.shift()
+  return terms
+}
+
 /**
  * A compound base (a group, a fraction, a root, an accent over an expression)
  * carrying a numeric power and/or index scripts: emission is rebuilt from the
  * analyzed base so inner restorations and delimiters survive. A group keeps
  * its dimension under a dagger or a transpose (R8b); a label or any other mark
  * has no symbol's name to go into, and is not read on it.
+ *
+ * An index letter raised on a compound base (R10) could as well be a
+ * symbolic power, and read as an index the base's dimension passed through
+ * as if the power were 1: `z = \left(\frac{r}{M}\right)^{\alpha}` shipped as
+ * `\frac{\left(\frac{r}{M}\right)^{\alpha}c^{2}}{G}`. The index reading is
+ * kept only where the notation fixes it or the two readings agree: on a sum
+ * of tensors, each read through its indexed entry (`(k_{1} + k_{2})^{\mu}`),
+ * and on a dimensionless base, where any power is dimensionless too. Digits
+ * of the component shape (classifySupNodes) are held to the same rule: read
+ * as components, `\left(\frac{r}{M}\right)^{0}` kept the dimension of r/M
+ * where the power 0 has none, and the twelfth power of Lennard-Jones's
+ * `\left(\frac{\sigma}{r}\right)^{12}` was read as the component 1,2.
+ *
+ * A subscript alone on a bracket group (R8) annotates it — an evaluation
+ * point, an averaging domain, a variable held fixed, a component — and never
+ * multiplies it: `\langle r\rangle_{S}` is a length. The group keeps its
+ * dimension and the subscript is emitted as written, never read. A relation
+ * in it is a condition the group is evaluated at, which may itself need
+ * restoring, and declines; so does a big operator or a function there.
+ * Scripts on both sides of a group are never read as an annotation and a
+ * power: `\left[\frac{r}{r_s}\right]_{0}^{v}` is F(v) − F(0), and read so,
+ * the upper limit, which has the dimension of the variable it bounds, was
+ * restored as an exponent, to `^{\frac{v}{c}}`. On square brackets both
+ * scripts are evaluation limits and decline so; on parentheses they are as
+ * often a tensor's or a matrix's index pair (`(\phi^{I})^{m}_{\ n}`), which
+ * keeps the index reading where both are index lists and declines otherwise.
+ * An evaluation bar is evaluated at what its scripts say, which is not read
+ * either.
+ *
+ * A symbolic exponent on a bracket group with no subscript (R9) is read as on
+ * a symbol: on a dimensionless group it is a dimensionless expression,
+ * restored against that (`\left(\frac{r}{r_{s}}\right)^{\frac{v}{c}}`); on a
+ * dimensional one it is not read (unreadExponentReason). Never on a group
+ * with a subscript, whose superscript may be an upper limit.
  */
 function analyzeScriptedCompound(
   n: any,
@@ -4383,8 +4624,10 @@ function analyzeScriptedCompound(
   const base = unwrap(n.base)
   if (base != null) {
     bracedDigitGuard(n, base, ctx)
+    if (isEvaluationBar(base)) throw new Unsupported(evaluationBarReason(n))
     const subIsIndex = n.sub == null || allIndexTokens(nodeListOf(n.sub), true)
-    const kept = n.sup != null && isBracketGroup(base) && preservesGroup(n.sup)
+    const bracket = isBracketGroup(base)
+    const kept = n.sup != null && bracket && preservesGroup(n.sup)
     if (!kept && label != null && label !== "mixed") {
       throw new Unsupported(
         `the label or mark “${scriptSrc(n.sup, ctx)}” on a compound expression, which the engine cannot read as a symbol`,
@@ -4395,22 +4638,48 @@ function analyzeScriptedCompound(
       sup == null ||
       (sup === "index" && !hasDecoratedIndexToken(nodeListOf(n.sup))) ||
       typeof sup === "object"
+    if (bracket && n.sub != null && n.sup != null && isSquareBracketGroup(base)) {
+      throw new Unsupported("evaluation limits, which are not supported yet")
+    }
+    const scripted = (inner: Factor, d: Dim, scripts: () => string): Factor => ({
+      kind: "group",
+      dim: d,
+      openArgument: inner.openArgument,
+      emit: () => `${inner.emit()}${scripts()}`,
+      // A script on nothing is nothing: `(c)^{2}` vanishes with its base.
+      vanishes: inner.vanishes,
+      // A numeral raised is a numeral at its edges (`10^{2}`), and so is a
+      // compound one: the factor's edges are its base's.
+      numeralEdge: (side) => inner.numeralEdge?.(side) === true,
+      parts: [inner],
+    })
     if (subIsIndex && supIsReadable) {
       const inner = analyzeFactor(n.base, ctx)
+      if (sup === "index" && !kept && !dimIsZero(inner.dim) && !isTensorSum(base, ctx)) {
+        throw new Unsupported(`a superscript “${scriptSrc(n.sup, ctx)}” on a group, which may be an exponent or an index`)
+      }
       const scaled = !kept && typeof sup === "object" && sup != null ? dimScale(inner.dim, sup.p, sup.q) : inner.dim
       const scripts = scriptsTex(n, ctx)
-      return {
-        kind: "group",
-        dim: scaled,
-        openArgument: inner.openArgument,
-        emit: () => `${inner.emit()}${scripts}`,
-        // A script on nothing is nothing: `(c)^{2}` vanishes with its base.
-        vanishes: inner.vanishes,
-        // A numeral raised is a numeral at its edges (`10^{2}`), and so is a
-        // compound one: the factor's edges are its base's.
-        numeralEdge: (side) => inner.numeralEdge?.(side) === true,
-        parts: [inner],
+      return scripted(inner, scaled, () => scripts)
+    }
+    if (bracket && n.sup == null) {
+      if (containsDeep(n.sub, (x) => relTextOf(x) != null)) {
+        throw new Unsupported("an evaluation condition in a subscript, which is not supported yet")
       }
+      const annotation = nodeListOf(n.sub).some(isMeaningfulNode)
+      if (annotation && !containsDeep(n.sub, (x) => x.type === "op" || x.type === "operatorname")) {
+        const inner = analyzeFactor(n.base, ctx)
+        const scripts = scriptsTex(n, ctx)
+        return scripted(inner, inner.dim, () => scripts)
+      }
+    }
+    if (bracket && n.sub == null && sup === "expr") {
+      const inner = analyzeFactor(n.base, ctx)
+      if (!dimIsZero(inner.dim)) {
+        throw new Unsupported(unreadExponentReason(n.sup, maskedEmission(ctx, inner.emit), ctx))
+      }
+      const exponent = parseSum(nodeListOf(n.sup), ctx, { anchor: "forced", target: ZERO })
+      return scripted(inner, ZERO, () => `^{${exponent.emit()}}`)
     }
   }
 

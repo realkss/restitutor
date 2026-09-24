@@ -2095,8 +2095,8 @@ describe("relations core: relations, continuation rows, branch signs", () => {
       declines(tex, SIGN_LABEL)
     }
     declines("(-+++)", "signs with nothing to act on (a sign pattern such as a metric signature)")
-    // A sign with an operand after it is not a label: this is still a symbolic power.
-    declines("r^{\\pm 1} = M", "a symbolic exponent on the dimensional base “r”")
+    // A sign with an operand after it is not a label: this is still an exponent.
+    declines("r^{\\pm 1} = M", "an exponent “\\pm 1” on “r” that the engine cannot read")
   })
 })
 
@@ -2786,8 +2786,12 @@ describe("batch-1 review fixes", () => {
     // stripped power offset the adjacency a strip made: live at GEO and at
     // geometrized SI, `3\frac{1}{2}M` (3½ M where the value is 1.5 M),
     // `2\left.3\right|M` (23 M for 6 M) and `32M` (for 6 M).
+    // The powers on the groups are 16 and 24 (step 12): these fixtures wrote
+    // 10 and 9, and `^{10}` has the component-index shape, which read the group
+    // as a component (keeping G/c²) where the author meant its tenth power; on a
+    // group that is now declined as a power or an index (R10).
     const made: [string, string, string][] = [
-      ["x = 3\\,\\left(\\frac{G}{c^2}\\right)^{10}\\left(\\frac{c^2}{G}\\right)^{9}\\,\\frac{1}{2}\\,M", "3", "\\frac{1}{2}"],
+      ["x = 3\\,\\left(\\frac{G}{c^2}\\right)^{16}\\left(\\frac{c^2}{G}\\right)^{24}\\,\\frac{1}{2}\\,M", "3", "\\frac{1}{2}"],
       ["x = 3\\,\\frac{G}{2\\,c^{\\frac{10}{5}}}\\,M", "3", "\\frac{1}{2}"],
       ["x = 3\\,\\frac{G}{c^{\\frac{10}{5}}}\\,\\frac{1}{2}\\,M", "3", "\\frac{1}{2}"],
       ["x = 2\\,\\frac{G}{c^{\\frac{10}{5}}}\\,\\frac{1}{2}\\,M", "2", "\\frac{1}{2}"],
@@ -2795,7 +2799,7 @@ describe("batch-1 review fixes", () => {
       ["x = 3\\,G\\,2\\,c^{-\\frac{12}{6}} M", "3", "2"],
       ["x = 3\\,G\\,2\\,c^{-\\tfrac{12}{6}} M", "3", "2"],
       ["x = 3\\,G\\,2\\,c^{-\\dfrac{12}{6}} M", "3", "2"],
-      ["x = 3\\,\\left(\\frac{G}{c^2}\\right)^{10}\\left(\\frac{c^2}{G}\\right)^{9}\\,2\\,M", "3", "2"],
+      ["x = 3\\,\\left(\\frac{G}{c^2}\\right)^{16}\\left(\\frac{c^2}{G}\\right)^{24}\\,2\\,M", "3", "2"],
       // Before, the 1 and 0 of the power were named as a number the author set.
       ["x = 3\\,G^{\\frac{10}{10}}\\,2\\,\\frac{M}{c^2}", "3", "2"],
     ]
@@ -2810,7 +2814,7 @@ describe("batch-1 review fixes", () => {
     // translate, as `3M` did before step 7c.
     for (const target of [GEO, GSI]) {
       assert.strictEqual(
-        rawRestored("x = 3\\,\\left(\\frac{G}{c^2}\\right)^{10}\\left(\\frac{c^2}{G}\\right)^{10}\\,\\frac{G}{c^2}\\,M", target),
+        rawRestored("x = 3\\,\\left(\\frac{G}{c^2}\\right)^{16}\\left(\\frac{c^2}{G}\\right)^{16}\\,\\frac{G}{c^2}\\,M", target),
         "x = 3M",
       )
       assert.strictEqual(rawRestored("x = \\frac{G}{c^{\\frac{10}{5}}}\\,1\\,5\\,M", target), "x = 1\\,5M")
@@ -2818,13 +2822,13 @@ describe("batch-1 review fixes", () => {
     // A restored power's digits are not the author's either, nor are those of
     // a power written as a fraction, restored or not.
     assert.strictEqual(
-      rawRestored("x = 3\\,\\left(\\frac{G}{c^2}\\right)^{10}\\left(\\frac{c^2}{G}\\right)^{9}\\,\\frac{1}{2}\\,M"),
-      "x = 3\\left(\\frac{G}{c^{2}}\\right)^{10}\\left(\\frac{c^{2}}{G}\\right)^{9}\\frac{G^{9}}{2c^{18}}M",
+      rawRestored("x = 3\\,\\left(\\frac{G}{c^2}\\right)^{16}\\left(\\frac{c^2}{G}\\right)^{24}\\,\\frac{1}{2}\\,M"),
+      "x = 3\\left(\\frac{G}{c^{2}}\\right)^{16}\\left(\\frac{c^{2}}{G}\\right)^{24}\\frac{G^{9}}{2c^{18}}M",
     )
     assert.strictEqual(rawRestored("x = 3\\,\\frac{G}{2\\,c^{\\frac{10}{5}}}\\,M"), "x = 3\\frac{G}{2c^{\\frac{10}{5}}}M")
     // At a restoring target a run the author set still may not be parted.
-    declines("x = 3\\,\\frac{1}{2}\\,\\left(\\frac{c^2}{G}\\right)^{10} M", WRITTEN("3", "\\frac{1}{2}"), [SI])
-    assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}\\,\\left(\\frac{c^2}{G}\\right)^{10} M", GEO), "x = 3\\,\\frac{1}{2}M")
+    declines("x = 3\\,\\frac{1}{2}\\,\\left(\\frac{c^2}{G}\\right)^{16} M", WRITTEN("3", "\\frac{1}{2}"), [SI])
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}\\,\\left(\\frac{c^2}{G}\\right)^{16} M", GEO), "x = 3\\,\\frac{1}{2}M")
     // Step 7d: a control space or a `~` prints nothing between two numerals, so
     // the G written between them stays in place instead of being folded into
     // its restored power, which left `2\ \ 3` (read as 23) and declined.
@@ -2848,7 +2852,7 @@ describe("batch-1 review fixes", () => {
       ["x = 2~G~3~M + 2\\,\\left.3\\right.\\,M", "2", "3"],
       ["x = 2\\,\\left.3\\right.\\,M + 2\\ G\\ 3\\ M + r", "2", "3"],
       ["x = 5\\,\\left.7\\right.\\,M + 5\\ G\\ 7\\ M", "5", "7"],
-      ["x = 2\\,\\left.3\\right.\\,\\left(\\frac{c^2}{G}\\right)^{10} M + 2\\ G\\ 3\\ M", "2", "3"],
+      ["x = 2\\,\\left.3\\right.\\,\\left(\\frac{c^2}{G}\\right)^{16} M + 2\\ G\\ 3\\ M", "2", "3"],
     ]
     for (const [tex, left, right] of offset) {
       declines(tex, WRITTEN(left, right), [SI, HL])
@@ -3694,10 +3698,14 @@ describe("index tokens, primes and the canonical symbol key", () => {
     // on an index, nor under a font.
     assert.deepStrictEqual(declined("T_{\\nu_{\\rm e}} = \\rho").unknown, ["T_{\\nu_{\\rm e}}"])
     assert.deepStrictEqual(declined("T_{\\mathbf{\\mu}'} = \\rho").unknown, ["T_{\\mathbf{\\mu}'}"])
-    assert.deepStrictEqual(declined("x^{\\mu_{\\rm e}} = 0").reasons, ["a symbolic exponent on the dimensional base “x”"])
+    assert.deepStrictEqual(declined("x^{\\mu_{\\rm e}} = 0").reasons, [
+      "the superscript “\\mu_{\\rm e}” on “x”, which the engine cannot read as a power or an index",
+    ])
     // Brackets and an ellipsis alone index nothing.
     assert.deepStrictEqual(declined("T_{()} = \\rho").unknown, ["T_{()}"])
-    assert.deepStrictEqual(declined("x^{\\cdots} = 0").reasons, ["a symbolic exponent on the dimensional base “x”"])
+    assert.deepStrictEqual(declined("x^{\\cdots} = 0").reasons, [
+      "the superscript “\\cdots” on “x”, which the engine cannot read as a power or an index",
+    ])
   })
 
   test("a decorated, grouped or continued superscript on a group is not read as an index (review fix)", () => {
@@ -3708,20 +3716,21 @@ describe("index tokens, primes and the canonical symbol key", () => {
     for (const tex of [
       "r = M\\left(\\frac{t}{M}\\right)^{\\alpha_1}",
       "z = \\left(\\frac{r}{M}\\right)^{\\beta'}",
-      "r = M(t/M)^{{2}}",
       "z = (r/M)^{\\gamma_1}",
       "r = M\\left[\\frac{t}{M}\\right]^{\\alpha_1}",
       "r = M\\left(\\frac{t}{M}\\right)^{\\mu_1\\cdots\\mu_n}",
     ]) {
       assert.deepStrictEqual(declined(tex).reasons, UNREADABLE, tex)
     }
+    // A braced numeral is no index and no power the engine reads (step 12 names it).
+    assert.deepStrictEqual(declined("r = M(t/M)^{{2}}").reasons, ["an exponent “{2}” on “(t/M)” that the engine cannot read"])
     // A braced symbol is the symbol (step 11): r^{α₁} goes to r's indexed
     // reading, which the dictionary does not have, as it does unbraced.
     assert.deepStrictEqual(declined("r = {r}^{\\alpha_1}").unknown, ["{r}^{\\alpha_1}"])
     assert.deepStrictEqual(declined("r = r^{\\alpha_1}").unknown, ["r^{\\alpha_1}"])
     // Braces only group: a braced numeral is the numeral, so `p^{{2}}` is not
     // the component p² of the four-momentum; the component shape still is one.
-    assert.deepStrictEqual(declined("E = p^{{2}}").reasons, ["a symbolic exponent on the dimensional base “p”"])
+    assert.deepStrictEqual(declined("E = p^{{2}}").reasons, ["an exponent “{2}” on “p” that the engine cannot read"])
     assert.strictEqual(rawRestored("E = p^{{0}}"), "E = p^{{0}}c")
     // A plain index letter on a symbol keeps its indexed reading.
     assert.strictEqual(rawRestored("E = p^{\\alpha_1}"), "E = p^{\\alpha_1}c")
@@ -4174,5 +4183,203 @@ describe("bases, accents, labels and named operators (step 11)", () => {
     assert.deepStrictEqual(reasons("\\operatorname{sign}(g_{ab}) = (-,+,+,+)"), [
       "a comma inside brackets (function arguments, a tuple, a commutator, or an inner product), which the engine does not read as a product",
     ])
+  })
+})
+
+describe("exponents and groups (step 12)", () => {
+  const translated = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = result as Extract<TranslationResult, { kind: "translated" }>
+    rendersInKatex(out.restoredTex)
+    return out
+  }
+  const rawRestored = (tex: string, target: TargetSpec = SI) => translated(tex, target).restoredTex
+  const unchanged = (tex: string) => {
+    const out = translated(tex)
+    assert.strictEqual(out.changed, false, tex)
+    return out
+  }
+  const declined = (tex: string) => {
+    const result = run(tex)
+    assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+    return result as Extract<TranslationResult, { kind: "declined" }>
+  }
+  const reasons = (tex: string) => declined(tex).reasons
+  const GROUP_INDEX = (sup: string) => `a superscript “${sup}” on a group, which may be an exponent or an index`
+  const SYMBOLIC_POWER = (base: string) => `a symbolic power on “${base}”, which is not supported yet`
+  const EXPONENT = (sup: string, base: string) => `an exponent “${sup}” on “${base}” that the engine cannot read`
+  const LABEL_OR_POWER = (sup: string, base: string) =>
+    `the superscript “${sup}” on “${base}”, which the engine cannot read as a power or an index`
+  const LIMITS = "evaluation limits, which are not supported yet"
+  const CONDITION = "an evaluation condition in a subscript, which is not supported yet"
+  const UNREADABLE = "a super/subscript construct the engine could not read"
+
+  test("KaTeX: an inline slash in a superscript is a textord between the digits", () => {
+    const [power] = katex.__parse("r^{1/2}", { strict: false, trust: false, displayMode: true })
+    assert.deepStrictEqual(
+      power.sup.body.map((x: any) => [x.type, x.text]),
+      [
+        ["textord", "1"],
+        ["textord", "/"],
+        ["textord", "2"],
+      ],
+    )
+  })
+
+  test("a slash between digit runs is the rational it writes (R1)", () => {
+    assert.strictEqual(restored("v = (\\frac{M}{r})^{1/2}"), "v=G^{1/2}(\\frac{M}{r})^{1/2}")
+    assert.strictEqual(
+      rawRestored("v = \\left(\\frac{M}{r}\\right)^{1/2}"),
+      "v = G^{1/2}\\left(\\frac{M}{r}\\right)^{1/2}",
+    )
+    assert.strictEqual(
+      rawRestored("t = \\left(\\frac{r^3}{M}\\right)^{1/2}"),
+      "t = \\frac{\\left(\\frac{r^{3}}{M}\\right)^{1/2}}{G^{1/2}}",
+    )
+    assert.strictEqual(rawRestored("v = \\left(\\frac{GM}{r}\\right)^{1/2}", GEO), "v = \\left(\\frac{M}{r}\\right)^{1/2}")
+    assert.strictEqual(rawRestored("x = r^{3/2}M^{-1/2}"), "x = \\frac{r^{3/2}M^{-1/2}c}{G^{1/2}}")
+    unchanged("t = \\nu^{3/4}\\nu^{-7/4}")
+    // Parity with \frac on the constant path, and the engine's own `G^{1/2}`
+    // now reads back: the \frac spelling declined as a reassembly fault.
+    for (const half of ["1/2", "\\frac{1}{2}", "\\frac12"]) {
+      assert.strictEqual(restored(`E = Mc^{${half}}`), "E=Mc^{2}", half)
+    }
+    assert.strictEqual(
+      rawRestored("v = \\left(\\frac{M}{r}\\right)^{\\frac{1}{2}}"),
+      "v = G^{1/2}\\left(\\frac{M}{r}\\right)^{\\frac{1}{2}}",
+    )
+    // No rational: a second slash; one twelfths cannot hold.
+    assert.deepStrictEqual(reasons("x = r^{1/2/2}"), [EXPONENT("1/2/2", "r")])
+    assert.deepStrictEqual(reasons("x = r^{1/5}"), ["a fractional power whose dimension the engine cannot represent"])
+    // A half-order derivative is read as d² is: its reason is now the relation's.
+    assert.ok(reasons("\\frac{d^{1/2}x}{dt^{1/2}} = r")[0].includes("no c–G completion"))
+  })
+
+  test("an index superscript on a group is read only where the notation fixes it (R10)", () => {
+    // Read as an index, the group kept the dimension of r/M: this shipped as
+    // `\frac{(\frac{r}{M})^{\alpha}c^{2}}{G}`.
+    for (const tex of ["z = (\\frac{r}{M})^{\\alpha}", "z = \\left(\\frac{r}{M}\\right)^{\\alpha}"]) {
+      assert.deepStrictEqual(reasons(tex), [GROUP_INDEX("\\alpha")], tex)
+    }
+    // So did the digits of the component shape, and the power 0.
+    assert.deepStrictEqual(reasons("z = \\left(\\frac{r}{M}\\right)^{0}"), [GROUP_INDEX("0")])
+    assert.deepStrictEqual(reasons("z = (\\frac{r}{M})^{10}"), [GROUP_INDEX("10")])
+    // A sum of tensors carries the index of every summand (reviewer counterexamples).
+    for (const tex of [
+      "k^{\\mu} = (k_1 + k_2)^{\\mu}",
+      "p^{\\mu} = (p_{1}+p_{2})^{\\mu}",
+      "x^{\\mu} = (x_{1}-x_{2})^{\\mu}",
+      "k_{\\mu} = (k_1 + k_2)_{\\mu}",
+    ]) {
+      unchanged(tex)
+    }
+    // On a dimensionless group the two readings agree.
+    unchanged("z = \\left(\\frac{r}{r_s}\\right)^{\\alpha}")
+    unchanged("z = (-1)^{\\alpha}")
+    assert.strictEqual(
+      rawRestored("z = \\left(1 - \\frac{2M}{r}\\right)^{\\alpha}"),
+      "z = \\left(1 - \\frac{2GM}{rc^{2}}\\right)^{\\alpha}",
+    )
+  })
+
+  test("a symbolic exponent on a group with no subscript is read as on a symbol (R9)", () => {
+    // Dimensionless group: the exponent is a dimensionless expression.
+    assert.strictEqual(
+      rawRestored("z = \\left(\\frac{r}{r_s}\\right)^{v}"),
+      "z = \\left(\\frac{r}{r_{s}}\\right)^{\\frac{v}{c}}",
+    )
+    assert.strictEqual(
+      rawRestored("z = \\left(1-\\frac{2M}{r}\\right)^{\\frac{t}{M}}"),
+      "z = \\left(1 - \\frac{2GM}{rc^{2}}\\right)^{\\frac{tc^{3}}{GM}}",
+    )
+    // Dimensional group: named by the exponent's shape, the group quoted.
+    assert.deepStrictEqual(reasons("z = \\left(\\frac{r}{M}\\right)^{n+1}"), [
+      SYMBOLIC_POWER("\\left(\\frac{r}{M}\\right)"),
+    ])
+    assert.deepStrictEqual(reasons("x = (r^2+a^2)^{s}"), [LABEL_OR_POWER("s", "(r^{2} + a^{2})")])
+    // An unknown symbol in the exponent is an unknown symbol.
+    assert.deepStrictEqual(declined("z = (-1)^{n}").unknown, ["n"])
+  })
+
+  test("a subscript alone on a bracket group annotates it (R8); both scripts do not", () => {
+    assert.strictEqual(rawRestored("\\langle r\\rangle_{S} = 2M"), "\\langle r\\rangle_{S} = \\frac{2GM}{c^{2}}")
+    unchanged("x = \\left[r\\right]_{t_0}")
+    // A relation there is a condition, which may itself need restoring.
+    for (const tex of ["\\left.\\frac{\\partial V}{\\partial r}\\right|_{r=0} = 0", "x = (r)_{r=0}"]) {
+      assert.deepStrictEqual(reasons(tex), [CONDITION], tex)
+    }
+    assert.deepStrictEqual(reasons("x = \\left.r\\right|_{0}"), ["an evaluation point in a subscript, which is not supported yet"])
+    // Evaluation limits: the upper limit was restored as an exponent against a
+    // pure number, `^{\frac{v}{c}}`, `^{\frac{GM}{rc^{2}}}` (reviewer counterexamples).
+    for (const tex of [
+      "\\theta = [\\frac{r}{r_s}]_0^{v}",
+      "\\theta = \\left[\\frac{r}{r_s}\\right]_{0}^{v}",
+      "\\theta = \\left.\\frac{r}{r_s}\\right|_{0}^{v}",
+      "\\theta = \\left[\\frac{r}{r_s}\\right]_{0}^{\\frac{M}{r}}",
+      "x = \\left[r\\right]_{0}^{R}",
+      "x = [F]_{a}^{b}",
+    ]) {
+      assert.deepStrictEqual(reasons(tex), [LIMITS], tex)
+    }
+    // Parentheses hold a matrix's index pair as often as limits: not read.
+    for (const tex of ["\\theta = \\left(\\frac{r}{r_s}\\right)_{0}^{v}", "x = (\\phi^{I})^{m}_{\\ n}", "x = \\langle r\\rangle_{S}^{2}"]) {
+      assert.deepStrictEqual(reasons(tex), [UNREADABLE], tex)
+    }
+    // A big operator in the subscript, or none at all, is not an annotation.
+    for (const tex of ["x = (r)_{\\max}", "x = (r)_{}"]) {
+      assert.deepStrictEqual(reasons(tex), [UNREADABLE], tex)
+    }
+  })
+
+  test("a superscript on a dimensional symbol that is not read says what it is (Part 3)", () => {
+    // A symbolic power; its letters are not looked up, so the reason never
+    // calls a pure-number reading a quantity (reviewer counterexample r^{2θ}).
+    for (const [tex, base] of [
+      ["x = \\Delta^{-s}r", "\\Delta"],
+      ["x = r^{n+1}", "r"],
+      ["x = r^{2\\theta}r", "r"],
+      ["x = \\Delta^\\frac{s}{2}r", "\\Delta"],
+      ["ds^2 = -dt^2 + t^{2p_1}dx^2", "t"],
+      ["x = \\Delta^{-s}\\partial_r\\left(\\Delta^{s+1}\\partial_r M\\right)", "\\Delta"],
+    ]) {
+      assert.deepStrictEqual(reasons(tex), [SYMBOLIC_POWER(base)], tex)
+    }
+    // Arithmetic the grammar does not admit is still an exponent.
+    for (const [tex, sup] of [
+      ["x = r^{-\\left(2s+1\\right)}", "-\\left(2s+1\\right)"],
+      ["x = r^{(2s+1)/2}", "(2s+1)/2"],
+      ["x = r^{-s-i\\sigma}", "-s-i\\sigma"],
+      ["x = r^{1.5}", "1.5"],
+    ]) {
+      assert.deepStrictEqual(reasons(tex), [EXPONENT(sup, "r")], tex)
+    }
+    // A lone letter, letters side by side, parentheses, a list or a mark: a
+    // power or a label, in one wording.
+    for (const [tex, sup, base] of [
+      ["x = r^{n}", "n", "r"],
+      ["x = x^{I}", "I", "x"],
+      ["x = c^{I}", "I", "c"],
+      ["x = r^{sn}", "sn", "r"],
+      ["x = x^{(\\theta)}", "(\\theta)", "x"],
+      ["x = \\mathbf{R}^{1,3}", "1,3", "\\mathbf{R}"],
+      ["x = \\mathbf{y}^{\\intercal}", "\\intercal", "\\mathbf{y}"],
+    ]) {
+      assert.deepStrictEqual(reasons(tex), [LABEL_OR_POWER(sup, base)], tex)
+    }
+  })
+
+  test("an unknown base leaves its superscript unread", () => {
+    // The exponent used to be read against a pure number, blaming “s”.
+    for (const [tex, base] of [
+      ["h = h^{s}", "h"],
+      ["\\epsilon = \\epsilon^{s}\\epsilon^{1-s}", "\\epsilon"],
+    ]) {
+      const result = declined(tex)
+      assert.deepStrictEqual(result.reasons, [], tex)
+      assert.deepStrictEqual(result.unknown, [base], tex)
+    }
+    // A known dimensionless base still reads its exponent.
+    unchanged("E = mc^2e^{\\mathrm{i}kx}")
   })
 })

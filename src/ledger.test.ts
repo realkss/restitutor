@@ -162,6 +162,19 @@ describe("the decline ledger", () => {
       "\\mathrm{Tr}^{2}(T_{ab}) = \\rho",
     ])
       assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    // Step 12: an index or a power on a group, a symbolic power, an exponent
+    // or a superscript the engine does not read, and evaluation limits, points
+    // and conditions are the reader's.
+    for (const tex of [
+      "z = \\left(\\frac{r}{M}\\right)^{\\alpha}",
+      "x = \\Delta^{-s}r",
+      "x = r^{1.5}",
+      "x = r^{n}",
+      "x = \\left[r\\right]_{0}^{R}",
+      "x = \\left.r\\right|_{0}",
+      "x = (r)_{r=0}",
+    ])
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)
