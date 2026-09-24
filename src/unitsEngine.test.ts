@@ -3238,6 +3238,8 @@ describe("statement layer: lists, connectives, wide space and the unit summary",
   const AMBIGUOUS = "a continuation row after a row of several statements — which one it continues is ambiguous"
   const UNWRITTEN = (spacing: string) =>
     `the spacing “${spacing}”, which the engine cannot re-emit as written, is not supported`
+  const UNIT_ONE = (statement: string) =>
+    `a side that is the number 1 in “${statement}”, whose units the equation does not state`
 
   test("KaTeX shapes the connective macros are read from", () => {
     // translateLine re-emits \implies, \iff and \impliedby from the macro body
@@ -3381,7 +3383,9 @@ describe("statement layer: lists, connectives, wide space and the unit summary",
     // only inside itself beside the connective faulted in the prototype.
     expect("r \\neq 0 \\implies \\frac{r}{2} = M", SI, "r \\neq 0 \\implies \\frac{r}{2} = \\frac{GM}{c^{2}}", M, true)
     translated("r > 0 \\iff \\frac{t}{M} > 0")
-    translated("\\frac{r}{M} \\neq 2 \\implies \\frac{t}{M} \\ne 1")
+    // At SI the bare 1 stands for GM/c³ (unitLiteralGuard); t/M is a pure number only geometrized.
+    translated("\\frac{r}{M} \\neq 2 \\implies \\frac{t}{M} \\ne 1", GEO)
+    declines("\\frac{r}{M} \\neq 2 \\implies \\frac{t}{M} \\ne 1", UNIT_ONE("\\frac{t}{M} \\ne 1"), [SI])
     const NOTHING = "an implication with nothing on one side"
     const NO_STATEMENT = "an implication whose side is not a statement (it has no relation)"
     for (const tex of ["r_s = 2M \\Rightarrow", "\\Rightarrow", "r_s = 2M \\Rightarrow \\Rightarrow t = M"]) declines(tex, NOTHING)
@@ -3394,6 +3398,89 @@ describe("statement layer: lists, connectives, wide space and the unit summary",
     // `1 = 1, \qquad r_s = 2M`, and in SI c stayed restored beside c = 1.
     for (const tex of ["c = 1, \\qquad r_s = 2M", "c = 1 \\implies r_s = 2M", "r_s = 2M, \\qquad G = 1"]) {
       declines(tex, DECLARATION, [SI, HL, GEO])
+    }
+  })
+
+  test("a statement with a bare 1 for a side declines unless it is a pure number in the target", () => {
+    // The statement-layer reviewer's counterexamples: each shipped at SI with
+    // the 1 bare under a false banner (v ≪ c, |Φ| ≪ c², GM/(rc²) ≪ 1 and
+    // r = GM/c² were meant). Whether a lone 1 is restored is the owner's
+    // ruling (integration §4.2 item 9); until then a split line declines.
+    const cases: [string, string, string, string][] = [
+      [
+        "E = m + \\frac{1}{2}mv^2, \\qquad v \\ll 1",
+        "v \\ll 1",
+        "E = m + \\frac{1}{2}mv^{2}, \\qquad v \\ll 1",
+        "\\mathrm{cm};\\ \\text{dimensionless}",
+      ],
+      [
+        "g_{tt} \\approx -(1 + 2\\Phi) \\qquad |\\Phi| \\ll 1",
+        "|\\Phi| \\ll 1",
+        "g_{tt} \\approx -(1 + 2\\Phi) \\qquad |\\Phi| \\ll 1",
+        "\\text{dimensionless}",
+      ],
+      [
+        "\\Phi = -\\frac{M}{r}, \\qquad \\frac{M}{r} \\ll 1",
+        "\\frac{M}{r} \\ll 1",
+        "\\Phi = -\\frac{M}{r}, \\qquad \\frac{M}{r} \\ll 1",
+        "\\text{dimensionless}",
+      ],
+      [
+        "t = M \\implies \\frac{r}{M} = 1",
+        "\\frac{r}{M} = 1",
+        "t = M \\implies \\frac{r}{M} = 1",
+        "\\mathrm{cm};\\ \\text{dimensionless}",
+      ],
+    ]
+    for (const [tex, statement, geoTex, geoUnit] of cases) {
+      declines(tex, UNIT_ONE(statement), [SI, HL])
+      // Geometrized, each of these is a pure number, and the 1 is one.
+      expect(tex, GEO, geoTex, geoUnit, false)
+    }
+    // A mass set to 1 is a length set to 1 geometrized: it declines on every target.
+    declines("M = 1,\\ r_s = 2M", UNIT_ONE("M = 1"), [SI, HL, GEO])
+    declines("r_s = 2M \\qquad M = 1", UNIT_ONE("M = 1"), [SI, HL, GEO])
+    declines("\\Rightarrow v \\ll 1", UNIT_ONE("v \\ll 1"), [SI])
+    // Against a dimensionless statement the 1 is a pure number, and a signed
+    // 1 or a 1 in a sum is an ordinary term.
+    expect(
+      "g_{tt} = -1 \\qquad r \\gg M",
+      SI,
+      "g_{tt} = -1 \\qquad r \\gg \\frac{GM}{c^{2}}",
+      `\\text{dimensionless};\\ ${M}`,
+      true,
+    )
+    expect("g_{tt} = -1 \\qquad r \\gg M", GEO, "g_{tt} = -1 \\qquad r \\gg M", "\\text{dimensionless};\\ \\mathrm{cm}", false)
+    expect(
+      "g_{tt} = -1 + \\frac{2M}{r} \\qquad r > 2M",
+      SI,
+      "g_{tt} = -1 + \\frac{2GM}{rc^{2}} \\qquad r > \\frac{2GM}{c^{2}}",
+      `\\text{dimensionless};\\ ${M}`,
+      true,
+    )
+    expect("r_s = 2M, \\qquad \\frac{r}{r_s} = 1", SI, "r_{s} = \\frac{2GM}{c^{2}}, \\qquad \\frac{r}{r_{s}} = 1", `${M};\\ \\text{dimensionless}`, true)
+    // A list the line turns out to be declines as one before any 1 in it is judged.
+    declines("0 < t < 1,\\ 0 < r < 2M", LIST)
+    // A 1 in a chain is judged as a side too: v < c was meant.
+    declines("0 < v < 1, \\qquad r_s = 2M", UNIT_ONE("0 < v < 1"), [SI])
+    expect("0 < v < 1, \\qquad r_s = 2M", GEO, "0 < v < 1, \\qquad r_{s} = 2M", "\\text{dimensionless};\\ \\mathrm{cm}", false)
+    // Anchored on the 1, the other side is completed to a pure number: r/M = 1 is r = GM/c².
+    expect(
+      "r_s = 2M \\qquad 1 = \\frac{r}{M}",
+      SI,
+      "r_{s} = \\frac{2GM}{c^{2}} \\qquad 1 = \\frac{rc^{2}}{GM}",
+      `${M};\\ \\text{dimensionless}`,
+      true,
+    )
+    // An unknown symbol leaves no target to judge the 1 against (v ξ may be a
+    // pure number), so the line declines for the unknown, with no reason.
+    for (const target of [SI, GEO]) {
+      const unknown = run("v \\xi \\ll 1, \\qquad r_s = 2M", target)
+      assert.strictEqual(unknown.kind, "declined", JSON.stringify(unknown))
+      if (unknown.kind === "declined") {
+        assert.deepStrictEqual(unknown.reasons, [], JSON.stringify(unknown))
+        assert.deepStrictEqual(unknown.unknown, ["\\xi"], JSON.stringify(unknown))
+      }
     }
   })
 

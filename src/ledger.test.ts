@@ -33,6 +33,9 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("c = 299792458").class, "declaration")
     assert.strictEqual(outcome("c < 1").class, "declaration")
     assert.strictEqual(outcome("c > G").class, "declaration")
+    // A statement of a list set against a bare 1 states it in unnamed units too.
+    assert.strictEqual(outcome("M = 1,\\ r_s = 2M").class, "declaration")
+    assert.strictEqual(outcome("E = m, \\qquad v \\ll 1").class, "declaration")
     // A constant term among quantities the registry reads otherwise is a
     // verdict on those readings, as a missing completion is.
     assert.strictEqual(outcome("g_{00} \\approx -c^2 - 2\\Phi").class, "no-completion")

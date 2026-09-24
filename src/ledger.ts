@@ -56,8 +56,10 @@ const STRUCTURAL: [RegExp, OutcomeClass][] = [
   [/a proportionality/, "proportional"],
   // The equation IS a units declaration (c = G = 1), gives a constant a value
   // in units it does not name (c = 299792458), compares one with a number
-  // (c < 1), or only relates the constants (c > G): nothing to restore.
-  [/a relation between the constants themselves|a numeric value for “.*”, in units the equation does not state|a comparison of “.*” with a number, in units the equation does not state/, "declaration"],
+  // (c < 1), or only relates the constants (c > G): nothing to restore. A
+  // statement of a list that sets a quantity against a bare 1 (`v \ll 1`,
+  // `M = 1`) states it in units the equation does not name, as those do.
+  [/a relation between the constants themselves|a numeric value for “.*”, in units the equation does not state|a comparison of “.*” with a number, in units the equation does not state|a side that is the number 1 in “.*”, whose units the equation does not state/, "declaration"],
   // Constructs the engine's reader does not handle, in its several wordings.
   [
     /not supported|could not be read|could not read|cannot read|floating super\/subscript|symbolic exponent|unsupported (?:relation|accent|differential)|closing delimiter|cannot pair|whose pairing is ambiguous|Dirac bra–ket notation|a modulus or a determinant|in this position|primed symbol|time derivative of a compound|integrals, sums, and limits|an angular coordinate index|the upright (?:word|words|letter) |the multi-letter name |an unspecified constant|a constant to restore inside the font|the arrow “|the exchange “|a colon that is not part of|which the engine does not read|neither a power nor a dictionary index|a sign directly beside|a component index or a power|, not the constant [cG]$/,

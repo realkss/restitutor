@@ -4026,6 +4026,8 @@ type RowResult = {
   hadRel: boolean
   /** The row opens at a relation and continues the chain above it, whose statement it is. */
   continued: boolean
+  /** A side of the row is nothing but a literal 1, left bare as a convention marker. */
+  unitLiteralSide: boolean
 }
 
 function rowTexOf(row: RowResult): string {
@@ -4198,7 +4200,15 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Carried): RowResult
     // No relation: analyze for the legend, but there is nothing to anchor.
     parseSum(grouped, ctx, { anchor: "none" }, "wide")
     const src = srcOfNodes(nodes, ctx)
-    return { emitSides: () => [src], rels: [], tabAtRel: [], target: ZERO, hadRel: false, continued: false }
+    return {
+      emitSides: () => [src],
+      rels: [],
+      tabAtRel: [],
+      target: ZERO,
+      hadRel: false,
+      continued: false,
+      unitLiteralSide: false,
+    }
   }
 
   const spacing: FactorSpacing = rels.length > 1 ? "any" : "wide"
@@ -4253,10 +4263,13 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Carried): RowResult
   // Insertions are solved once, during analysis; emission can then be replayed.
   // A side that is nothing but a literal 1 is a convention marker rather than a
   // quantity, so it stays a bare 1 (the same transparency a literal 0 has had).
+  // In a line of several statements it may only against a pure number
+  // (unitLiteralGuard, in translateLine).
   const resolvedTarget = target
+  const isUnitLiteralSide = (sum: SumInfo | null) => sum != null && !sum.multiTerm && sum.terms[0].isUnitLiteral
   const insertionsPerSide = sums.map((sum) => {
     if (sum == null) return []
-    if (!sum.multiTerm && sum.terms[0].isUnitLiteral) return [null]
+    if (isUnitLiteralSide(sum)) return [null]
     return sum.terms.map((t) => termInsertion(t, resolvedTarget, ctx))
   })
   const emitSides = () =>
@@ -4264,7 +4277,15 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Carried): RowResult
       sum == null ? "" : emitSum(sum.terms, sum.ops, insertionsPerSide[idx], ctx),
     )
 
-  return { emitSides, rels, tabAtRel, target: resolvedTarget, hadRel: true, continued: sums[0] == null }
+  return {
+    emitSides,
+    rels,
+    tabAtRel,
+    target: resolvedTarget,
+    hadRel: true,
+    continued: sums[0] == null,
+    unitLiteralSide: sums.some(isUnitLiteralSide),
+  }
 }
 
 /**
@@ -4454,6 +4475,35 @@ function sharesOperands(left: any[], right: any[]): boolean {
   return lastRel != null && firstRel != null && ORDER_RELS.has(lastRel) && ORDER_RELS.has(firstRel)
 }
 
+/** Whether a dimension is a pure number in the target: every exponent zero, or, with G = c = 1, mass, length and time alike. */
+function dimensionlessIn(d: Dim, geometrized: boolean): boolean {
+  return geometrized ? d[0] + d[1] + d[2] === 0 && d[3] === 0 && d[4] === 0 : dimIsZero(d)
+}
+
+/**
+ * A statement of a split line with a side that is a bare 1 (translateRow
+ * leaves it bare, a convention marker) declines unless its dimension is a
+ * pure number in the target. Beside a quantity with units the 1 stands for
+ * that quantity's unit value, which the notation does not state: at SI
+ * `v \ll 1` means v ≪ c and `\frac{M}{r} \ll 1` means GM/(rc²) ≪ 1, yet both
+ * shipped with the 1 bare under a banner of m s⁻¹ and kg m⁻¹, beside a first
+ * statement restored in full. Whether a lone 1 is restored or declined is the
+ * owner's ruling (integration §4.2 item 9, plan step 19), so this is the
+ * conservative default, and it covers only what the statement layer newly
+ * reads: a line with a separator in it, which declined whole before it. A
+ * single statement keeps its reading until the ruling. Against a pure number
+ * the 1 is one (`g_{tt} = -1 \qquad v \ll 1` in Geometrized units), and a 1
+ * inside a sum is an ordinary term, restored like any other. A symbol the
+ * registry does not know leaves no target to judge, since its dimension was
+ * read as a pure number's: `v\xi \ll 1` may well be dimensionless. The line
+ * declines for the unknown instead, which is the truer reason.
+ */
+function unitLiteralGuard(row: RowResult, ctx: Ctx): void {
+  if (!row.unitLiteralSide || ctx.unknown.size > 0 || dimensionlessIn(row.target, ctx.strip)) return
+  const statement = maskedEmission(ctx, () => rowTexOf(row))
+  throw new Unsupported(`a side that is the number 1 in “${statement}”, whose units the equation does not state`)
+}
+
 /**
  * A display line as the statements it holds. One line may state several
  * things: a list (`r_s = 2M, \qquad t = 0`), an implication
@@ -4492,8 +4542,12 @@ function sharesOperands(left: any[], right: any[]): boolean {
  * above. Each statement is judged for a declaration on its own
  * (declarationGuard, in translateRow), and one declaration declines the whole
  * line: `c = 1, \qquad r_s = 2M` would otherwise restore c in r_s after
- * declaring it 1. The pieces are checked in order, as they are translated, so
- * a reason read in an earlier statement is the one the reader sees.
+ * declaring it 1. The pieces are checked in order, as they are translated,
+ * so a reason read in an earlier statement is the one the reader sees. Only
+ * once every piece is read as a statement is a bare 1 judged: a statement
+ * with one for a side declines unless it is a pure number in the target
+ * (unitLiteralGuard). Judged earlier, it named the 1 in `0 < t < 1,\ 0 < r
+ * < 2M`, a line that declines as a list before it is statements at all.
  */
 function translateLine(nodes: any[], ctx: Ctx, carried: Carried): LineResult {
   const grouped = groupDelims(nodes)
@@ -4541,6 +4595,8 @@ function translateLine(nodes: any[], ctx: Ctx, carried: Carried): LineResult {
 
   const items: LineItem[] = []
   const rows: RowResult[] = []
+  const splits = pieces.map(wideSplit)
+  const split = seps.length > 0 || splits.some(({ parts }) => parts.length > 1)
   pieces.forEach((piece, i) => {
     const before = i > 0 ? seps[i - 1] : null
     const after = seps[i] ?? null
@@ -4566,7 +4622,7 @@ function translateLine(nodes: any[], ctx: Ctx, carried: Carried): LineResult {
         throw new Unsupported(LIST_REASON)
       }
     }
-    const { parts, runs } = wideSplit(piece)
+    const { parts, runs } = splits[i]
     parts.forEach((part, j) => {
       if (j > 0) items.push({ tex: separatorTex({ kind: "wide", tex: "", pre: [], post: runs[j - 1] }, ctx) })
       const row = translateRow(part, ctx, i === 0 && j === 0 ? carried : null)
@@ -4574,6 +4630,7 @@ function translateLine(nodes: any[], ctx: Ctx, carried: Carried): LineResult {
       items.push({ row })
     })
   })
+  if (split) for (const row of rows) unitLiteralGuard(row, ctx)
   return { items, rows }
 }
 
