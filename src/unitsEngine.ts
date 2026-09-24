@@ -3849,13 +3849,16 @@ type NumeralLine = (string | null)[]
  * between two numerals; anything else is visible: a letter, a bracket or bar,
  * an operator, a root. A fraction's numerator and denominator, and a script,
  * are lines of their own, whose numerals never meet one outside them
- * (`c^{2}5` is c²·5, not a 25). A numeric script on anything but a numeral
- * (`c^{2}`, `r^{12}`) is a power, set or restored whole with its symbol, and
- * its digits are not counted.
+ * (`c^{2}5` is c²·5, not a 25), and a numeric script is that line as well as
+ * part of the numeral it may sit on (`10^{23}` holds the pair 2, 3). The
+ * digits of a numeric power of c or G are not counted.
  */
 function numeralLines(tex: string, lines: NumeralLine[] = []): NumeralLine[] {
   const line: NumeralLine = []
   lines.push(line)
+  // The letter the next script sits on, when it is a bare letter: braces and
+  // whitespace print nothing and keep it, anything else ends it.
+  let letter: string | null = null
   let i = 0
   while (i < tex.length) {
     const ch = tex[i]
@@ -3863,6 +3866,7 @@ function numeralLines(tex: string, lines: NumeralLine[] = []): NumeralLine[] {
       i += 1
     } else if (/[0-9.]/.test(ch)) {
       line.push(ch)
+      letter = null
       i += 1
     } else if (ch === "^" || ch === "_") {
       const script = texArgumentAt(tex, i + 1)
@@ -3871,13 +3875,21 @@ function numeralLines(tex: string, lines: NumeralLine[] = []): NumeralLine[] {
         line[line.length - 1] += `${ch}{${script.body.trim()}}`
       } else {
         line.push(null)
-        if (!numeric) numeralLines(script.body, lines)
       }
+      // The script's own digits are a line of their own whatever it sits on:
+      // a strip inside a script fuses digits there (`10^{2G3}` to `10^{23}`,
+      // `2^{1\frac{G}{c^2}0}` to `2^{10}`, `e^{2\,G\,3}` to `e^{23}`), and the
+      // power carries them into the value. The one exception is a power of c or G, which an insertion
+      // adds and a strip removes whole with its letter; counting its digits on
+      // one side only would be a difference no number made.
+      if (!numeric || (letter !== "c" && letter !== "G")) numeralLines(script.body, lines)
       i = script.end
     } else if (ch === "\\") {
       i = controlSequenceMarks(tex, i, line, lines)
+      letter = null
     } else {
       line.push(null)
+      letter = /[a-zA-Z]/.test(ch) ? ch : null
       i += 1
     }
   }
@@ -3961,11 +3973,12 @@ function controlSequenceMarks(tex: string, i: number, line: NumeralLine, lines: 
   if (FRAC_CMDS.has(`\\${name}`)) {
     const num = texArgumentAt(tex, end)
     const den = texArgumentAt(tex, num.end)
-    const digitRun = (body: string) => /^\s*[0-9.]*[0-9][0-9.]*\s*$/.test(body)
-    const numeral = digitRun(num.body) && digitRun(den.body)
-    line.push(numeral ? `\\${name}{${num.body.trim()}}{${den.body.trim()}}` : null)
-    numeralLines(num.body, lines)
-    numeralLines(den.body, lines)
+    const numLines = numeralLines(num.body)
+    const denLines = numeralLines(den.body)
+    const numDigits = digitRunOf(numLines)
+    const denDigits = digitRunOf(denLines)
+    line.push(numDigits != null && denDigits != null ? `\\${name}{${numDigits}}{${denDigits}}` : null)
+    lines.push(...numLines, ...denLines)
     return den.end
   }
   if (DELIMITER_SIZES.test(name)) {
@@ -3985,6 +3998,22 @@ function controlSequenceMarks(tex: string, i: number, line: NumeralLine, lines: 
   }
   if (!INVISIBLE_WORDS.has(name)) line.push(null)
   return end
+}
+
+/**
+ * The digits of a fraction's part (controlSequenceMarks) when the part prints
+ * a digit run and nothing else, else null. It is read off the part's lines,
+ * not its text, so that braces, null delimiters and restyling print nothing
+ * here as everywhere else in the net: `\frac{1}{{2}}` and
+ * `\frac{1}{\left.2\right.}` are ½ to a reader, as `\frac{1}{2}` is. The part's
+ * own line must be digits with no break, and no further line (a script) may
+ * hold a numeral.
+ */
+function digitRunOf(partLines: NumeralLine[]): string | null {
+  const [own, ...further] = partLines
+  const digits = own.every((mark) => mark != null && /^[0-9.]$/.test(mark)) ? own.join("") : ""
+  if (!/[0-9]/.test(digits)) return null
+  return further.every((line) => line.every((mark) => mark == null)) ? digits : null
 }
 
 /** The argument a command or script takes at `i`: a brace group's content, a control sequence, or one character. */
@@ -4038,20 +4067,23 @@ function adjacencyCount(runs: string[][]): number {
  * The two numerals to name, for `from` setting more of them side by side
  * than `against`: a run of `from` that `against` does not print, split after
  * its longest head that `against` does print as a run (`32` against the
- * source's `3` and `2` names 3 and 2).
+ * source's `3` and `2` names 3 and 2). Runs are matched without the scripts
+ * on their numerals, which a strip inside the script changes: in `10^{23}`
+ * from `10^{2G3}`, the run made is the 2 and 3, not the 10.
  */
 function unmatchedPair(from: string[][], against: string[][]): [string, string] {
-  const spelled = against.map((run) => run.join(""))
+  const bare = (marks: string[]) => marks.map((mark) => mark.replace(/[\^_][\s\S]*$/, "")).join("")
+  const spelled = against.map(bare)
   const pool = [...spelled]
   const unmatched = from.find((run) => {
-    const at = pool.indexOf(run.join(""))
+    const at = pool.indexOf(bare(run))
     if (at < 0) return run.length > 1
     pool.splice(at, 1)
     return false
   })
   const run = unmatched ?? from.find((candidate) => candidate.length > 1)!
   let at = run.length - 1
-  while (at > 1 && !spelled.includes(run.slice(0, at).join(""))) at -= 1
+  while (at > 1 && !spelled.includes(bare(run.slice(0, at)))) at -= 1
   return [run.slice(0, at).join(""), run.slice(at).join("")]
 }
 

@@ -2697,6 +2697,46 @@ describe("batch-1 review fixes", () => {
       assert.strictEqual(rawRestored("x = \\left|\\frac{3G}{c^2}\\right.\\,2M", target), "x = \\left|\\frac{3G}{c^{2}}\\right.2M")
     }
     assert.strictEqual(rawRestored("x = 3\\,\\left.\\frac{1}{2}\\right|M", GEO), "x = 3\\left.\\frac{1}{2}\\right|M")
+    // Step 7c review: a fraction's parts are read as the net reads everything,
+    // so a brace, a restyling or a null delimiter in a part does not hide ½.
+    // Live at GEO `3\frac{1}{{2}}M`, `3\frac{{1}}{2}M`,
+    // `3\frac{1}{{\displaystyle 2}}M` and `3\frac{1}{\left.2\right.}M`, read as
+    // 3½ M where the value is 1.5 M; at SI and HL the author's
+    // `3\,\frac{1}{{2}}M` had G set into it.
+    const braced: [string, string][] = [
+      ["x = 3\\,\\frac{G}{{2c^2}}M", "x = 3\\frac{G}{{2c^{2}}}M"],
+      ["x = 3\\,\\frac{G}{{2}c^2}M", "x = 3\\frac{G}{{2}c^{2}}M"],
+      ["x = 3\\,\\frac{{1}G}{2c^2}M", "x = 3\\frac{{1}G}{2c^{2}}M"],
+      ["x = 3\\,\\frac{G}{c^2 {2}}M", "x = 3\\frac{G}{c^{2}{2}}M"],
+      ["x = 3\\,\\frac{G}{c^2}\\frac{{1}}{2}M", "x = 3\\frac{G}{c^{2}}\\frac{{1}}{2}M"],
+      ["x = 3\\,\\frac{G}{{\\displaystyle 2}c^2}M", "x = 3\\frac{G}{{\\displaystyle 2}c^{2}}M"],
+      ["x = 3\\,\\frac{G}{\\left.2\\right.c^2}M", "x = 3\\frac{G}{\\left.2\\right.c^{2}}M"],
+    ]
+    for (const [tex, asWritten] of braced) {
+      declines(tex, FUSED("3", "\\frac{1}{2}"), [GEO])
+      assert.strictEqual(rawRestored(tex, SI), asWritten)
+      assert.strictEqual(rawRestored(tex, HL), asWritten)
+    }
+    declines("x = 3\\,\\frac{1}{{2}}M", WRITTEN("3", "\\frac{1}{2}"), [SI, HL])
+    declines("x = 3\\,\\frac{{1}}{2}M", WRITTEN("3", "\\frac{1}{2}"), [SI, HL])
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{{2}}M", GEO), "x = 3\\frac{1}{{2}}M")
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{{1}}{2}M", GEO), "x = 3\\frac{{1}}{2}M")
+    // A numeric script is a line of its own, on a numeral or not: live at GEO
+    // `r10^{23}` (10^{6} r), `M2^{10}` (1024 M for M), `M10^{{2}{3}}` and
+    // `M10^{23}`, the strip fusing the digits of the power.
+    declines("x = r\\,10^{2G3}", FUSED("2", "3"), [GEO])
+    declines("x = M\\,10^{2\\frac{G}{c^2}3}", FUSED("2", "3"), [GEO])
+    declines("x = M\\,2^{1\\frac{G}{c^2}0}", FUSED("1", "0"), [GEO])
+    declines("x = M\\,10^{{2}G{3}}", FUSED("2", "3"), [GEO])
+    declines("x = M\\,10^{2\\,c\\,3}", FUSED("2", "3"), [GEO])
+    declines("x = M\\,10^{2\\,\\frac{G}{c^{2}}\\,3}", FUSED("2", "3"), [GEO])
+    declines("x = M\\,10^{-2\\,G\\,3}", FUSED("2", "3"), [GEO])
+    // Before, on e and π, only the balance re-read caught it, as a reassembly fault.
+    declines("x = M\\,e^{2\\,G\\,3}", FUSED("2", "3"), [GEO])
+    // A strip in a power that fuses nothing, and a power as written, print as before.
+    assert.strictEqual(rawRestored("x = M\\,10^{2G}", GEO), "x = M10^{2}")
+    assert.strictEqual(rawRestored("E = 10^{23}\\,M", GEO), "E = 10^{23}M")
+    assert.strictEqual(rawRestored("E = 10^{23}\\,M"), "E = 10^{23}Mc^{2}")
     // A bracket, a bar or a product sign printed between two numerals keeps them apart.
     assert.strictEqual(rawRestored("x = 3\\,\\left(\\frac{G}{2c^2}\\right)M", GEO), "x = 3\\left(\\frac{1}{2}\\right)M")
     assert.strictEqual(rawRestored("x = 3\\cdot\\frac{G}{2c^2}M", GEO), "x = 3\\cdot\\frac{1}{2}M")
