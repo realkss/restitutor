@@ -801,14 +801,15 @@ describe("review regressions", () => {
     // constant to insert, a dropped token like this used to ride out unchecked;
     // replaying the emission with the insertion masked makes it visible, and
     // declining is the contract-correct outcome. (The witness was E = 2p^a_b,
-    // re-emitted subscript first until scripts kept their written order.)
+    // re-emitted subscript first until scripts kept their written order.) The
+    // backstop names a divergence that is only such spacing; it is still the
+    // masked replay that sees it.
     const result = run("E = m\\enspace v")
     assert.strictEqual(result.kind, "declined", JSON.stringify(result))
     if (result.kind === "declined") {
-      assert.ok(
-        result.reasons.some((r) => r.includes("reassembly fault")),
-        JSON.stringify(result.reasons),
-      )
+      assert.deepStrictEqual(result.reasons, [
+        "the spacing “\\enspace”, which the engine cannot re-emit as written, is not supported",
+      ])
     }
     assert.strictEqual(restored("E = 2p^a_b"), "E=2p^{a}_{b}c")
   })
@@ -2250,8 +2251,6 @@ describe("batch-1 review fixes", () => {
     }
   }
   const SPACING = "explicit spacing between two factors — two statements or one product? (select a single equation)"
-  const REASSEMBLY =
-    "an internal reassembly fault — the rebuilt equation diverged from the source (nothing was shown rather than something wrong)"
 
   test("(a) a stripped constant takes the glue that only separated it along", () => {
     // Live after step 2, each of these left spacing or a product sign with
@@ -2351,13 +2350,17 @@ describe("batch-1 review fixes", () => {
     assert.strictEqual(rawRestored("x = r\\sin\\,(M/t)"), "x = r\\sin\\,(GM/tc^{3})")
     assert.strictEqual(rawRestored("x = r\\sin^{2}\\,(M/t)"), "x = r\\sin^{2}\\,(GM/tc^{3})")
     // A kern no command spells declines by name; one spelled another way than
-    // its rebuilt command is a divergence the backstop catches.
+    // its rebuilt command is a divergence the backstop catches, and names.
     declines(
       "x = r\\sin\\hspace{2pt}(M/t)",
       "spacing between “\\sin” and its argument that the engine cannot re-emit as written, which is not supported",
       [SI],
     )
-    declines("x = r\\sin\\thinspace(M/t)", REASSEMBLY, [SI])
+    declines(
+      "x = r\\sin\\thinspace(M/t)",
+      "the spacing “\\thinspace”, which the engine cannot re-emit as written, is not supported",
+      [SI],
+    )
   })
 
   test("(f) a numeral raised to a power is one dimensionless numeral", () => {
@@ -2512,9 +2515,12 @@ describe("batch-1 review fixes", () => {
     declines("E = 2 c^2 \\frac{1}{2} m", FUSED("2", "\\frac{1}{2}"), [GEO])
     // A kern the author wrote is rebuilt between them, as `2\,G\,3\,M` gives `2\,3M`.
     assert.strictEqual(rawRestored("E = 3\\,\\frac{2G}{c^2}\\, M", GEO), "E = 3\\,2M")
-    assert.strictEqual(rawRestored("E = 2\\, c^2\\, \\frac{1}{2} m", GEO), "E = 2\\,\\frac{1}{2}m")
-    assert.strictEqual(rawRestored("x = 3\\,\\frac{G}{c^{2}}\\,\\frac{1}{2}M", GEO), "x = 3\\,\\frac{1}{2}M")
-    assert.strictEqual(rawRestored("x = 3\\,\\frac{G}{2c^2}M", GEO), "x = 3\\,\\frac{1}{2}M")
+    // Before a fraction of numerals a kern keeps nothing apart, for it is how
+    // a mixed number is set; these shipped as 2½m for m and 3½M for 1.5M
+    // until step 7b, and decline with the others.
+    declines("E = 2\\, c^2\\, \\frac{1}{2} m", BARED("2", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\,\\frac{G}{c^{2}}\\,\\frac{1}{2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\,\\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
     // With no numeral on the other side, the collapsed fraction is set as it prints.
     assert.strictEqual(rawRestored("x = \\frac{2G}{c^2} M", GEO), "x = 2M")
     assert.strictEqual(rawRestored("x = r\\frac{G}{2c^2}", GEO), "x = r\\frac{1}{2}")
@@ -2540,5 +2546,119 @@ describe("batch-1 review fixes", () => {
     assert.strictEqual(rawRestored("{R_{00}}^{1} = 0"), "{R_{00}}^{1} = 0")
     assert.strictEqual(rawRestored("{r^{2}}_{0} = 0"), "{r^{2}}_{0} = 0")
     assert.strictEqual(rawRestored("{H_0}^{2} = \\frac{1}{r^2}"), "{H_{0}}^{2} = \\frac{c^{2}}{r^{2}}")
+  })
+
+  // Step 7b: the wrong outputs the polish review left standing.
+  test("a floating script after a function head declines", () => {
+    const FLOATING = (script: string, head: string) =>
+      `the floating script “${script}” after “${head}” — the function's power or a script on its argument — which is not supported`
+    // Live, the script opened the argument and the restored G took it:
+    // `r\sin\frac{G{}^{2}(M/t)}{c^{3}}`, with the square on G.
+    declines("x = r\\sin{}^{2}(M/t)", FLOATING("{}^{2}", "\\sin"))
+    declines("x = r\\sin\\,^{2}(M/t)", FLOATING("{}^{2}", "\\sin"))
+    declines("x = r\\sin\\quad^{2}(M/t)", FLOATING("{}^{2}", "\\sin"))
+    declines("x = r\\sin {}^{2}(M/t)", FLOATING("{}^{2}", "\\sin"))
+    declines("x = r\\sin{}_{2}(M/t)", FLOATING("{}_{2}", "\\sin"))
+    declines("x = r\\ln{}^{2}(M/t)", FLOATING("{}^{2}", "\\ln"))
+    declines("x = r\\sin^{2}{}^{3}(M/t)", FLOATING("{}^{3}", "\\sin^{2}"))
+    declines("x = r\\sin{}{}^{2}(M/t)", FLOATING("{}^{2}", "\\sin"))
+    declines("x = r\\sin{}^{2}x", FLOATING("{}^{2}", "\\sin"))
+    // A power on the head itself, and an empty group with no script, are read as before.
+    assert.strictEqual(rawRestored("x = r\\sin^{2}(M/t)"), "x = r\\sin^{2}(GM/tc^{3})")
+    assert.strictEqual(rawRestored("x = r\\sin^{2}\\,(M/t)"), "x = r\\sin^{2}\\,(GM/tc^{3})")
+    assert.strictEqual(rawRestored("x = r\\sin{}(M/t)"), "x = r\\sin(GM/tc^{3})")
+  })
+
+  test("a sign right after a product sign or a slash is a sign on a factor, and declines", () => {
+    const SIGNED = (sign: string, product: string) =>
+      `the sign “${sign}” right after “${product}”, a sign on a factor rather than between terms, which is not supported`
+    // Live, the split at the sign shipped `t = \frac{r\cdot}{c} - \frac{r}{c}`, where r·(−r) is m².
+    declines("t = r \\cdot -r", SIGNED("-", "\\cdot"))
+    declines("t = r \\times -r", SIGNED("-", "\\times"))
+    declines("t = r \\cdot +r", SIGNED("+", "\\cdot"))
+    declines("t = r\\cdot\\,-r", SIGNED("-", "\\cdot"))
+    declines("t = r \\cdot \\pm r", SIGNED("\\pm", "\\cdot"))
+    declines("t = r \\cdot - r - r", SIGNED("-", "\\cdot"))
+    declines("t = r / -r", SIGNED("-", "/"))
+    // A sign between terms, and a product sign between factors, are read as before.
+    assert.strictEqual(rawRestored("t = r - r"), "t = \\frac{r}{c} - \\frac{r}{c}")
+    assert.strictEqual(rawRestored("E = 3\\times10^{8} m"), "E = 3\\times10^{8}mc^{2}")
+    assert.strictEqual(rawRestored("E = m\\cdot c\\cdot v", GEO), "E = m\\cdot v")
+  })
+
+  test("an accented c or G is another symbol, not the constant", () => {
+    const ACCENTED = (spelled: string, letter: string) =>
+      `the accented “${spelled}” — another symbol (a vector, a mean, an operator or a label), not the constant ${letter}`
+    // Live at GEO: `\vec{1}M`, `\bar{1}M`, `\tilde{1}M`, `\hat{1} = 1`; at SI
+    // `\vec{c}Mc` and `\frac{\bar{G}Mc^{2}}{G}`, the accented letter read as the constant.
+    declines("E = \\vec{c} M", ACCENTED("\\vec{c}", "c"))
+    declines("E = \\bar{G} M", ACCENTED("\\bar{G}", "G"))
+    declines("E = \\tilde{G} M", ACCENTED("\\tilde{G}", "G"))
+    declines("\\hat{c} = 1", ACCENTED("\\hat{c}", "c"), [GEO])
+    declines("E = \\vec c M", ACCENTED("\\vec{c}", "c"))
+    declines("E = \\bar{{c}} M", ACCENTED("\\bar{c}", "c"))
+    declines("E = \\overline{c} M", ACCENTED("\\overline{c}", "c"))
+    declines("E = \\check{c} M", ACCENTED("\\check{c}", "c"))
+    declines("E = \\breve{G} M", ACCENTED("\\breve{G}", "G"))
+    declines("E = \\hat{c}^{2} M", ACCENTED("\\hat{c}", "c"))
+    declines("E = \\vec{c}\\cdot\\vec{p}", ACCENTED("\\vec{c}", "c"), [GEO])
+    // An accent over any other letter, or over an expression the constant is part of, is read.
+    assert.strictEqual(rawRestored("E = \\bar{m}c^2", GEO), "E = \\bar{m}")
+    assert.strictEqual(rawRestored("E = \\bar{m}c^2"), "E = \\bar{m}c^{2}")
+    assert.strictEqual(rawRestored("E = \\overline{cM}", GEO), "E = \\overline{M}")
+  })
+
+  test("a strip that makes a fraction of numerals after a numeral declines, spacing or not", () => {
+    // Live at GEO, `3\,\frac{G}{2c^2}M` shipped as `3\,\frac{1}{2}M`: the
+    // value is 1.5M, and a thin space before ½ is how 3½ is set.
+    declines("x = 3\\,\\frac{G}{2c^2}\\,M", BARED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3~\\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\ \\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\;\\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\,\\tfrac{G}{2c^2}M", BARED("3", "\\tfrac{1}{2}"), [GEO])
+    declines("x = 3\\,{\\frac{G}{2c^2}}M", BARED("3", "{\\frac{1}{2}}"), [GEO])
+    declines("x = 3\\,\\frac{2G}{3c^2}M", BARED("3", "\\frac{2}{3}"), [GEO])
+    declines("x = 3\\,G\\,\\frac{1}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = r3\\,\\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    // A strip that makes the numeral before an author's fraction does the same.
+    declines("x = \\frac{3G}{c^2}\\,\\frac{1}{2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    // A mixed number the author set stays one; a product sign, a bracket or a
+    // symbol in the fraction is no mixed number; whole numerals keep the kern.
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}\\,r + \\frac{GM}{c^2}", GEO), "x = 3\\,\\frac{1}{2}r + M")
+    assert.strictEqual(rawRestored("x = 3\\cdot\\frac{G}{2c^2}M", GEO), "x = 3\\cdot\\frac{1}{2}M")
+    assert.strictEqual(rawRestored("x = 3\\,\\left(\\frac{G}{2c^2}\\right)M", GEO), "x = 3\\left(\\frac{1}{2}\\right)M")
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{\\pi G}{2c^2}M", GEO), "x = 3\\frac{\\pi}{2}M")
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{2G}{c^2}M", GEO), "x = 3\\,2M")
+  })
+
+  test("a constant restored into or before an author's fraction of numerals after a numeral declines", () => {
+    const WRITTEN = (left: string, right: string) =>
+      `the numerals ending “${left}” and opening “${right}”, a mixed number or a product, which a constant restored between or into them would leave only as the product — not supported`
+    // The insertion's side of the same reading. Live at SI, `3\,\frac{1}{2}M`
+    // shipped as `3\,\frac{G}{2c^{2}}M`, 1.5 GM/c² where 3½ M is 3.5, and a G
+    // set after the leading numerals split them: `\frac{3G\,{\frac{1}{2}}M}{c^{2}}`.
+    declines("x = 3\\,\\frac{1}{2}M", WRITTEN("3", "\\frac{1}{2}"), [SI])
+    declines("x = 3\\frac{1}{2}M", WRITTEN("3", "\\frac{1}{2}"), [SI])
+    declines("x = 3\\,\\tfrac{1}{2}M", WRITTEN("3", "\\tfrac{1}{2}"), [SI])
+    declines("x = 3\\,{\\frac{1}{2}}M", WRITTEN("3", "{\\frac{1}{2}}"), [SI])
+    declines("x = 3\\,\\frac{1}{2}\\frac{M}{r}t", WRITTEN("3", "\\frac{1}{2}"), [SI])
+    declines("x = \\frac{3\\frac{1}{2}M}{r}r", WRITTEN("3", "\\frac{1}{2}"), [SI])
+    declines("x = M\\,3\\,\\frac{1}{2}", WRITTEN("3", "\\frac{1}{2}"), [SI])
+    // With no insertion there, or a product sign or a symbol in the way, it prints as written.
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}\\,r + M"), "x = 3\\,\\frac{1}{2}r + \\frac{GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}M", GEO), "x = 3\\,\\frac{1}{2}M")
+    assert.strictEqual(rawRestored("x = 3\\cdot\\frac{1}{2}M"), "x = 3\\cdot\\frac{G}{2c^{2}}M")
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{\\pi}{2}M"), "x = 3\\frac{\\pi G}{2c^{2}}M")
+  })
+
+  test("a divergence that is only spacing the engine cannot re-emit names that spacing", () => {
+    const UNWRITTEN = (spacing: string) =>
+      `the spacing “${spacing}”, which the engine cannot re-emit as written, is not supported`
+    // Each declined before as a generic reassembly fault.
+    declines("x = r\\sin\\hspace{1em}(M/t)", UNWRITTEN("\\hspace{1em}"), [SI])
+    declines("t = r \\enspace - r", UNWRITTEN("\\enspace"), [SI])
+    declines("t = r \\hspace{0.9em} - r", UNWRITTEN("\\hspace{0.9em}"), [SI])
+    declines("x = \\frac{\\ G\\ M}{c^2}", UNWRITTEN("\\ "), [GEO])
+    declines("x = \\frac{M}{\\ c^2}\\,G", UNWRITTEN("\\ "), [GEO])
   })
 })

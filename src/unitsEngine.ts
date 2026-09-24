@@ -407,6 +407,16 @@ type Factor = {
    */
   numeralEdge?: (side: "first" | "last") => boolean
   /**
+   * Whether the factor opens, as a live emission prints it, on a fraction of
+   * numerals (`\frac{1}{2}`, or `{\frac{1}{2}}`). Set after a numeral it
+   * reads as the fractional part of a mixed number (3½), and spacing between
+   * the two does not stop that reading, for `3\,\frac{1}{2}` is how a mixed
+   * number is set (keepNumeralsApart).
+   */
+  numeralFraction?: () => boolean
+  /** On the glue a spacing node or a kern makes, as against a product sign or a “/”. */
+  spacing?: true
+  /**
    * On the glue a kern makes: the one command KaTeX gives the kern's width
    * (`\,`, `\quad`), or null when none does. A kern has no source span, so it
    * emits nothing, and this is what it is rebuilt as where it keeps two
@@ -1299,6 +1309,27 @@ function emitSum(
 }
 
 /**
+ * A sign written right after a product sign or a “/”, spacing aside: `r \cdot -r`
+ * is r·(−r), the sign on the next factor. Splitting there left the product
+ * sign closing one term and the sign opening the next, and `t = r \cdot -r`
+ * shipped as `t = \frac{r\cdot}{c} - \frac{r}{c}`, where r·(−r) is m² against
+ * a t in seconds. The engine reads no sign on a factor, so it declines.
+ */
+function productSignBeforeSignGuard(termNodes: any[], sign: string): void {
+  for (let idx = termNodes.length - 1; idx >= 0; idx -= 1) {
+    const n = unwrap(termNodes[idx])
+    if (n == null || isEmptyOrdgroup(n) || SKIP_TYPES.has(n.type)) continue
+    const product = n.type === "atom" && n.family === "bin" && (n.text === "\\cdot" || n.text === "\\times")
+    if (product || (n.type === "textord" && n.text === "/")) {
+      throw new Unsupported(
+        `the sign “${sign}” right after “${n.text}”, a sign on a factor rather than between terms, which is not supported`,
+      )
+    }
+    return
+  }
+}
+
+/**
  * A sum's terms, split at its signs. `a \pm b` abbreviates the pair of sums
  * a + b and a − b, and each branch is a sum the sum rule governs. What a term
  * needs restored depends on its dimension, never on its sign, so both branches
@@ -1334,6 +1365,7 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing 
       continue
     }
     if (pm != null || branch != null) {
+      productSignBeforeSignGuard(current, (pm ?? branch) as string)
       if (spacing != null && spacedBeforeSign(current, spacing)) spacedSign = true
       termNodeLists.push(current)
       signs.push(pendingSign)
@@ -1515,7 +1547,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     if (SKIP_TYPES.has(n.type)) {
       const text = spacingTexOf(raw, ctx)
       const kern = n.type === "kern" ? kernCommandOf(n) : undefined
-      push({ kind: "glue", dim: ZERO, emit: () => text, kern })
+      push({ kind: "glue", dim: ZERO, emit: () => text, kern, spacing: true })
       i += 1
       continue
     }
@@ -1594,6 +1626,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     if (isFuncHead(n)) {
       let next = i + 1
       while (next < nodes.length && SKIP_TYPES.has(unwrap(nodes[next])?.type)) next += 1
+      floatingScriptAfterHeadGuard(raw, next < nodes.length ? nodes[next] : null, ctx)
       const delimited = next < nodes.length ? delimitedArgumentOf(nodes[next]) : null
       if (delimited != null) {
         push(analyzeDelimitedFunction(raw, nodes.slice(i + 1, next), delimited, ctx))
@@ -2044,6 +2077,23 @@ function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
 }
 
 /**
+ * A script on nothing, set right after a function head (`\sin{}^{2}(M/t)`,
+ * `\sin\,^{2}(M/t)`), with only spacing between them. It is the function's
+ * power written apart from the head, or a script on the argument, and the
+ * engine cannot say which. Read as the rider it would be after a tensor, it
+ * opened the argument, and the constant restored at the argument's head took
+ * it: `r\sin{}^{2}(M/t)` shipped as `r\sin\frac{G{}^{2}(M/t)}{c^{3}}`, with
+ * the square on G.
+ */
+function floatingScriptAfterHeadGuard(headNode: any, next: any, ctx: Ctx): void {
+  const script = unwrap(next)
+  if (script?.type !== "supsub" || !(script.base == null || isEmptyOrdgroup(unwrap(script.base)))) return
+  throw new Unsupported(
+    `the floating script “${supsubTex("{}", script, ctx)}” after “${functionHeadTex(headNode, ctx)}” — the function's power or a script on its argument — which is not supported`,
+  )
+}
+
+/**
  * The delimited group a function's argument is, when one follows the head:
  * `(…)`, `\left(…\right)`, or either carrying a script (`\ln(Z\alpha)^{-2}`).
  *
@@ -2317,7 +2367,9 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         if (printsNothing(frac.den)) return productNumeralEdge(frac.num, side) ?? true
         return printsNumeralOnly(frac.num) && printsNumeralOnly(frac.den)
       }
-      return { kind: "frac", dim: d, emit, frac, vanishes, numeralEdge }
+      const numeralFraction = () =>
+        !printsNothing(frac.den) && printsNumeralOnly(frac.num) && printsNumeralOnly(frac.den)
+      return { kind: "frac", dim: d, emit, frac, vanishes, numeralEdge, numeralFraction }
     }
     case "sqrt": {
       const inner = parseSum(nodeListOf(n.body), ctx, { anchor: "internal" })
@@ -2367,12 +2419,14 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       }
       if (TRANSPARENT_ACCENTS.has(label)) {
         const inner = bracedArg(n.base, ctx)
+        accentedConstantGuard(label, n.base, inner, ctx)
         return { kind: "sym", dim: inner.dim, emit: () => `${label}{${inner.emit()}}` }
       }
       throw new Unsupported(`the unsupported accent “${label}”`)
     }
     case "overline": {
       const inner = bracedArg(n.body, ctx)
+      accentedConstantGuard("\\overline", n.body, inner, ctx)
       return { kind: "sym", dim: inner.dim, emit: () => `\\overline{${inner.emit()}}` }
     }
     case "op": {
@@ -2413,7 +2467,18 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const openArgument = !inner.multiTerm && live[live.length - 1]?.openArgument === true
       const vanishes = () => sumVanishes(inner)
       const numeralEdge = (side: "first" | "last") => sumNumeralEdge(inner, side)
-      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument, vanishes, numeralEdge, ...partsOf(inner) }
+      const numeralFraction = () => sumNumeralFraction(inner)
+      return {
+        kind: "group",
+        dim: inner.dim,
+        emit,
+        isBareSum,
+        openArgument,
+        vanishes,
+        numeralEdge,
+        numeralFraction,
+        ...partsOf(inner),
+      }
     }
     case "atom":
       throw new Unsupported(`the symbol “${n.text}” in this position`)
@@ -2697,6 +2762,31 @@ function constantFontGuard(text: string, font: any, ctx: Ctx): void {
 }
 
 /**
+ * The decline for c or G set alone under an accent, which makes it another
+ * symbol as a bold or calligraphic font does (constantFontGuard): `\vec{c}` is
+ * a vector, `\bar{G}` a mean or a label, `\hat{c}` a unit vector or an
+ * operator. Read through the accent, the letter was the constant itself, and
+ * a geometrized target set it to one under its accent: `\vec{c} M` shipped as
+ * `\vec{1}M`, and `\hat{c} = 1` as `\hat{1} = 1`. An accent over more than
+ * the letter (`\overline{cM}`) is an accent on an expression the constant is
+ * part of, and stays read.
+ */
+function accentedConstantGuard(label: string, base: any, inner: { emit: () => string }, ctx: Ctx): void {
+  let cur = unwrap(base)
+  while (cur?.type === "ordgroup") {
+    const body = cur.body.filter((x: any) => x && !SKIP_TYPES.has(x.type))
+    if (body.length !== 1) return
+    cur = unwrap(body[0])
+  }
+  const text = cur?.type === "mathord" || cur?.type === "textord" ? cur.text : null
+  if (text !== "c" && text !== "G") return
+  const written = `${label}{${maskedEmission(ctx, inner.emit)}}`
+  throw new Unsupported(
+    `the accented “${written}” — another symbol (a vector, a mean, an operator or a label), not the constant ${text}`,
+  )
+}
+
+/**
  * The font nearest a letter on the way down to `unwrap(node)`, if any: unwrap
  * discards it, so a supsub base `\mathbf c` is otherwise read as a plain c.
  */
@@ -2964,20 +3054,58 @@ type EmittedFactor = { f: Factor; tex: string }
  */
 function separatorAcross(left: EmittedFactor, right: EmittedFactor, runs: EmittedFactor[][]): string[] {
   const written = runs.find((run) => run.some((glue) => glue.tex !== ""))
-  if (written != null) return written.map((glue) => glue.tex)
-  if (!numeralsMeet(left.f, right.f)) return []
   const kerned = runs.find((run) => run.some((glue) => glue.f.kern !== undefined))
-  if (kerned == null) {
+  if (written == null && kerned == null && numeralsMeet(left.f, right.f)) {
     throw new Unsupported(
       `the numerals “${left.tex}” and “${right.tex}” with nothing but a stripped constant between them, which would set them side by side as one number — not supported`,
     )
   }
+  // Spacing, kern or not, does not keep a fraction of numerals from reading
+  // as a mixed number with the numeral before it: `3\,\frac{G}{c^2}\,\frac{1}{2}M`
+  // stripped to `3\,\frac{1}{2}M`, 3½ M where the value is 1.5 M. The two
+  // were never side by side in the source, so no spacing kept is the author's.
+  if (mixesNumber(left.f, right.f) && (written == null || written.every((glue) => glue.f.spacing === true))) {
+    throw new Unsupported(numeralFusionReason(left.tex, right.tex))
+  }
+  if (written != null) return written.map((glue) => glue.tex)
+  if (kerned == null || !numeralsMeet(left.f, right.f)) return []
   return kerned.map((glue) => (glue.f.kern !== undefined ? rebuiltKern(glue.f).emit() : glue.tex))
 }
 
 /** A factor that prints a numeral last, set before one that prints a numeral first. */
 function numeralsMeet(left: Factor, right: Factor): boolean {
   return left.numeralEdge?.("last") === true && right.numeralEdge?.("first") === true
+}
+
+/** A factor that prints a numeral last, set before one that opens on a fraction of numerals: a mixed number. */
+function mixesNumber(left: Factor, right: Factor): boolean {
+  return left.numeralEdge?.("last") === true && right.numeralFraction?.() === true
+}
+
+function numeralFusionReason(leftTex: string, rightTex: string): string {
+  return `the numerals ending “${leftTex}” and opening “${rightTex}”, which a stripped constant leaves side by side as one number — not supported`
+}
+
+/**
+ * The insertion's side of a mixed number. A fraction of numerals the author
+ * set right after a numeral, with nothing but spacing between (`3\,\frac{1}{2}`,
+ * `3\frac{1}{2}`), is the mixed number 3½ or the product 3·½, and the source
+ * does not say which. Printed as written, both readings stay open; a constant
+ * restored into the fraction, or between the two, leaves only the product:
+ * `x = 3\,\frac{1}{2}M` had shipped as `3\,\frac{G}{2c^{2}}M`, 1.5 GM/c² where
+ * the mixed number is 3.5. So the row declines when an insertion would land
+ * there (emitTermWith, partsWith).
+ */
+function writtenMixedNumberGuard(factors: Factor[], idx: number): void {
+  const right = factors[idx]
+  if (right?.numeralFraction?.() !== true) return
+  let prev = idx - 1
+  while (prev >= 0 && factors[prev].kind === "glue" && factors[prev].spacing === true) prev -= 1
+  const left = prev >= 0 ? factors[prev] : null
+  if (left == null || left.kind === "glue" || left.numeralEdge?.("last") !== true) return
+  throw new Unsupported(
+    `the numerals ending “${left.emit()}” and opening “${right.emit()}”, a mixed number or a product, which a constant restored between or into them would leave only as the product — not supported`,
+  )
 }
 
 /** A kern's glue, emitting the command its width is written with; a kern no command gives declines. */
@@ -3008,6 +3136,14 @@ function rebuiltKern(glue: Factor): Factor {
  * were apart in the source: `E = 3 \frac{2G}{c^2} M` had stripped to `32M`,
  * where the value is 6M, and `\frac{2G}{c^2}\frac{1}{2}M` to `2\frac{1}{2}M`,
  * where it is M. Nothing written keeps them apart, so the row declines.
+ *
+ * A fraction of numerals is the exception to a kern keeping two numerals
+ * apart: `3\,\frac{1}{2}` is how a mixed number is set, and so is
+ * `3~\frac{1}{2}`. Where the author set one, it prints as written. Where a
+ * strip made one, turning `\frac{G}{2c^2}` into `\frac{1}{2}` after a
+ * numeral, `3\,\frac{G}{2c^2}M` came back as `3\,\frac{1}{2}M`, 3½ M where
+ * the value is 1.5 M, and whatever spacing stands between them, the row
+ * declines.
  */
 function keepNumeralsApart(factors: Factor[], ctx: Ctx): void {
   let prev = -1
@@ -3018,6 +3154,14 @@ function keepNumeralsApart(factors: Factor[], ctx: Ctx): void {
     const between = factors.slice(prev + 1, k)
     if (
       left != null &&
+      between.every((glue) => glue.spacing === true) &&
+      mixesNumber(left, f) &&
+      !maskedEmission(ctx, () => mixesNumber(left, f))
+    ) {
+      throw new Unsupported(numeralFusionReason(left.emit(), f.emit()))
+    }
+    if (
+      left != null &&
       between.every((glue) => glue.kind === "glue" && glue.emit() === "") &&
       numeralsMeet(left, f)
     ) {
@@ -3026,9 +3170,7 @@ function keepNumeralsApart(factors: Factor[], ctx: Ctx): void {
           if (factors[g].kern !== undefined) factors[g] = rebuiltKern(factors[g])
         }
       } else if (!maskedEmission(ctx, () => numeralsMeet(left, f))) {
-        throw new Unsupported(
-          `the numerals ending “${left.emit()}” and opening “${f.emit()}”, which a stripped constant leaves side by side as one number — not supported`,
-        )
+        throw new Unsupported(numeralFusionReason(left.emit(), f.emit()))
       }
     }
     prev = k
@@ -3049,6 +3191,14 @@ function sumNumeralEdge(sum: SumInfo, side: "first" | "last"): boolean {
   const den = term.factors.slice(term.slashIdx + 1)
   if (side === "first") return productNumeralEdge(num, side) ?? true
   return productNumeralEdge(den, side) ?? productNumeralEdge(num, side) ?? true
+}
+
+/** Whether a sum, as a live emission prints it, opens on a fraction of numerals. */
+function sumNumeralFraction(sum: SumInfo): boolean {
+  const term = sum.terms[0]
+  if (term.sign !== "") return false
+  const live = term.factors.filter((f) => f.kind !== "glue" && f.vanishes?.() !== true)
+  return live.length > 0 && live[0].numeralFraction?.() === true
 }
 
 /** The numeral edge of a product's surviving factors, or null when every one vanished. */
@@ -3133,6 +3283,12 @@ function partsWith(factors: Factor[], gTex: string, cTex: string): string[] {
     if (prev < 0 || factors[prev].openArgument !== true) break
     tailPos = prev
   }
+  if (gTex) {
+    // G after the leading numerals must not split a mixed number from its fraction.
+    let next = headPos
+    while (next < factors.length && factors[next].kind === "glue") next += 1
+    writtenMixedNumberGuard(factors, next)
+  }
   if (cTex) parts.splice(tailPos, 0, cTex)
   if (gTex) parts.splice(headPos, 0, gTex)
   return parts
@@ -3173,6 +3329,7 @@ function emitTermWith(t: TermInfo, a12: number, b12: number): string {
   // A term led by a fraction absorbs the constants into that fraction.
   const fracIdx = t.factors.findIndex((f) => f.kind === "frac")
   if (fracIdx >= 0 && t.factors[fracIdx].frac) {
+    writtenMixedNumberGuard(t.factors, fracIdx)
     const frac = t.factors[fracIdx].frac!
     let numParts = partsWith(frac.num, gNum, cNum)
     const denParts = partsWith(frac.den, gDen, cDen)
@@ -3704,6 +3861,59 @@ export function dimensionOf(
   }
 }
 
+/**
+ * Spacing commands that make a kern the engine cannot re-emit as written: the
+ * kern carries no span, so it is dropped, or rebuilt as the one command its
+ * width has (`\hspace{1em}` as `\quad`), and the rebuilt equation falls short
+ * of the source. The backslash before each must not be the second half of a
+ * `\\`.
+ */
+const UNWRITTEN_SPACING =
+  /(?<!\\)((?:\\\\)*)(\\(?:hspace\*?\s*\{[^{}]*\}|(?:kern|mkern|hskip|mskip)\s*\{?\s*[-+]?[\d.]+\s*[a-z]{2}(?:\s*\})?|(?:enspace|enskip|thinspace|medspace|thickspace|negthinspace|negmedspace|negthickspace)(?![a-zA-Z])))/g
+/** A control space, `\ `, whose backslash is not the second half of a `\\`. */
+const CONTROL_SPACE = /(?<!\\)(?:\\\\)*\\\s/
+
+/**
+ * Where the rebuilt equation diverges from its source only by spacing the
+ * engine cannot re-emit, the divergence is that spacing, and it is named:
+ * `t = r \enspace - r` and `r\sin\hspace{1em}(M/t)` had declined as a generic
+ * reassembly fault. So is a control space that the reading drops, as it does
+ * one opening a side of a fraction (`\frac{\ G\ M}{c^2}`). A divergence in
+ * anything else keeps the generic reason: a control space fused into the next
+ * token (`r\\sqrt`) is not a spacing that went missing. The spacing named is
+ * the first one written that the rebuilt equation lacks, not merely the first
+ * one written, which a source-spelled construct may have carried through.
+ */
+function unwrittenSpacingGuard(masked: string, source: string, cmpNorm: (s: string) => string): void {
+  const unwritten = (s: string) => cmpNorm(s.replace(UNWRITTEN_SPACING, "$1"))
+  const spellings = (s: string) => {
+    const found: string[] = []
+    s.replace(UNWRITTEN_SPACING, (_match: string, _pairs: string, spelling: string) => {
+      found.push(spelling)
+      return ""
+    })
+    return found
+  }
+  const kept = spellings(masked)
+  const lost = spellings(source).find((spelling) => {
+    const at = kept.indexOf(spelling)
+    if (at < 0) return true
+    kept.splice(at, 1)
+    return false
+  })
+  if (lost != null && unwritten(masked) === unwritten(source)) {
+    throw new Unsupported(unwrittenSpacingReason(lost))
+  }
+  const spaceless = (s: string) => unwritten(s).split(CONTROL_SPACE_SENTINEL).join("")
+  if (CONTROL_SPACE.test(source) && spaceless(masked) === spaceless(source)) {
+    throw new Unsupported(unwrittenSpacingReason("\\ "))
+  }
+}
+
+function unwrittenSpacingReason(spacing: string): string {
+  return `the spacing “${spacing}”, which the engine cannot re-emit as written, is not supported`
+}
+
 /** Stands in for a control space (`\ `) in the backstop's comparison; no TeX source contains it. */
 const CONTROL_SPACE_SENTINEL = "\u0000"
 
@@ -3846,6 +4056,7 @@ function translateCore(
       ctx.mask = false
     }
     if (cmpNorm(masked) !== cmpNorm(tex)) {
+      unwrittenSpacingGuard(masked, tex, cmpNorm)
       throw new Unsupported(
         "an internal reassembly fault — the rebuilt equation diverged from the source (nothing was shown rather than something wrong)",
       )
