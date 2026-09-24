@@ -3943,10 +3943,15 @@ describe("bases, accents, labels and named operators (step 11)", () => {
     // \overline is a node of its own, its body a located group.
     const [over] = parse("\\overline{T}_{ab}")
     assert.strictEqual(over.base.type, "overline")
-    // \mathop around a word has no name; \nolimits and \operatorname* set alwaysHandleSupSub.
+    // \mathop around a word has no name; \limits, \nolimits and \operatorname*
+    // set alwaysHandleSupSub, and only `limits` tells \limits from \nolimits.
     const [mathop] = parse("\\mathop{\\rm Tr}T")
     assert.deepStrictEqual([mathop.type, mathop.name, mathop.body[0].type], ["op", undefined, "font"])
-    assert.strictEqual(parse("\\mathop{\\rm Tr}\\nolimits T")[0].alwaysHandleSupSub, true)
+    assert.strictEqual(mathop.limits, false)
+    const [nolimits] = parse("\\mathop{\\rm Tr}\\nolimits T")
+    assert.deepStrictEqual([nolimits.alwaysHandleSupSub, nolimits.limits], [true, false])
+    const [limits] = parse("\\mathop{\\rm Tr}\\limits T")
+    assert.deepStrictEqual([limits.alwaysHandleSupSub, limits.limits], [true, true])
     assert.strictEqual(parse("\\operatorname*{Tr}T")[0].alwaysHandleSupSub, true)
     assert.strictEqual(parse("\\operatorname{tr}(T)")[0].alwaysHandleSupSub, false)
   })
@@ -4118,6 +4123,18 @@ describe("bases, accents, labels and named operators (step 11)", () => {
     assert.strictEqual(rawRestored("\\mathrm{tr}(T_{ab}) = -\\rho"), "\\mathrm{tr}(T_{ab}) = -\\rho c^{2}")
     assert.strictEqual(rawRestored("{\\rm tr}\\,(T_{ab}) = -\\rho"), "{\\rm tr}(T_{ab}) = -\\rho c^{2}")
     assert.strictEqual(rawRestored("\\mathop{\\rm Tr}T_{ab} = \\rho"), "\\mathop{\\rm Tr}T_{ab} = \\rho c^{2}")
+    // \nolimits sets the scripts to the side, as \operatorname does; the only
+    // spelling the corpus uses (gr-qc/9712019) had the big-operator reason.
+    assert.strictEqual(rawRestored("\\rho = \\mathop{\\rm Tr}\\nolimits T_{ab}"), "\\rho = \\frac{\\mathop{\\rm Tr}\\nolimits T_{ab}}{c^{2}}")
+    assert.strictEqual(rawRestored("\\rho = \\mathop{\\rm Tr}\\nolimits(T_{ab})"), "\\rho = \\frac{\\mathop{\\rm Tr}\\nolimits(T_{ab})}{c^{2}}")
+    assert.strictEqual(rawRestored("\\rho = {\\mathop{\\rm Tr}\\nolimits}T_{ab}"), "\\rho = \\frac{{\\mathop{\\rm Tr}\\nolimits}T_{ab}}{c^{2}}")
+    // \limits sets it apart as a big operator, and a script on it is not read.
+    assert.deepStrictEqual(reasons("\\rho = \\mathop{\\rm Tr}\\limits T_{ab}"), [
+      "“Tr” — integrals, sums, and limits change dimensions with their measure and are not supported yet",
+    ])
+    assert.deepStrictEqual(reasons("\\rho = \\mathop{\\rm Tr}\\nolimits_{A}T_{ab}"), [
+      "a script on the operator “\\mathop{\\rm Tr}\\nolimits”, which is not supported",
+    ])
     assert.strictEqual(rawRestored("2\\operatorname{Re}(h_{ab}) = \\Phi"), "2\\operatorname{Re}(h_{ab}) = \\frac{\\Phi}{c^{2}}")
     // G goes after the numerals, before the operator; c at the tail.
     assert.strictEqual(rawRestored("r = 2\\operatorname{Re}(h_{ab})M"), "r = \\frac{2G\\operatorname{Re}(h_{ab})M}{c^{2}}")

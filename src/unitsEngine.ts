@@ -2761,8 +2761,16 @@ function letterWordOf(nodes: any[]): string | null {
 /**
  * A word naming an operator of the table, as written: `\operatorname{…}` (not
  * the starred form, which takes limits), an upright font or an upright \text,
- * braced or not, or `\mathop` around one of them (not with \limits or
- * \nolimits, which set it apart as a big operator).
+ * braced or not, or `\mathop` around one of them, bare or with \nolimits (not
+ * with \limits, which sets it apart as a big operator with its scripts above
+ * and below).
+ *
+ * KaTeX marks both \limits and \nolimits with alwaysHandleSupSub, and only
+ * `limits` tells them apart: `\mathop{\rm Tr}\nolimits` has limits false, as
+ * the bare `\mathop{\rm Tr}` has, and sets its scripts to the side as
+ * `\operatorname` does. Testing alwaysHandleSupSub on the \mathop declined
+ * the only spelling the corpus uses (gr-qc/9712019) with the big-operator
+ * reason. On `\operatorname` the flag is what marks the starred form.
  */
 type NamedWord = { name: string; op: NamedOp; node: any; wrapper: any; inner: NamedWord | null }
 
@@ -2775,7 +2783,7 @@ function namedWordOf(raw: any): NamedWord | null {
     wrapper = node
     node = peelStyles(body[0])
   }
-  if (node?.type === "op" && node.name == null && node.alwaysHandleSupSub !== true && Array.isArray(node.body)) {
+  if (node?.type === "op" && node.name == null && node.limits !== true && Array.isArray(node.body)) {
     const inner = namedWordOf({ type: "ordgroup", body: node.body })
     return inner == null ? null : { name: inner.name, op: inner.op, node, wrapper, inner }
   }
@@ -2791,12 +2799,18 @@ function namedWordOf(raw: any): NamedWord | null {
   return name == null || op == null ? null : { name, op, node, wrapper, inner: null }
 }
 
-/** A named operator's TeX as written: a brace group sliced, anything else rebuilt, since none of the nodes has a span. */
+/**
+ * A named operator's TeX as written: a brace group sliced, anything else
+ * rebuilt, since none of the nodes has a span. A \mathop that
+ * alwaysHandleSupSub marks was written with \nolimits (namedWordOf admits no
+ * \limits), which the rebuild restores.
+ */
 function namedWordTex(word: NamedWord, ctx: Ctx): string {
   if (word.wrapper != null && locIsOwn(word.wrapper.loc, ctx.input)) return srcOf(word.wrapper, ctx)
   if (word.inner != null) {
     const inner = namedWordTex(word.inner, ctx)
-    return `\\mathop{${inner.startsWith("{") && outerBracesArePartners(inner) ? inner.slice(1, -1) : inner}}`
+    const body = inner.startsWith("{") && outerBracesArePartners(inner) ? inner.slice(1, -1) : inner
+    return `\\mathop{${body}}${word.node.alwaysHandleSupSub === true ? "\\nolimits" : ""}`
   }
   if (word.node.type === "operatorname") return `\\operatorname{${word.name}}`
   if (word.node.type === "font") return fontTexOf(word.node, word.name, ctx)
