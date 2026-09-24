@@ -331,6 +331,13 @@ type Ctx = {
    * verbatim backstop a no-op one has always had.
    */
   mask: boolean
+  /**
+   * The font command whose argument is being read, as written (`\bf`,
+   * `\mathrm`), or null outside any font. A constant restored in there would be
+   * set in that font — a bold c is a vector, an upright c no speed of light —
+   * and every Latin letter under an upright font is upright too.
+   */
+  font: { tex: string; upright: boolean } | null
 }
 
 /** Constants are inserted (or stripped) only in a live emission, never in a masked one. */
@@ -356,6 +363,12 @@ type Factor = {
 }
 
 type TermInfo = {
+  /**
+   * The sign written before the term's first factor, folded: "", "-", or "+".
+   * A written "+" is kept rather than read as nothing, so the term re-emits as
+   * the source spells it (`E = +m` came back as `E = m`, and the backstop
+   * declined the divergence).
+   */
   sign: string
   factors: Factor[]
   /** Factor index of a source-level "/" separator, or -1. Factors after it divide. */
@@ -613,6 +626,10 @@ function fracCmdOf(rawNode: any, genfrac: any, ctx: Ctx): string {
 
 function nodeListOf(node: any): any[] {
   if (node == null) return []
+  // A font is content, not packaging: unwrapped, \tilde{\bm{\nabla}} and
+  // \vec{\mathbf{p}} lost their fonts and came back as \tilde{\nabla} and \vec{p}.
+  const styled = peelStyles(node)
+  if (styled?.type === "font") return [styled]
   const u = unwrap(node)
   if (u == null) return []
   if (u.type === "ordgroup") return u.body
@@ -946,6 +963,14 @@ function termInsertion(t: TermInfo, target: Dim, ctx: Ctx): { a: number; b: numb
   // Geometrized target: consistency is verified (above), but no constants are
   // inserted — the ones present get stripped at emission instead.
   if (ctx.strip) return null
+  // Inside a font's argument the constant would be set in that font: `{\bf p +
+  // m}` came back as `{\bf p + mc}c`, a bold c beside a bold p. Only a term's
+  // outer constants can stand outside the font, so an inner one declines.
+  if (ctx.font != null) {
+    throw new Unsupported(
+      `a constant to restore inside the font “${ctx.font.tex}”, where it would be set in that font and read as another symbol`,
+    )
+  }
   ctx.mutated = true
   return solved
 }
@@ -984,7 +1009,7 @@ function emitSum(
     .map((t, idx) => {
       const ins = emitsConstants(ctx) ? insertions[idx] : null
       const body = ins ? emitTermWith(t, ins.a, ins.b) : emitTerm(t)
-      const lead = idx === 0 ? (t.sign === "-" ? "-" : "") : ` ${foldedOp(ops[idx - 1], t.sign)} `
+      const lead = idx === 0 ? t.sign : ` ${foldedOp(ops[idx - 1], t.sign)} `
       return lead + body
     })
     .join("")
@@ -1003,6 +1028,7 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing 
     const pm = isPlusMinus(n)
     if (pm != null && current.length === 0) {
       if (pm === "-") pendingSign = pendingSign === "-" ? "+" : "-"
+      else if (pendingSign === "") pendingSign = "+"
       continue
     }
     if (pm != null) {
@@ -1303,14 +1329,183 @@ function spacingTexOf(raw: any, ctx: Ctx): string {
  */
 function wrappedTexOf(raw: any, ctx: Ctx): string {
   const peeled = peelStyles(raw)
-  if (peeled?.type === "font") return `\\${peeled.font}{${wrappedTexOf(peeled.body, ctx)}}`
-  if (peeled?.type === "supsub" && peeled.sub == null && peeled.sup != null) {
-    const base = peelStyles(peeled.base)
-    if (base?.type === "font") {
-      return `${wrappedTexOf(peeled.base, ctx)}^{${scriptSrc(peeled.sup, ctx)}}`
-    }
+  if (peeled?.type === "font") return fontTexOf(peeled, wrappedTexOf(peeled.body, ctx), ctx)
+  // A supsub slices faithfully, order and spelling kept, unless a part of it is
+  // a font, which has no span to slice: then it is rebuilt from its parts.
+  if (
+    peeled?.type === "supsub" &&
+    peeled.base != null &&
+    [peeled.base, peeled.sub, peeled.sup].some((x) => x != null && peelStyles(x)?.type === "font")
+  ) {
+    return `${wrappedTexOf(peeled.base, ctx)}${scriptsTex(peeled, ctx)}`
   }
   return safeSrc(raw, ctx)
+}
+
+/**
+ * KaTeX's name for a font, and every command that produces it. The font node
+ * records only the name, so `{\rm e}` came back as `\mathrm{e}` and `{\bf B}`
+ * as `\mathbf{B}`, and the backstop declined the divergence. The command is
+ * read from the source immediately before the font's body, as fracCmdOf reads
+ * \tfrac; the name is the fallback when the body has no position.
+ */
+const FONT_SPELLINGS: Record<string, string[]> = {
+  mathrm: ["mathrm", "rm"],
+  mathbf: ["mathbf", "bf"],
+  mathit: ["mathit", "it"],
+  mathcal: ["mathcal", "cal"],
+  mathsf: ["mathsf", "sf"],
+  mathtt: ["mathtt", "tt"],
+  boldsymbol: ["boldsymbol", "bm"],
+  mathbb: ["mathbb", "Bbb"],
+  mathfrak: ["mathfrak", "frak"],
+  mathscr: ["mathscr"],
+  mathnormal: ["mathnormal"],
+}
+
+/** Old-style switches act on the rest of their group, so they are re-emitted inside braces of their own. */
+const OLD_STYLE_SWITCHES = new Set(["rm", "bf", "it", "cal", "sf", "tt"])
+const OLD_STYLE_GROUP = /^\{\\(?:rm|bf|it|cal|sf|tt) /
+
+function fontCmdOf(font: any, ctx: Ctx): string {
+  const span = spanOf(font.body, ctx.input)
+  const written = span ? /\\([a-zA-Z]+)\s*\{?\s*$/.exec(ctx.input.slice(0, span[0])) : null
+  return written && (FONT_SPELLINGS[font.font] ?? []).includes(written[1]) ? written[1] : font.font
+}
+
+function fontTexOf(font: any, bodyTex: string, ctx: Ctx): string {
+  const cmd = fontCmdOf(font, ctx)
+  // The body's own group braces are redundant inside the font's: \mathbf{{p + q}} → \mathbf{p + q}.
+  const body = bodyTex.startsWith("{") && outerBracesArePartners(bodyTex) ? bodyTex.slice(1, -1) : bodyTex
+  return OLD_STYLE_SWITCHES.has(cmd) ? `{\\${cmd} ${body}}` : `\\${cmd}{${body}}`
+}
+
+/**
+ * Upright type is a statement about what a letter is. ISO 80000-2 sets
+ * variables in italic and sets upright only what is not one: a unit (m, Hz,
+ * GeV), a descriptive label (eff, weak), an operator (Tr, det) or a
+ * mathematical constant. A run of upright letters is therefore one word, never
+ * a product of one-letter symbols — `\omega = 2\pi\,\mathrm{Hz}` read as H·z,
+ * and `E = \mathrm{cm}` as the speed of light times a mass — and a single
+ * upright letter is no variable either: `r = 3\,\mathrm{m}` restored the metre
+ * as a mass, to `\frac{3G\mathrm{m}}{c^{2}}`. Only the letters with an upright
+ * reading of their own go on to be read: the differential d, Euler's e and the
+ * imaginary i.
+ *
+ * Upright means \mathrm (and \rm) and the upright text commands. A run of
+ * letters under any other font is one name or a product of symbols, and the
+ * notation does not say which — `\mathit` exists to set multi-letter names,
+ * while `\mathbf{AB}` can be a product of two matrices — so it declines too.
+ * A single letter under another font is a symbol like any other (\mathbf{v},
+ * \mathcal{L}).
+ */
+const UPRIGHT_FONTS = new Set(["mathrm"])
+const UPRIGHT_TEXT_FONTS = new Set([
+  "\\text",
+  "\\textrm",
+  "\\textup",
+  "\\textnormal",
+  "\\textbf",
+  "\\textsf",
+  "\\texttt",
+])
+const UPRIGHT_LETTERS_READ = new Set(["d", "e", "i"])
+/** Words that make the equation prose rather than one statement. */
+const PROSE_WORDS = new Set([
+  "where",
+  "for",
+  "with",
+  "and",
+  "if",
+  "at",
+  "when",
+  "or",
+  "as",
+  "on",
+  "in",
+  "else",
+  "otherwise",
+  "for all",
+  "pour tout",
+  "such that",
+  "s.t",
+  "i.e",
+  "e.g",
+  "since",
+  "then",
+])
+/** Placeholders for a constant whose value, and so whose dimension, is left open. */
+const PLACEHOLDER_WORDS = new Set(["const", "constant", "cst"])
+
+type SpelledWord = { letters: string; quote: string }
+
+/**
+ * The word a font's or a \text's argument spells: Latin letters, with spacing
+ * and sentence punctuation between or after them, and nothing else. Anything
+ * else inside (a digit, a Greek letter, a script) gives null, and the argument
+ * is read as it always was. The quote is the word as written.
+ */
+function spelledWordOf(nodes: any[], ctx: Ctx): SpelledWord | null {
+  let letters = ""
+  const located: any[] = []
+  for (const n of nodes) {
+    if (n == null) continue
+    if (SKIP_TYPES.has(n.type)) {
+      letters += " "
+      continue
+    }
+    const isLetter = (n.type === "mathord" || n.type === "textord") && /^[A-Za-z]$/.test(n.text)
+    const isPunct =
+      (n.type === "textord" && /^[.,;:]$/.test(n.text)) || (n.type === "atom" && n.family === "punct")
+    if (!isLetter && !isPunct) return null
+    letters += n.text
+    located.push(n)
+  }
+  // A comma or a semicolon with a letter after it separates a list; only a
+  // period (i.e., const.) sits inside a word.
+  if (!/[A-Za-z]/.test(letters) || /[,;:][^A-Za-z]*[A-Za-z]/.test(letters)) return null
+  const word = letters.replace(/\s+/g, " ").trim()
+  return { letters: word, quote: srcOfNodes(located, ctx) || word }
+}
+
+/** The prose and placeholder readings of a spelled word, which hold under any font. */
+function proseOrPlaceholderReason(word: SpelledWord): string | null {
+  const bare = word.letters.toLowerCase().replace(/^[\s.,;:]+|[\s.,;:]+$/g, "")
+  if (PROSE_WORDS.has(bare)) return `prose (“${word.quote}”) inside the equation — select a single equation`
+  if (PLACEHOLDER_WORDS.has(bare)) {
+    return `an unspecified constant (“${word.quote}”), whose dimension the notation does not fix`
+  }
+  return null
+}
+
+/**
+ * Why a spelled word cannot be read as symbols, or null when it can: a single
+ * letter under a font that is not upright, or an upright d, e or i.
+ */
+function spelledWordReason(word: SpelledWord, upright: boolean, fontTex: string): string | null {
+  const prose = proseOrPlaceholderReason(word)
+  if (prose != null) return prose
+  const letterCount = word.letters.replace(/[^A-Za-z]/g, "").length
+  if (letterCount >= 2) {
+    if (!upright) {
+      return `the multi-letter name “${word.quote}” under “${fontTex}” — one name or a product of symbols, which the notation does not say`
+    }
+    return /\s/.test(word.letters) || /\s/.test(word.quote)
+      ? `the upright words “${word.quote}” — units, labels or operators, not a product of symbols`
+      : `the upright word “${word.quote}” — a unit, a label or an operator, not a product of symbols`
+  }
+  const letter = word.letters.replace(/[^A-Za-z]/g, "")
+  if (upright && !UPRIGHT_LETTERS_READ.has(letter)) {
+    return `the upright letter “${word.quote}” — a unit, a label or an operator, not a variable`
+  }
+  return null
+}
+
+/** The upright-letter decline for a letter read under an upright font, or nothing. */
+function uprightLetterGuard(text: string, upright: boolean): void {
+  if (upright && /^[A-Za-z]$/.test(text) && !UPRIGHT_LETTERS_READ.has(text)) {
+    throw new Unsupported(`the upright letter “${text}” — a unit, a label or an operator, not a variable`)
+  }
 }
 
 function derivativePrefix(n: any): "d" | "partial" | null {
@@ -1453,13 +1648,53 @@ function peelStyles(node: any): any {
   }
 }
 
+/**
+ * `{\textstyle\frac12}`: a style command the reader wrote inside a group. The
+ * style is inert for dimensions but not for the emission, and unwrap discarded
+ * it, so the group came back as `{\frac{1}{2}}` and the backstop declined.
+ * KaTeX synthesizes the identical node shape for `{\tfrac12}`, so the two are
+ * told apart by the source between the group's brace and its content: only a
+ * written `\textstyle` (or display, script, scriptscript) that names the
+ * node's own style is re-emitted.
+ */
+function explicitStyleOf(group: any, ctx: Ctx): { cmd: string; body: any[] } | null {
+  const body = (group.body ?? []).filter((x: any) => x && !SKIP_TYPES.has(x.type))
+  if (body.length !== 1 || body[0].type !== "styling") return null
+  const inner = spanOf(body[0].body, ctx.input)
+  const own = spanOf({ loc: group.loc }, ctx.input)
+  if (!inner || !own) return null
+  const written = /\\(display|text|script|scriptscript)style\b/.exec(ctx.input.slice(own[0], inner[0]))
+  if (!written || written[1] !== body[0].style) return null
+  return { cmd: `\\${written[1]}style`, body: body[0].body }
+}
+
 function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
   const peeled = peelStyles(rawNode)
   if (peeled?.type === "font") {
-    // \mathbf{p}, \mathrm{d}… — read through the wrapper, but keep it in the output.
-    const inner = analyzeFactor(peeled.body, ctx)
-    const fontCmd = `\\${peeled.font}`
-    return { kind: inner.kind, dim: inner.dim, emit: () => `${fontCmd}{${inner.emit()}}` }
+    // \mathbf{p}, \mathrm{e}… — read through the wrapper, but keep it in the
+    // output, spelled as written. A word under it is not read at all.
+    const fontTex = `\\${fontCmdOf(peeled, ctx)}`
+    const upright = UPRIGHT_FONTS.has(peeled.font)
+    const word = spelledWordOf(nodeListOf(peeled.body), ctx)
+    const reason = word == null ? null : spelledWordReason(word, upright, fontTex)
+    if (reason != null) throw new Unsupported(reason)
+    const outer = ctx.font
+    ctx.font = { tex: fontTex, upright }
+    let inner: Factor
+    try {
+      inner = analyzeFactor(peeled.body, ctx)
+    } finally {
+      ctx.font = outer
+    }
+    const font = peeled
+    // A sum under a font is as bare as one under plain braces: a constant set
+    // beside `{\bf p + q}` needs \left(\right), or it reads as p + qc.
+    return {
+      kind: inner.kind,
+      dim: inner.dim,
+      isBareSum: inner.isBareSum,
+      emit: () => fontTexOf(font, inner.emit(), ctx),
+    }
   }
 
   const n = unwrap(rawNode)
@@ -1478,6 +1713,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
           `the delimiter “${text}”, which the engine cannot pair with its partner`,
         )
       }
+      uprightLetterGuard(text, ctx.font?.upright === true)
       if (text === "\\pi" || text === "i" || text === "e" || text === "\\infty") {
         const src = srcOf(n, ctx)
         return { kind: "num", dim: ZERO, emit: () => src }
@@ -1583,12 +1819,31 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     }
     case "operatorname":
       throw new Unsupported("an \\operatorname construct, which is not supported")
-    case "text":
-      throw new Unsupported("\\text content inside the equation")
+    case "text": {
+      // Prose, a placeholder, or an upright word or letter says so; any other
+      // \text (an italic word, math set inside the text) keeps the general reason.
+      const word = spelledWordOf(n.body, ctx)
+      const reason =
+        word == null
+          ? null
+          : UPRIGHT_TEXT_FONTS.has(n.font)
+            ? spelledWordReason(word, true, n.font)
+            : proseOrPlaceholderReason(word)
+      throw new Unsupported(reason ?? "\\text content inside the equation")
+    }
     case "ordgroup": {
-      const inner = parseSum(n.body, ctx, { anchor: "internal" })
-      const emit = () => `{${inner.emit()}}`
-      return { kind: "group", dim: inner.dim, emit, isBareSum: inner.multiTerm }
+      const styled = explicitStyleOf(n, ctx)
+      const inner = parseSum(styled ? styled.body : n.body, ctx, { anchor: "internal" })
+      const emit = () => {
+        const body = inner.emit()
+        if (styled) return `{${styled.cmd} ${body}}`
+        // `{\bf p}` is one group, which the font re-emits with braces of its own.
+        if (OLD_STYLE_GROUP.test(body) && outerBracesArePartners(body)) return body
+        return `{${body}}`
+      }
+      // Braces do not print, so a bare sum anywhere in the group is bare beside it.
+      const isBareSum = inner.multiTerm || inner.terms[0].factors.some((f) => f.isBareSum === true)
+      return { kind: "group", dim: inner.dim, emit, isBareSum }
     }
     case "atom":
       throw new Unsupported(`the symbol “${n.text}” in this position`)
@@ -1599,6 +1854,9 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
 
 /** Source of a sub/superscript with its outer brace pair (if any) removed. */
 function scriptSrc(node: any, ctx: Ctx): string {
+  // A bare font script (`T_\mathrm{eff}`) has no span of its own; rebuild it.
+  const styled = peelStyles(node)
+  if (styled?.type === "font") return fontTexOf(styled, scriptSrc(styled.body, ctx), ctx)
   const src = srcOf(node, ctx)
   if (src.startsWith("{") && src.endsWith("}")) {
     let depth = 0
@@ -1646,7 +1904,7 @@ function baseTexOf(rawBase: any, ctx: Ctx): string | null {
   const peeled = peelStyles(rawBase)
   if (peeled?.type === "font") {
     const inner = baseTexOf(peeled.body, ctx)
-    return inner == null ? null : `\\${peeled.font}{${inner}}`
+    return inner == null ? null : fontTexOf(peeled, inner, ctx)
   }
   const u = unwrap(rawBase)
   if (u && (u.type === "mathord" || u.type === "textord")) return srcOf(u, ctx)
@@ -1727,6 +1985,14 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   }
 
   const baseText = base != null ? textOf(base) : null
+  // A script does not make an upright letter a variable: \mathrm{m}^{2} is a unit.
+  if (baseText != null) {
+    const baseFont = peelStyles(n.base)
+    uprightLetterGuard(
+      baseText,
+      ctx.font?.upright === true || (baseFont?.type === "font" && UPRIGHT_FONTS.has(baseFont.font)),
+    )
+  }
   const baseTex = baseTexOf(n.base, ctx)
   const wholeTex = baseTex != null ? supsubTex(baseTex, n, ctx) : null
 
@@ -2264,7 +2530,16 @@ export function dimensionOf(
     if (next === tex) break
     tex = next
   }
-  const ctx: Ctx = { input: tex, reg, legend: new Map(), unknown: new Map(), mutated: false, strip: false, mask: false }
+  const ctx: Ctx = {
+    input: tex,
+    reg,
+    legend: new Map(),
+    unknown: new Map(),
+    mutated: false,
+    strip: false,
+    mask: false,
+    font: null,
+  }
   const legendOut = () =>
     Array.from(ctx.legend.values()).map((record) => ({
       tex: record.tex,
@@ -2319,6 +2594,7 @@ export function translateTex(
     mutated: false,
     strip: spec.geometrized,
     mask: false,
+    font: null,
   }
 
   // The floater only ever fires on a .katex-display, so every equation it sees

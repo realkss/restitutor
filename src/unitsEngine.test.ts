@@ -308,6 +308,51 @@ describe("KaTeX parse-tree shape assumptions", () => {
       ],
     )
   })
+
+  test("a font node records its name, not its spelling, and its body locates the command", () => {
+    // fontCmdOf reads the command written just before the body's span: the
+    // braced body of \mathrm{Hz} is located from its brace, an old-style
+    // switch's body only through its letters, which sit after the command.
+    const [braced] = parse("\\mathrm{Hz}")
+    assert.strictEqual(braced.type, "font")
+    assert.strictEqual(braced.font, "mathrm")
+    assert.strictEqual(braced.loc, undefined, "a font node grew a loc")
+    assert.strictEqual(braced.body.type, "ordgroup")
+    assert.strictEqual(braced.body.loc.start, "\\mathrm".length)
+    const [group] = parse("{\\bf p + m}")
+    assert.strictEqual(group.type, "ordgroup")
+    const [font] = group.body
+    assert.strictEqual(font.type, "font")
+    assert.strictEqual(font.font, "mathbf", "\\bf no longer names mathbf")
+    assert.strictEqual(font.body.type, "ordgroup")
+    assert.strictEqual(font.body.loc, undefined, "an old-style switch's body grew a loc")
+    assert.strictEqual(font.body.body[0].loc.start, "{\\bf ".length)
+    const [single] = parse("\\mathrm{m}")
+    assert.strictEqual(single.body.type, "mathord", "a one-letter font body is no longer the bare letter")
+  })
+
+  test("\\text is a text node with its command in font and its letters located one by one", () => {
+    const [text] = parse("\\text{const.}")
+    assert.strictEqual(text.type, "text")
+    assert.strictEqual(text.font, "\\text")
+    assert.deepStrictEqual(
+      text.body.map((n: any) => [n.type, n.text]),
+      ["c", "o", "n", "s", "t", "."].map((ch) => ["textord", ch]),
+    )
+    assert.ok(text.body.every((n: any) => n.loc?.lexer.input === "\\text{const.}"))
+    const [roman] = parse("\\textrm{m}")
+    assert.strictEqual(roman.type, "text")
+    assert.strictEqual(roman.font, "\\textrm")
+  })
+
+  test("{\\textstyle\\frac12} and {\\tfrac12} parse to the same shape; only the source tells them apart", () => {
+    const written = parse("{\\textstyle\\frac12}")
+    const synthesized = parse("{\\tfrac12}")
+    assert.deepStrictEqual(withoutLocs(written), withoutLocs(synthesized))
+    assert.strictEqual(written[0].type, "ordgroup")
+    assert.strictEqual(written[0].body[0].type, "styling")
+    assert.strictEqual(written[0].body[0].style, "text")
+  })
 })
 
 describe("registry routing", () => {
@@ -1176,13 +1221,17 @@ describe("pre-parse normalization (2026-08-29 review fixes)", () => {
     // Wikipedia's wrapper arriving unstripped:
     assert.strictEqual(restored("{\\displaystyle E = m c^{2}}"), plain)
   })
-  test("the style unwrap refuses non-partner braces and the engine fails CLOSED", () => {
+  test("the style unwrap refuses non-partner braces, and the engine replays the style", () => {
     // The opening brace closes before the end, so the string-level unwrap must
     // not touch it (unwrapping would unbalance the math). A wrapper scoped to
-    // one SIDE is outside the normalization's scope: the engine declines
-    // honestly rather than translating around typography it cannot replay.
+    // one SIDE is outside the normalization's scope; it used to decline, and
+    // now the group re-emits the style it was written with.
     const result = run("{\\textstyle E} = m c^{2}")
-    assert.strictEqual(result.kind, "declined")
+    assert.strictEqual(result.kind, "translated", JSON.stringify(result))
+    if (result.kind === "translated") {
+      assert.strictEqual(result.restoredTex, "{\\textstyle E} = mc^{2}")
+      assert.strictEqual(result.changed, false)
+    }
   })
   test("nested wrapper and punctuation normalize to a fixpoint", () => {
     assert.strictEqual(restored("{\\displaystyle E = m c^{2} .}"), restored("E = m c^{2}"))
@@ -1256,7 +1305,9 @@ describe("explicit spacing between two factors (the two-statements trap)", () =>
   test("a truer reason read inside the term wins", () => {
     const result = run("r = 2M \\quad \\text{for} \\quad t > 0")
     assert.strictEqual(result.kind, "declined", JSON.stringify(result))
-    if (result.kind === "declined") assert.deepStrictEqual(result.reasons, ["\\text content inside the equation"])
+    if (result.kind === "declined") {
+      assert.deepStrictEqual(result.reasons, ["prose (“for”) inside the equation — select a single equation"])
+    }
   })
 
   test("product typography outside the guard still translates", () => {
@@ -1524,5 +1575,141 @@ describe("script order and the angular guard", () => {
     const phase = run("x = e^{i\\phi}")
     assert.strictEqual(phase.kind, "declined")
     if (phase.kind === "declined") assert.ok(!phase.reasons.some((r) => r.includes("angular")), JSON.stringify(phase))
+  })
+})
+
+describe("reassembly fidelity and upright words", () => {
+  // Raw output, so the spelling of a font or a style is what is compared.
+  const rawRestored = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = (result as Extract<TranslationResult, { kind: "translated" }>).restoredTex
+    rendersInKatex(out)
+    return out
+  }
+  const declinesWith = (tex: string, reason: string) => {
+    for (const target of [SI, GEO]) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [reason], tex)
+        assert.deepStrictEqual(result.unknown, [], tex)
+      }
+    }
+  }
+  const UPRIGHT_WORD = (word: string) =>
+    `the upright word “${word}” — a unit, a label or an operator, not a product of symbols`
+  const UPRIGHT_LETTER = (letter: string) =>
+    `the upright letter “${letter}” — a unit, a label or an operator, not a variable`
+  const INSIDE_FONT = (font: string) =>
+    `a constant to restore inside the font “${font}”, where it would be set in that font and read as another symbol`
+
+  test("a font is re-emitted as it was written, old-style switches included", () => {
+    // Every one of these came back as \mathbf{…} or \mathrm{…} and declined as a
+    // reassembly fault.
+    for (const [tex, out] of [
+      ["E = {\\bf p}", "E = {\\bf p}c"],
+      ["E = \\bm{p}", "E = \\bm{p}c"],
+      ["E = \\boldsymbol{p}", "E = \\boldsymbol{p}c"],
+      ["E = \\mathbf{p}", "E = \\mathbf{p}c"],
+      ["E^{2} = {\\bf p}^{2} + m^{2}", "E^{2} = {\\bf p}^{2}c^{2} + m^{2}c^{4}"],
+    ]) {
+      assert.strictEqual(rawRestored(tex), out, tex)
+      assert.strictEqual(rawRestored(tex, GEO), tex, tex)
+    }
+    // A bare font script has no span; it is rebuilt rather than sliced to its letter.
+    assert.strictEqual(rawRestored("r_\\mathrm{s} = 2M"), "r_{\\mathrm{s}} = \\frac{2GM}{c^{2}}")
+  })
+
+  test("a font under an accent survives", () => {
+    assert.strictEqual(rawRestored("E = \\tilde{\\bm{p}}"), "E = \\tilde{\\bm{p}}c")
+    assert.strictEqual(rawRestored("E = \\vec{\\mathbf{p}}"), "E = \\vec{\\mathbf{p}}c")
+    assert.strictEqual(rawRestored("E = \\tilde{\\bm{p}}", GEO), "E = \\tilde{\\bm{p}}")
+  })
+
+  test("a constant never lands inside a font, and a sum under one is parenthesized", () => {
+    // The outer constant stands outside the font, with \left(\right) around the
+    // bare sum; `{\bf p + p}c` would read as p + pc.
+    assert.strictEqual(rawRestored("E = {\\bf p + p}"), "E = \\left({\\bf p + p}\\right)c")
+    assert.strictEqual(rawRestored("E = \\mathbf{p + p}"), "E = \\left(\\mathbf{p + p}\\right)c")
+    // An inner constant cannot stand outside: `{\bf p + mc}c` set a bold c.
+    for (const [tex, font] of [
+      ["E = {\\bf p + m}", "\\bf"],
+      ["E = \\mathbf{p + m}", "\\mathbf"],
+    ]) {
+      const result = run(tex)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") assert.deepStrictEqual(result.reasons, [INSIDE_FONT(font)], tex)
+      // Nothing is restored in a geometrized target, so nothing lands inside.
+      assert.strictEqual(rawRestored(tex, GEO), tex, tex)
+    }
+    // Upright, the letters are no variables to begin with.
+    declinesWith("E = {\\rm p + m}", UPRIGHT_LETTER("p"))
+  })
+
+  test("a style written inside a group is re-emitted; the one \\tfrac implies is not invented", () => {
+    assert.strictEqual(rawRestored("E = {\\textstyle\\frac12}m"), "E = {\\textstyle \\frac{1}{2}}mc^{2}")
+    assert.strictEqual(rawRestored("E = {\\textstyle\\frac12}m", GEO), "E = {\\textstyle \\frac{1}{2}}m")
+    assert.strictEqual(rawRestored("E = {\\displaystyle\\frac{1}{2}}m"), "E = {\\displaystyle \\frac{1}{2}}mc^{2}")
+    assert.strictEqual(rawRestored("E = {\\tfrac12}m"), "E = {\\tfrac{1}{2}}mc^{2}")
+  })
+
+  test("a written leading plus is kept", () => {
+    assert.strictEqual(rawRestored("E = +m"), "E = +mc^{2}")
+    assert.strictEqual(rawRestored("E = +m", GEO), "E = +m")
+    assert.strictEqual(rawRestored("x = +t - r"), "x = +tc - r")
+    assert.strictEqual(rawRestored("E = -+m"), "E = -mc^{2}")
+  })
+
+  test("upright words are units, labels or operators, never products of symbols", () => {
+    // Live, the first shipped unchanged (H·z), and the others were read as c·m,
+    // G·e·V, the differential dt and T·r.
+    declinesWith("\\omega = 2\\pi\\,\\mathrm{Hz}", UPRIGHT_WORD("Hz"))
+    declinesWith("E = \\mathrm{cm}", UPRIGHT_WORD("cm"))
+    declinesWith("\\lambda = 21\\,\\mathrm{cm}", UPRIGHT_WORD("cm"))
+    declinesWith("E = {\\rm GeV}", UPRIGHT_WORD("GeV"))
+    declinesWith("E = \\mathrm{dt}", UPRIGHT_WORD("dt"))
+    declinesWith("\\mathrm{Tr}\\,T = \\rho", UPRIGHT_WORD("Tr"))
+    declinesWith("\\mathrm{Vol} = r^{3}", UPRIGHT_WORD("Vol"))
+    declinesWith("\\text{Var}(x) = r^{2}", UPRIGHT_WORD("Var"))
+    // A run with a space in it is quoted as written.
+    declinesWith("x = {\\rm Tr A}", "the upright words “Tr A” — units, labels or operators, not a product of symbols")
+  })
+
+  test("a single upright letter is no variable, except d, e and i", () => {
+    // Live, the metre was restored as a mass and the second as an arc length.
+    declinesWith("r = 3\\,\\mathrm{m}", UPRIGHT_LETTER("m"))
+    declinesWith("t = 5\\,\\mathrm{s}", UPRIGHT_LETTER("s"))
+    declinesWith("E = \\mathrm{m}^{2}", UPRIGHT_LETTER("m"))
+    declinesWith("E = \\mathrm{T}_{ab}", UPRIGHT_LETTER("T"))
+    declinesWith("E = \\text{m}", UPRIGHT_LETTER("m"))
+    // Every letter under an upright font is upright, not only a lone one.
+    declinesWith("x = \\mathrm{2m}", UPRIGHT_LETTER("m"))
+    // The letters with an upright reading of their own keep it.
+    assert.strictEqual(rawRestored("E = mc^2e^{\\mathrm{i}kx}"), "E = mc^{2}e^{\\mathrm{i}kx}")
+    assert.strictEqual(rawRestored("E = \\mathrm{e}^{2}m"), "E = \\mathrm{e}^{2}mc^{2}")
+    assert.strictEqual(rawRestored("ds^2 = -c^2\\mathrm{d}t^2 + dx^2"), "ds^2 = -c^{2}\\mathrm{d}t^2 + dx^2")
+  })
+
+  test("prose and placeholders say what they are", () => {
+    const PROSE = (word: string) => `prose (“${word}”) inside the equation — select a single equation`
+    const PLACEHOLDER = (word: string) =>
+      `an unspecified constant (“${word}”), whose dimension the notation does not fix`
+    declinesWith("x = r \\quad \\text{for} \\quad r > 2M", PROSE("for"))
+    declinesWith("x = r \\ {\\rm at}\\ r = 2M", PROSE("at"))
+    declinesWith("E = \\text{s.t.}", PROSE("s.t."))
+    // Punctuation after the word does not hide it.
+    declinesWith("E = \\text{const.}", PLACEHOLDER("const."))
+    declinesWith("r = {\\rm~constant}", PLACEHOLDER("constant"))
+    declinesWith("E = \\textit{const}", PLACEHOLDER("const"))
+    // A \text the engine cannot name keeps the general reason.
+    declinesWith("E = \\text{e}", "\\text content inside the equation")
+  })
+
+  test("a run of letters under another font is one name or a product, and declines", () => {
+    const NAME = (word: string, font: string) =>
+      `the multi-letter name “${word}” under “${font}” — one name or a product of symbols, which the notation does not say`
+    declinesWith("E = \\mathit{eff}", NAME("eff", "\\mathit"))
+    declinesWith("E = \\mathbf{AB}", NAME("AB", "\\mathbf"))
   })
 })

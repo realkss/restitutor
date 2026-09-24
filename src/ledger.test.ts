@@ -36,6 +36,16 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("\\sin(x").class, "parse")
     // An indexed component along θ or φ that carries a superscript: the angular guard.
     assert.strictEqual(outcome("\\Gamma^{\\mu}_{\\theta\\theta} = 0").class, "unsupported")
+    // Upright words and letters, a run of letters under another font, a
+    // placeholder constant, and a constant that would land inside a font are
+    // the reader's; prose means the carrier was not one equation.
+    assert.strictEqual(outcome("\\omega = 2\\pi\\,\\mathrm{Hz}").class, "unsupported")
+    assert.strictEqual(outcome("x = {\\rm Tr A}").class, "unsupported")
+    assert.strictEqual(outcome("r = 3\\,\\mathrm{m}").class, "unsupported")
+    assert.strictEqual(outcome("E = \\mathit{eff}").class, "unsupported")
+    assert.strictEqual(outcome("E = \\text{const.}").class, "unsupported")
+    assert.strictEqual(outcome("E = {\\bf p + m}").class, "unsupported")
+    assert.strictEqual(outcome("x = r \\quad \\text{for} \\quad r > 2M").class, "fragment")
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)

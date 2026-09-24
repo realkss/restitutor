@@ -50,13 +50,13 @@ const STRUCTURAL: [RegExp, OutcomeClass][] = [
   // mostly the engine reading an argument comma as a list separator. Spacing
   // between two factors is the same question asked of a chain: two
   // statements set side by side, or one product.
-  [/lists or multiple statements|a row that begins at|a trailing .* with nothing after it|an empty expression|explicit spacing between two factors/, "fragment"],
+  [/lists or multiple statements|a row that begins at|a trailing .* with nothing after it|an empty expression|explicit spacing between two factors|^prose \(/, "fragment"],
   [/a proportionality/, "proportional"],
   // The equation IS a units declaration (c = G = 1): nothing to restore.
   [/a relation between the constants themselves/, "declaration"],
   // Constructs the engine's reader does not handle, in its several wordings.
   [
-    /not supported|could not be read|could not read|cannot read|floating super\/subscript|symbolic exponent|unsupported (?:relation|accent|differential)|closing delimiter|cannot pair with its partner|in this position|primed symbol|time derivative of a compound|integrals, sums, and limits|an angular coordinate index/,
+    /not supported|could not be read|could not read|cannot read|floating super\/subscript|symbolic exponent|unsupported (?:relation|accent|differential)|closing delimiter|cannot pair with its partner|in this position|primed symbol|time derivative of a compound|integrals, sums, and limits|an angular coordinate index|the upright (?:word|words|letter) |the multi-letter name |an unspecified constant|a constant to restore inside the font/,
     "unsupported",
   ],
 ]
