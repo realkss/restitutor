@@ -337,12 +337,17 @@ type Ctx = {
    * set in that font — a bold c is a vector, an upright c no speed of light —
    * and every Latin letter under an upright font is upright too.
    */
-  font: { tex: string; upright: boolean } | null
+  font: { tex: string; upright: boolean; node: any } | null
 }
 
 /** Constants are inserted (or stripped) only in a live emission, never in a masked one. */
 function emitsConstants(ctx: Ctx): boolean {
   return !ctx.mask
+}
+
+/** A live emission to a geometrized target, where every c and G is set to one and vanishes. */
+function stripsConstants(ctx: Ctx): boolean {
+  return ctx.strip && emitsConstants(ctx)
 }
 
 type FactorKind = "num" | "glue" | "sym" | "diff" | "frac" | "sqrt" | "group" | "func" | "rider"
@@ -383,6 +388,15 @@ type Factor = {
    * it reads as more of that argument, so a constant never goes there.
    */
   openArgument?: boolean
+  /**
+   * Whether the factor emits nothing but stripped constants: a geometrized
+   * target set every c and G in it to one (`c^{2}`, `\frac{c^{4}}{G}`, `{c}`,
+   * `\frac{1}{c}`). Asked at emission time, since only a live strip empties
+   * anything. A product drops such a factor whole, with the glue that only
+   * served to separate it (see joinFactors), where emitting it on its own
+   * would leave a `1` beside the factors that remain.
+   */
+  vanishes?: () => boolean
   frac?: { cmd: string; num: Factor[]; den: Factor[] }
   sqrt?: { bodyTerm: TermInfo | null }
 }
@@ -919,6 +933,48 @@ function intOf(nodes: any[]): number | null {
   return digits == null ? null : Number(digits)
 }
 
+/**
+ * A digit carrying a superscript and no subscript: a numeral raised to a
+ * power. KaTeX sets the script on the last token before it, so `10^{-7}`
+ * parses as the digit 1 followed by the supsub 0^{-7}, and the engine looked
+ * up "0" as an unknown symbol — `c = 3\times10^{8}` declined on it instead of
+ * saying what it is, a numeric value for c. The supsub closes the digit run
+ * it continues (or stands as a numeral of its own, `2^{10}`), and a numeral
+ * to any power is dimensionless.
+ */
+function numeralPowerOf(node: any): any | null {
+  const n = unwrap(node)
+  if (n?.type !== "supsub" || n.sup == null || n.sub != null) return null
+  const base = textOf(n.base)
+  return base != null && /^[0-9]$/.test(base) ? n : null
+}
+
+/**
+ * The exponent of a numeral power, when it is not a number: read as the
+ * exponent of e is, an expression that must be dimensionless and is restored
+ * against that (`10^{M/r}` needs G/c² as much as `e^{M/r}` does), so it is
+ * rebuilt from its analysis. A number (`8`, `-34`, `\frac{1}{2}`) gives null
+ * and the power is emitted as written.
+ */
+function symbolicExponentOf(power: any, ctx: Ctx): SumInfo | null {
+  const nodes = nodeListOf(power.sup).filter((x) => !SKIP_TYPES.has(x.type))
+  const first = unwrap(nodes[0])
+  const signed = first?.type === "atom" && first.family === "bin" && (first.text === "-" || first.text === "+")
+  const rest = signed ? nodes.slice(1) : nodes
+  if (rest.length > 0 && rest.every((x) => /^[0-9.]$/.test(textOf(x) ?? ""))) return null
+  const frac = rest.length === 1 ? unwrap(rest[0]) : null
+  if (frac?.type === "genfrac" && intOf(nodeListOf(frac.numer)) != null && intOf(nodeListOf(frac.denom)) != null) {
+    return null
+  }
+  return parseSum(nodeListOf(power.sup), ctx, { anchor: "forced", target: ZERO })
+}
+
+/** The value of a numeral factor written as a plain decimal, or null (a powered numeral, `10^{8}`, is not one). */
+function plainNumeralValue(f: Factor): number | null {
+  const tex = f.emit()
+  return f.kind === "num" && /^[0-9.]+$/.test(tex) ? Number.parseFloat(tex) : null
+}
+
 function subKeyText(sub: any, ctx: Ctx): string {
   return srcOf(sub, ctx).replace(/[{}\s]/g, "")
 }
@@ -1143,7 +1199,7 @@ function isPlainOne(t: TermInfo): boolean {
     isUnsigned(t) &&
     t.slashIdx < 0 &&
     numerals.length > 0 &&
-    numerals.every((f) => f.kind === "num" && Number.parseFloat(f.emit()) === 1)
+    numerals.every((f) => plainNumeralValue(f) === 1)
   )
 }
 
@@ -1243,6 +1299,7 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing 
   let current: any[] = []
   let pendingSign = ""
   let sawSign = false
+  let spacedSign = false
   for (const n of grouped) {
     if (isEmptyOrdgroup(n)) continue
     if (current.length === 0 && n != null && SKIP_TYPES.has(n.type)) continue
@@ -1261,6 +1318,7 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing 
       continue
     }
     if (pm != null || branch != null) {
+      if (spacing != null && spacedBeforeSign(current, spacing)) spacedSign = true
       termNodeLists.push(current)
       signs.push(pendingSign)
       ops.push((pm ?? branch) as string)
@@ -1280,6 +1338,8 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing 
   signs.push(pendingSign)
 
   const terms = termNodeLists.map((list, idx) => analyzeTerm(list, signs[idx], ctx, spacing))
+  // Like the guard between factors, thrown once every term has been read.
+  if (spacedSign) throw new Unsupported(SPACING_REASON)
 
   const multiTerm = terms.length > 1
   let insertions: ({ a: number; b: number } | null)[] = terms.map(() => null)
@@ -1320,6 +1380,8 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing 
  * bracket sits between delimiters that already make it one expression.
  * Spacing between a function head and its argument (`\sin\,\theta`) is inside
  * one factor, and zero-width break hints and negative kerns separate nothing.
+ * The same two cases guard the spacing right before a sign that separates two
+ * terms, where a second statement can open as well (spacedBeforeSign).
  */
 type FactorSpacing = "wide" | "any"
 
@@ -1395,6 +1457,31 @@ function spacedBetweenFactors(nodes: any[], spacing: FactorSpacing): boolean {
   return false
 }
 
+/**
+ * Whether the spacing that closes a term, right before the sign that ends it,
+ * is guarded. A statement boundary can fall there as well as between two
+ * factors: `t = 0 \qquad -r = 2M` is "t = 0, and −r = 2M", but the sign
+ * splits the middle side into the terms 0 and −r, so no two factors had the
+ * space between them and the chain shipped as t = 0 − r/c = 2GM/c³. The same
+ * two cases hold: in a row with more than one relation any positive space
+ * before a term-separating sign declines, and in any row a run of at least a
+ * quad does. A thin space before a sign in a single-relation row
+ * (`-c^2\,dt^2 \, + dx^2`) is sum typography and stays.
+ */
+function spacedBeforeSign(termNodes: any[], spacing: FactorSpacing): boolean {
+  let run = 0
+  let spaced = false
+  for (let idx = termNodes.length - 1; idx >= 0; idx -= 1) {
+    const n = unwrap(termNodes[idx])
+    if (n == null || isEmptyOrdgroup(n)) continue
+    if (!SKIP_TYPES.has(n.type)) break
+    const em = skipEm(n)
+    run += em
+    if (em > 0) spaced = true
+  }
+  return run >= 1 - 1e-9 || (spacing === "any" && spaced)
+}
+
 function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacing | null): TermInfo {
   const factors: Factor[] = []
   let slashIdx = -1
@@ -1433,11 +1520,11 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
       throw new Unsupported("lists or multiple statements — select a single equation")
     }
 
-    // Digit runs → one numeral factor.
+    // Digit runs → one numeral factor, with the power it is raised to.
     const digit = textOf(n)
-    if (digit != null && /^[0-9.]$/.test(digit)) {
-      let text = digit
-      let end = i + 1
+    if ((digit != null && /^[0-9.]$/.test(digit)) || numeralPowerOf(n) != null) {
+      let text = ""
+      let end = i
       while (end < nodes.length) {
         const t = textOf(unwrap(nodes[end]))
         if (t != null && /^[0-9.]$/.test(t)) {
@@ -1445,8 +1532,18 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
           end += 1
         } else break
       }
+      const power = end < nodes.length ? numeralPowerOf(nodes[end]) : null
       const frozen = text
-      push({ kind: "num", dim: ZERO, emit: () => frozen })
+      if (power == null) {
+        push({ kind: "num", dim: ZERO, emit: () => frozen })
+      } else {
+        const exponent = symbolicExponentOf(power, ctx)
+        const written = frozen + srcOf(power, ctx)
+        const base = frozen + srcOf(power.base, ctx)
+        const emit = exponent == null ? () => written : () => `${base}^{${exponent.emit()}}`
+        push({ kind: "num", dim: ZERO, emit })
+        end += 1
+      }
       i = end
       continue
     }
@@ -1474,14 +1571,15 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     // A delimited group right after a function head is the whole argument:
     // `\cos(\theta)\,v^{2}` is v² cos θ, and `\sin(t)/M` is sin t over M. The
     // closing delimiter ends the argument; nothing written after it is read
-    // into the function. Any other argument is the rest of the product, up to
-    // the next function head: `\sin\omega t` is sin(ωt).
+    // into the function, and spacing written between the head and the group
+    // is kept (headSpacingTex). Any other argument is the rest of the product,
+    // up to the next function head: `\sin\omega t` is sin(ωt).
     if (isFuncHead(n)) {
       let next = i + 1
       while (next < nodes.length && SKIP_TYPES.has(unwrap(nodes[next])?.type)) next += 1
       const delimited = next < nodes.length ? delimitedArgumentOf(nodes[next]) : null
       if (delimited != null) {
-        push(analyzeDelimitedFunction(raw, delimited, ctx))
+        push(analyzeDelimitedFunction(raw, nodes.slice(i + 1, next), delimited, ctx))
         i = next + 1
         continue
       }
@@ -1517,10 +1615,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     slashIdx < 0 &&
     factors
       .filter((f) => f.kind === "num")
-      .every((f) => {
-        const parsed = Number.parseFloat(f.emit())
-        return Number.isFinite(parsed) && parsed === value
-      })
+      .every((f) => plainNumeralValue(f) === value)
 
   return {
     sign,
@@ -1930,13 +2025,79 @@ function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
 /**
  * The delimited group a function's argument is, when one follows the head:
  * `(…)`, `\left(…\right)`, or either carrying a script (`\ln(Z\alpha)^{-2}`).
+ *
+ * Bars are never an argument group. An evaluation bar, `\left. … \right|`, is
+ * an instruction to evaluate what it closes (at a point, or between limits),
+ * and read as the argument, `r\sin\left.M/t\right|` restored to
+ * `r\sin\left.GM/tc^{3}\right|` as if it were sin(M/t). What it evaluates at
+ * is not read, so it declines, named by its scripts: limits, a condition, or
+ * a bare bar. A modulus or a norm, `\left| … \right|`, is a value the
+ * function may take as its argument or not (sin|x|, or a factor beside it),
+ * so it gets no argument-group reading and falls to the rule for an
+ * unparenthesized argument, as does a `\left.` that closes on anything else.
  */
 function delimitedArgumentOf(node: any): { group: any; scripted: any | null } | null {
   const u = unwrap(node)
   const delimited = (x: any) => x?.type === "__group" || x?.type === "leftright"
-  if (delimited(u)) return { group: u, scripted: null }
-  if (u?.type === "supsub" && delimited(unwrap(u.base))) return { group: unwrap(u.base), scripted: u }
-  return null
+  const scripted = u?.type === "supsub" && delimited(unwrap(u.base)) ? u : null
+  const group = scripted != null ? unwrap(scripted.base) : delimited(u) ? u : null
+  if (group == null) return null
+  if (group.type === "leftright" && group.left === "." && EVALUATION_BARS.has(group.right)) {
+    throw new Unsupported(evaluationBarReason(scripted))
+  }
+  const opener = group.type === "leftright" ? group.left : group.open
+  if (opener === "." || BAR_OPENERS.has(opener)) return null
+  return { group, scripted }
+}
+
+/** Closers that make `\left.` an evaluation bar. */
+const EVALUATION_BARS = new Set(["|", "\\vert", "\\rvert"])
+/** Openers of a modulus or a norm. */
+const BAR_OPENERS = new Set(["|", "\\vert", "\\lvert", "\\|", "\\Vert", "\\lVert"])
+
+/** Why an evaluation bar declines, named by what its scripts make it. */
+function evaluationBarReason(scripted: any | null): string {
+  if (scripted == null) return "an evaluation bar “\\left. … \\right|”, which is not supported yet"
+  if (scripted.sub != null && containsRel(nodeListOf(scripted.sub))) {
+    return "an evaluation condition in a subscript, which is not supported yet"
+  }
+  return "evaluation limits, which are not supported yet"
+}
+
+/**
+ * Spacing a function head's delimited argument was set apart with, emitted as
+ * written: skipped, `\sin\quad(M/t)` came back as `\sin(…)`, and `\sin\ (M/t)`
+ * declined as a divergence. A spacing node slices its own source. A kern has
+ * none, so it is rebuilt from its width as the one command KaTeX gives that
+ * width (the backstop declines a kern written any other way, `\thinspace`,
+ * whose rebuilt `\,` no longer matches the source); a width no command gives
+ * declines here.
+ */
+const KERN_COMMANDS: Record<string, string> = {
+  "3mu": "\\,",
+  "4mu": "\\:",
+  "5mu": "\\;",
+  "-3mu": "\\!",
+  "1em": "\\quad",
+  "2em": "\\qquad",
+}
+
+function headSpacingTex(skips: any[], headTex: string, ctx: Ctx): string {
+  return skips
+    .map((raw) => {
+      const n = unwrap(raw)
+      const tex =
+        n?.type === "kern"
+          ? (KERN_COMMANDS[`${n.dimension?.number}${n.dimension?.unit}`] ?? "")
+          : spacingTexOf(raw, ctx)
+      if (tex === "") {
+        throw new Unsupported(
+          `spacing between “${headTex}” and its argument that the engine cannot re-emit as written, which is not supported`,
+        )
+      }
+      return tex
+    })
+    .join("")
 }
 
 /**
@@ -1950,10 +2111,12 @@ function delimitedArgumentOf(node: any): { group: any; scripted: any | null } | 
  */
 function analyzeDelimitedFunction(
   headNode: any,
+  skips: any[],
   arg: { group: any; scripted: any | null },
   ctx: Ctx,
 ): Factor {
   const headTex = functionHeadTex(headNode, ctx)
+  const spacing = headSpacingTex(skips, headTex, ctx)
   const { group, scripted } = arg
   let scripts = ""
   if (scripted != null) {
@@ -1969,7 +2132,7 @@ function analyzeDelimitedFunction(
   const inner = parseSum(group.body, ctx, { anchor: "forced", target: ZERO })
   const open = group.type === "leftright" ? `\\left${group.left}` : group.open
   const close = group.type === "leftright" ? `\\right${group.right}` : group.close
-  const emit = () => joinTex([headTex, open, inner.emit(), close]) + scripts
+  const emit = () => joinTex([headTex, spacing, open, inner.emit(), close]) + scripts
   return { kind: "func", dim: ZERO, emit }
 }
 
@@ -2031,7 +2194,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     const reason = word == null ? null : spelledWordReason(word, upright, fontTex)
     if (reason != null) throw new Unsupported(reason)
     const outer = ctx.font
-    ctx.font = { tex: fontTex, upright }
+    ctx.font = { tex: fontTex, upright, node: peeled }
     let inner: Factor
     try {
       inner = analyzeFactor(peeled.body, ctx)
@@ -2040,12 +2203,17 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     }
     const font = peeled
     // A sum under a font is as bare as one under plain braces: a constant set
-    // beside `{\bf p + q}` needs \left(\right), or it reads as p + qc.
+    // beside `{\bf p + q}` needs \left(\right), or it reads as p + qc. The
+    // font is packaging for what it holds, so the declaration test looks
+    // through it as through braces (`\mathit{c} = 1`), and it vanishes when
+    // its content does.
     return {
       kind: inner.kind,
       dim: inner.dim,
       isBareSum: inner.isBareSum,
       openArgument: inner.openArgument,
+      parts: [inner],
+      vanishes: inner.vanishes,
       emit: () => fontTexOf(font, inner.emit(), ctx),
     }
   }
@@ -2067,6 +2235,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         )
       }
       uprightLetterGuard(text, ctx.font?.upright === true)
+      constantFontGuard(text, ctx.font?.node ?? null, ctx)
       if (text === "\\pi" || text === "i" || text === "e" || text === "\\infty") {
         const src = srcOf(n, ctx)
         return { kind: "num", dim: ZERO, emit: () => src }
@@ -2080,8 +2249,9 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
           dim: d,
           constant: { tex: text, e12: D12 },
           unitConstant: true,
+          vanishes: () => stripsConstants(ctx),
           emit: () => {
-            if (!ctx.strip || !emitsConstants(ctx)) return src
+            if (!stripsConstants(ctx)) return src
             ctx.mutated = true
             return ""
           },
@@ -2108,7 +2278,13 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         if (denTex === "") return numTex
         return `${cmd}{${numTex}}{${denTex}}`
       }
-      return { kind: "frac", dim: d, emit, frac }
+      // Emptied of its denominator, a fraction is its numerator, and a
+      // numerator that is nothing, or the numeral 1, leaves nothing to set in
+      // a product: `\frac{c^2}{G}` and `\frac{1}{c}` came back as a `1` beside
+      // the other factors.
+      const numIsOne = () => frac.num.length === 1 && frac.num[0].kind === "num" && frac.num[0].emit() === "1"
+      const vanishes = () => productVanishes(frac.den) && (productVanishes(frac.num) || numIsOne())
+      return { kind: "frac", dim: d, emit, frac, vanishes }
     }
     case "sqrt": {
       const inner = parseSum(nodeListOf(n.body), ctx, { anchor: "internal" })
@@ -2124,7 +2300,8 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         const body = inner.emit()
         return q === 2 ? `\\sqrt{${body}}` : `\\sqrt[${q}]{${body}}`
       }
-      return { kind: "sqrt", dim: d, emit, sqrt: { bodyTerm }, ...partsOf(inner) }
+      const vanishes = () => sumVanishes(inner)
+      return { kind: "sqrt", dim: d, emit, sqrt: { bodyTerm }, vanishes, ...partsOf(inner) }
     }
     case "leftright":
     case "__group": {
@@ -2136,7 +2313,8 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       // Control-word delimiters (\langle, \lbrace, \lVert …) would otherwise
       // swallow the following letter: `\langle`+`v` must not become `\langlev`.
       const emit = () => joinTex([open, inner.emit(), close])
-      return { kind: "group", dim: inner.dim, emit, isBareSum: false, ...partsOf(inner) }
+      const vanishes = () => sumVanishes(inner)
+      return { kind: "group", dim: inner.dim, emit, isBareSum: false, vanishes, ...partsOf(inner) }
     }
     case "accent": {
       // Accent nodes carry no source location — reconstruct label{base}.
@@ -2200,7 +2378,8 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const isBareSum = inner.multiTerm || inner.terms[0].factors.some((f) => f.isBareSum === true)
       const live = inner.terms[0].factors.filter((f) => f.kind !== "glue")
       const openArgument = !inner.multiTerm && live[live.length - 1]?.openArgument === true
-      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument, ...partsOf(inner) }
+      const vanishes = () => sumVanishes(inner)
+      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument, vanishes, ...partsOf(inner) }
     }
     case "atom":
       throw new Unsupported(`the symbol “${n.text}” in this position`)
@@ -2327,6 +2506,95 @@ function angularIndexGuard(baseText: string, n: any, displayTex: string, ctx: Ct
   }
 }
 
+/**
+ * A single digit raised on an indexed reading, beside an index subscript:
+ * `\Gamma^{2}_{00}` is the component Γ²₀₀ as often as it is (Γ₀₀)². Read as a
+ * power it shipped unchanged under a wrong banner (m⁻² for a Christoffel
+ * symbol, m⁻⁴ for `R^{2}_{0}`), and reading it as an index was weighed and
+ * dropped (R5c): the notation does not say which it is, so it declines, in
+ * either script order. It applies wherever the subscript sends the lookup to
+ * `indexed`, since that is where a component index can stand; an identity the
+ * registry spells out (H_0^2) is a power, and a symbol with no index subscript
+ * (r^2, M^2) has no component to name. A power on \partial or \nabla is a
+ * derivative order, as the angular guard reads it. The digit 1 is left alone:
+ * as a power it leaves the dimension the index reading gives, so both readings
+ * ship the same translation (`\Gamma^{1}_{00} = \frac{GM}{r^{3}}(r - 2GM)`).
+ */
+function componentDigitGuard(
+  baseText: string,
+  n: any,
+  sup: ReturnType<typeof classifySup> | null,
+  displayTex: string,
+  ctx: Ctx,
+): void {
+  if (typeof sup !== "object" || sup == null || sup.q !== 1 || sup.p < 2 || sup.p > 9) return
+  if (baseText === "\\partial" || baseText === "\\nabla" || !ctx.reg.indexed[baseText]) return
+  if (ctx.reg.exact[`${baseText}_${subKeyText(n.sub, ctx)}`]) return
+  if (digitsOf(nodeListOf(n.sup).filter((x) => !SKIP_TYPES.has(x.type))) == null) return
+  let indexSub: boolean
+  try {
+    indexSub = allIndexTokens(nodeListOf(n.sub), true)
+  } catch {
+    indexSub = false
+  }
+  if (!indexSub) return
+  throw new Unsupported(`a digit superscript on “${displayTex}” — a component index or a power`)
+}
+
+/**
+ * Fonts in which a letter is still the italic variable. Any other font makes c
+ * and G other symbols: a bold G is usually the Einstein tensor, a bold c a
+ * vector, a calligraphic G a group. Read as the constants, `E = m{\bf c}^2`
+ * stripped to `m{\bf 1}^{2}` and `{\bf c} = 1` shipped unchanged as a relation
+ * of the speed of light. Upright type (\mathrm, \rm) has its own decline, the
+ * upright-letter guard, which runs first.
+ */
+const ITALIC_FONTS = new Set(["mathit", "mathnormal"])
+const FONT_ADJECTIVES: Record<string, string> = {
+  mathbf: "bold",
+  boldsymbol: "bold",
+  mathcal: "calligraphic",
+  mathbb: "blackboard-bold",
+  mathsf: "sans-serif",
+  mathtt: "typewriter",
+  mathfrak: "Fraktur",
+  mathscr: "script",
+}
+
+/** The decline for c or G read bare under a font that makes it another symbol. */
+function constantFontGuard(text: string, font: any, ctx: Ctx): void {
+  if ((text !== "c" && text !== "G") || font == null) return
+  if (ITALIC_FONTS.has(font.font) || UPRIGHT_FONTS.has(font.font)) return
+  const adjective = FONT_ADJECTIVES[font.font] ?? "restyled"
+  throw new Unsupported(
+    `the ${adjective} “${fontTexOf(font, text, ctx)}” — another symbol (a vector, a tensor or a label), not the constant ${text}`,
+  )
+}
+
+/**
+ * The font nearest a letter on the way down to `unwrap(node)`, if any: unwrap
+ * discards it, so a supsub base `\mathbf c` is otherwise read as a plain c.
+ */
+function innermostFontOf(node: any): any {
+  let cur = node
+  let font: any = null
+  while (cur != null) {
+    if (cur.type === "font") {
+      font = cur
+      cur = cur.body
+    } else if (WRAPPER_TYPES.has(cur.type)) {
+      const body = (Array.isArray(cur.body) ? cur.body : [cur.body]).filter(
+        (x: any) => x && !SKIP_TYPES.has(x.type),
+      )
+      if (body.length !== 1) return font
+      cur = body[0]
+    } else {
+      return font
+    }
+  }
+  return font
+}
+
 function analyzeSupsub(n: any, ctx: Ctx): Factor {
   const base = unwrap(n.base)
   const sup = n.sup != null ? classifySup(n.sup) : null
@@ -2366,6 +2634,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   // Symbol with a subscript: identity, indices, or unknown.
   if (baseText != null && wholeTex != null && n.sub != null) {
     angularIndexGuard(baseText, n, wholeTex, ctx)
+    componentDigitGuard(baseText, n, sup, wholeTex, ctx)
     const d = resolveSymbol(baseText, wholeTex, ctx, { sub: n.sub })
     const unitConstant = `${baseText}_${subKeyText(n.sub, ctx)}` === "k_B" || undefined
     if (sup == null) return { kind: "sym", dim: d, emit: () => wholeTex, unitConstant }
@@ -2382,6 +2651,8 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
       const d = resolveSymbol(baseText, wholeTex, ctx, { indices: true })
       return { kind: "sym", dim: d, emit: () => wholeTex }
     }
+    // Read bare, the base is the constant itself only in italic type.
+    constantFontGuard(baseText, innermostFontOf(n.base) ?? ctx.font?.node ?? null, ctx)
     if (typeof sup === "object") {
       const isConst = baseText === "\\pi" || baseText === "i" || baseText === "e"
       const d = isConst ? ZERO : resolveSymbol(baseText, baseTex!, ctx, {})
@@ -2393,8 +2664,9 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
           dim: scaled,
           constant: Number.isInteger(e12) ? { tex: baseText, e12 } : undefined,
           unitConstant: true,
+          vanishes: () => stripsConstants(ctx),
           emit: () => {
-            if (!ctx.strip || !emitsConstants(ctx)) return wholeTex
+            if (!stripsConstants(ctx)) return wholeTex
             ctx.mutated = true
             return ""
           },
@@ -2434,6 +2706,8 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
         dim: scaled,
         openArgument: inner.openArgument,
         emit: () => `${inner.emit()}${scripts}`,
+        // A script on nothing is nothing: `(c)^{2}` vanishes with its base.
+        vanishes: inner.vanishes,
         parts: [inner],
       }
     }
@@ -2455,6 +2729,7 @@ function sumAsFactorList(sum: SumInfo): Factor[] {
       dim: sum.dim,
       emit: () => sum.emit(),
       isBareSum: true,
+      vanishes: () => sumVanishes(sum),
       ...partsOf(sum),
     },
   ]
@@ -2509,11 +2784,57 @@ function formatExp(tex: string, e12: number): string {
  * a factor: kept, it turned `r_s = \frac{2GM}{c^2\ }` into 2M over a
  * denominator of `\ `, and `v = c\cdot` into `v = \cdot`. Returning "" hands the
  * product to the caller's empty-side rule (a bare 1, or no denominator).
+ *
+ * A factor that vanishes takes with it the glue that only served to separate
+ * it. Glue before the first surviving factor or after the last one separated
+ * nothing but the vanished factors, so it goes: `E = m~\cdot~ c^2` had shipped
+ * as `E = m~\cdot~`, and `-c^2\ dt^2` as `-\ dt^2`. Between two survivors one
+ * run of glue stays, the first one written that holds any: two runs merged
+ * where a factor vanished (`2\ G\ M` → `2\ \ M`) say twice what the author
+ * said once. Wherever nothing vanished, the glue is kept as written.
  */
 function joinFactors(factors: Factor[]): string {
-  const parts = factors.map((f) => ({ glue: f.kind === "glue", tex: f.emit() }))
-  if (!parts.some((p) => !p.glue && p.tex !== "")) return ""
-  return joinTex(parts.map((p) => p.tex))
+  // Every factor is emitted, the vanishing ones too: emission is where a strip
+  // is recorded (ctx.mutated), and a translation whose strips all vanished
+  // was reported unchanged and skipped the re-read backstop.
+  const parts = factors.map((f) => ({ f, tex: f.emit() }))
+  const out: string[] = []
+  // The glue runs since the last surviving factor, a new run opening wherever a factor vanished.
+  let runs: string[][] = [[]]
+  let survived = false
+  for (const { f, tex } of parts) {
+    if (f.kind === "glue") {
+      runs[runs.length - 1].push(tex)
+      continue
+    }
+    if (f.vanishes?.() === true) {
+      runs.push([])
+      continue
+    }
+    if (runs.length === 1) out.push(...runs[0])
+    else if (survived) out.push(...(runs.find((run) => run.some((glue) => glue !== "")) ?? []))
+    out.push(tex)
+    survived = true
+    runs = [[]]
+  }
+  if (!survived) return ""
+  if (runs.length === 1) out.push(...runs[0])
+  return joinTex(out)
+}
+
+/** Every factor of a product vanishes under the strip, and there is at least one. */
+function productVanishes(factors: Factor[]): boolean {
+  const live = factors.filter((f) => f.kind !== "glue")
+  return live.length > 0 && live.every((f) => f.vanishes?.() === true)
+}
+
+/**
+ * A wrapped sum vanishes when it is one unsigned term whose factors all do:
+ * `{c}`, `(c^{2})` and `\sqrt{G}` wrap nothing once c and G are one. A sign
+ * or a second term keeps it (`(-c)` is −1, and `(1 + c)` still a sum).
+ */
+function sumVanishes(sum: SumInfo): boolean {
+  return !sum.multiTerm && sum.terms[0].sign === "" && productVanishes(sum.terms[0].factors)
 }
 
 function emitTerm(t: TermInfo): string {
@@ -2943,7 +3264,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
   let target: Dim
   if (sums[0] == null) {
     if (carriedTarget == null) {
-      throw new Unsupported("a row that begins at “=” with nothing before it to anchor it")
+      throw new Unsupported(`a row that begins at “${rels[0]}” with nothing before it to anchor it`)
     }
     target = carriedTarget
   } else {

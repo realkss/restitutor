@@ -1416,7 +1416,8 @@ describe("source fidelity: foreign-lexer locs, spacing as written, control space
       if (result.kind === "translated") assert.strictEqual(result.changed, false, tex)
     }
     assert.strictEqual(rawRestored("E = m~c^2"), "E = m~c^{2}")
-    assert.strictEqual(rawRestored("E = m~c^2", GEO), "E = m~")
+    // Stripped, c² takes the ~ that only separated it along (batch-1 review fix (a)).
+    assert.strictEqual(rawRestored("E = m~c^2", GEO), "E = m")
     assert.strictEqual(rawRestored("x = r ~ \\frac{M}{M}"), "x = r~\\frac{M}{M}")
   })
 
@@ -1468,12 +1469,14 @@ describe("source fidelity: foreign-lexer locs, spacing as written, control space
     // are dropped, and the empty-side rule applies as it does without them.
     assert.strictEqual(rawRestored("r_s = \\frac{2GM}{c^2\\ }", GEO), "r_{s} = 2M")
     assert.strictEqual(rawRestored("r_s = \\frac{2GM}{c^2~}", GEO), "r_{s} = 2M")
-    assert.strictEqual(rawRestored("E = \\sqrt{c^4\\ }m", GEO), "E = \\sqrt{1}m")
-    assert.strictEqual(rawRestored("E = m{c~}^2", GEO), "E = m{1}^{2}")
-    assert.strictEqual(rawRestored("E = m{c\\space}^2", GEO), "E = m{1}^{2}")
+    // A root or a group that wrapped nothing but constants vanishes whole
+    // (batch-1 review fix (a)); they used to leave `\sqrt{1}m` and `m{1}^{2}`.
+    assert.strictEqual(rawRestored("E = \\sqrt{c^4\\ }m", GEO), "E = m")
+    assert.strictEqual(rawRestored("E = m{c~}^2", GEO), "E = m")
+    assert.strictEqual(rawRestored("E = m{c\\space}^2", GEO), "E = m")
     assert.strictEqual(rawRestored("v = c\\cdot", GEO), "v = 1")
-    // A surviving factor keeps the glue around it.
-    assert.strictEqual(rawRestored("E = m\\ c^2", GEO), "E = m\\ ")
+    // The glue that only separated a vanished factor goes with it.
+    assert.strictEqual(rawRestored("E = m\\ c^2", GEO), "E = m")
   })
 })
 
@@ -2225,5 +2228,190 @@ describe("declarations: relations among the constants themselves", () => {
     assert.strictEqual(translated("\\frac{2GM}{r_s} = c^2").changed, false)
     assert.strictEqual(translated("\\Omega = 1").restoredTex, "\\Omega = 1")
     assert.strictEqual(translated("E = mc^2", GEO).restoredTex, "E = m")
+  })
+})
+
+describe("batch-1 review fixes", () => {
+  const rawRestored = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = (result as Extract<TranslationResult, { kind: "translated" }>).restoredTex
+    rendersInKatex(out)
+    return out
+  }
+  const declines = (tex: string, reason: string, targets: TargetSpec[] = [SI, GEO]) => {
+    for (const target of targets) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [reason], tex)
+        assert.deepStrictEqual(result.unknown, [], tex)
+      }
+    }
+  }
+  const SPACING = "explicit spacing between two factors — two statements or one product? (select a single equation)"
+  const REASSEMBLY =
+    "an internal reassembly fault — the rebuilt equation diverged from the source (nothing was shown rather than something wrong)"
+
+  test("(a) a stripped constant takes the glue that only separated it along", () => {
+    // Live after step 2, each of these left spacing or a product sign with
+    // nothing on one side of it, two runs of glue merged into one, or a `1`.
+    assert.strictEqual(rawRestored("E = m~\\cdot~ c^2", GEO), "E = m")
+    assert.strictEqual(rawRestored("E = m\\ c^2", GEO), "E = m")
+    assert.strictEqual(rawRestored("x = \\frac{GM}{c^2}\\ \\frac{c^2}{G}", GEO), "x = M")
+    assert.strictEqual(rawRestored("ds^2 = -c^2\\ dt^2+dx^2", GEO), "ds^2 = -dt^2 + dx^2")
+    assert.strictEqual(rawRestored("r_s = \\frac{2\\ G\\ M}{c^2}", GEO), "r_{s} = 2\\ M")
+    // A group, a root, a powered group or a fraction that held nothing but
+    // constants vanishes whole instead of leaving a 1 beside the product.
+    assert.strictEqual(rawRestored("E = m(c^2)", GEO), "E = m")
+    assert.strictEqual(rawRestored("E = m{c^2}", GEO), "E = m")
+    assert.strictEqual(rawRestored("x = (c)^2 r", GEO), "x = r")
+    assert.strictEqual(rawRestored("t = r\\frac{1}{c}", GEO), "t = r")
+    assert.strictEqual(rawRestored("E = \\frac{1}{c}\\, m c^3", GEO), "E = m")
+    // Between two survivors, one run of glue stays: the first one written.
+    assert.strictEqual(rawRestored("E = m\\cdot c\\cdot v", GEO), "E = m\\cdot v")
+    // A strip that vanishes is still a change, and still read back.
+    for (const tex of ["E = m\\ c^2", "\\kappa = \\frac{c^4}{4GM}", "x = \\frac{GM}{c^2}\\ \\frac{c^2}{G}"]) {
+      assert.strictEqual((run(tex, GEO) as { changed?: boolean }).changed, true, tex)
+    }
+  })
+
+  test("(a) glue is kept where nothing vanished, and a 1 stays when it is the whole product", () => {
+    assert.strictEqual(rawRestored("E = m\\ v^2", GEO), "E = m\\ v^{2}")
+    assert.strictEqual(rawRestored("\\frac{M}{r} = \\frac{c^2}{G}", GEO), "\\frac{M}{r} = 1")
+    assert.strictEqual(rawRestored("\\kappa = \\frac{c^4}{4GM}", GEO), "\\kappa = \\frac{1}{4M}")
+    assert.strictEqual(rawRestored("E = mc^2 + M c^2\\ ", GEO), "E = m + M")
+    // Nothing is stripped outside a geometrized target, so nothing moves.
+    assert.strictEqual(rawRestored("E = m~\\cdot~ c^2"), "E = m~\\cdot~c^{2}")
+    assert.strictEqual(rawRestored("r_s = \\frac{2\\ G\\ M}{c^2}"), "r_{s} = \\frac{2\\ G\\ M}{c^{2}}")
+  })
+
+  test("(b) c or G under a font other than italic is another symbol, not the constant", () => {
+    const FONT = (adjective: string, spelled: string, letter: string) =>
+      `the ${adjective} “${spelled}” — another symbol (a vector, a tensor or a label), not the constant ${letter}`
+    // Live, `E = m{\bf c}^2` stripped to `m{\bf 1}^{2}`, and `{\bf c} = 1` shipped unchanged.
+    declines("E = m{\\bf c}^2", FONT("bold", "{\\bf c}", "c"))
+    declines("{\\bf c} = 1", FONT("bold", "{\\bf c}", "c"))
+    declines("E = m\\mathbf{c}^2", FONT("bold", "\\mathbf{c}", "c"))
+    declines("E = m\\mathbf c^2", FONT("bold", "\\mathbf{c}", "c"))
+    declines("E = m\\boldsymbol{c}^2", FONT("bold", "\\boldsymbol{c}", "c"))
+    declines("E = m\\bm{c}^2", FONT("bold", "\\bm{c}", "c"))
+    declines("x = \\mathcal{G} M", FONT("calligraphic", "\\mathcal{G}", "G"))
+    declines("x = \\mathsf{G} M", FONT("sans-serif", "\\mathsf{G}", "G"))
+    declines("E = m\\mathbf{c^2}", FONT("bold", "\\mathbf{c}", "c"))
+    // Upright keeps the upright-letter reason it already had.
+    declines("E = m\\mathrm{c}^2", "the upright letter “c” — a unit, a label or an operator, not a variable")
+  })
+
+  test("(b) italic c is still the constant, and a bold G with indices is still the Einstein tensor", () => {
+    assert.strictEqual(rawRestored("E = m\\mathit{c}^2"), "E = m\\mathit{c}^{2}")
+    assert.strictEqual(rawRestored("E = m\\mathit{c}^2", GEO), "E = m")
+    // Looked through, an italic c set to one is a declaration like `c = 1`.
+    declines(
+      "\\mathit{c} = 1",
+      "a relation between the constants themselves — a declaration of the unit convention rather than a physical relation to restore",
+    )
+    assert.strictEqual(rawRestored("\\mathbf{G}_{ab} = 8\\pi T_{ab}"), "\\mathbf{G}_{ab} = \\frac{8\\pi GT_{ab}}{c^{4}}")
+  })
+
+  test("(c) a row that opens at a relation quotes the relation it opens at", () => {
+    const OPENS = (rel: string) => `a row that begins at “${rel}” with nothing before it to anchor it`
+    declines("= 2M", OPENS("="))
+    declines("< r", OPENS("<"))
+    declines("\\le r", OPENS("\\le"))
+    declines("\\approx r", OPENS("\\approx"))
+    declines("\\ne r", OPENS("\\ne"))
+  })
+
+  test("(d) an evaluation bar is never a function's argument group", () => {
+    // Live, `r\sin\left.M/t\right|` restored to `r\sin\left.GM/tc^{3}\right|`.
+    declines("x = r\\sin\\left.M/t\\right|", "an evaluation bar “\\left. … \\right|”, which is not supported yet", [SI])
+    declines("x = r\\sin\\left.M/t\\right|_{0}^{1}", "evaluation limits, which are not supported yet", [SI])
+    declines("x = r\\sin\\left.M/t\\right|^{1}", "evaluation limits, which are not supported yet", [SI])
+    declines(
+      "x = r\\sin\\left.M/t\\right|_{t=0}",
+      "an evaluation condition in a subscript, which is not supported yet",
+      [SI],
+    )
+  })
+
+  test("(d) a modulus after a head follows the unparenthesized-argument rule", () => {
+    // Not an argument group: the constants restore the whole argument, bars included.
+    assert.strictEqual(rawRestored("x = r\\sin\\left|M/t\\right|"), "x = r\\sin\\frac{G\\left|M/t\\right|}{c^{3}}")
+    assert.strictEqual(rawRestored("x = r\\sin\\lvert M/t\\rvert"), "x = r\\sin\\frac{G\\lvert M/t\\rvert}{c^{3}}")
+    // A bracket group is still the argument, restored inside it.
+    assert.strictEqual(rawRestored("x = r\\sin\\left(M/t\\right)"), "x = r\\sin\\left(GM/tc^{3}\\right)")
+  })
+
+  test("(e) spacing between a head and its delimited argument is emitted as written", () => {
+    // Live, the \quad was dropped, and `\ ` and `~` declined as a divergence.
+    assert.strictEqual(rawRestored("x = r\\sin\\quad(M/t)"), "x = r\\sin\\quad(GM/tc^{3})")
+    assert.strictEqual(rawRestored("x = r\\sin\\ (M/t)"), "x = r\\sin\\ (GM/tc^{3})")
+    assert.strictEqual(rawRestored("x = r\\sin~(M/t)"), "x = r\\sin~(GM/tc^{3})")
+    assert.strictEqual(rawRestored("x = r\\sin\\,(M/t)"), "x = r\\sin\\,(GM/tc^{3})")
+    assert.strictEqual(rawRestored("x = r\\sin^{2}\\,(M/t)"), "x = r\\sin^{2}\\,(GM/tc^{3})")
+    // A kern no command spells declines by name; one spelled another way than
+    // its rebuilt command is a divergence the backstop catches.
+    declines(
+      "x = r\\sin\\hspace{2pt}(M/t)",
+      "spacing between “\\sin” and its argument that the engine cannot re-emit as written, which is not supported",
+      [SI],
+    )
+    declines("x = r\\sin\\thinspace(M/t)", REASSEMBLY, [SI])
+  })
+
+  test("(f) a numeral raised to a power is one dimensionless numeral", () => {
+    // KaTeX parses 10^{8} as 1 followed by 0^{8}; the "0" was an unknown symbol.
+    const VALUE = (quote: string) => `a numeric value for “${quote}”, in units the equation does not state`
+    declines("c = 3\\times10^{8}", VALUE("c"))
+    declines("c = 3\\times10^8", VALUE("c"))
+    declines("\\hbar = 1.054\\times10^{-34}", VALUE("\\hbar"))
+    assert.strictEqual(rawRestored("v = 10^{-3}"), "v = 10^{-3}c")
+    assert.strictEqual(rawRestored("x = 2^{10} r"), "x = 2^{10}r")
+    // A symbolic exponent is read as e's is: dimensionless, restored inside.
+    assert.strictEqual(rawRestored("x = 10^{M/r} r"), "x = 10^{GM/rc^{2}}r")
+    const unknown = run("x = 10^{n} r")
+    assert.strictEqual(unknown.kind, "declined", JSON.stringify(unknown))
+    if (unknown.kind === "declined") assert.deepStrictEqual(unknown.unknown, ["n"])
+    // A powered numeral is no literal 1: it does not mark a convention.
+    assert.strictEqual(rawRestored("v = 1^{2}"), "v = 1^{2}c")
+  })
+
+  test("(g) a digit superscript beside an index subscript on an indexed reading declines", () => {
+    const DIGIT = (tex: string) => `a digit superscript on “${tex}” — a component index or a power`
+    // Live, these shipped unchanged under m⁻², m⁻³ and m⁻⁴.
+    declines("\\Gamma^{2}_{00} = 0", DIGIT("\\Gamma^{2}_{00}"))
+    declines("\\Gamma^{3}_{23} = 0", DIGIT("\\Gamma^{3}_{23}"))
+    declines("R^{2}_{0} = 0", DIGIT("R^{2}_{0}"))
+    declines("\\Gamma_{00}^{2} = 0", DIGIT("\\Gamma_{00}^{2}"))
+    declines("\\Gamma^{2}_{12}={\\frac{1}{r}}", DIGIT("\\Gamma^{2}_{12}"))
+  })
+
+  test("(g) a power with no component reading is read as it was", () => {
+    // Superscript 1 gives the index reading's dimension either way.
+    assert.strictEqual(rawRestored("\\Gamma^{1}_{00} = \\frac{M}{r^2}"), "\\Gamma^{1}_{00} = \\frac{GM}{r^{2}c^{2}}")
+    // An identity the registry spells out, a symbol with no subscript, a derivative order.
+    assert.strictEqual(
+      rawRestored("\\Omega_{\\Lambda}\\equiv\\frac{\\Lambda\\,c^{2}}{3\\,H_{0}^{2}}"),
+      "\\Omega_{\\Lambda} \\equiv \\frac{\\Lambda c^{2}}{3H_{0}^{2}}",
+    )
+    assert.strictEqual(rawRestored("A = r^2"), "A = r^{2}")
+    assert.strictEqual(rawRestored("\\partial_{t}^{2} r = 0"), "\\partial_{t}^{2}r = 0")
+    // A superscript 0 is an index, as it always was.
+    assert.strictEqual(rawRestored("\\Gamma^{0}_{00} = \\frac{M}{r^2}"), "\\Gamma^{0}_{00} = \\frac{GM}{r^{2}c^{2}}")
+  })
+
+  test("(h) spacing before a sign that separates terms is a statement boundary too", () => {
+    // Live, `t = 0 \qquad -r = 2M` shipped as t = 0 − r/c = 2GM/c³.
+    declines("t = 0 \\qquad -r = 2M", SPACING)
+    declines("t = 0 \\; -r = 2M", SPACING)
+    declines("v = x = y\\, - x", SPACING)
+    // In a single-relation row only a run of a quad or more declines.
+    declines("r = 2M \\qquad - a", SPACING)
+    assert.strictEqual(rawRestored("-c^2\\,dt^2 \\, + dx^2 = ds^2"), "-c^{2}dt^2 + dx^2 = ds^2")
+    assert.strictEqual(rawRestored("ds^2 = -c^2\\,dt^2 + dx^2"), "ds^2 = -c^{2}dt^2 + dx^2")
+    assert.strictEqual(rawRestored("E = m\\, + M"), "E = mc^{2} + Mc^{2}")
+    // Inside brackets the delimiters already make one expression.
+    assert.strictEqual(rawRestored("E = (m\\qquad + M)"), "E = (m + M)c^{2}")
   })
 })

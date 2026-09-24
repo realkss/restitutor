@@ -82,6 +82,22 @@ describe("the decline ledger", () => {
     ])
       assert.strictEqual(outcome(tex).class, "unsupported", tex)
     for (const tex of ["E = <p>", "E =", "= 2M", "(-+++)"]) assert.strictEqual(outcome(tex).class, "fragment", tex)
+    // Batch-1 review fixes: a row opening at any relation and a statement
+    // boundary before a sign are not one equation; a restyled constant, a
+    // digit superscript beside an index, an evaluation bar and spacing before
+    // an argument the engine cannot re-emit are the reader's; a numeral with
+    // a power in it is a numeric value like any other.
+    for (const tex of ["< r", "\\le r", "t = 0 \\qquad -r = 2M"]) assert.strictEqual(outcome(tex).class, "fragment", tex)
+    for (const tex of [
+      "E = m{\\bf c}^2",
+      "x = \\mathcal{G} M",
+      "\\Gamma^{2}_{00} = 0",
+      "x = r\\sin\\left.M/t\\right|",
+      "x = r\\sin\\left.M/t\\right|_{0}^{1}",
+      "x = r\\sin\\hspace{2pt}(M/t)",
+    ])
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    assert.strictEqual(outcome("c = 3\\times10^{8}").class, "declaration")
     assert.strictEqual(outcome("r \\ne 2M").class, "translated")
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
