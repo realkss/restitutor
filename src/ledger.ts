@@ -51,8 +51,9 @@ const STRUCTURAL: [RegExp, OutcomeClass][] = [
   // by side, or one product.
   [/lists or multiple statements|a row that begins at|a relation with nothing on one side|a trailing .* with nothing after it|an empty expression|signs with nothing to act on|explicit spacing between two factors|^prose \(/, "fragment"],
   [/a proportionality/, "proportional"],
-  // The equation IS a units declaration (c = G = 1): nothing to restore.
-  [/a relation between the constants themselves/, "declaration"],
+  // The equation IS a units declaration (c = G = 1), or gives a constant a
+  // value in units it does not name (c = 299792458): nothing to restore.
+  [/a relation between the constants themselves|a numeric value for “.*”, in units the equation does not state/, "declaration"],
   // Constructs the engine's reader does not handle, in its several wordings.
   [
     /not supported|could not be read|could not read|cannot read|floating super\/subscript|symbolic exponent|unsupported (?:relation|accent|differential)|closing delimiter|cannot pair with its partner|in this position|primed symbol|time derivative of a compound|integrals, sums, and limits|an angular coordinate index|the upright (?:word|words|letter) |the multi-letter name |an unspecified constant|a constant to restore inside the font|the arrow “|the exchange “|a colon that is not part of|which the engine does not read|neither a power nor a dictionary index|a sign directly beside/,
@@ -64,7 +65,9 @@ const STRUCTURAL: [RegExp, OutcomeClass][] = [
 const DIMENSIONAL: [RegExp, OutcomeClass][] = [
   [/temperature dimensions that do not balance/, "kept-explicit"],
   [/charge dimensions that do not balance/, "charge"],
-  [/no c–G completion/, "no-completion"],
+  // A constant term among quantities the registry reads with another
+  // dimension (g_00 ≈ -c² - 2Φ): a verdict on the readings, as no-completion is.
+  [/no c–G completion|a term made only of c and G that the registry's readings/, "no-completion"],
 ]
 
 export function classifyOutcome(r: TranslationResult): Outcome {

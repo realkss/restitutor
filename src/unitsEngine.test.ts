@@ -2079,3 +2079,103 @@ describe("relations core: relations, continuation rows, branch signs", () => {
     declines("r^{\\pm 1} = M", "a symbolic exponent on the dimensional base “r”")
   })
 })
+
+describe("declarations: relations among the constants themselves", () => {
+  const DECLARATION =
+    "a relation between the constants themselves — a declaration of the unit convention rather than a physical relation to restore"
+  const numericValue = (quote: string) => `a numeric value for “${quote}”, in units the equation does not state`
+  const madeOfConstants = (quote: string) =>
+    `a term made only of c and G that the registry's readings of the other terms would require rewriting into another constant (term “${quote}”)`
+  const declines = (tex: string, reason: string) => {
+    for (const target of [SI, GEO]) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [reason], tex)
+        assert.deepStrictEqual(result.unknown, [], tex)
+      }
+    }
+  }
+  const translated = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = result as Extract<TranslationResult, { kind: "translated" }>
+    rendersInKatex(out.restoredTex)
+    return out
+  }
+
+  test("setting constants to one declines on every target, read through groups, fractions and roots", () => {
+    // `c = 1` shipped in SI under the banner m s⁻¹; geometrized, `\frac{c^4}{G} = 1`
+    // shipped as `1 = 1` and `{c} = 1` as `{1} = 1`.
+    for (const tex of [
+      "c = 1",
+      "\\hbar = 1",
+      "k_B = 1",
+      "8\\pi G = 1",
+      "\\frac{c^4}{G} = 1",
+      "{c} = 1",
+      "(c) = 1",
+      "\\left(c\\right) = 1",
+      "\\frac{1}{c} = 1",
+      "G/c^2 = 1",
+      "\\sqrt{G} = 1",
+      "c^2 = 1",
+      "c^{-1} = 1",
+      "\\hbar c = 1",
+      "\\hbar^2 = 1",
+      "(8\\pi) G = 1",
+      "\\hbar = c = 1",
+      "c = \\hbar = k_B = 1",
+      "G = c = 1",
+    ]) {
+      declines(tex, DECLARATION)
+    }
+  })
+
+  test("a constant given any other value states it in units the equation does not name", () => {
+    // `c = -26` is a central charge the registry reads as the speed of light;
+    // it came out as `c = -26c`, and `c = 299792458` as `299792458c`.
+    declines("c = 299792458", numericValue("c"))
+    declines("c = -26", numericValue("c"))
+    declines("c = 2\\pi", numericValue("c"))
+    declines("\\hbar c = 197.3", numericValue("\\hbar c"))
+    declines("c^2 - 1 = 0", numericValue("c^{2}"))
+    declines("c = 1 + 1", numericValue("c"))
+  })
+
+  test("a continuation row that ends in a constant belongs to its chain", () => {
+    // Read by itself, `&= c` declared the whole derivation a unit convention.
+    const v = translated("\\begin{aligned} v &= \\frac{dr}{dt} \\\\ &= c \\end{aligned}")
+    assert.strictEqual(v.changed, false)
+    assert.strictEqual(v.restoredTex, "\\begin{aligned}\nv &= \\frac{dr}{dt} \\\\\n&= c\n\\end{aligned}")
+    const rs = translated("\\begin{aligned} \\frac{2GM}{r_s} &= \\frac{2GM}{2GM/c^2} \\\\ &= c^2 \\end{aligned}")
+    assert.strictEqual(rs.changed, false)
+    const lp = translated(
+      "\\begin{aligned} \\frac{\\ell_P^2c^3}{\\hbar} &= \\frac{\\hbar G}{c^3}\\frac{c^3}{\\hbar} \\\\ &= G \\end{aligned}",
+    )
+    assert.strictEqual(lp.changed, false)
+    // Continuing a chain in another dimension, the constant is a term among quantities.
+    declines("\\begin{aligned} r &= 2M \\\\ &= c \\end{aligned}", madeOfConstants("c"))
+  })
+
+  test("a row that declares declines the whole equation", () => {
+    // Otherwise the first row shipped `c = 1` beside a restored `E = mc^2`.
+    declines("\\begin{aligned} c &= 1 \\\\ E &= mc^2 \\end{aligned}", DECLARATION)
+    declines("\\begin{aligned} c &= 1 \\\\ &= v \\end{aligned}", DECLARATION)
+    declines("\\begin{aligned} G &= 1 \\\\ c &= 1 \\end{aligned}", DECLARATION)
+  })
+
+  test("a constant term among quantities is a verdict on the registry's readings", () => {
+    declines("g_{00} \\approx -c^2 - 2\\Phi", madeOfConstants("c^{2}"))
+    declines("a = b = c", madeOfConstants("c"))
+  })
+
+  test("relations with a quantity in them are untouched", () => {
+    assert.strictEqual(translated("v = 0.5").restoredTex, "v = 0.5c")
+    const th = translated("T_H = \\frac{\\hbar c^3}{8\\pi G M k_B}")
+    assert.strictEqual(th.changed, false)
+    assert.strictEqual(translated("\\frac{2GM}{r_s} = c^2").changed, false)
+    assert.strictEqual(translated("\\Omega = 1").restoredTex, "\\Omega = 1")
+    assert.strictEqual(translated("E = mc^2", GEO).restoredTex, "E = m")
+  })
+})

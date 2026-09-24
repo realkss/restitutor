@@ -359,6 +359,19 @@ type Factor = {
    */
   constant?: { tex: "c" | "G"; e12: number }
   /**
+   * A power of a constant that a unit system can set to one: c, G, ħ or k_B.
+   * Wider than `constant`, which only c and G carry because only they are
+   * ever inserted; a relation among these and numerals states a unit system
+   * or a constant's value, and has nothing in it to restore.
+   */
+  unitConstant?: boolean
+  /**
+   * The factors a wrapping construct holds — a group's or a root's body, a
+   * powered compound's base — so a test can look through the wrapping:
+   * `{c} = 1` and `\sqrt{G} = 1` are declarations as much as `c = 1` is.
+   */
+  parts?: Factor[]
+  /**
    * The factor ends in a function argument no delimiter closes (`\tanh\phi`,
    * and `{\tanh\phi}`, whose braces do not print). Whatever is set right after
    * it reads as more of that argument, so a constant never goes there.
@@ -999,12 +1012,14 @@ function termInsertion(t: TermInfo, target: Dim, ctx: Ctx): { a: number; b: numb
   if (dimIsZero(need)) return null
   // A term that is nothing but powers of c and G is a constant, not a quantity.
   // Restoring it would rewrite one constant into another — `G = c = 1` came out
-  // as `G = G = 1`, which states something false about c. A relation whose sides
-  // are the constants themselves declares the unit convention; it carries no
-  // physical content for the restoration to complete, so it declines.
+  // as `G = G = 1`, which states something false about c. A relation made only
+  // of constants never gets here (declarationGuard); this is a constant term
+  // among quantities, `g_{00} \approx -c^2 - 2\Phi`, whose other terms the
+  // registry reads with a dimension the constant does not have. That is a fact
+  // about the readings, not about the author, and it fires for `a = b = c` too.
   if (isPureConstant(t)) {
     throw new Unsupported(
-      "a relation between the constants themselves — a declaration of the unit convention rather than a physical relation to restore",
+      `a term made only of c and G that the registry's readings of the other terms would require rewriting into another constant (term “${termQuote(t, ctx)}”)`,
     )
   }
   const solved = solveCG(need)
@@ -1055,6 +1070,84 @@ function maskedEmission(ctx: Ctx, emit: () => string): string {
 function isPureConstant(t: TermInfo): boolean {
   const meaningful = t.factors.filter((f) => f.kind !== "glue")
   return meaningful.length > 0 && meaningful.every((f) => f.constant != null)
+}
+
+/** Every factor of every term of a sum, for a wrapping factor's `parts`. */
+function partsOf(sum: SumInfo): Factor[] {
+  return sum.terms.flatMap((t) => t.factors)
+}
+
+/**
+ * What a run of factors is built from, read through groups, fractions, roots
+ * and powered compounds: "num" when only numerals, "unit" when only numerals
+ * and at least one of the constants a unit system can set to one, null when
+ * anything else is in it. `8\pi G`, `\frac{c^{4}}{G}` and `{c}` are "unit".
+ */
+function unitLeavesOf(factors: Factor[]): "num" | "unit" | null {
+  let found: "num" | "unit" | null = null
+  for (const f of factors) {
+    if (f.kind === "glue") continue
+    const own: "num" | "unit" | null =
+      f.kind === "num"
+        ? "num"
+        : f.unitConstant === true
+          ? "unit"
+          : f.frac != null
+            ? unitLeavesOf([...f.frac.num, ...f.frac.den])
+            : f.parts != null
+              ? unitLeavesOf(f.parts)
+              : null
+    if (own == null) return null
+    if (found !== "unit") found = own
+  }
+  return found
+}
+
+/** A numeral term reading ±1, whatever its sign: the value a unit system gives a constant. */
+function isOneInMagnitude(t: TermInfo): boolean {
+  const numerals = t.factors.filter((f) => f.kind !== "glue")
+  return (
+    t.slashIdx < 0 &&
+    numerals.length > 0 &&
+    numerals.every((f) => f.kind === "num" && Number.parseFloat(f.emit()) === 1)
+  )
+}
+
+/**
+ * A relation among the constants themselves has no quantity in it to restore,
+ * and a restoration can only make it false: `c = 1` shipped in SI under the
+ * banner "both sides carry m s⁻¹", and `c = -26` (a central charge the
+ * registry reads as the speed of light) came out as `c = -26c`. When every
+ * term of the row's sides is numerals and c, G, ħ or k_B (read through
+ * groups, fractions and roots), and at least one of the constants is there,
+ * the row declines before any insertion, on every target.
+ *
+ * Two readings are told apart by the numerals standing alone. When each one
+ * is a whole side reading ±1, the relation sets constants to one — a
+ * declaration of the unit system (`G = c = 1`, `8\pi G = 1`). Otherwise it
+ * gives a constant a value in units it does not name (`c = 299792458`,
+ * `c^2 - 1 = 0`), which is no declaration, and `c = -26` is not even about
+ * the speed of light.
+ */
+function declarationGuard(sums: (SumInfo | null)[], ctx: Ctx): void {
+  const terms = sums.flatMap((sum) => (sum == null ? [] : sum.terms))
+  const kinds = terms.map((t) => unitLeavesOf(t.factors))
+  if (!kinds.includes("unit") || kinds.includes(null)) return
+  const setsToOne = sums.every(
+    (sum) =>
+      sum == null ||
+      sum.terms.every((t) => unitLeavesOf(t.factors) === "unit") ||
+      (!sum.multiTerm && isOneInMagnitude(sum.terms[0])),
+  )
+  if (!setsToOne) {
+    const constant = terms[kinds.indexOf("unit")]
+    throw new Unsupported(
+      `a numeric value for “${termQuote(constant, ctx)}”, in units the equation does not state`,
+    )
+  }
+  throw new Unsupported(
+    "a relation between the constants themselves — a declaration of the unit convention rather than a physical relation to restore",
+  )
 }
 
 /** A sum's leading sign as emitted. A branch sign is a control word, set apart: `\pm` + `M` reads `\pmM`. */
@@ -1931,6 +2024,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
           kind: "sym",
           dim: d,
           constant: { tex: text, e12: D12 },
+          unitConstant: true,
           emit: () => {
             if (!ctx.strip || !emitsConstants(ctx)) return src
             ctx.mutated = true
@@ -1938,7 +2032,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
           },
         }
       }
-      return { kind: "sym", dim: d, emit: () => src }
+      return { kind: "sym", dim: d, emit: () => src, unitConstant: text === "\\hbar" || undefined }
     }
     case "supsub":
       return analyzeSupsub(n, ctx)
@@ -1975,7 +2069,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         const body = inner.emit()
         return q === 2 ? `\\sqrt{${body}}` : `\\sqrt[${q}]{${body}}`
       }
-      return { kind: "sqrt", dim: d, emit, sqrt: { bodyTerm } }
+      return { kind: "sqrt", dim: d, emit, sqrt: { bodyTerm }, parts: partsOf(inner) }
     }
     case "leftright":
     case "__group": {
@@ -1987,7 +2081,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       // Control-word delimiters (\langle, \lbrace, \lVert …) would otherwise
       // swallow the following letter: `\langle`+`v` must not become `\langlev`.
       const emit = () => joinTex([open, inner.emit(), close])
-      return { kind: "group", dim: inner.dim, emit, isBareSum: false }
+      return { kind: "group", dim: inner.dim, emit, isBareSum: false, parts: partsOf(inner) }
     }
     case "accent": {
       // Accent nodes carry no source location — reconstruct label{base}.
@@ -2051,7 +2145,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const isBareSum = inner.multiTerm || inner.terms[0].factors.some((f) => f.isBareSum === true)
       const live = inner.terms[0].factors.filter((f) => f.kind !== "glue")
       const openArgument = !inner.multiTerm && live[live.length - 1]?.openArgument === true
-      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument }
+      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument, parts: partsOf(inner) }
     }
     case "atom":
       throw new Unsupported(`the symbol “${n.text}” in this position`)
@@ -2218,9 +2312,11 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   if (baseText != null && wholeTex != null && n.sub != null) {
     angularIndexGuard(baseText, n, wholeTex, ctx)
     const d = resolveSymbol(baseText, wholeTex, ctx, { sub: n.sub })
-    if (sup == null || sup === "index") return { kind: "sym", dim: d, emit: () => wholeTex }
+    const unitConstant = `${baseText}_${subKeyText(n.sub, ctx)}` === "k_B" || undefined
+    if (sup == null) return { kind: "sym", dim: d, emit: () => wholeTex, unitConstant }
+    if (sup === "index") return { kind: "sym", dim: d, emit: () => wholeTex }
     if (typeof sup === "object") {
-      return { kind: "sym", dim: dimScale(d, sup.p, sup.q), emit: () => wholeTex }
+      return { kind: "sym", dim: dimScale(d, sup.p, sup.q), emit: () => wholeTex, unitConstant }
     }
     throw new Unsupported(`an exponent on “${wholeTex}” that could not be read`)
   }
@@ -2241,6 +2337,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
           kind: "sym",
           dim: scaled,
           constant: Number.isInteger(e12) ? { tex: baseText, e12 } : undefined,
+          unitConstant: true,
           emit: () => {
             if (!ctx.strip || !emitsConstants(ctx)) return wholeTex
             ctx.mutated = true
@@ -2248,7 +2345,8 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
           },
         }
       }
-      return { kind: isConst ? "num" : "sym", dim: scaled, emit: () => wholeTex }
+      const unitConstant = baseText === "\\hbar" || undefined
+      return { kind: isConst ? "num" : "sym", dim: scaled, emit: () => wholeTex, unitConstant }
     }
     // Expression exponent: legal only on a dimensionless base; the exponent is
     // itself a geometrized expression restored against a dimensionless target.
@@ -2281,6 +2379,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
         dim: scaled,
         openArgument: inner.openArgument,
         emit: () => `${inner.emit()}${scripts}`,
+        parts: [inner],
       }
     }
   }
@@ -2301,6 +2400,7 @@ function sumAsFactorList(sum: SumInfo): Factor[] {
       dim: sum.dim,
       emit: () => sum.emit(),
       isBareSum: true,
+      parts: partsOf(sum),
     },
   ]
 }
@@ -2774,6 +2874,13 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
   // chain was in metres, and `0 &< r \\ &< 2M` passed as unchanged. With no
   // chain before it, nothing anchors it. Any other row anchors on its first
   // side that has a non-zero term (literal zeros carry any dimension).
+  //
+  // A continuation row is never judged a declaration on its own: `v &= \frac{dr}{dt}
+  // \\ &= c` ends a derivation in a constant, and read by itself `= c` declared
+  // the whole equation a unit convention. It belongs to its chain, whose first
+  // row carries the quantities. Any row that anchors itself is judged, and one
+  // declaration declines the whole equation: in `c &= 1 \\ E &= mc^2` the first
+  // row would otherwise ship `c = 1` under a unit banner.
   let target: Dim
   if (sums[0] == null) {
     if (carriedTarget == null) {
@@ -2781,6 +2888,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
     }
     target = carriedTarget
   } else {
+    declarationGuard(sums, ctx)
     const anchored = sums.map((sum) => (sum == null ? null : sumAnchor(sum.terms))).find((d) => d != null)
     target = anchored ?? carriedTarget ?? ZERO // every term a literal zero: identity
   }

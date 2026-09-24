@@ -28,6 +28,12 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("E \\propto M").class, "proportional")
     assert.strictEqual(outcome("\\int \\rho \\, dV = M").class, "unsupported")
     assert.strictEqual(outcome("c = G = 1").class, "declaration")
+    // A constant's numeric value is no declaration, but has as little to restore.
+    assert.strictEqual(outcome("c = 299792458").class, "declaration")
+    // A constant term among quantities the registry reads otherwise is a
+    // verdict on those readings, as a missing completion is.
+    assert.strictEqual(outcome("g_{00} \\approx -c^2 - 2\\Phi").class, "no-completion")
+    assert.strictEqual(outcome("a = b = c").class, "no-completion")
     assert.strictEqual(outcome("(r_s = 2M)").class, "unsupported") // a bar or relation inside a group is the reader's
     assert.strictEqual(outcome("r_s = 2M, \\quad T_H = 1").class, "fragment")
     // Two statements set side by side with only spacing between them.
