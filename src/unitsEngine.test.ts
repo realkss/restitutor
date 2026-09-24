@@ -3131,6 +3131,21 @@ describe("delimiters: bars, sized delimiters, Dirac notation and construct names
     declines("P = |T_{a}{}^{b}|", TENSOR("T_{a}{}^{b}"))
     declines("P = |\\tilde T_{ab}|", TENSOR("\\tilde{T}_{ab}"))
     declines("P = |\\mathbf{T}_{ab}|", TENSOR("\\mathbf{T}_{ab}"))
+    // Review round: braces, an accent, an overline or an old-style font set
+    // around the whole indexed symbol hid it, and the bars read as a modulus.
+    declines("\\rho = |\\tilde{T_{ab}}|", TENSOR("\\tilde{T_{ab}}"))
+    declines("\\rho = |{\\bf T_{ab}}|", TENSOR("{\\bf T_{ab}}"))
+    declines("\\rho = |{T^{a}{}_{b}}|", TENSOR("{T^{a}{}_{b}}"))
+    declines("\\rho = \\left|{T_{ab}}\\right|", TENSOR("{T_{ab}}"))
+    declines("\\rho = \\left|\\tilde{T_{ab}}\\right|", TENSOR("\\tilde{T_{ab}}"))
+    declines("\\rho = |{\\textstyle T_{ab}}|", TENSOR("{\\textstyle T_{ab}}"))
+    declines("\\rho = |\\tilde{T^{a}{}_{b}}|", TENSOR("\\tilde{T^{a}{}_{b}}"))
+    declines("\\rho = |\\overline{T}_{ab}|", TENSOR("\\overline{T}_{ab}"))
+    declines("\\rho = |\\overline{T_{ab}}|", TENSOR("\\overline{T_{ab}}"))
+    // The wrappers change nothing else: one index is still a component's
+    // modulus, and a dimensionless tensor still passes.
+    assert.strictEqual(rawRestored("\\rho = |{T_{a}}|"), "\\rho = \\frac{|{T_{a}}|}{c^{2}}")
+    assert.strictEqual(rawRestored("h_{ab} = |\\tilde{h_{ab}}|"), "h_{ab} = |\\tilde{h_{ab}}|")
   })
 
   test("factorials, prescripts, braced delimiters and constructs are named as written", () => {

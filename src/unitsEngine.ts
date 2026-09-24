@@ -2942,16 +2942,19 @@ function isSingleBarGroup(n: any): boolean {
 
 /**
  * The TeX of a lone tensor set between single bars, or null: an indexed
- * symbol, its base possibly under accents and fonts (`\tilde{T}_{ab}`,
- * `\mathbf{T}_{ab}`), with any staggered continuations (`T^{a}{}_{b}`), and
- * two or more index tokens across the run. |T_{ab}| is the modulus of a
- * component or the determinant of the matrix, whose dimensions differ unless
- * the tensor is dimensionless; counted over the first supsub alone, the mixed
- * tensor |T^{a}{}_{b}| passed as a modulus.
+ * symbol with any staggered continuations (`T^{a}{}_{b}`) and two or more
+ * index tokens across the run. |T_{ab}| is the modulus of a component or the
+ * determinant of the matrix, whose dimensions differ unless the tensor is
+ * dimensionless; counted over the first supsub alone, the mixed tensor
+ * |T^{a}{}_{b}| passed as a modulus. Accents, fonts, styles and braces do not
+ * change what stands between the bars, wherever the reader set them: on the
+ * base (`\tilde T_{ab}`, `\mathbf{T}_{ab}`) or around the whole indexed
+ * symbol (`\tilde{T_{ab}}`, `{\bf T_{ab}}`, `{T^{a}{}_{b}}`). Peeled from the
+ * base alone, every wrapped spelling of the whole passed as a modulus.
  */
 function barredTensorTex(body: any[], ctx: Ctx): string | null {
   const run = body.filter(isMeaningfulNode)
-  const [head, ...riders] = run.map(unwrap)
+  const [head, ...riders] = run.flatMap(decoratedRunOf)
   if (head?.type !== "supsub" || textOf(decoratedSymbolOf(head.base)) == null) return null
   if (!riders.every((r) => r?.type === "supsub" && isBlankNode(r.base))) return null
   const indexCount = (script: any) => {
@@ -2965,25 +2968,42 @@ function barredTensorTex(body: any[], ctx: Ctx): string | null {
 }
 
 /**
- * The TeX of an indexed symbol for a quotation, accents rebuilt: an accent
- * node has no location, so a slice of `\tilde T_{ab}` quoted `T_{ab}`.
+ * The TeX of an indexed symbol for a quotation, accents and overlines
+ * rebuilt: neither node has a location, so a slice of `\tilde T_{ab}` quoted
+ * `T_{ab}` and one of `\overline{T}_{ab}` quoted `{T}_{ab}`.
  */
 function decoratedTexOf(raw: any, ctx: Ctx): string {
   const n = peelStyles(raw)
-  if (n?.type === "accent") {
-    const body = decoratedTexOf(n.base, ctx)
-    return `${n.label}{${body.startsWith("{") && outerBracesArePartners(body) ? body.slice(1, -1) : body}}`
+  const decorated = (cmd: string, arg: any) => {
+    const body = decoratedTexOf(arg, ctx)
+    return `${cmd}{${body.startsWith("{") && outerBracesArePartners(body) ? body.slice(1, -1) : body}}`
   }
+  if (n?.type === "accent") return decorated(n.label, n.base)
+  if (n?.type === "overline") return decorated("\\overline", n.body)
   if (n?.type === "supsub" && n.base != null) return `${decoratedTexOf(n.base, ctx)}${scriptsTex(n, ctx)}`
   return wrappedTexOf(raw, ctx)
 }
 
-/** The symbol under accents, fonts, styles and single-child braces. */
+/**
+ * The nodes of a barred run under their decorations: a group the peeling
+ * reaches with several children (`{T^{a}{}_{b}}`, `\tilde{T^{a}{}_{b}}`)
+ * contributes each of them, so a staggered run reads the same braced or not.
+ */
+function decoratedRunOf(node: any): any[] {
+  const cur = decoratedSymbolOf(node)
+  return cur?.type === "ordgroup" ? cur.body.filter(isMeaningfulNode).flatMap(decoratedRunOf) : [cur]
+}
+
+/** The symbol under accents, overlines, fonts, styles and single-child braces. */
 function decoratedSymbolOf(node: any): any {
   let cur = unwrap(node)
   for (;;) {
     if (cur?.type === "accent") {
       cur = unwrap(cur.base)
+      continue
+    }
+    if (cur?.type === "overline") {
+      cur = unwrap(cur.body)
       continue
     }
     if (cur?.type === "ordgroup") {
