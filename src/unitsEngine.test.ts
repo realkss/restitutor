@@ -1266,18 +1266,15 @@ describe("explicit spacing between two factors (the two-statements trap)", () =>
 
   test("two statements set side by side decline instead of multiplying", () => {
     // Read as the chain t = 0·r = 2M, these shipped t = \frac{0r}{c} = \frac{2GM}{c^{3}},
-    // or declined only by accident, or (\ \ \ at GEO) the corrupt t = 0\\\r = 2M.
+    // or declined only by accident. A run a quad wide or wider now splits the
+    // line into its statements (the statement layer, step 9); a narrower run
+    // is no statement separator, and declines.
     for (const tex of [
-      "t = 0 \\qquad r = 2M",
-      "t = 0 \\quad r = 2M",
       "t = 0 \\;\\;\\; r = 2M",
-      "t = 0 ~~~~ r = 2M",
-      "t = 0 \\ \\ \\ r = 2M",
       // The relations reviewer's counterexamples: runs narrower than a quad.
-      "t = 0 \\enspace\\enspace r = 2M",
       "t = 0 \\hspace{0.9em} r = 2M",
       "t = 0 \\, r = 2M",
-      "\\begin{aligned} t &= 0 \\qquad r = 2M \\end{aligned}",
+      "\\begin{aligned} t &= 0 \\;\\;\\; r = 2M \\end{aligned}",
     ]) {
       declinesOnSpacing(tex)
       declinesOnSpacing(tex, GEO)
@@ -1453,15 +1450,20 @@ describe("source fidelity: foreign-lexer locs, spacing as written, control space
   test("spacing emitted as written does not unmask two statements set side by side", () => {
     // The integration probe: rebuilding `~` and `\ ` faithfully turned these
     // accidental reassembly faults into t = \frac{0~~~~r}{c} = \frac{2GM}{c^{3}}.
-    // The between-factors guard (step 1) must still be what declines them.
+    // A run narrower than a quad is still declined by the between-factors
+    // guard (step 1); a run a quad wide splits the line into two statements
+    // (step 9), each restored on its own anchor, never into a product.
     const SPACING = "explicit spacing between two factors — two statements or one product? (select a single equation)"
-    for (const tex of ["t = 0 ~~~~ r = 2M", "t = 0 \\ \\ \\ r = 2M", "t = 0 ~ r = 2M", "t = 0 \\ r = 2M"]) {
+    for (const tex of ["t = 0 ~ r = 2M", "t = 0 \\ r = 2M"]) {
       for (const target of [SI, GEO]) {
         const result = run(tex, target)
         assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
         if (result.kind === "declined") assert.deepStrictEqual(result.reasons, [SPACING], tex)
       }
     }
+    assert.strictEqual(rawRestored("t = 0 ~~~~ r = 2M"), "t = 0 ~~~~ r = \\frac{2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("t = 0 \\ \\ \\ r = 2M"), "t = 0 \\ \\ \\  r = \\frac{2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("t = 0 ~~~~ r = 2M", GEO), "t = 0 ~~~~ r = 2M")
   })
 
   test("geometrized stripping that leaves only glue empties the product", () => {
@@ -2404,8 +2406,9 @@ describe("batch-1 review fixes", () => {
   })
 
   test("(h) spacing before a sign that separates terms is a statement boundary too", () => {
-    // Live, `t = 0 \qquad -r = 2M` shipped as t = 0 − r/c = 2GM/c³.
-    declines("t = 0 \\qquad -r = 2M", SPACING)
+    // Live, `t = 0 \qquad -r = 2M` shipped as t = 0 − r/c = 2GM/c³. A quad
+    // wide, the run now separates two statements (step 9); narrower, it declines.
+    assert.strictEqual(rawRestored("t = 0 \\qquad -r = 2M"), "t = 0 \\qquad -r = \\frac{2GM}{c^{2}}")
     declines("t = 0 \\; -r = 2M", SPACING)
     declines("v = x = y\\, - x", SPACING)
     // In a single-relation row only a run of a quad or more declines.
@@ -3195,5 +3198,263 @@ describe("delimiters: bars, sized delimiters, Dirac notation and construct names
     declines("E = \\xrightarrow{F} m", CONSTRUCT("\\xrightarrow"))
     declines("E = \\overbrace{m}", CONSTRUCT("\\overbrace"))
     declines("E = \\begin{pmatrix} m \\end{pmatrix}", CONSTRUCT("matrix or array environment"))
+  })
+})
+
+describe("statement layer: lists, connectives, wide space and the unit summary", () => {
+  const HL: TargetSpec = { system: "hl", geometrized: false }
+  const translated = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = result as Extract<TranslationResult, { kind: "translated" }>
+    rendersInKatex(out.restoredTex)
+    // A line that needs nothing restored comes back as written, up to inert typography.
+    const cmp = (s: string) => s.replace(/\\qquad|\\quad|\\[,;!:]/g, "").replace(/[\s{}]/g, "")
+    if (!out.changed) assert.strictEqual(cmp(out.restoredTex), cmp(tex), tex)
+    return out
+  }
+  const expect = (tex: string, target: TargetSpec, restoredTex: string, unit: string, changed: boolean) => {
+    const out = translated(tex, target)
+    assert.strictEqual(out.restoredTex, restoredTex, tex)
+    assert.strictEqual(out.targetUnitTex, unit, tex)
+    assert.strictEqual(out.changed, changed, tex)
+    return out
+  }
+  const declines = (tex: string, reason: string, targets: TargetSpec[] = [SI, GEO]) => {
+    for (const target of targets) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") assert.deepStrictEqual(result.reasons, [reason], tex)
+    }
+  }
+  const M = "\\mathrm{m}"
+  const S = "\\mathrm{s}"
+  const KG = "\\mathrm{kg}"
+  const J = "\\mathrm{kg}\\,\\mathrm{m}^{2}\\,\\mathrm{s}^{-2}"
+  const LIST = "lists or multiple statements — select a single equation"
+  const SPACING = "explicit spacing between two factors — two statements or one product? (select a single equation)"
+  const DECLARATION =
+    "a relation between the constants themselves — a declaration of the unit convention rather than a physical relation to restore"
+  const AMBIGUOUS = "a continuation row after a row of several statements — which one it continues is ambiguous"
+  const UNWRITTEN = (spacing: string) =>
+    `the spacing “${spacing}”, which the engine cannot re-emit as written, is not supported`
+
+  test("KaTeX shapes the connective macros are read from", () => {
+    // translateLine re-emits \implies, \iff and \impliedby from the macro body
+    // their rel atom is located in, and drops the two 5mu kerns beside it.
+    const parse = (tex: string) => katex.__parse(tex, { strict: false, trust: false, displayMode: true })
+    for (const [macro, rel] of [
+      ["\\implies", "\\Longrightarrow"],
+      ["\\iff", "\\Longleftrightarrow"],
+      ["\\impliedby", "\\Longleftarrow"],
+    ]) {
+      const [, before, atom, after] = parse(`a ${macro} b`)
+      assert.strictEqual(atom.type, "atom", macro)
+      assert.strictEqual(atom.family, "rel", macro)
+      assert.strictEqual(atom.text, rel, macro)
+      assert.strictEqual(atom.loc.lexer.input, `\\DOTSB\\;${rel}\\;`, `${macro}: the macro body changed`)
+      for (const kern of [before, after]) {
+        assert.strictEqual(kern.type, "kern", macro)
+        assert.deepStrictEqual([kern.dimension.number, kern.dimension.unit], [5, "mu"], macro)
+      }
+    }
+  })
+
+  test("a list of statements: each is restored on its own anchor", () => {
+    const list = expect("r_s = 2M, \\qquad t = 0", SI, "r_{s} = \\frac{2GM}{c^{2}}, \\qquad t = 0", `${M};\\ ${S}`, true)
+    assert.deepStrictEqual(list.statementUnitTex, [M, S])
+    expect("r_s = 2M, \\qquad t = 0", HL, "r_{s} = \\frac{2GM}{c^{2}}, \\qquad t = 0", "\\mathrm{cm};\\ \\mathrm{s}", true)
+    const geo = expect("r_s = 2M, \\qquad t = 0", GEO, "r_{s} = 2M, \\qquad t = 0", "\\mathrm{cm}", false)
+    assert.deepStrictEqual(geo.statementUnitTex, ["\\mathrm{cm}", "\\mathrm{cm}"])
+    // One unit when every statement carries it.
+    expect("r_s = 2M, \\qquad r = 3M", SI, "r_{s} = \\frac{2GM}{c^{2}}, \\qquad r = \\frac{3GM}{c^{2}}", M, true)
+    expect("r_s = 2M; \\quad E = M", SI, "r_{s} = \\frac{2GM}{c^{2}}; \\quad E = Mc^{2}", `${M};\\ ${J}`, true)
+    expect("r_s = 2M;t = 0", SI, "r_{s} = \\frac{2GM}{c^{2}}; t = 0", `${M};\\ ${S}`, true)
+    expect(
+      "r_s = 2M,\\qquad t = 0,\\qquad E = M",
+      SI,
+      "r_{s} = \\frac{2GM}{c^{2}}, \\qquad t = 0, \\qquad E = Mc^{2}",
+      `${M};\\ ${S};\\ ${J}`,
+      true,
+    )
+    // A single statement carries no per-statement list.
+    assert.strictEqual(translated("r_s = 2M").statementUnitTex, undefined)
+  })
+
+  test("the site's Conventions lists translate, unchanged", () => {
+    // The T list glosses a generic tensor as stress–energy: a registry reading
+    // the owner holds open (integration §4.2 item 11), not a construct problem.
+    expect(
+      "T_{(ab)} = \\tfrac{1}{2}\\left(T_{ab}+T_{ba}\\right), \\qquad T_{[ab]} = \\tfrac{1}{2}\\left(T_{ab}-T_{ba}\\right)",
+      HL,
+      "T_{(ab)} = \\tfrac{1}{2}\\left(T_{ab} + T_{ba}\\right), \\qquad T_{[ab]} = \\tfrac{1}{2}\\left(T_{ab} - T_{ba}\\right)",
+      "\\mathrm{g}\\,\\mathrm{cm}^{-1}\\,\\mathrm{s}^{-2}",
+      false,
+    )
+    expect(
+      "R_{ac} = R_{abc}{}^{b}, \\qquad R = g^{ac} R_{ac}",
+      HL,
+      "R_{ac} = R_{abc}{}^{b}, \\qquad R = g^{ac}R_{ac}",
+      "\\mathrm{cm}^{-2}",
+      false,
+    )
+  })
+
+  test("wide space separates statements only where every part is one", () => {
+    // Bug 1 of the relations design: this shipped t = \frac{0r}{c} = \frac{2GM}{c^{3}}.
+    expect("t = 0 \\qquad r = 2M", SI, "t = 0 \\qquad r = \\frac{2GM}{c^{2}}", `${S};\\ ${M}`, true)
+    expect("t = 0 \\quad r = 2M", SI, "t = 0 \\quad r = \\frac{2GM}{c^{2}}", `${S};\\ ${M}`, true)
+    expect(
+      "r_s = 2M \\qquad r = 2M \\qquad t = M",
+      SI,
+      "r_{s} = \\frac{2GM}{c^{2}} \\qquad r = \\frac{2GM}{c^{2}} \\qquad t = \\frac{GM}{c^{3}}",
+      `${M};\\ ${M};\\ ${S}`,
+      true,
+    )
+    // The run is totalled, as the between-factors guard totals it.
+    expect("t = 0 ~~~~ r = 2M", SI, "t = 0 ~~~~ r = \\frac{2GM}{c^{2}}", `${S};\\ ${M}`, true)
+    expect("r_s = 2M \\qquad\\;\\; t = 0", SI, "r_{s} = \\frac{2GM}{c^{2}} \\qquad\\;\\; t = 0", `${M};\\ ${S}`, true)
+    expect(
+      "\\begin{aligned} t &= 0 \\qquad r = 2M \\end{aligned}",
+      SI,
+      "\\begin{aligned}\nt &= 0 \\qquad r = \\frac{2GM}{c^{2}}\n\\end{aligned}",
+      `${S};\\ ${M}`,
+      true,
+    )
+    // A part that is no statement leaves the run to the between-factors guard.
+    declines("r = 2M \\qquad (1)", SPACING)
+    declines("r = 2M \\qquad t", SPACING)
+    declines("r = M \\quad r", SPACING)
+    declines("r = 2M \\qquad - a", SPACING)
+    // Narrower than a quad, a run separates nothing.
+    declines("t = 0 \\;\\;\\; r = 2M", SPACING)
+    declines("t = 0 \\hspace{0.9em} r = 2M", SPACING)
+    // The truer reason, read inside the statement, wins.
+    declines("r = 2M \\quad \\text{for} \\quad t > 0", "prose (“for”) inside the equation — select a single equation")
+  })
+
+  test("spacing around a separator is re-emitted as written, or declines by name", () => {
+    // A mu kern is rebuilt as \mkern (LaTeX's \hspace takes no mu units).
+    expect("r_s = 2M,\\mkern18mu t = 0", SI, "r_{s} = \\frac{2GM}{c^{2}}, \\mkern18mu t = 0", `${M};\\ ${S}`, true)
+    expect("r_s = 2M,\\mkern18mu t = 0", GEO, "r_{s} = 2M, \\mkern18mu t = 0", "\\mathrm{cm}", false)
+    expect("r_s = 2M,~t = 0", SI, "r_{s} = \\frac{2GM}{c^{2}}, ~ t = 0", `${M};\\ ${S}`, true)
+    expect("r_s = 2M~,~~t = 0", SI, "r_{s} = \\frac{2GM}{c^{2}} ~ , ~~ t = 0", `${M};\\ ${S}`, true)
+    expect("r_s = 2M,\\, t = 0", SI, "r_{s} = \\frac{2GM}{c^{2}}, \\, t = 0", `${M};\\ ${S}`, true)
+    // A kern written in a way its width does not name cannot be re-emitted as
+    // written; the line declines naming it rather than respelling it.
+    declines("r_s = 2M,\\enspace t = 0", UNWRITTEN("\\enspace"))
+    declines("r_s = 2M,\\hspace{2em} t = 0", UNWRITTEN("\\hspace{2em}"))
+    declines("r_s = 2M,\\hskip10pt t = 0", UNWRITTEN("\\hskip10pt"))
+    declines("t = 0 \\enspace\\enspace r = 2M", UNWRITTEN("\\enspace"))
+  })
+
+  test("a logical connective separates two statements; each side must be one", () => {
+    expect(
+      "M \\neq 0 \\qquad \\Longrightarrow \\qquad r_s = 2M",
+      SI,
+      "M \\neq 0 \\qquad \\Longrightarrow \\qquad r_{s} = \\frac{2GM}{c^{2}}",
+      `${KG};\\ ${M}`,
+      true,
+    )
+    // The macros are re-emitted whole, their own \; with them.
+    expect("M \\neq 0 \\implies r_s = 2M", SI, "M \\neq 0 \\implies r_{s} = \\frac{2GM}{c^{2}}", `${KG};\\ ${M}`, true)
+    expect("r > 2M \\iff t > 0", SI, "r > \\frac{2GM}{c^{2}} \\iff t > 0", `${M};\\ ${S}`, true)
+    expect("t > M \\impliedby r > 2M", SI, "t > \\frac{GM}{c^{3}} \\impliedby r > \\frac{2GM}{c^{2}}", `${S};\\ ${M}`, true)
+    expect(
+      "r = M \\quad \\implies \\quad t = M",
+      SI,
+      "r = \\frac{GM}{c^{2}} \\quad \\implies \\quad t = \\frac{GM}{c^{3}}",
+      `${M};\\ ${S}`,
+      true,
+    )
+    expect("r_s = 2M \\Longrightarrow t = 0", GEO, "r_{s} = 2M \\Longrightarrow t = 0", "\\mathrm{cm}", false)
+    // A leading connective: the left operand is the previous display, or the prose.
+    expect("\\Rightarrow r_s = 2M", SI, "\\Rightarrow r_{s} = \\frac{2GM}{c^{2}}", M, true)
+    expect(
+      "\\begin{aligned} r_s &= 2M \\\\ &\\Rightarrow E = M \\end{aligned}",
+      SI,
+      "\\begin{aligned}\nr_{s} &= \\frac{2GM}{c^{2}} \\\\\n& \\Rightarrow E = Mc^{2}\n\\end{aligned}",
+      `${M};\\ ${J}`,
+      true,
+    )
+    // The relations reviewer's counterexamples: a relation or a side located
+    // only inside itself beside the connective faulted in the prototype.
+    expect("r \\neq 0 \\implies \\frac{r}{2} = M", SI, "r \\neq 0 \\implies \\frac{r}{2} = \\frac{GM}{c^{2}}", M, true)
+    translated("r > 0 \\iff \\frac{t}{M} > 0")
+    translated("\\frac{r}{M} \\neq 2 \\implies \\frac{t}{M} \\ne 1")
+    const NOTHING = "an implication with nothing on one side"
+    const NO_STATEMENT = "an implication whose side is not a statement (it has no relation)"
+    for (const tex of ["r_s = 2M \\Rightarrow", "\\Rightarrow", "r_s = 2M \\Rightarrow \\Rightarrow t = M"]) declines(tex, NOTHING)
+    declines("r = 2M, \\quad \\Rightarrow t = 0", NOTHING)
+    for (const tex of ["r_s = 2M \\Rightarrow M", "r \\Leftarrow 2M", "x \\Rightarrow 0"]) declines(tex, NO_STATEMENT)
+  })
+
+  test("a declaration in any statement declines the whole line", () => {
+    // The relations reviewer's counterexamples: at hl+geo these shipped
+    // `1 = 1, \qquad r_s = 2M`, and in SI c stayed restored beside c = 1.
+    for (const tex of ["c = 1, \\qquad r_s = 2M", "c = 1 \\implies r_s = 2M", "r_s = 2M, \\qquad G = 1"]) {
+      declines(tex, DECLARATION, [SI, HL, GEO])
+    }
+  })
+
+  test("what is not a list of statements keeps its decline", () => {
+    for (const tex of [
+      "\\theta = 0, \\pi",
+      "\\theta = 0,\\ \\pi",
+      "r_s = 2M, t = 0",
+      "x, y = 0",
+      "; r_s = 2M",
+      "E = mc^2, \\qquad (1)",
+      // A comma followed by a break hint, not by spacing, stays a bare comma.
+      "r_s = 2M,\\nobreak t = 0",
+    ]) {
+      declines(tex, LIST)
+    }
+    declines("r_s = 2M, \\quad = 3M", "a relation with nothing on one side of it")
+    // A comma nested in an expression is not a list of statements.
+    declines(
+      "x = \\frac{a, b}{c}",
+      "a comma or semicolon inside an expression (arguments, a tuple, or a list), which the engine does not read as a product",
+    )
+  })
+
+  test("continuation rows and the array banner", () => {
+    const chain = expect(
+      "\\begin{aligned} r &= 2M \\\\ &= M, \\quad t = 0 \\end{aligned}",
+      SI,
+      "\\begin{aligned}\nr &= \\frac{2GM}{c^{2}} \\\\\n&= \\frac{GM}{c^{2}}, \\quad t = 0\n\\end{aligned}",
+      `${M};\\ ${S}`,
+      true,
+    )
+    assert.deepStrictEqual(chain.statementUnitTex, [M, S])
+    // After a row with a separator, a continuation could continue either statement.
+    declines("\\begin{aligned} r &= 2M, \\quad t = M \\\\ &= 0 \\end{aligned}", AMBIGUOUS)
+    declines("\\begin{aligned} r &= 2M \\\\ &\\Rightarrow t = M \\\\ &= 3M \\end{aligned}", AMBIGUOUS)
+    declines("\\begin{aligned} r &= 2M \\\\ &= M \\qquad t = 0 \\\\ &= 3M \\end{aligned}", AMBIGUOUS)
+    // Intended banner changes (relations reviewer): the banner named the last
+    // row's unit for the whole array; it names each statement's now.
+    expect(
+      "\\begin{aligned} r_s &= 2M \\\\ t &= M \\end{aligned}",
+      SI,
+      "\\begin{aligned}\nr_{s} &= \\frac{2GM}{c^{2}} \\\\\nt &= \\frac{GM}{c^{3}}\n\\end{aligned}",
+      `${M};\\ ${S}`,
+      true,
+    )
+    expect(
+      "\\begin{aligned} E &= M \\\\ r &= 2M \\\\ &= 3M \\end{aligned}",
+      SI,
+      "\\begin{aligned}\nE &= Mc^{2} \\\\\nr &= \\frac{2GM}{c^{2}} \\\\\n&= \\frac{3GM}{c^{2}}\n\\end{aligned}",
+      `${J};\\ ${M}`,
+      true,
+    )
+    // A continuation is its chain's statement, so one chain is one unit.
+    const one = expect(
+      "\\begin{aligned} r &= 2M \\\\ &= M \\end{aligned}",
+      SI,
+      "\\begin{aligned}\nr &= \\frac{2GM}{c^{2}} \\\\\n&= \\frac{GM}{c^{2}}\n\\end{aligned}",
+      M,
+      true,
+    )
+    assert.strictEqual(one.statementUnitTex, undefined)
   })
 })

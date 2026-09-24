@@ -129,7 +129,16 @@ export function renderTranslation(
     if (result.targetUnitTex) {
       const u = document.createElement("p")
       u.className = "unitline"
-      u.textContent = "Both sides carry the unit: "
+      // A line of several statements: targetUnitTex is their one unit when
+      // they share it, else each statement's unit in order ("m; s"), which
+      // "Both sides carry" would misstate as a single unit.
+      const units = result.statementUnitTex ?? []
+      u.textContent =
+        units.length < 2
+          ? "Both sides carry the unit: "
+          : units.every((unit) => unit === units[0])
+            ? "Both sides of every statement carry the unit: "
+            : "Each statement carries its own unit, in order: "
       const span = document.createElement("span")
       katex.render(result.targetUnitTex, span, { throwOnError: false })
       u.appendChild(span)

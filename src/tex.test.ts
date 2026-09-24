@@ -52,6 +52,23 @@ describe("overToFrac", () => {
     ])
     assert.deepStrictEqual(splitStatements("f(x, y) = g(y), h = 2"), ["f(x, y) = g(y), h = 2"])
   })
+  test("the engine's statement layer is looser than this splitter, and splits what it keeps whole", () => {
+    // splitStatements wants spacing on both sides of a comma, and splits wide
+    // space only at \quad and \qquad; the engine splits a comma followed by
+    // any spacing, a run of spacing a quad wide, and a logical connective.
+    // A line kept whole here reaches the engine whole, and is split there.
+    for (const [tex, restored] of [
+      ["r_s = 2M,\\; t = 0", "r_{s} = \\frac{2GM}{c^{2}}, \\; t = 0"],
+      ["t = 0 ~~~~ r = 2M", "t = 0 ~~~~ r = \\frac{2GM}{c^{2}}"],
+      ["r_s = 2M,\\mkern18mu t = 0", "r_{s} = \\frac{2GM}{c^{2}}, \\mkern18mu t = 0"],
+      ["M \\neq 0 \\implies r_s = 2M", "M \\neq 0 \\implies r_{s} = \\frac{2GM}{c^{2}}"],
+    ]) {
+      assert.deepStrictEqual(splitStatements(tex), [tex])
+      const result = translateTex(tex, katex, GR, SI)
+      assert.ok(result.kind === "translated" && result.restoredTex === restored, `${tex} → ${JSON.stringify(result)}`)
+      assert.ok(result.kind === "translated" && result.statementUnitTex?.length === 2, tex)
+    }
+  })
   test("what is not several statements stays whole: tuples, index ranges, a qualifier with no relation, a matrix", () => {
     assert.deepStrictEqual(splitStatements("X^{\\mu}=(t,\\vec{x})"), ["X^{\\mu}=(t,\\vec{x})"])
     assert.deepStrictEqual(splitStatements("\\mu=0,\\ldots,D-1"), ["\\mu=0,\\ldots,D-1"])

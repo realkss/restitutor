@@ -24,7 +24,8 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("\\mathrm{SL}(2,\\mathbb{R})").class, "refused")
     assert.strictEqual(outcome("G_{ab} + \\Lambda g_{ab} = {8\\pi G \\over c^{4}} T_{ab}").class, "reassembly")
     assert.strictEqual(outcome("r_s = \\frac{2M}").class, "parse")
-    assert.strictEqual(outcome("r_s = 2M, \\quad T_H = \\frac{1}{8\\pi M}").class, "fragment")
+    // A list item that is no statement; a list of statements is now read.
+    assert.strictEqual(outcome("\\theta = 0, \\quad \\pi").class, "fragment")
     assert.strictEqual(outcome("E \\propto M").class, "proportional")
     assert.strictEqual(outcome("\\int \\rho \\, dV = M").class, "unsupported")
     assert.strictEqual(outcome("c = G = 1").class, "declaration")
@@ -37,10 +38,22 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("g_{00} \\approx -c^2 - 2\\Phi").class, "no-completion")
     assert.strictEqual(outcome("a = b = c").class, "no-completion")
     assert.strictEqual(outcome("(r_s = 2M)").class, "unsupported") // a bar or relation inside a group is the reader's
-    assert.strictEqual(outcome("r_s = 2M, \\quad T_H = 1").class, "fragment")
-    // Two statements set side by side with only spacing between them.
-    assert.strictEqual(outcome("t = 0 \\qquad r = 2M").class, "fragment")
+    // A bare comma is not a statement separator.
+    assert.strictEqual(outcome("r_s = 2M, T_H = 1").class, "fragment")
+    // Two statements set side by side with spacing narrower than a quad
+    // between them; a quad-wide run before something that is no statement.
+    assert.strictEqual(outcome("t = 0 \\;\\;\\; r = 2M").class, "fragment")
     assert.strictEqual(outcome("r = 2M \\qquad (1)").class, "fragment")
+    // An implication with a side that is no statement, or no side; a
+    // continuation row after a list of statements.
+    assert.strictEqual(outcome("r_s = 2M \\Rightarrow M").class, "fragment")
+    assert.strictEqual(outcome("r_s = 2M \\Rightarrow").class, "fragment")
+    assert.strictEqual(
+      outcome("\\begin{aligned} r &= 2M, \\quad t = M \\\\ &= 0 \\end{aligned}").class,
+      "fragment",
+    )
+    // A comma inside an expression other than brackets is the reader's.
+    assert.strictEqual(outcome("x = \\frac{a, b}{c}").class, "unsupported")
     assert.strictEqual(outcome("\\sin(x").class, "parse")
     // An indexed component along θ or φ that carries a superscript: the angular guard.
     assert.strictEqual(outcome("\\Gamma^{\\mu}_{\\theta\\theta} = 0").class, "unsupported")
@@ -104,7 +117,7 @@ describe("the decline ledger", () => {
     // digit superscript beside an index, an evaluation bar and spacing before
     // an argument the engine cannot re-emit are the reader's; a numeral with
     // a power in it is a numeric value like any other.
-    for (const tex of ["< r", "\\le r", "t = 0 \\qquad -r = 2M"]) assert.strictEqual(outcome(tex).class, "fragment", tex)
+    for (const tex of ["< r", "\\le r", "t = 0 \\;\\;\\; -r = 2M"]) assert.strictEqual(outcome(tex).class, "fragment", tex)
     for (const tex of [
       "E = m{\\bf c}^2",
       "x = \\mathcal{G} M",

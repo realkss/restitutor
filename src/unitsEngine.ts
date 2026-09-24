@@ -307,7 +307,14 @@ export type TranslationResult =
       originalTex: string
       restoredTex: string
       changed: boolean
+      /**
+       * The unit both sides carry. For a line or an array of several
+       * statements, the one unit when all of them carry it, otherwise each
+       * statement's unit in order, joined by `;\ `.
+       */
       targetUnitTex: string
+      /** Each statement's unit, in order; present only when more than one statement was translated. */
+      statementUnitTex?: string[]
       legend: LegendEntry[]
     }
   | { kind: "no-anchor"; legend: LegendEntry[] }
@@ -1968,8 +1975,15 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
       i += 1
       continue
     }
+    // A row's own side meets only the bare commas translateLine leaves in its
+    // statements, a list. Anywhere else a comma or a semicolon sits inside an
+    // expression, and "select a single equation" would be untrue there.
     if (n.type === "atom" && n.family === "punct") {
-      throw new Unsupported("lists or multiple statements — select a single equation")
+      throw new Unsupported(
+        spacing == null && isListPunct(n)
+          ? "a comma or semicolon inside an expression (arguments, a tuple, or a list), which the engine does not read as a product"
+          : LIST_REASON,
+      )
     }
 
     // Digit runs → one numeral factor, with the power it is raised to.
@@ -4010,6 +4024,8 @@ type RowResult = {
   tabAtRel: boolean[]
   target: Dim
   hadRel: boolean
+  /** The row opens at a relation and continues the chain above it, whose statement it is. */
+  continued: boolean
 }
 
 function rowTexOf(row: RowResult): string {
@@ -4108,7 +4124,15 @@ function unsupportedRelReason(text: string): string {
   return `the unsupported relation “${text}”`
 }
 
-function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowResult {
+/**
+ * The target a row may continue: the dimension of the chain above it, null
+ * when nothing is above it, or "ambiguous" when the row above held a
+ * separator (translateLine) and a continuation could belong to the statement
+ * on either side of it.
+ */
+type Carried = Dim | null | "ambiguous"
+
+function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Carried): RowResult {
   const grouped = groupDelims(nodes)
 
   const sides: any[][] = []
@@ -4174,7 +4198,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
     // No relation: analyze for the legend, but there is nothing to anchor.
     parseSum(grouped, ctx, { anchor: "none" }, "wide")
     const src = srcOfNodes(nodes, ctx)
-    return { emitSides: () => [src], rels: [], tabAtRel: [], target: ZERO, hadRel: false }
+    return { emitSides: () => [src], rels: [], tabAtRel: [], target: ZERO, hadRel: false, continued: false }
   }
 
   const spacing: FactorSpacing = rels.length > 1 ? "any" : "wide"
@@ -4204,8 +4228,17 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
   // row carries the quantities. Any row that anchors itself is judged, and one
   // declaration declines the whole equation: in `c &= 1 \\ E &= mc^2` the first
   // row would otherwise ship `c = 1` under a unit banner.
+  //
+  // After a row that held several statements (`r &= 2M, \quad t = M`, or
+  // `&\Rightarrow t = M` after the chain above) a continuation could continue
+  // any of them, and nothing written says which.
   let target: Dim
   if (sums[0] == null) {
+    if (carriedTarget === "ambiguous") {
+      throw new Unsupported(
+        "a continuation row after a row of several statements — which one it continues is ambiguous",
+      )
+    }
     if (carriedTarget == null) {
       throw new Unsupported(`a row that begins at “${rels[0]}” with nothing before it to anchor it`)
     }
@@ -4213,7 +4246,8 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
   } else {
     declarationGuard(sums, relKinds, ctx)
     const anchored = sums.map((sum) => (sum == null ? null : sumAnchor(sum.terms))).find((d) => d != null)
-    target = anchored ?? carriedTarget ?? ZERO // every term a literal zero: identity
+    // Every term a literal zero: identity.
+    target = anchored ?? (carriedTarget === "ambiguous" ? null : carriedTarget) ?? ZERO
   }
 
   // Insertions are solved once, during analysis; emission can then be replayed.
@@ -4230,7 +4264,295 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
       sum == null ? "" : emitSum(sum.terms, sum.ops, insertionsPerSide[idx], ctx),
     )
 
-  return { emitSides, rels, tabAtRel, target: resolvedTarget, hadRel: true }
+  return { emitSides, rels, tabAtRel, target: resolvedTarget, hadRel: true, continued: sums[0] == null }
+}
+
+/**
+ * Logical connectives. Their operands are propositions: a connective relates
+ * no quantities, so no dimension flows across it, and each side is a
+ * statement translated on its own anchor. Single arrows are not among them
+ * (ARROWS): `k \to k/|k|` substitutes one quantity for another.
+ */
+const CONNECTIVES = new Set([
+  "\\Rightarrow",
+  "\\Longrightarrow",
+  "\\Leftarrow",
+  "\\Longleftarrow",
+  "\\Leftrightarrow",
+  "\\Longleftrightarrow",
+])
+
+/**
+ * The connectives KaTeX builds from a macro, keyed by the macro body their
+ * relation is located in: `\implies` expands to `\DOTSB\;\Longrightarrow\;`,
+ * so its rel atom has no span in the equation, and each `\;` becomes a kern
+ * beside it. A relation located in one of these bodies can only have been
+ * written as that macro — the same fact spacingTexOf reads `~` from — so the
+ * macro is re-emitted whole, and its two kerns go with it instead of being
+ * emitted a second time as the author's spacing. This reads the parse tree,
+ * not the source: the forward scan ≠ needs (relSpellingOf) stops at the
+ * spacing authors set around a connective, `\quad\implies\quad`.
+ */
+const CONNECTIVE_MACROS: Record<string, string> = {
+  "\\DOTSB\\;\\Longrightarrow\\;": "\\implies",
+  "\\DOTSB\\;\\Longleftarrow\\;": "\\impliedby",
+  "\\DOTSB\\;\\Longleftrightarrow\\;": "\\iff",
+}
+
+/**
+ * The connective at `grouped[idx]`, or null when there is none: its spelling
+ * as written, and the kerns its macro set beside it, which no earlier macro
+ * may have claimed (`taken`). A connective whose spelling cannot be read
+ * declines rather than be emitted as something the reader did not write.
+ */
+function connectiveAt(
+  grouped: any[],
+  idx: number,
+  ctx: Ctx,
+  taken: Set<any>,
+): { tex: string; owned: any[] } | null {
+  const n = grouped[idx]
+  if (!(n?.type === "atom" && n.family === "rel" && CONNECTIVES.has(n.text))) return null
+  if (locIsOwn(n.loc, ctx.input)) return { tex: safeSrc(n, ctx) || n.text, owned: [] }
+  const macro = CONNECTIVE_MACROS[n.loc?.lexer?.input]
+  const owned = [grouped[idx - 1], grouped[idx + 1]]
+  if (macro == null || !owned.every((k) => k?.type === "kern" && kernCommandOf(k) === "\\;" && !taken.has(k))) {
+    throw new Unsupported(`the relation “${n.text}”, whose written spelling the engine could not read`)
+  }
+  return { tex: macro, owned }
+}
+
+/** What stands between two statements, and the spacing written before and after it. */
+type Separator = { kind: "list" | "connective" | "wide"; tex: string; pre: any[]; post: any[] }
+
+type LineItem = { row: RowResult } | { tex: string }
+
+/** A display line as statements: each translated as its own row, in order, with the separators between them. */
+type LineResult = { items: LineItem[]; rows: RowResult[] }
+
+const isListPunct = (n: any) => n?.type === "atom" && n.family === "punct" && (n.text === "," || n.text === ";")
+
+/** What a statement is made of: every node but spacing, alignment tabs and empty groups. */
+const isStatementContent = (n: any) => isMeaningfulNode(n) && n.type !== "__tab"
+
+/** The total width in em of the run of spacing that starts at `nodes[idx]` (skipEm). */
+function runEmAt(nodes: any[], idx: number): number {
+  let em = 0
+  for (let k = idx; k < nodes.length && nodes[k] != null && SKIP_TYPES.has(nodes[k].type); k += 1) {
+    em += skipEm(nodes[k])
+  }
+  return em
+}
+
+/** Whether a run of nodes is a statement: it holds a relation, and ends at none, nor opens at one unless allowed. */
+function isStatement(nodes: any[], mayOpenAtRelation: boolean): boolean {
+  const content = nodes.filter(isStatementContent)
+  return (
+    content.some((n) => relTextOf(n) != null) &&
+    (mayOpenAtRelation || relTextOf(content[0]) == null) &&
+    relTextOf(content[content.length - 1]) == null
+  )
+}
+
+/**
+ * Spacing that separates two statements, re-emitted as written: a spacing
+ * node through spacingTexOf, an alignment tab as `&`. A kern has no span, so
+ * it is rebuilt from its width: the command KaTeX gives that width, `\mkern`
+ * for any other width in mu (LaTeX's `\hspace` takes no mu), `\hspace`
+ * otherwise. A kern written some other way (`\enspace`, `\hspace{1em}`)
+ * then no longer matches the source, and the backstop declines, naming it.
+ */
+function separatorSpacingTex(raw: any, ctx: Ctx): string {
+  if (raw?.type === "__tab") return "&"
+  if (raw?.type === "kern") {
+    const command = kernCommandOf(raw)
+    if (command != null) return command
+    const { number, unit } = raw.dimension
+    return unit === "mu" ? `\\mkern${number}mu` : `\\hspace{${number}${unit}}`
+  }
+  return spacingTexOf(raw, ctx)
+}
+
+/** A separator's TeX, spaced to sit between two rows. A list's comma or semicolon closes the statement before it. */
+function separatorTex(sep: Separator, ctx: Ctx): string {
+  const pre = joinTex(sep.pre.map((n) => separatorSpacingTex(n, ctx)))
+  const post = joinTex(sep.post.map((n) => separatorSpacingTex(n, ctx)))
+  const body = [pre, sep.tex, post].filter((s) => s !== "").join(" ")
+  return `${sep.kind === "list" && pre === "" ? "" : " "}${body} `
+}
+
+/**
+ * A piece between hard separators, split at each run of spacing at least a
+ * quad wide (the whole run totalled, as the between-factors guard totals it)
+ * when every part is a statement: each holds a relation, none ends at one,
+ * and none but the first opens at one. Otherwise the piece stays whole, and
+ * a wide run inside it is left to that guard, which declines it: in
+ * `r = 2M \qquad (1)` the (1) is an equation label, not a statement.
+ */
+function wideSplit(piece: any[]): { parts: any[][]; runs: any[][] } {
+  const parts: any[][] = [[]]
+  const runs: any[][] = []
+  for (let k = 0; k < piece.length; k += 1) {
+    const part = parts[parts.length - 1]
+    if (piece[k] == null || !SKIP_TYPES.has(piece[k].type) || !part.some(isStatementContent)) {
+      part.push(piece[k])
+      continue
+    }
+    let end = k
+    while (end < piece.length && piece[end] != null && (SKIP_TYPES.has(piece[end].type) || isEmptyOrdgroup(piece[end]))) {
+      end += 1
+    }
+    const run = piece.slice(k, end)
+    const spacing = run.filter((n) => !isEmptyOrdgroup(n))
+    if (runEmAt(spacing, 0) >= 1 - 1e-9) {
+      runs.push(spacing)
+      parts.push([])
+    } else {
+      part.push(...run)
+    }
+    k = end - 1
+  }
+  const split = parts.length > 1 && parts.every((part, j) => isStatement(part, j === 0))
+  return split ? { parts, runs } : { parts: [piece], runs: [] }
+}
+
+const LIST_REASON = "lists or multiple statements — select a single equation"
+
+/**
+ * A display line as the statements it holds. One line may state several
+ * things: a list (`r_s = 2M, \qquad t = 0`), an implication
+ * (`M \neq 0 \implies r_s = 2M`), or relations set apart by wide space
+ * (`t = 0 \qquad r = 2M`, which read as one chain shipped as t = 0·r = 2M).
+ * Nothing crosses a separator: each statement is translated as a row of its
+ * own, on its own anchor, and the line is re-emitted statement by statement
+ * with each separator and its spacing as written.
+ *
+ * What separates, at the top level of the line:
+ * - `;`, always;
+ * - `,` only when explicit spacing follows it. A bare comma separates
+ *   arguments and list members as often as statements, so it stays in the
+ *   statement and declines there as a list;
+ * - a logical connective (CONNECTIVES);
+ * - a run of spacing at least a quad wide, only where every part it leaves is
+ *   a statement (wideSplit).
+ * Every statement must hold a relation and end at none, and none but the
+ * first may open at one (the first may continue the chain above it). Between
+ * two complete relations a comma, a semicolon or a connective has no
+ * single-chain reading, so the split is a fact of the notation; a line that
+ * falls short of it declines. Only a leading connective may have nothing
+ * before it: its left operand is the previous display, or the prose.
+ *
+ * The rule is looser than the extension's own splitter (src/tex.ts
+ * splitStatements), which wants spacing on both sides of a comma and splits
+ * wide space only at `\quad` and `\qquad`. A line that splitter keeps whole
+ * reaches the engine whole, and is split here under the guards above.
+ *
+ * Only the first statement may continue the chain carried from the row
+ * above. Each statement is judged for a declaration on its own
+ * (declarationGuard, in translateRow), and one declaration declines the whole
+ * line: `c = 1, \qquad r_s = 2M` would otherwise restore c in r_s after
+ * declaring it 1. The pieces are checked in order, as they are translated, so
+ * a reason read in an earlier statement is the one the reader sees.
+ */
+function translateLine(nodes: any[], ctx: Ctx, carried: Carried): LineResult {
+  const grouped = groupDelims(nodes)
+  const pieces: any[][] = [[]]
+  const seps: Separator[] = []
+  const owned = new Set<any>()
+  for (let gi = 0; gi < grouped.length; gi += 1) {
+    const n = grouped[gi]
+    if (owned.has(n)) continue
+    if (isListPunct(n) && (n.text === ";" || runEmAt(grouped, gi + 1) > 0)) {
+      seps.push({ kind: "list", tex: n.text, pre: [], post: [] })
+      pieces.push([])
+      continue
+    }
+    const connective = connectiveAt(grouped, gi, ctx, owned)
+    if (connective != null) {
+      // The macro's first kern is the node just read into the current piece.
+      if (connective.owned.length > 0) {
+        pieces[pieces.length - 1].pop()
+        owned.add(connective.owned[1])
+      }
+      seps.push({ kind: "connective", tex: connective.tex, pre: [], post: [] })
+      pieces.push([])
+      continue
+    }
+    pieces[pieces.length - 1].push(n)
+  }
+
+  // Spacing and an alignment tab around a separator belong to it, not to the
+  // statements; `aligned`'s empty shim groups are no one's.
+  seps.forEach((sep, i) => {
+    const left = pieces[i]
+    for (;;) {
+      const last = left[left.length - 1]
+      if (last == null || !(SKIP_TYPES.has(last.type) || last.type === "__tab" || isEmptyOrdgroup(last))) break
+      left.pop()
+      if (!isEmptyOrdgroup(last)) sep.pre.unshift(last)
+    }
+    const right = pieces[i + 1]
+    while (right.length > 0 && right[0] != null && (SKIP_TYPES.has(right[0].type) || isEmptyOrdgroup(right[0]))) {
+      const first = right.shift()
+      if (!isEmptyOrdgroup(first)) sep.post.push(first)
+    }
+  })
+
+  const items: LineItem[] = []
+  const rows: RowResult[] = []
+  pieces.forEach((piece, i) => {
+    const before = i > 0 ? seps[i - 1] : null
+    const after = seps[i] ?? null
+    if (before != null) items.push({ tex: separatorTex(before, ctx) })
+    if (seps.length > 0) {
+      const byConnective = before?.kind === "connective" || after?.kind === "connective"
+      const content = piece.filter(isStatementContent)
+      if (content.length === 0) {
+        if (i === 0 && after?.kind === "connective") return
+        throw new Unsupported(byConnective ? "an implication with nothing on one side" : LIST_REASON)
+      }
+      if (!content.some((n) => relTextOf(n) != null)) {
+        // Read as a line with no relation is, for its legend and for any truer
+        // reason its content gives (`L_{-1}|\psi\rangle\ ,\ L_{-2}|\psi\rangle`
+        // is Dirac notation before it is a list), then declined.
+        translateRow(piece, ctx, null)
+        throw new Unsupported(
+          byConnective ? "an implication whose side is not a statement (it has no relation)" : LIST_REASON,
+        )
+      }
+      if (!isStatement(piece, i === 0)) throw new Unsupported("a relation with nothing on one side of it")
+    }
+    const { parts, runs } = wideSplit(piece)
+    parts.forEach((part, j) => {
+      if (j > 0) items.push({ tex: separatorTex({ kind: "wide", tex: "", pre: [], post: runs[j - 1] }, ctx) })
+      const row = translateRow(part, ctx, i === 0 && j === 0 ? carried : null)
+      rows.push(row)
+      items.push({ row })
+    })
+  })
+  return { items, rows }
+}
+
+/**
+ * A line's TeX, statement by statement. Only the start is trimmed (the space
+ * before a leading connective): a line ends on a row, whose last character
+ * may be the space of a control space.
+ */
+function lineTexOf(line: LineResult): string {
+  return line.items
+    .map((item) => ("row" in item ? rowTexOf(item.row) : item.tex))
+    .join("")
+    .trimStart()
+}
+
+/**
+ * The unit banner for a line or an array of statements: the one unit when
+ * every statement carries it, otherwise each statement's unit in order, with
+ * `;\ ` between them. "Both sides carry s" for `r_s &= 2M \\ t &= M` claimed
+ * the last row's unit for the whole.
+ */
+function unitSummaryTex(units: string[]): string {
+  return units.every((unit) => unit === units[0]) ? units[0] : units.join(";\\ ")
 }
 
 /**
@@ -4903,7 +5225,7 @@ function translateCore(
     }))
 
   const finish = (
-    make: () => { restoredTex: string; targetUnitTex: string; changed: boolean } | "no-anchor",
+    make: () => { restoredTex: string; statementUnits: string[]; changed: boolean } | "no-anchor",
   ): TranslationResult => {
     try {
       const outcome = make()
@@ -4918,12 +5240,14 @@ function translateCore(
       if (outcome === "no-anchor") {
         return { kind: "no-anchor", legend: legendOut() }
       }
+      const units = outcome.statementUnits
       return {
         kind: "translated",
         originalTex: tex,
         restoredTex: outcome.restoredTex,
         changed: outcome.changed,
-        targetUnitTex: outcome.targetUnitTex,
+        targetUnitTex: unitSummaryTex(units),
+        ...(units.length > 1 ? { statementUnitTex: units } : {}),
         legend: legendOut(),
       }
     } catch (error) {
@@ -5079,22 +5403,30 @@ function translateCore(
           idx === 0 ? nodeListOf(cell) : [{ type: "__tab" }, ...nodeListOf(cell)],
         ),
       )
-      let carried: Dim | null = null
+      // A row may hold several statements (translateLine); the banner names
+      // the unit of each statement the array states, a continuation row's
+      // being its chain's. After a row with a separator in it, a continuation
+      // could continue the chain on either side of the separator — before a
+      // leading connective, the chain of the rows above — so none is carried.
+      let carried: Carried = null
       let anyRel = false
-      const results: RowResult[] = []
+      const results: LineResult[] = []
+      const statementUnits: string[] = []
       const gaps: string[] = []
       for (let rowIdx = 0; rowIdx < rows.length; rowIdx += 1) {
         const row = rows[rowIdx]
         if (row.length === 0 || row.every((n) => isEmptyOrdgroup(n) || n?.type === "__tab"))
           continue
-        const res = translateRow(row, ctx, carried)
-        if (res.hadRel) {
-          carried = res.target
+        const line = translateLine(row, ctx, carried)
+        const stated = line.rows.filter((res) => res.hadRel)
+        if (stated.length > 0) {
+          carried = line.items.length > 1 ? "ambiguous" : stated[0].target
+          for (const res of stated) if (!res.continued) statementUnits.push(unitTexOf(res.target, spec))
           anyRel = true
         } else if (anyRel) {
           throw new Unsupported("a continuation row without its own relation")
         }
-        results.push(res)
+        results.push(line)
         // Row spacing is content: `\\[6pt]` must not become a bare `\\`.
         const gap = arrayNode.rowGaps?.[rowIdx]
         gaps.push(gap ? `[${gap.number}${gap.unit}]` : "")
@@ -5103,28 +5435,25 @@ function translateCore(
       const rebuild = () => {
         const body = results
           .map(
-            (res, idx) => rowTexOf(res) + (idx < results.length - 1 ? ` \\\\${gaps[idx]}\n` : ""),
+            (line, idx) => lineTexOf(line) + (idx < results.length - 1 ? ` \\\\${gaps[idx]}\n` : ""),
           )
           .join("")
         return `\\begin{${envName}}${envArg}\n${body}\n\\end{${envName}}`
       }
       const restored = rebuild()
       checkRebuilt(restored, rebuild)
-      return {
-        restoredTex: restored,
-        targetUnitTex: unitTexOf(carried ?? ZERO, spec),
-        changed: ctx.mutated,
-      }
+      return { restoredTex: restored, statementUnits, changed: ctx.mutated }
     }
 
-    const res = translateRow(nodes, ctx, null)
-    if (!res.hadRel) return "no-anchor"
-    const rebuild = () => rowTexOf(res)
+    const line = translateLine(nodes, ctx, null)
+    const stated = line.rows.filter((res) => res.hadRel)
+    if (stated.length === 0) return "no-anchor"
+    const rebuild = () => lineTexOf(line)
     const restored = rebuild()
     checkRebuilt(restored, rebuild)
     return {
       restoredTex: restored,
-      targetUnitTex: unitTexOf(res.target, spec),
+      statementUnits: stated.map((res) => unitTexOf(res.target, spec)),
       changed: ctx.mutated,
     }
   })

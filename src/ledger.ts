@@ -41,15 +41,18 @@ const STRUCTURAL: [RegExp, OutcomeClass][] = [
   [/reassembly fault/, "reassembly"],
   [/KaTeX could not parse|unbalanced delimiters/, "parse"],
   // A trailing "d" the engine reads as a derivative, and a relation or a
-  // comma inside brackets (p(d | H), X(σ,τ)), are the reader's, not the
-  // carrier's; they are tried before the fragment wordings they share.
-  [/reads as a derivative|a relation inside brackets|a comma inside brackets/, "unsupported"],
+  // comma inside brackets (p(d | H), X(σ,τ)) or inside any other expression,
+  // are the reader's, not the carrier's; they are tried before the fragment
+  // wordings they share.
+  [/reads as a derivative|a relation inside brackets|a comma inside brackets|a comma or semicolon inside an expression/, "unsupported"],
   // The carrier was not one equation: an alignment block, a list of
   // statements, a row cut at its relation, a relation with an empty side, a
   // trailing operator, a bare sign pattern, nothing. Spacing between two
   // factors is the same question asked of a chain: two statements set side
-  // by side, or one product.
-  [/lists or multiple statements|a row that begins at|a relation with nothing on one side|a trailing .* with nothing after it|an empty expression|signs with nothing to act on|explicit spacing between two factors|^prose \(/, "fragment"],
+  // by side, or one product. An implication with a side that is no
+  // statement, and a continuation row that could continue any statement of
+  // the row above, are not one equation either.
+  [/lists or multiple statements|a row that begins at|a relation with nothing on one side|a trailing .* with nothing after it|an empty expression|signs with nothing to act on|explicit spacing between two factors|^prose \(|an implication (?:with nothing|whose side)|a continuation row after a row of several statements/, "fragment"],
   [/a proportionality/, "proportional"],
   // The equation IS a units declaration (c = G = 1), gives a constant a value
   // in units it does not name (c = 299792458), compares one with a number
