@@ -1113,7 +1113,12 @@ function unitLeavesOf(factors: Factor[]): "num" | "unit" | null {
   return found
 }
 
-/** The relations a unit convention is declared with: an equality, an identity, a definition. */
+/**
+ * The relations a unit convention is declared with: an equality, an identity,
+ * a definition. They are matched against what each relation is, not how it was
+ * spelled: `\coloneqq` is the definition `:=`, and matched by its spelling,
+ * `c \coloneqq 1` was called a comparison of c with a number.
+ */
 const DECLARING_RELS = new Set(["=", "\\equiv", ":="])
 
 /** A wrapping factor anywhere in the run lost a second term or a sign when its parts were flattened. */
@@ -1164,12 +1169,12 @@ function isPlainOne(t: TermInfo): boolean {
  * `c = -26` is not even about the speed of light. A row with no numeral
  * besides zero (`c > G`, `c - G = 0`) only relates the constants.
  */
-function declarationGuard(sums: (SumInfo | null)[], rels: string[], ctx: Ctx): void {
+function declarationGuard(sums: (SumInfo | null)[], relKinds: string[], ctx: Ctx): void {
   const sides = sums.filter((sum): sum is SumInfo => sum != null)
   const terms = sides.flatMap((sum) => sum.terms)
   const kinds = terms.map((t) => unitLeavesOf(t.factors))
   if (!kinds.includes("unit") || kinds.includes(null)) return
-  const equalities = rels.every((rel) => DECLARING_RELS.has(rel))
+  const equalities = relKinds.every((rel) => DECLARING_RELS.has(rel))
   const declares =
     equalities &&
     sides.every(
@@ -2844,12 +2849,16 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
 
   const sides: any[][] = []
   const rels: string[] = []
+  // What each relation is, whatever its spelling: rels keeps `\coloneqq` as
+  // the reader wrote it, and here it is the definition `:=`.
+  const relKinds: string[] = []
   const tabAtRel: boolean[] = []
   let current: any[] = []
   let pendingTab = false
-  const pushRel = (text: string) => {
+  const pushRel = (text: string, kind: string) => {
     sides.push(current)
     rels.push(text)
+    relKinds.push(kind)
     tabAtRel.push(pendingTab)
     pendingTab = false
     current = []
@@ -2867,7 +2876,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
       if (spelled == null) {
         throw new Unsupported(`the relation “${built.rel}”, whose written spelling the engine could not read`)
       }
-      pushRel(spelled)
+      pushRel(spelled, built.rel)
       continue
     }
     if (n?.type === "atom" && n.family === "rel") {
@@ -2876,12 +2885,12 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
       // A colon on its own (normal ordering `:X:`, a ratio, a map) is not.
       const next = grouped[gi + 1]
       if (n.text === ":" && next?.type === "atom" && next.family === "rel" && next.text === "=") {
-        pushRel(":=")
+        pushRel(":=", ":=")
         gi += 1
         continue
       }
       if (!SUPPORTED_RELS.has(n.text)) throw new Unsupported(unsupportedRelReason(n.text))
-      pushRel((safeSrc(n, ctx) || n.text).trim())
+      pushRel((safeSrc(n, ctx) || n.text).trim(), n.text)
       continue
     }
     // Spacing shims sit between the tab and the relation without ending the column.
@@ -2938,7 +2947,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
     }
     target = carriedTarget
   } else {
-    declarationGuard(sums, rels, ctx)
+    declarationGuard(sums, relKinds, ctx)
     const anchored = sums.map((sum) => (sum == null ? null : sumAnchor(sum.terms))).find((d) => d != null)
     target = anchored ?? carriedTarget ?? ZERO // every term a literal zero: identity
   }

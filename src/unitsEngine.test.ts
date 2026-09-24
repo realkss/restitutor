@@ -2137,6 +2137,16 @@ describe("declarations: relations among the constants themselves", () => {
     }
   })
 
+  test("a definition spelled \\coloneqq is read as :=, not as a comparison", () => {
+    // The relation was matched by its spelling, so `c \coloneqq 1` was a
+    // "comparison of c with a number" while `c := 1` was a declaration.
+    declines("c \\coloneqq 1", DECLARATION)
+    declines("G \\coloneqq c \\coloneqq 1", DECLARATION)
+    declines("\\begin{aligned} E &= mc^2 \\\\ c &\\coloneqq 1 \\end{aligned}", DECLARATION)
+    declines("c \\coloneqq 299792458", numericValue("c"))
+    declines("c \\coloneqq -1", numericValue("c"))
+  })
+
   test("only an equality setting unsigned constants to +1 is a declaration", () => {
     // The numerals alone once decided it: `\hbar \ne 1` (ħ is NOT one), the
     // central-charge bound `c < 1`, `c = -1` and `c^2 = -1` were all called
