@@ -338,6 +338,12 @@ type Ctx = {
    * and every Latin letter under an upright font is upright too.
    */
   font: { tex: string; upright: boolean; node: any } | null
+  /**
+   * Every c or G the analysis has read as the constant, in reading order
+   * (analyzeFactor, analyzeSupsub). An accent asks what its body added here
+   * (analyzeAccentBody).
+   */
+  constantsRead: ("c" | "G")[]
 }
 
 /** Constants are inserted (or stripped) only in a live emission, never in a masked one. */
@@ -406,16 +412,6 @@ type Factor = {
    * read as one number (keepNumeralsApart).
    */
   numeralEdge?: (side: "first" | "last") => boolean
-  /**
-   * Whether the factor opens, as a live emission prints it, on a fraction of
-   * numerals (`\frac{1}{2}`, or `{\frac{1}{2}}`). Set after a numeral it
-   * reads as the fractional part of a mixed number (3½), and spacing between
-   * the two does not stop that reading, for `3\,\frac{1}{2}` is how a mixed
-   * number is set (keepNumeralsApart).
-   */
-  numeralFraction?: () => boolean
-  /** On the glue a spacing node or a kern makes, as against a product sign or a “/”. */
-  spacing?: true
   /**
    * On the glue a kern makes: the one command KaTeX gives the kern's width
    * (`\,`, `\quad`), or null when none does. A kern has no source span, so it
@@ -1563,7 +1559,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     if (SKIP_TYPES.has(n.type)) {
       const text = spacingTexOf(raw, ctx)
       const kern = n.type === "kern" ? kernCommandOf(n) : undefined
-      push({ kind: "glue", dim: ZERO, emit: () => text, kern, spacing: true })
+      push({ kind: "glue", dim: ZERO, emit: () => text, kern })
       i += 1
       continue
     }
@@ -2362,6 +2358,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const src = srcOf(n, ctx)
       const d = resolveSymbol(text, src, ctx, {})
       if (text === "c" || text === "G") {
+        ctx.constantsRead.push(text)
         // Geometrized target: the constant is set to 1 and vanishes.
         return {
           kind: "sym",
@@ -2413,9 +2410,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         if (printsNothing(frac.den)) return productNumeralEdge(frac.num, side) ?? true
         return printsNumeralOnly(frac.num) && printsNumeralOnly(frac.den)
       }
-      const numeralFraction = () =>
-        !printsNothing(frac.den) && printsNumeralOnly(frac.num) && printsNumeralOnly(frac.den)
-      return { kind: "frac", dim: d, emit, frac, vanishes, numeralEdge, numeralFraction }
+      return { kind: "frac", dim: d, emit, frac, vanishes, numeralEdge }
     }
     case "sqrt": {
       const inner = parseSum(nodeListOf(n.body), ctx, { anchor: "internal" })
@@ -2446,9 +2441,9 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const emit = () => joinTex([open, inner.emit(), close])
       const vanishes = () => sumVanishes(inner)
       // Null delimiters print nothing but a sliver of space, so `\left. … \right.`
-      // is at its edges what its body is: `3\,\left.\frac{G}{2c^2}\right.M`
-      // stripped to `3\left.\frac{1}{2}\right.M`, the mixed number 3½ M where
-      // the value is 1.5 M.
+      // is at its edges what its body is: a kern the author set between it and
+      // a numeral is kept (`2\,\left.3\right.`), and a constant written there
+      // is not folded away (keepNumeralsApart, separatesNumerals).
       const bare = n.type === "leftright" && n.left === "." && n.right === "."
       return {
         kind: "group",
@@ -2457,7 +2452,6 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         isBareSum: false,
         vanishes,
         numeralEdge: bare ? (side) => sumNumeralEdge(inner, side) : undefined,
-        numeralFraction: bare ? () => sumNumeralFraction(inner) : undefined,
         ...partsOf(inner),
       }
     }
@@ -2472,23 +2466,29 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         }
         const baseSrc = srcOf(base, ctx)
         const display = `${label}{${baseSrc}}`
-        const baseDim = resolveSymbol(baseText, display, ctx, {})
-        const order = label === "\\ddot" ? 2 : 1
-        const d = dimSub(baseDim, dim(0, 0, order))
-        return { kind: "sym", dim: d, emit: () => display }
+        return analyzeAccentBody(ctx, () => {
+          // The dot's body is its one letter, read as the registry reads it:
+          // a c or G there is read as the constant, as it is anywhere else.
+          if (baseText === "c" || baseText === "G") ctx.constantsRead.push(baseText)
+          const baseDim = resolveSymbol(baseText, display, ctx, {})
+          const order = label === "\\ddot" ? 2 : 1
+          const d = dimSub(baseDim, dim(0, 0, order))
+          return { kind: "sym", dim: d, emit: () => display }
+        })
       }
       if (TRANSPARENT_ACCENTS.has(label)) {
-        const inner = bracedArg(n.base, ctx)
-        accentedConstantGuard(label, n.base, inner, ctx)
-        return { kind: "sym", dim: inner.dim, emit: () => `${label}{${inner.emit()}}` }
+        return analyzeAccentBody(ctx, () => {
+          const inner = bracedArg(n.base, ctx)
+          return { kind: "sym", dim: inner.dim, emit: () => `${label}{${inner.emit()}}` }
+        })
       }
       throw new Unsupported(`the unsupported accent “${label}”`)
     }
-    case "overline": {
-      const inner = bracedArg(n.body, ctx)
-      accentedConstantGuard("\\overline", n.body, inner, ctx)
-      return { kind: "sym", dim: inner.dim, emit: () => `\\overline{${inner.emit()}}` }
-    }
+    case "overline":
+      return analyzeAccentBody(ctx, () => {
+        const inner = bracedArg(n.body, ctx)
+        return { kind: "sym", dim: inner.dim, emit: () => `\\overline{${inner.emit()}}` }
+      })
     case "op": {
       const name = n.name ?? ""
       if (FUNC_OPS.has(name)) throw new Unsupported("a function with no argument")
@@ -2527,18 +2527,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const openArgument = !inner.multiTerm && live[live.length - 1]?.openArgument === true
       const vanishes = () => sumVanishes(inner)
       const numeralEdge = (side: "first" | "last") => sumNumeralEdge(inner, side)
-      const numeralFraction = () => sumNumeralFraction(inner)
-      return {
-        kind: "group",
-        dim: inner.dim,
-        emit,
-        isBareSum,
-        openArgument,
-        vanishes,
-        numeralEdge,
-        numeralFraction,
-        ...partsOf(inner),
-      }
+      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument, vanishes, numeralEdge, ...partsOf(inner) }
     }
     case "atom":
       throw new Unsupported(`the symbol “${n.text}” in this position`)
@@ -2822,50 +2811,34 @@ function constantFontGuard(text: string, font: any, ctx: Ctx): void {
 }
 
 /**
- * The decline for c or G set alone under an accent, which makes it another
- * symbol as a bold or calligraphic font does (constantFontGuard): `\vec{c}` is
- * a vector, `\bar{G}` a mean or a label, `\hat{c}` a unit vector or an
- * operator. Read through the accent, the letter was the constant itself, and
- * a geometrized target set it to one under its accent: `\vec{c} M` shipped as
- * `\vec{1}M`, and `\hat{c} = 1` as `\hat{1} = 1`. A script on the letter
- * under the accent changes nothing: `\bar{c^{2}}` is the barred symbol
- * squared, not the constant squared, and GEO shipped `\bar{1}M` for it, so the
- * guard looks through the script to its base, as the font guard does for
- * `\mathbf{c^{2}}`. Nor does anything set beside the letter that prints
- * nothing or only dresses it: an empty group (`\bar{c{}}`, `\bar{{}c}`), a
- * script on nothing, which is the letter's own (`\bar{c{}^{2}}` stripped the
- * square as c² under the bar), or brackets around the letter alone
- * (`\bar{(c)}`); GEO shipped `\bar{1}M` for each. An accent over more than the
- * letter (`\overline{cM}`) is an accent on an expression the constant is part
- * of, and stays read.
+ * An accent's body analyzed, and declined when the analysis read a c or G in
+ * it as the constant. An accent makes the letter another symbol, as a bold or
+ * calligraphic font does (constantFontGuard): `\vec{c}` is a vector, `\bar{G}`
+ * a mean or a label, `\hat{c}` a unit vector or an operator, `\dot{c}` a
+ * dotted variable as often as the rate of change of the speed of light. Read
+ * through the accent, the letter was the constant itself, and a geometrized
+ * target set it to one under its accent: `\vec{c} M` shipped as `\vec{1}M`,
+ * and `\hat{c} = 1` as `\hat{1} = 1`.
+ *
+ * The decision is the analysis's, not the body's shape. A guard that matched
+ * the lone letter under the accent was passed, one review round after
+ * another, by a shape one bracket or one symbol away that the analysis still
+ * read as the constant: `\bar{((c))}`, `\bar{(c)^{2}}`, `\bar{[(c)]}` and
+ * `\bar{c\cdot}` all shipped `\bar{1}M` at GEO. Whatever the body's spelling,
+ * the analysis says whether it read the constant. An accent over an
+ * expression the constant is part of declines too (`\bar{2c}`, whose strip
+ * shipped `\bar{2}M`, and `\overline{mc^2}`): nothing written says whether
+ * the c under the accent is the constant, and a constant restored or
+ * stripped there changes the accented symbol.
  */
-function accentedConstantGuard(label: string, base: any, inner: { emit: () => string }, ctx: Ctx): void {
-  let cur = unwrap(base)
-  for (;;) {
-    if (cur?.type === "leftright") cur = { type: "ordgroup", body: cur.body }
-    if (cur?.type === "ordgroup") {
-      let body = cur.body.filter((x: any) => !isBlankNode(x) && !isFloatingScript(x))
-      if (body.length === 3 && isBracketAtom(body[0], "open") && isBracketAtom(body[2], "close")) body = [body[1]]
-      if (body.length !== 1) return
-      cur = unwrap(body[0])
-    } else if (cur?.type === "supsub" && !isBlankNode(cur.base)) {
-      cur = unwrap(cur.base)
-    } else {
-      break
-    }
-  }
-  const text = cur?.type === "mathord" || cur?.type === "textord" ? cur.text : null
-  if (text !== "c" && text !== "G") return
-  const written = `${label}{${maskedEmission(ctx, inner.emit)}}`
+function analyzeAccentBody(ctx: Ctx, analyze: () => Factor): Factor {
+  const before = ctx.constantsRead.length
+  const accented = analyze()
+  const constant = ctx.constantsRead[before]
+  if (constant == null) return accented
   throw new Unsupported(
-    `the accented “${written}” — another symbol (a vector, a mean, an operator or a label), not the constant ${text}`,
+    `the accented “${maskedEmission(ctx, accented.emit)}” — another symbol (a vector, a mean, an operator or a label), not the constant ${constant}`,
   )
-}
-
-/** An opening or closing bracket written bare: `(`, `[`, `)`, `]`. */
-function isBracketAtom(n: any, family: "open" | "close"): boolean {
-  const cur = unwrap(n)
-  return cur?.type === "atom" && cur.family === family
 }
 
 /**
@@ -2955,6 +2928,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
       const d = isConst ? ZERO : resolveSymbol(baseText, baseTex!, ctx, {})
       const scaled = dimScale(d, sup.p, sup.q)
       if (baseText === "c" || baseText === "G") {
+        ctx.constantsRead.push(baseText)
         const e12 = (D12 * sup.p) / sup.q
         return {
           kind: "sym",
@@ -3006,12 +2980,9 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
         emit: () => `${inner.emit()}${scripts}`,
         // A script on nothing is nothing: `(c)^{2}` vanishes with its base.
         vanishes: inner.vanishes,
-        // The scripts print after the base, so the factor opens on what its
-        // base opens on: `3\,\frac{G}{2c^2}^{2}M` stripped to
-        // `3\frac{1}{2}^{2}M`, which reads as 3½ squared where the value is
-        // 0.75 M, and a numeral left at the base's edge meets the one beside it.
+        // A numeral raised is a numeral at its edges (`10^{2}`), and so is a
+        // compound one: the factor's edges are its base's.
         numeralEdge: (side) => inner.numeralEdge?.(side) === true,
-        numeralFraction: () => inner.numeralFraction?.() === true,
         parts: [inner],
       }
     }
@@ -3095,9 +3066,8 @@ function formatExp(tex: string, e12: number): string {
  * as `E = m~\cdot~`, and `-c^2\ dt^2` as `-\ dt^2`. Between two survivors one
  * run of glue stays, the first one written that holds any: two runs merged
  * where a factor vanished (`2\ G\ M` → `2\ \ M`) say twice what the author
- * said once. Wherever nothing vanished, the glue is kept as written. Where
- * the two survivors are numerals, what stays must still print between them
- * (separatorAcross).
+ * said once (separatorAcross). Wherever nothing vanished, the glue is kept as
+ * written.
  */
 function joinFactors(factors: Factor[]): string {
   // Every factor is emitted, the vanishing ones too: emission is where a strip
@@ -3118,7 +3088,7 @@ function joinFactors(factors: Factor[]): string {
       continue
     }
     if (runs.length === 1) out.push(...runs[0].map((glue) => glue.tex))
-    else if (last != null) out.push(...separatorAcross(last, part, runs))
+    else if (last != null) out.push(...separatorAcross(runs))
     out.push(part.tex)
     last = part
     runs = [[]]
@@ -3132,68 +3102,20 @@ type EmittedFactor = { f: Factor; tex: string }
 
 /**
  * The glue that stays between two survivors where factors vanished between
- * them: the first run written that holds any. Between two numerals that is
- * not enough when every run prints nothing, for the numerals fuse into another
- * number: `\frac{GM}{5\,c^2\,5}` stripped to `\frac{M}{55}`, where the value is
- * M/25, and `2\,G\,3\,M` to `23M`. There the first run holding a kern stays,
- * each kern rebuilt from its width (keepNumeralsApart). With no kern written
- * (`2G3M`), nothing from the source can keep them apart, and the row declines
- * rather than set a separator the author did not write.
+ * them: the first run written that holds any, or none. Nothing kept from the
+ * source keeps two numerals apart there: `\frac{GM}{5\,c^2\,5}` stripped to
+ * `\frac{M}{55}`, where the value is M/25, and a kern kept between the two
+ * fives would still read as 55, for a thin space is how digits are grouped.
+ * The numeral-fusion net declines those rows (numeralFusionNet).
  */
-function separatorAcross(left: EmittedFactor, right: EmittedFactor, runs: EmittedFactor[][]): string[] {
+function separatorAcross(runs: EmittedFactor[][]): string[] {
   const written = runs.find((run) => run.some((glue) => glue.tex !== ""))
-  const kerned = runs.find((run) => run.some((glue) => glue.f.kern !== undefined))
-  if (written == null && kerned == null && numeralsMeet(left.f, right.f)) {
-    throw new Unsupported(
-      `the numerals “${left.tex}” and “${right.tex}” with nothing but a stripped constant between them, which would set them side by side as one number — not supported`,
-    )
-  }
-  // Spacing, kern or not, does not keep a fraction of numerals from reading
-  // as a mixed number with the numeral before it: `3\,\frac{G}{c^2}\,\frac{1}{2}M`
-  // stripped to `3\,\frac{1}{2}M`, 3½ M where the value is 1.5 M. The two
-  // were never side by side in the source, so no spacing kept is the author's.
-  if (mixesNumber(left.f, right.f) && (written == null || written.every((glue) => glue.f.spacing === true))) {
-    throw new Unsupported(numeralFusionReason(left.tex, right.tex))
-  }
-  if (written != null) return written.map((glue) => glue.tex)
-  if (kerned == null || !numeralsMeet(left.f, right.f)) return []
-  return kerned.map((glue) => (glue.f.kern !== undefined ? rebuiltKern(glue.f).emit() : glue.tex))
+  return written == null ? [] : written.map((glue) => glue.tex)
 }
 
 /** A factor that prints a numeral last, set before one that prints a numeral first. */
 function numeralsMeet(left: Factor, right: Factor): boolean {
   return left.numeralEdge?.("last") === true && right.numeralEdge?.("first") === true
-}
-
-/** A factor that prints a numeral last, set before one that opens on a fraction of numerals: a mixed number. */
-function mixesNumber(left: Factor, right: Factor): boolean {
-  return left.numeralEdge?.("last") === true && right.numeralFraction?.() === true
-}
-
-function numeralFusionReason(leftTex: string, rightTex: string): string {
-  return `the numerals ending “${leftTex}” and opening “${rightTex}”, which a stripped constant leaves side by side as one number — not supported`
-}
-
-/**
- * The insertion's side of a mixed number. A fraction of numerals the author
- * set right after a numeral, with nothing but spacing between (`3\,\frac{1}{2}`,
- * `3\frac{1}{2}`), is the mixed number 3½ or the product 3·½, and the source
- * does not say which. Printed as written, both readings stay open; a constant
- * restored into the fraction, or between the two, leaves only the product:
- * `x = 3\,\frac{1}{2}M` had shipped as `3\,\frac{G}{2c^{2}}M`, 1.5 GM/c² where
- * the mixed number is 3.5. So the row declines when an insertion would land
- * there (emitTermWith, partsWith).
- */
-function writtenMixedNumberGuard(factors: Factor[], idx: number): void {
-  const right = factors[idx]
-  if (right?.numeralFraction?.() !== true) return
-  let prev = idx - 1
-  while (prev >= 0 && factors[prev].kind === "glue" && factors[prev].spacing === true) prev -= 1
-  const left = prev >= 0 ? factors[prev] : null
-  if (left == null || left.kind === "glue" || left.numeralEdge?.("last") !== true) return
-  throw new Unsupported(
-    `the numerals ending “${left.emit()}” and opening “${right.emit()}”, a mixed number or a product, which a constant restored between or into them would leave only as the product — not supported`,
-  )
 }
 
 /** A kern's glue, emitting the command its width is written with; a kern no command gives declines. */
@@ -3207,31 +3129,16 @@ function rebuiltKern(glue: Factor): Factor {
 
 /**
  * Kerns carry no source span and emission drops them (spacingTexOf), which is
- * inert between most factors and not between two numerals: `3\,10^{2}` came
- * back as `310^{2}`, `2.5\,10^{-3}` as `2.510^{-3}` and `3\,2` as `32`, each a
- * different number, and the backstop's comparison, which ignores the kern it
- * lost, passed them. Where nothing that prints stands between a factor that
- * prints a numeral last and one that prints a numeral first, every kern
- * between them is emitted, rebuilt from its width as headSpacingTex rebuilds
- * one. The edges are asked as a live emission prints them, so a strip that
- * bares a numeral inside a group (`2\,{G\,3}`) or a fraction
- * (`3\,\frac{2G}{c^2}` prints `3\,2`) is seen here; factors that vanish
- * between two numerals are separatorAcross's.
- *
- * Where no kern was written, two numerals the author set side by side
- * (`3\frac{1}{2}`, a mixed number) are the author's to keep, and they print
- * as written. Two that meet only because a strip bared a numeral at an edge
- * were apart in the source: `E = 3 \frac{2G}{c^2} M` had stripped to `32M`,
- * where the value is 6M, and `\frac{2G}{c^2}\frac{1}{2}M` to `2\frac{1}{2}M`,
- * where it is M. Nothing written keeps them apart, so the row declines.
- *
- * A fraction of numerals is the exception to a kern keeping two numerals
- * apart: `3\,\frac{1}{2}` is how a mixed number is set, and so is
- * `3~\frac{1}{2}`. Where the author set one, it prints as written. Where a
- * strip made one, turning `\frac{G}{2c^2}` into `\frac{1}{2}` after a
- * numeral, `3\,\frac{G}{2c^2}M` came back as `3\,\frac{1}{2}M`, 3½ M where
- * the value is 1.5 M, and whatever spacing stands between them, the row
- * declines.
+ * inert between most factors and not between two numerals the author set
+ * apart: `3\,10^{2}` came back as `310^{2}`, `2.5\,10^{-3}` as `2.510^{-3}`
+ * and `3\,2` as `32`, and the backstop's comparison, which ignores the kern it
+ * lost, passed them. Where nothing that prints stands between two factors
+ * that meet as numerals as written, every kern between them is emitted,
+ * rebuilt from its width as headSpacingTex rebuilds one. Numerals that meet
+ * only once a strip has bared one of them (`3\,\frac{2G}{c^2}` prints `32`)
+ * were never side by side in the source, and a kern kept between them would
+ * not keep them apart, for a thin space is how digits are grouped: the
+ * numeral-fusion net declines those rows (numeralFusionNet).
  */
 function keepNumeralsApart(factors: Factor[], ctx: Ctx): void {
   let prev = -1
@@ -3242,23 +3149,12 @@ function keepNumeralsApart(factors: Factor[], ctx: Ctx): void {
     const between = factors.slice(prev + 1, k)
     if (
       left != null &&
-      between.every((glue) => glue.spacing === true) &&
-      mixesNumber(left, f) &&
-      !maskedEmission(ctx, () => mixesNumber(left, f))
-    ) {
-      throw new Unsupported(numeralFusionReason(left.emit(), f.emit()))
-    }
-    if (
-      left != null &&
       between.every((glue) => glue.kind === "glue" && glue.emit() === "") &&
-      numeralsMeet(left, f)
+      between.some((glue) => glue.kern !== undefined) &&
+      maskedEmission(ctx, () => numeralsMeet(left, f))
     ) {
-      if (between.some((glue) => glue.kern !== undefined)) {
-        for (let g = prev + 1; g < k; g += 1) {
-          if (factors[g].kern !== undefined) factors[g] = rebuiltKern(factors[g])
-        }
-      } else if (!maskedEmission(ctx, () => numeralsMeet(left, f))) {
-        throw new Unsupported(numeralFusionReason(left.emit(), f.emit()))
+      for (let g = prev + 1; g < k; g += 1) {
+        if (factors[g].kern !== undefined) factors[g] = rebuiltKern(factors[g])
       }
     }
     prev = k
@@ -3279,14 +3175,6 @@ function sumNumeralEdge(sum: SumInfo, side: "first" | "last"): boolean {
   const den = term.factors.slice(term.slashIdx + 1)
   if (side === "first") return productNumeralEdge(num, side) ?? true
   return productNumeralEdge(den, side) ?? productNumeralEdge(num, side) ?? true
-}
-
-/** Whether a sum, as a live emission prints it, opens on a fraction of numerals. */
-function sumNumeralFraction(sum: SumInfo): boolean {
-  const term = sum.terms[0]
-  if (term.sign !== "") return false
-  const live = term.factors.filter((f) => f.kind !== "glue" && f.vanishes?.() !== true)
-  return live.length > 0 && live[0].numeralFraction?.() === true
 }
 
 /** The numeral edge of a product's surviving factors, or null when every one vanished. */
@@ -3371,12 +3259,6 @@ function partsWith(factors: Factor[], gTex: string, cTex: string): string[] {
     if (prev < 0 || factors[prev].openArgument !== true) break
     tailPos = prev
   }
-  if (gTex) {
-    // G after the leading numerals must not split a mixed number from its fraction.
-    let next = headPos
-    while (next < factors.length && factors[next].kind === "glue") next += 1
-    writtenMixedNumberGuard(factors, next)
-  }
   if (cTex) parts.splice(tailPos, 0, cTex)
   if (gTex) parts.splice(headPos, 0, gTex)
   return parts
@@ -3417,7 +3299,6 @@ function emitTermWith(t: TermInfo, a12: number, b12: number): string {
   // A term led by a fraction absorbs the constants into that fraction.
   const fracIdx = t.factors.findIndex((f) => f.kind === "frac")
   if (fracIdx >= 0 && t.factors[fracIdx].frac) {
-    writtenMixedNumberGuard(t.factors, fracIdx)
     const frac = t.factors[fracIdx].frac!
     let numParts = partsWith(frac.num, gNum, cNum)
     const denParts = partsWith(frac.den, gDen, cDen)
@@ -3919,6 +3800,7 @@ export function dimensionOf(
     strip: false,
     mask: false,
     font: null,
+    constantsRead: [],
   }
   const legendOut = () =>
     Array.from(ctx.legend.values()).map((record) => ({
@@ -3947,6 +3829,270 @@ export function dimensionOf(
     const reason = error instanceof Unsupported ? error.reason : "TeX that KaTeX could not parse"
     return { kind: "declined", reasons: [reason], unknown: Array.from(ctx.unknown.values()) }
   }
+}
+
+/**
+ * A line of print, as far as numerals go: each numeral in order, and a break
+ * (null) wherever something visible stands between two of them.
+ */
+type NumeralLine = (string | null)[]
+
+/**
+ * The lines a TeX string prints (numeralLines appends them to `lines`), the
+ * first being the string's own. A numeral is a digit, or a decimal point, as
+ * a numeral factor reads it (so `32` is two numerals side by side, and a strip
+ * that fuses `3` and `2` into `32` shows), or a fraction whose numerator and
+ * denominator are both digit runs (`\frac{1}{2}`, `\frac12`). A numeral with
+ * a numeric power (`10^{3}`, `\frac{1}{2}^{2}`) is still a numeral at its
+ * end. Braces, the null delimiters `\left.` and `\right.`, whitespace,
+ * spacing, and commands that only restyle what they hold print nothing
+ * between two numerals; anything else is visible: a letter, a bracket or bar,
+ * an operator, a root. A fraction's numerator and denominator, and a script,
+ * are lines of their own, whose numerals never meet one outside them
+ * (`c^{2}5` is c²·5, not a 25). A numeric script on anything but a numeral
+ * (`c^{2}`, `r^{12}`) is a power, set or restored whole with its symbol, and
+ * its digits are not counted.
+ */
+function numeralLines(tex: string, lines: NumeralLine[] = []): NumeralLine[] {
+  const line: NumeralLine = []
+  lines.push(line)
+  let i = 0
+  while (i < tex.length) {
+    const ch = tex[i]
+    if (/[\s{}~]/.test(ch)) {
+      i += 1
+    } else if (/[0-9.]/.test(ch)) {
+      line.push(ch)
+      i += 1
+    } else if (ch === "^" || ch === "_") {
+      const script = texArgumentAt(tex, i + 1)
+      const numeric = /^[\s{}0-9.+\-/]*$/.test(script.body)
+      if (numeric && line.length > 0 && line[line.length - 1] != null) {
+        line[line.length - 1] += `${ch}{${script.body.trim()}}`
+      } else {
+        line.push(null)
+        if (!numeric) numeralLines(script.body, lines)
+      }
+      i = script.end
+    } else if (ch === "\\") {
+      i = controlSequenceMarks(tex, i, line, lines)
+    } else {
+      line.push(null)
+      i += 1
+    }
+  }
+  return lines
+}
+
+/** Spacing, and commands that restyle what follows or what they hold without printing anything of their own. */
+const INVISIBLE_WORDS = new Set([
+  "quad",
+  "qquad",
+  "enspace",
+  "enskip",
+  "thinspace",
+  "medspace",
+  "thickspace",
+  "negthinspace",
+  "negmedspace",
+  "negthickspace",
+  "space",
+  "nobreakspace",
+  "nobreak",
+  "allowbreak",
+  "displaystyle",
+  "textstyle",
+  "scriptstyle",
+  "scriptscriptstyle",
+  "rm",
+  "bf",
+  "it",
+  "sf",
+  "tt",
+  "cal",
+  "mathrm",
+  "mathbf",
+  "mathit",
+  "mathsf",
+  "mathtt",
+  "mathnormal",
+  "mathcal",
+  "mathbb",
+  "mathfrak",
+  "mathscr",
+  "boldsymbol",
+  "bm",
+  "text",
+  "textrm",
+  "textbf",
+  "textit",
+  "textsf",
+  "texttt",
+  "textnormal",
+  "mathord",
+  "mathbin",
+  "mathrel",
+  "mathopen",
+  "mathclose",
+  "mathpunct",
+  "mathinner",
+  "limits",
+  "nolimits",
+])
+/** Commands whose first argument prints nothing: a width, a color, or content set as blank space. */
+const INVISIBLE_ARGUMENT_WORDS = new Set(["hspace", "color", "textcolor", "phantom", "hphantom", "vphantom"])
+const KERN_WORDS = new Set(["kern", "mkern", "hskip", "mskip"])
+const KERN_WIDTH = /\s*\{?\s*[-+]?[\d.]+\s*[a-z]{2}\s*\}?/y
+const DELIMITER_SIZES = /^(?:left|right|middle|bigg?|Bigg?)[lrm]?$/
+
+/** Reads the control sequence at `i` into `line` (numeralLines), and returns where the text after it resumes. */
+function controlSequenceMarks(tex: string, i: number, line: NumeralLine, lines: NumeralLine[]): number {
+  const word = /\\([a-zA-Z]+)/y
+  word.lastIndex = i
+  const found = word.exec(tex)
+  if (found == null) {
+    // A control symbol: `\,`, `\:`, `\;`, `\!`, `\>` and a control space print
+    // only space; any other (`\\`, `\{`, `\|`) prints.
+    if (!/[,:;!>\s]/.test(tex[i + 1] ?? "")) line.push(null)
+    return i + 2
+  }
+  const name = found[1]
+  let end = i + found[0].length
+  if (FRAC_CMDS.has(`\\${name}`)) {
+    const num = texArgumentAt(tex, end)
+    const den = texArgumentAt(tex, num.end)
+    const digitRun = (body: string) => /^\s*[0-9.]*[0-9][0-9.]*\s*$/.test(body)
+    const numeral = digitRun(num.body) && digitRun(den.body)
+    line.push(numeral ? `\\${name}{${num.body.trim()}}{${den.body.trim()}}` : null)
+    numeralLines(num.body, lines)
+    numeralLines(den.body, lines)
+    return den.end
+  }
+  if (DELIMITER_SIZES.test(name)) {
+    const nullDelimiter = /\s*\./y
+    nullDelimiter.lastIndex = end
+    if (nullDelimiter.exec(tex) != null) return nullDelimiter.lastIndex
+    line.push(null)
+    return end
+  }
+  if (KERN_WORDS.has(name)) {
+    KERN_WIDTH.lastIndex = end
+    return KERN_WIDTH.exec(tex) != null ? KERN_WIDTH.lastIndex : end
+  }
+  if (INVISIBLE_ARGUMENT_WORDS.has(name)) {
+    if (tex[end] === "*") end += 1
+    return texArgumentAt(tex, end).end
+  }
+  if (!INVISIBLE_WORDS.has(name)) line.push(null)
+  return end
+}
+
+/** The argument a command or script takes at `i`: a brace group's content, a control sequence, or one character. */
+function texArgumentAt(tex: string, i: number): { body: string; end: number } {
+  let at = i
+  while (at < tex.length && /\s/.test(tex[at])) at += 1
+  if (tex[at] === "{") {
+    let depth = 0
+    for (let k = at; k < tex.length; k += 1) {
+      if (tex[k] === "\\") k += 1
+      else if (tex[k] === "{") depth += 1
+      else if (tex[k] === "}" && --depth === 0) return { body: tex.slice(at + 1, k), end: k + 1 }
+    }
+    return { body: tex.slice(at + 1), end: tex.length }
+  }
+  if (tex[at] === "\\") {
+    const word = /\\(?:[a-zA-Z]+|[\s\S])/y
+    word.lastIndex = at
+    const found = word.exec(tex)
+    if (found != null) return { body: found[0], end: at + found[0].length }
+  }
+  return { body: tex.slice(at, at + 1), end: Math.min(at + 1, tex.length) }
+}
+
+/**
+ * The runs of numerals a TeX string prints side by side (numeralLines), each
+ * as its numerals' TeX; a lone numeral is a run of one.
+ */
+function numeralRuns(tex: string): string[][] {
+  const runs: string[][] = []
+  for (const line of numeralLines(tex)) {
+    let run: string[] = []
+    for (const mark of [...line, null]) {
+      if (mark != null) {
+        run.push(mark)
+      } else {
+        if (run.length > 0) runs.push(run)
+        run = []
+      }
+    }
+  }
+  return runs
+}
+
+/** How many pairs of numerals the runs set side by side. */
+function adjacencyCount(runs: string[][]): number {
+  return runs.reduce((count, run) => count + run.length - 1, 0)
+}
+
+/**
+ * The two numerals to name, for `from` setting more of them side by side
+ * than `against`: a run of `from` that `against` does not print, split after
+ * its longest head that `against` does print as a run (`32` against the
+ * source's `3` and `2` names 3 and 2).
+ */
+function unmatchedPair(from: string[][], against: string[][]): [string, string] {
+  const spelled = against.map((run) => run.join(""))
+  const pool = [...spelled]
+  const unmatched = from.find((run) => {
+    const at = pool.indexOf(run.join(""))
+    if (at < 0) return run.length > 1
+    pool.splice(at, 1)
+    return false
+  })
+  const run = unmatched ?? from.find((candidate) => candidate.length > 1)!
+  let at = run.length - 1
+  while (at > 1 && !spelled.includes(run.slice(0, at).join(""))) at -= 1
+  return [run.slice(0, at).join(""), run.slice(at).join("")]
+}
+
+function numeralFusionReason(leftTex: string, rightTex: string): string {
+  return `the numerals ending “${leftTex}” and opening “${rightTex}”, which a stripped constant leaves side by side as one number — not supported`
+}
+
+/**
+ * The numeral-fusion net. Two numerals set side by side read as one number:
+ * `32` or `3\,2` (a thin space is how digits are grouped) as thirty-two,
+ * `3\,\frac{1}{2}` as the mixed number 3½. A translation that sets side by
+ * side two numerals the source kept apart made a number the author did not
+ * write: `3\,\frac{G}{2c^2}M` stripped to `3\,\frac{1}{2}M`, 3½ M where the
+ * value is 1.5 M, and `2\,\left.\frac{3G}{c^2}\right|M` to `2\left.3\right|M`,
+ * 23 M where it is 6 M. One that sets something between two numerals the
+ * source set side by side split a number the author wrote: `3\,\frac{1}{2}M`
+ * restored as `3\,\frac{G}{2c^{2}}M` keeps only the product 3·½, where the
+ * source may mean 3½.
+ *
+ * Guards that matched these shapes term by term were passed, one review round
+ * after another, by a shape one bracket or one delimiter away. The net counts
+ * instead, over the whole output: the adjacencies the live emission prints
+ * against those the masked emission, the source as written, prints. A strip
+ * only removes, which can make an adjacency and cannot undo one. An insertion
+ * adds letters, scripts and structure, which can undo one and cannot make
+ * one, since a constant written between two numerals is never folded away
+ * (separatesNumerals). So a count that differs is a number made or split.
+ */
+function numeralFusionNet(live: string, masked: string): void {
+  const printed = numeralRuns(live)
+  const written = numeralRuns(masked)
+  const made = adjacencyCount(printed) - adjacencyCount(written)
+  if (made === 0) return
+  if (made > 0) {
+    const [left, right] = unmatchedPair(printed, written)
+    throw new Unsupported(numeralFusionReason(left, right))
+  }
+  const [left, right] = unmatchedPair(written, printed)
+  throw new Unsupported(
+    `the numerals ending “${left}” and opening “${right}”, one number or a product, which a constant restored between or into them would leave only as the product — not supported`,
+  )
 }
 
 /**
@@ -4043,6 +4189,7 @@ function translateCore(
     strip: spec.geometrized,
     mask: false,
     font: null,
+    constantsRead: [],
   }
 
   // The floater only ever fires on a .katex-display, so every equation it sees
@@ -4149,6 +4296,9 @@ function translateCore(
         "an internal reassembly fault — the rebuilt equation diverged from the source (nothing was shown rather than something wrong)",
       )
     }
+    // The masked replay is the source as written, so the numerals it sets
+    // side by side are the author's; the live one must set the same count.
+    numeralFusionNet(restoredTex, masked)
     // The masked replay proves the emitters reproduced what the reader wrote; it
     // cannot see a restoration that analysis solved and emission then dropped or
     // misplaced. `ds = d(r - t)` came back verbatim while reporting a change,

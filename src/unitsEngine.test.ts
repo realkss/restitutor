@@ -2420,8 +2420,9 @@ describe("batch-1 review fixes", () => {
 
   // Round 1: numerals that kerns or a stripped constant kept apart fused into
   // another number, and the digit guard missed the staggered-index spelling.
+  // Since step 7c one net over the output declines every such fusion.
   const FUSED = (left: string, right: string) =>
-    `the numerals “${left}” and “${right}” with nothing but a stripped constant between them, which would set them side by side as one number — not supported`
+    `the numerals ending “${left}” and opening “${right}”, which a stripped constant leaves side by side as one number — not supported`
 
   test("(f) a kern between two numerals is emitted, rebuilt from its width", () => {
     // Live, the kern was dropped and the numerals fused: 310^{2}, 2.510^{-3}, 32, 3.5.
@@ -2444,21 +2445,22 @@ describe("batch-1 review fixes", () => {
     assert.strictEqual(rawRestored("E = m\\,c^2"), "E = mc^{2}")
   })
 
-  test("(a) a stripped constant between two numerals leaves a separator the source wrote, or declines", () => {
-    // Live, the numerals fused: M/55 for M/25, 23M, 510^{2}m, 10^{3}5M.
-    assert.strictEqual(rawRestored("x = \\frac{G\\,M}{5\\,c^2\\,5}", GEO), "x = \\frac{M}{5\\,5}")
-    assert.strictEqual(rawRestored("x = 2\\,G\\,3\\,M", GEO), "x = 2\\,3M")
-    assert.strictEqual(rawRestored("E = 5\\,c^2\\,10^{2}\\,m", GEO), "E = 5\\,10^{2}m")
-    assert.strictEqual(rawRestored("x = 10^{3}\\,G\\,5 M", GEO), "x = 10^{3}\\,5M")
-    assert.strictEqual(rawRestored("x = 1.5\\,G\\,.5\\,M", GEO), "x = 1.5\\,.5M")
+  test("(a) a stripped constant between two numerals declines, whatever spacing stays", () => {
+    // Live, the numerals fused: M/55 for M/25, 23M, 510^{2}m, 10^{3}5M. Round 1
+    // kept a kern between them (`\frac{M}{5\,5}`, `2\,3M`), but a thin space is
+    // how digits are grouped, and 5 5 still reads as 55: since step 7c they decline.
+    declines("x = \\frac{G\\,M}{5\\,c^2\\,5}", FUSED("5", "5"), [GEO])
+    declines("x = 2\\,G\\,3\\,M", FUSED("2", "3"), [GEO])
+    declines("E = 5\\,c^2\\,10^{2}\\,m", FUSED("5", "10^{2}"), [GEO])
+    declines("x = 10^{3}\\,G\\,5 M", FUSED("10^{3}", "5"), [GEO])
+    declines("x = 1.5\\,G\\,.5\\,M", FUSED("1.5", ".5"), [GEO])
     // A strip that bares a numeral inside a group is seen from outside it.
-    assert.strictEqual(rawRestored("x = 2\\,{G\\,3}\\,M", GEO), "x = 2\\,{3}M")
-    // With nothing written between them, nothing from the source can keep them apart.
+    declines("x = 2\\,{G\\,3}\\,M", FUSED("2", "3"), [GEO])
     declines("x = 2G3M", FUSED("2", "3"), [GEO])
     declines("x = \\frac{2 G 3 M}{c^2}", FUSED("2", "3"), [GEO])
     declines("x = 2 G^{2} 3 M", FUSED("2", "3"), [GEO])
-    // Written glue stays as it did, and a kern beside a non-numeral still goes.
-    assert.strictEqual(rawRestored("x = 2\\ G\\ 3\\ M", GEO), "x = 2\\ 3\\ M")
+    declines("x = 2\\ G\\ 3\\ M", FUSED("2", "3"), [GEO])
+    // A product sign printed between them keeps them apart, and a kern beside a non-numeral still goes.
     assert.strictEqual(rawRestored("x = 2\\cdot G\\cdot 3 M", GEO), "x = 2\\cdot3M")
     assert.strictEqual(rawRestored("x = 2\\,G\\,M", GEO), "x = 2M")
   })
@@ -2489,8 +2491,6 @@ describe("batch-1 review fixes", () => {
 
   // Round 2: a fraction of numerals is a numeral too, whether written or left
   // by a strip, and the digit guard missed the braced stagger.
-  const BARED = (left: string, right: string) =>
-    `the numerals ending “${left}” and opening “${right}”, which a stripped constant leaves side by side as one number — not supported`
 
   test("(f) a kern beside a fraction of numerals is kept: it stops a mixed-number reading", () => {
     // Live, the kern was dropped and 1.5r read as the mixed number 3½ r.
@@ -2507,20 +2507,21 @@ describe("batch-1 review fixes", () => {
     assert.strictEqual(rawRestored("x = 3\\,\\frac{r}{2} + M"), "x = 3\\frac{r}{2} + \\frac{GM}{c^{2}}")
   })
 
-  test("(a) a strip that leaves a numeral at a fraction's edge keeps it apart, or declines", () => {
+  test("(a) a strip that leaves a numeral at a fraction's edge beside another declines", () => {
     // Live, these fused: 32M for 6M, 2½M for M, 3½M for 1.5M.
-    declines("E = 3 \\frac{2G}{c^2} M", BARED("3", "2"), [GEO])
-    declines("x = \\frac{2G}{c^2}\\frac{1}{2}M", BARED("2", "\\frac{1}{2}"), [GEO])
-    declines("x = 3\\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    declines("E = 3 \\frac{2G}{c^2} M", FUSED("3", "2"), [GEO])
+    declines("x = \\frac{2G}{c^2}\\frac{1}{2}M", FUSED("2", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\frac{G}{2c^2}M", FUSED("3", "\\frac{1}{2}"), [GEO])
     declines("E = 2 c^2 \\frac{1}{2} m", FUSED("2", "\\frac{1}{2}"), [GEO])
-    // A kern the author wrote is rebuilt between them, as `2\,G\,3\,M` gives `2\,3M`.
-    assert.strictEqual(rawRestored("E = 3\\,\\frac{2G}{c^2}\\, M", GEO), "E = 3\\,2M")
+    // A kern kept between them does not keep them apart (`3\,2M` reads as
+    // 32M); round 1 shipped it, and since step 7c it declines.
+    declines("E = 3\\,\\frac{2G}{c^2}\\, M", FUSED("3", "2"), [GEO])
     // Before a fraction of numerals a kern keeps nothing apart, for it is how
     // a mixed number is set; these shipped as 2½m for m and 3½M for 1.5M
     // until step 7b, and decline with the others.
-    declines("E = 2\\, c^2\\, \\frac{1}{2} m", BARED("2", "\\frac{1}{2}"), [GEO])
-    declines("x = 3\\,\\frac{G}{c^{2}}\\,\\frac{1}{2}M", BARED("3", "\\frac{1}{2}"), [GEO])
-    declines("x = 3\\,\\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    declines("E = 2\\, c^2\\, \\frac{1}{2} m", FUSED("2", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\,\\frac{G}{c^{2}}\\,\\frac{1}{2}M", FUSED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\,\\frac{G}{2c^2}M", FUSED("3", "\\frac{1}{2}"), [GEO])
     // With no numeral on the other side, the collapsed fraction is set as it prints.
     assert.strictEqual(rawRestored("x = \\frac{2G}{c^2} M", GEO), "x = 2M")
     assert.strictEqual(rawRestored("x = r\\frac{G}{2c^2}", GEO), "x = r\\frac{1}{2}")
@@ -2601,9 +2602,11 @@ describe("batch-1 review fixes", () => {
     assert.strictEqual(rawRestored("E = m\\cdot c\\cdot v", GEO), "E = m\\cdot v")
   })
 
+  const HL: TargetSpec = { system: "hl", geometrized: false }
+  const ACCENTED = (spelled: string, letter: string) =>
+    `the accented “${spelled}” — another symbol (a vector, a mean, an operator or a label), not the constant ${letter}`
+
   test("an accented c or G is another symbol, not the constant", () => {
-    const ACCENTED = (spelled: string, letter: string) =>
-      `the accented “${spelled}” — another symbol (a vector, a mean, an operator or a label), not the constant ${letter}`
     // Live at GEO: `\vec{1}M`, `\bar{1}M`, `\tilde{1}M`, `\hat{1} = 1`; at SI
     // `\vec{c}Mc` and `\frac{\bar{G}Mc^{2}}{G}`, the accented letter read as the constant.
     declines("E = \\vec{c} M", ACCENTED("\\vec{c}", "c"))
@@ -2622,10 +2625,13 @@ describe("batch-1 review fixes", () => {
     declines("x = \\bar{c^{2}} M", ACCENTED("\\bar{c^{2}}", "c"))
     declines("x = \\overline{c^{2}} M", ACCENTED("\\overline{c^{2}}", "c"))
     declines("x = \\hat{c^{2}}\\,t^{2}/t", ACCENTED("\\hat{c^{2}}", "c"), [GEO])
-    // c_0 is not in the registry, so it is also named unknown; the reason is the accent's.
+    // c_0 is not read as the constant but looked up, and is not in the registry:
+    // the decline names it unknown, not the accent (step 7c: the accent decides
+    // on what the analysis read).
     const subscripted = run("x = \\hat{c_{0}} M")
     assert.ok(subscripted.kind === "declined", JSON.stringify(subscripted))
-    assert.deepStrictEqual(subscripted.reasons, [ACCENTED("\\hat{c_{0}}", "c")])
+    assert.deepStrictEqual(subscripted.reasons, [])
+    assert.deepStrictEqual(subscripted.unknown, ["c_{0}"])
     declines("x = \\bar{{c}^{2}} M", ACCENTED("\\bar{{c}^{2}}", "c"))
     declines("x = \\tilde{G^{2}} M", ACCENTED("\\tilde{G^{2}}", "G"))
     // An empty group, a script on nothing or brackets beside the lone letter:
@@ -2640,67 +2646,140 @@ describe("batch-1 review fixes", () => {
     declines("x = \\bar{c{}^{2}} M", ACCENTED("\\bar{c{}^{2}}", "c"))
     declines("x = \\bar{(c)} M", ACCENTED("\\bar{(c)}", "c"))
     declines("x = \\bar{\\left(c\\right)} M", ACCENTED("\\bar{\\left(c\\right)}", "c"))
-    // An accent over any other letter, or over an expression the constant is part of, is read.
+    // An accent over any other letter is read.
     assert.strictEqual(rawRestored("E = \\bar{m}c^2", GEO), "E = \\bar{m}")
     assert.strictEqual(rawRestored("E = \\bar{m}c^2"), "E = \\bar{m}c^{2}")
-    assert.strictEqual(rawRestored("E = \\overline{cM}", GEO), "E = \\overline{M}")
+  })
+
+  // Step 7c: the accent and numeral guards matched TeX shapes, and each review
+  // round found the next shape one bracket or one delimiter away still shipping.
+  test("an accent declines whenever the analysis of its body read c or G as the constant", () => {
+    // Live at GEO `\bar{1}M`, `\hat{1}M`, `\bar{2}M`; at SI a G inserted beside
+    // the accented letter read as the speed of light: `\frac{G\bar{((c))}M}{c^{3}}`.
+    for (const target of [SI, HL, GEO]) {
+      declines("x = \\bar{((c))} M", ACCENTED("\\bar{((c))}", "c"), [target])
+      declines("x = \\bar{(c)^{2}} M", ACCENTED("\\bar{(c)^{2}}", "c"), [target])
+      declines("x = \\bar{[(c)]} M", ACCENTED("\\bar{[(c)]}", "c"), [target])
+      declines("x = \\hat{((G))} M", ACCENTED("\\hat{((G))}", "G"), [target])
+      declines("\\hat{((c))}M = M", ACCENTED("\\hat{((c))}", "c"), [target])
+      declines("x = \\bar{c\\cdot} M", ACCENTED("\\bar{c\\cdot}", "c"), [target])
+      declines("x = \\bar{2c} M", ACCENTED("\\bar{2c}", "c"), [target])
+      declines("x = \\bar{1\\,c} M", ACCENTED("\\bar{1c}", "c"), [target])
+    }
+    // An accent over an expression that holds the constant declines too: the
+    // conservative answer to whether the c under the bar is the constant.
+    declines("E = \\overline{mc^2}", ACCENTED("\\overline{mc^{2}}", "c"))
+    declines("E = \\overline{cM}", ACCENTED("\\overline{cM}", "c"))
+    declines("x = \\bar{\\frac{c}{1}} M", ACCENTED("\\bar{\\frac{c}{1}}", "c"))
+    // The dot reads its letter too: \dot{c} is a dotted variable as often as dc/dt.
+    declines("x = \\dot{c}\\,t^2", ACCENTED("\\dot{c}", "c"))
+    declines("x = \\ddot{G}", ACCENTED("\\ddot{G}", "G"))
+    // Anything else under an accent is read as before.
+    assert.strictEqual(rawRestored("E = \\bar{m}c^2", HL), "E = \\bar{m}c^{2}")
+    assert.strictEqual(rawRestored("\\dot{r} = v"), "\\dot{r} = v")
+    assert.strictEqual(rawRestored("E = \\vec{p}\\cdot\\vec{v}", GEO), "E = \\vec{p}\\cdot\\vec{v}")
+  })
+
+  test("a translation that sets numerals side by side, or parts them, declines (the numeral-fusion net)", () => {
+    const WRITTEN = (left: string, right: string) =>
+      `the numerals ending “${left}” and opening “${right}”, one number or a product, which a constant restored between or into them would leave only as the product — not supported`
+    // Live at GEO `3\left.\frac{1}{2}\right|M` (3½M for 1.5M), `2\left.3\right|M`
+    // (23M for 6M) and `\left|3\right.2M`; at SI and HL the author's
+    // `3\,\left.\frac{1}{2}\right|M` had G set into it.
+    declines("x = 3\\,\\left.\\frac{G}{2c^2}\\right|M", FUSED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 2\\,\\left.\\frac{3G}{c^2}\\right|M", FUSED("2", "3"), [GEO])
+    declines("x = \\left|\\frac{3G}{c^2}\\right.\\,2M", FUSED("3", "2"), [GEO])
+    declines("x = 3\\,\\left.\\frac{1}{2}\\right|M", WRITTEN("3", "\\frac{1}{2}"), [SI, HL])
+    // None of them needs anything at the other targets, and each prints as written.
+    for (const target of [SI, HL]) {
+      assert.strictEqual(rawRestored("x = 3\\,\\left.\\frac{G}{2c^2}\\right|M", target), "x = 3\\left.\\frac{G}{2c^{2}}\\right|M")
+      assert.strictEqual(rawRestored("x = 2\\,\\left.\\frac{3G}{c^2}\\right|M", target), "x = 2\\left.\\frac{3G}{c^{2}}\\right|M")
+      assert.strictEqual(rawRestored("x = \\left|\\frac{3G}{c^2}\\right.\\,2M", target), "x = \\left|\\frac{3G}{c^{2}}\\right.2M")
+    }
+    assert.strictEqual(rawRestored("x = 3\\,\\left.\\frac{1}{2}\\right|M", GEO), "x = 3\\left.\\frac{1}{2}\\right|M")
+    // A bracket, a bar or a product sign printed between two numerals keeps them apart.
+    assert.strictEqual(rawRestored("x = 3\\,\\left(\\frac{G}{2c^2}\\right)M", GEO), "x = 3\\left(\\frac{1}{2}\\right)M")
+    assert.strictEqual(rawRestored("x = 3\\cdot\\frac{G}{2c^2}M", GEO), "x = 3\\cdot\\frac{1}{2}M")
+    // Numerals the author set side by side stay so, and the ones a restoration
+    // leaves alone print as written.
+    for (const target of [SI, HL]) {
+      assert.strictEqual(rawRestored("E = 2mc^2", target), "E = 2mc^{2}")
+      assert.strictEqual(rawRestored("E = 4\\,463\\,302\\,M", target), "E = 4\\,463\\,302Mc^{2}")
+      assert.strictEqual(rawRestored("E = \\frac{1}{2}mv^2", target), "E = \\frac{1}{2}mv^{2}")
+    }
+    assert.strictEqual(rawRestored("E = 2mc^2", GEO), "E = 2m")
+    assert.strictEqual(rawRestored("r_s = \\frac{2GM}{c^2}", GEO), "r_{s} = 2M")
+    assert.strictEqual(rawRestored("E = 4\\,463\\,302\\,M", GEO), "E = 4\\,463\\,302M")
+    assert.strictEqual(rawRestored("E = \\frac{1}{2}mv^2", GEO), "E = \\frac{1}{2}mv^{2}")
+    assert.strictEqual(rawRestored("E = 3\\,10^{8}\\,m c^2", GEO), "E = 3\\,10^{8}m")
+    // `a` has no reading in the GR registry, so this row declines on that as it always did.
+    for (const target of [SI, HL, GEO]) {
+      const kinematic = run("x = \\frac{1}{2}at^2", target)
+      assert.ok(kinematic.kind === "declined", JSON.stringify(kinematic))
+      assert.ok(!kinematic.reasons.some((reason) => reason.includes("numerals")), JSON.stringify(kinematic))
+    }
   })
 
   test("a strip that makes a fraction of numerals after a numeral declines, spacing or not", () => {
     // Live at GEO, `3\,\frac{G}{2c^2}M` shipped as `3\,\frac{1}{2}M`: the
     // value is 1.5M, and a thin space before ½ is how 3½ is set.
-    declines("x = 3\\,\\frac{G}{2c^2}\\,M", BARED("3", "\\frac{1}{2}"), [GEO])
-    declines("x = 3~\\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
-    declines("x = 3\\ \\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
-    declines("x = 3\\;\\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
-    declines("x = 3\\,\\tfrac{G}{2c^2}M", BARED("3", "\\tfrac{1}{2}"), [GEO])
-    declines("x = 3\\,{\\frac{G}{2c^2}}M", BARED("3", "{\\frac{1}{2}}"), [GEO])
-    declines("x = 3\\,\\frac{2G}{3c^2}M", BARED("3", "\\frac{2}{3}"), [GEO])
-    declines("x = 3\\,G\\,\\frac{1}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
-    declines("x = r3\\,\\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\,\\frac{G}{2c^2}\\,M", FUSED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3~\\frac{G}{2c^2}M", FUSED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\ \\frac{G}{2c^2}M", FUSED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\;\\frac{G}{2c^2}M", FUSED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\,\\tfrac{G}{2c^2}M", FUSED("3", "\\tfrac{1}{2}"), [GEO])
+    declines("x = 3\\,{\\frac{G}{2c^2}}M", FUSED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\,\\frac{2G}{3c^2}M", FUSED("3", "\\frac{2}{3}"), [GEO])
+    declines("x = 3\\,G\\,\\frac{1}{2c^2}M", FUSED("3", "\\frac{1}{2}"), [GEO])
+    // (Balanced since step 7c, which checks at emission, after the completion.)
+    declines("x^2 = r3\\,\\frac{G}{2c^2}M", FUSED("3", "\\frac{1}{2}"), [GEO])
     // A strip that makes the numeral before an author's fraction does the same.
-    declines("x = \\frac{3G}{c^2}\\,\\frac{1}{2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = \\frac{3G}{c^2}\\,\\frac{1}{2}M", FUSED("3", "\\frac{1}{2}"), [GEO])
     // A script on the fraction, or null delimiters around it, change nothing:
     // live at GEO `3\frac{1}{2}^{2}M` (0.75M, read as 3½ squared) and
     // `3\left.\frac{1}{2}\right.M` (1.5M, read as 3½ M).
-    declines("x = 3\\,\\frac{G}{2c^2}^{2}M", BARED("3", "\\frac{1}{2}^{2}"), [GEO])
-    declines("x = 3\\frac{G}{2c^2}^{2}M", BARED("3", "\\frac{1}{2}^{2}"), [GEO])
-    declines("x = 3\\,{\\frac{G}{2c^2}}^{2}M", BARED("3", "{\\frac{1}{2}}^{2}"), [GEO])
-    declines("x = 3\\,\\frac{G}{2c^2}_{0}M", BARED("3", "\\frac{1}{2}_{0}"), [GEO])
-    declines("x = 3\\,\\left.\\frac{G}{2c^2}\\right.M", BARED("3", "\\left.\\frac{1}{2}\\right."), [GEO])
-    declines("x = 3\\left.\\frac{G}{2c^2}\\right.M", BARED("3", "\\left.\\frac{1}{2}\\right."), [GEO])
-    declines("x = 3\\,\\left.\\frac{G}{2c^2}\\right.^{2}M", BARED("3", "\\left.\\frac{1}{2}\\right.^{2}"), [GEO])
-    // A numeral left at the edge of a scripted or null-delimited fraction keeps
-    // the kern: live, `2\left.3\right.M` read as 23M where the value is 6M.
-    assert.strictEqual(rawRestored("x = 3\\,\\frac{2G}{c^2}^{2}M", GEO), "x = 3\\,2^{2}M")
-    assert.strictEqual(rawRestored("x = 2\\,\\left.\\frac{3G}{c^2}\\right.M", GEO), "x = 2\\,\\left.3\\right.M")
+    declines("x = 3\\,\\frac{G}{2c^2}^{2}M", FUSED("3", "\\frac{1}{2}^{2}"), [GEO])
+    declines("x = 3\\frac{G}{2c^2}^{2}M", FUSED("3", "\\frac{1}{2}^{2}"), [GEO])
+    declines("x = 3\\,{\\frac{G}{2c^2}}^{2}M", FUSED("3", "\\frac{1}{2}^{2}"), [GEO])
+    declines("x = 3\\,\\frac{G}{2c^2}_{0}M", FUSED("3", "\\frac{1}{2}_{0}"), [GEO])
+    declines("x = 3\\,\\left.\\frac{G}{2c^2}\\right.M", FUSED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\left.\\frac{G}{2c^2}\\right.M", FUSED("3", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\,\\left.\\frac{G}{2c^2}\\right.^{2}M", FUSED("3", "\\frac{1}{2}^{2}"), [GEO])
+    // A numeral a strip leaves at the edge of a fraction, scripted, null-delimited
+    // or not, meets the one before it whatever kern stays: live, `2\left.3\right.M`
+    // read as 23M where the value is 6M, and step 7b's `2\,\left.3\right.M`,
+    // `3\,2^{2}M` and `3\,2M` still read as 23M, 32²M and 32M.
+    declines("x = 3\\,\\frac{2G}{c^2}^{2}M", FUSED("3", "2^{2}"), [GEO])
+    declines("x = 2\\,\\left.\\frac{3G}{c^2}\\right.M", FUSED("2", "3"), [GEO])
+    declines("x = 3\\,\\frac{2G}{c^2}M", FUSED("3", "2"), [GEO])
     // A mixed number the author set stays one; a product sign, a bracket or a
-    // symbol in the fraction is no mixed number; whole numerals keep the kern.
+    // symbol in the fraction is no mixed number.
     assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}\\,r + \\frac{GM}{c^2}", GEO), "x = 3\\,\\frac{1}{2}r + M")
     assert.strictEqual(rawRestored("x = 3\\cdot\\frac{G}{2c^2}M", GEO), "x = 3\\cdot\\frac{1}{2}M")
     assert.strictEqual(rawRestored("x = 3\\,\\left(\\frac{G}{2c^2}\\right)M", GEO), "x = 3\\left(\\frac{1}{2}\\right)M")
     assert.strictEqual(rawRestored("x = 3\\,\\frac{\\pi G}{2c^2}M", GEO), "x = 3\\frac{\\pi}{2}M")
-    assert.strictEqual(rawRestored("x = 3\\,\\frac{2G}{c^2}M", GEO), "x = 3\\,2M")
   })
 
   test("a constant restored into or before an author's fraction of numerals after a numeral declines", () => {
     const WRITTEN = (left: string, right: string) =>
-      `the numerals ending “${left}” and opening “${right}”, a mixed number or a product, which a constant restored between or into them would leave only as the product — not supported`
+      `the numerals ending “${left}” and opening “${right}”, one number or a product, which a constant restored between or into them would leave only as the product — not supported`
     // The insertion's side of the same reading. Live at SI, `3\,\frac{1}{2}M`
     // shipped as `3\,\frac{G}{2c^{2}}M`, 1.5 GM/c² where 3½ M is 3.5, and a G
     // set after the leading numerals split them: `\frac{3G\,{\frac{1}{2}}M}{c^{2}}`.
     declines("x = 3\\,\\frac{1}{2}M", WRITTEN("3", "\\frac{1}{2}"), [SI])
     declines("x = 3\\frac{1}{2}M", WRITTEN("3", "\\frac{1}{2}"), [SI])
     declines("x = 3\\,\\tfrac{1}{2}M", WRITTEN("3", "\\tfrac{1}{2}"), [SI])
-    declines("x = 3\\,{\\frac{1}{2}}M", WRITTEN("3", "{\\frac{1}{2}}"), [SI])
+    declines("x = 3\\,{\\frac{1}{2}}M", WRITTEN("3", "\\frac{1}{2}"), [SI])
     declines("x = 3\\,\\frac{1}{2}\\frac{M}{r}t", WRITTEN("3", "\\frac{1}{2}"), [SI])
     declines("x = \\frac{3\\frac{1}{2}M}{r}r", WRITTEN("3", "\\frac{1}{2}"), [SI])
     declines("x = M\\,3\\,\\frac{1}{2}", WRITTEN("3", "\\frac{1}{2}"), [SI])
     // A script on the fraction, or null delimiters around it: live at SI
     // `\frac{3G\frac{1}{2}^{2}M}{c^{2}}` and `\frac{3G\left.\frac{1}{2}\right.M}{c^{2}}`.
     declines("x = 3\\,\\frac{1}{2}^{2}M", WRITTEN("3", "\\frac{1}{2}^{2}"), [SI])
-    declines("x = 3\\,\\left.\\frac{1}{2}\\right.M", WRITTEN("3", "\\left.\\frac{1}{2}\\right."), [SI])
-    declines("x = 3\\,{\\frac{1}{2}}^{2}M", WRITTEN("3", "{\\frac{1}{2}}^{2}"), [SI])
+    declines("x = 3\\,\\left.\\frac{1}{2}\\right.M", WRITTEN("3", "\\frac{1}{2}"), [SI])
+    declines("x = 3\\,{\\frac{1}{2}}^{2}M", WRITTEN("3", "\\frac{1}{2}^{2}"), [SI])
+    // Two digit runs the author set side by side are one number or a product just the same.
+    declines("x = 2\\,\\left.3\\right.M", WRITTEN("2", "3"), [SI])
     assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}^{2}M", GEO), "x = 3\\,\\frac{1}{2}^{2}M")
     // With no insertion there, or a product sign or a symbol in the way, it prints as written.
     assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}\\,r + M"), "x = 3\\,\\frac{1}{2}r + \\frac{GM}{c^{2}}")
