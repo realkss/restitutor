@@ -399,9 +399,11 @@ type Factor = {
   vanishes?: () => boolean
   /**
    * Whether the factor prints a numeral at its first or last edge, as a live
-   * emission prints it: a digit run, raised or not (`3`, `10^{8}`), or a brace
-   * group that opens or closes on one, braces printing nothing. Two such edges
-   * with nothing printed between them read as one number (keepNumeralsApart).
+   * emission prints it: a digit run, raised or not (`3`, `10^{8}`), a brace
+   * group that opens or closes on one, braces printing nothing, a fraction of
+   * numerals (`\frac{1}{2}`), or a fraction whose emptied denominator leaves
+   * its numerator to print. Two such edges with nothing printed between them
+   * read as one number (keepNumeralsApart).
    */
   numeralEdge?: (side: "first" | "last") => boolean
   /**
@@ -1132,7 +1134,7 @@ function termQuote(t: TermInfo, ctx: Ctx): string {
 }
 
 /** An emission replayed with every insertion and strip masked: the source as the reader wrote it. */
-function maskedEmission(ctx: Ctx, emit: () => string): string {
+function maskedEmission<T>(ctx: Ctx, emit: () => T): T {
   const previous = ctx.mask
   ctx.mask = true
   try {
@@ -1615,7 +1617,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
   // Thrown only once every factor has been read, so a truer reason (\text
   // content, an unsupported construct) is the one the reader sees.
   if (spacedFactors) throw new Unsupported(SPACING_REASON)
-  keepNumeralsApart(factors)
+  keepNumeralsApart(factors, ctx)
 
   const numDim = factors.slice(0, slashIdx < 0 ? factors.length : slashIdx)
   const denDim = slashIdx < 0 ? [] : factors.slice(slashIdx + 1)
@@ -2305,7 +2307,17 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       // the other factors.
       const numIsOne = () => frac.num.length === 1 && frac.num[0].kind === "num" && frac.num[0].emit() === "1"
       const vanishes = () => productVanishes(frac.den) && (productVanishes(frac.num) || numIsOne())
-      return { kind: "frac", dim: d, emit, frac, vanishes }
+      // A fraction of numerals is itself a numeral at both edges: set beside a
+      // digit, `3\frac{1}{2}` reads as the mixed number 3½. Emptied of its
+      // denominator, a fraction prints its numerator, whose edges are its own
+      // (`\frac{2G}{c^2}` prints `2`). Both are asked as a live emission
+      // prints them, so a strip that leaves `\frac{1}{2}` or a bare `2` behind
+      // is seen.
+      const numeralEdge = (side: "first" | "last") => {
+        if (printsNothing(frac.den)) return productNumeralEdge(frac.num, side) ?? true
+        return printsNumeralOnly(frac.num) && printsNumeralOnly(frac.den)
+      }
+      return { kind: "frac", dim: d, emit, frac, vanishes, numeralEdge }
     }
     case "sqrt": {
       const inner = parseSum(nodeListOf(n.body), ctx, { anchor: "internal" })
@@ -2588,8 +2600,8 @@ function componentLookup(baseText: string, sub: any, ctx: Ctx): boolean {
  * and 1 keep the index reading there as they do on one node.
  */
 function riderDigitGuard(nodes: any[], at: number, ctx: Ctx): void {
-  const n = unwrap(nodes[at])
-  if (n?.type !== "supsub" || n.base == null) return
+  const n = bracedSupsub(unwrap(nodes[at]))
+  if (n == null) return
   const baseText = textOf(n.base)
   if (baseText == null || baseText === "\\partial" || baseText === "\\nabla" || !ctx.reg.indexed[baseText]) return
   let next = at + 1
@@ -2608,6 +2620,49 @@ function riderDigitGuard(nodes: any[], at: number, ctx: Ctx): void {
     isDigitPower(rider.sup, classifySup(rider.sup))
   if (!powerThenIndex && !indexThenPower) return
   const displayTex = `${wrappedTexOf(nodes[at], ctx)}${supsubTex("{}", rider, ctx)}`
+  throw new Unsupported(`a digit superscript on “${displayTex}” — a component index or a power`)
+}
+
+/**
+ * A supsub with a base, bare or alone inside braces (`R^{2}`, `{R^{2}}`), or
+ * null. unwrap keeps braces, so a braced stagger is looked into here.
+ */
+function bracedSupsub(node: any): any {
+  const body = node?.type === "ordgroup" ? node.body.filter((x: any) => x && !SKIP_TYPES.has(x.type)) : [node]
+  const inner = body.length === 1 ? unwrap(body[0]) : null
+  return inner?.type === "supsub" && inner.base != null ? inner : null
+}
+
+/**
+ * The component-digit guard across braces. `{R^{2}}_{0}` is the most common
+ * spelling of a mixed-index component, staggered as `{R^{0}}_{101}` is, and
+ * the compound-base path read the braced R^{2} as the Ricci scalar squared:
+ * `{R^{2}}_{0} = 0` shipped under m⁻⁴, the banner the one-node guard exists to
+ * stop, and `{R^{2}}_{00} = \frac{M^2}{r^6}` translated on that reading.
+ * `{R_{00}}^{2}` is the mirror, read as the component R₀₀ squared. Both are
+ * the notation componentDigitGuard declines, a digit 2–9 on one side of the
+ * braces and an index subscript on the other, and they decline with its
+ * reason; the digits 0 and 1 keep the component reading. A braced base
+ * followed by a rider (`{R^{2}}{}_{0}`) is riderDigitGuard's, which looks
+ * into the braces the same way.
+ */
+function bracedDigitGuard(n: any, group: any, ctx: Ctx): void {
+  const base = bracedSupsub(group)
+  if (base == null) return
+  const baseText = textOf(unwrap(base.base))
+  if (baseText == null) return
+  const powerThenIndex =
+    base.sup != null &&
+    isDigitPower(base.sup, classifySup(base.sup)) &&
+    n.sub != null &&
+    componentLookup(baseText, n.sub, ctx)
+  const indexThenPower =
+    base.sub != null &&
+    componentLookup(baseText, base.sub, ctx) &&
+    n.sup != null &&
+    isDigitPower(n.sup, classifySup(n.sup))
+  if (!powerThenIndex && !indexThenPower) return
+  const displayTex = `{${wrappedTexOf(base, ctx)}}${scriptsTex(n, ctx)}`
   throw new Unsupported(`a digit superscript on “${displayTex}” — a component index or a power`)
 }
 
@@ -2764,6 +2819,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   // index scripts: emission is rebuilt from the analyzed base so inner
   // restorations and delimiters survive.
   if (base != null) {
+    bracedDigitGuard(n, base, ctx)
     const subIsIndex = n.sub == null || allIndexTokens(nodeListOf(n.sub), true)
     const supIsReadable = sup == null || sup === "index" || typeof sup === "object"
     if (subIsIndex && supIsReadable) {
@@ -2942,23 +2998,37 @@ function rebuiltKern(glue: Factor): Factor {
  * prints a numeral last and one that prints a numeral first, every kern
  * between them is emitted, rebuilt from its width as headSpacingTex rebuilds
  * one. The edges are asked as a live emission prints them, so a strip that
- * bares a numeral inside a group (`2\,{G\,3}`) is seen here; factors that
- * vanish between two numerals are separatorAcross's.
+ * bares a numeral inside a group (`2\,{G\,3}`) or a fraction
+ * (`3\,\frac{2G}{c^2}` prints `3\,2`) is seen here; factors that vanish
+ * between two numerals are separatorAcross's.
+ *
+ * Where no kern was written, two numerals the author set side by side
+ * (`3\frac{1}{2}`, a mixed number) are the author's to keep, and they print
+ * as written. Two that meet only because a strip bared a numeral at an edge
+ * were apart in the source: `E = 3 \frac{2G}{c^2} M` had stripped to `32M`,
+ * where the value is 6M, and `\frac{2G}{c^2}\frac{1}{2}M` to `2\frac{1}{2}M`,
+ * where it is M. Nothing written keeps them apart, so the row declines.
  */
-function keepNumeralsApart(factors: Factor[]): void {
+function keepNumeralsApart(factors: Factor[], ctx: Ctx): void {
   let prev = -1
   for (let k = 0; k < factors.length; k += 1) {
     const f = factors[k]
     if (f.kind === "glue" || f.vanishes?.() === true) continue
+    const left = prev >= 0 ? factors[prev] : null
     const between = factors.slice(prev + 1, k)
     if (
-      prev >= 0 &&
-      between.length > 0 &&
+      left != null &&
       between.every((glue) => glue.kind === "glue" && glue.emit() === "") &&
-      numeralsMeet(factors[prev], f)
+      numeralsMeet(left, f)
     ) {
-      for (let g = prev + 1; g < k; g += 1) {
-        if (factors[g].kern !== undefined) factors[g] = rebuiltKern(factors[g])
+      if (between.some((glue) => glue.kern !== undefined)) {
+        for (let g = prev + 1; g < k; g += 1) {
+          if (factors[g].kern !== undefined) factors[g] = rebuiltKern(factors[g])
+        }
+      } else if (!maskedEmission(ctx, () => numeralsMeet(left, f))) {
+        throw new Unsupported(
+          `the numerals ending “${left.emit()}” and opening “${f.emit()}”, which a stripped constant leaves side by side as one number — not supported`,
+        )
       }
     }
     prev = k
@@ -2986,6 +3056,22 @@ function productNumeralEdge(factors: Factor[], side: "first" | "last"): boolean 
   const live = factors.filter((f) => f.kind !== "glue" && f.vanishes?.() !== true)
   if (live.length === 0) return null
   return live[side === "first" ? 0 : live.length - 1].numeralEdge?.(side) === true
+}
+
+/** A product that joinFactors emits as "": nothing but glue and factors that vanish. */
+function printsNothing(factors: Factor[]): boolean {
+  return factors.every((f) => f.kind === "glue" || f.vanishes?.() === true)
+}
+
+/**
+ * A product that prints nothing but numerals: every surviving factor a digit
+ * run, raised or not, or none at all, where emission sets a 1 in its place.
+ * The constants π, e and i are not digits, and `3\frac{\pi}{2}` is no mixed number.
+ */
+function printsNumeralOnly(factors: Factor[]): boolean {
+  return factors.every(
+    (f) => f.kind === "glue" || f.vanishes?.() === true || (f.kind === "num" && f.numeralEdge?.("first") === true),
+  )
 }
 
 /** Every factor of a product vanishes under the strip, and there is at least one. */

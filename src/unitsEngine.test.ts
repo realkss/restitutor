@@ -2483,4 +2483,62 @@ describe("batch-1 review fixes", () => {
     assert.strictEqual(rawRestored("R^{1}{}_{010} = \\frac{M}{r^3}"), "R^{1}{}_{010} = \\frac{GM}{r^{3}c^{2}}")
     assert.strictEqual(rawRestored("R_{00}{}^{0} = 0"), "R_{00}{}^{0} = 0")
   })
+
+  // Round 2: a fraction of numerals is a numeral too, whether written or left
+  // by a strip, and the digit guard missed the braced stagger.
+  const BARED = (left: string, right: string) =>
+    `the numerals ending “${left}” and opening “${right}”, which a stripped constant leaves side by side as one number — not supported`
+
+  test("(f) a kern beside a fraction of numerals is kept: it stops a mixed-number reading", () => {
+    // Live, the kern was dropped and 1.5r read as the mixed number 3½ r.
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}\\,r + M"), "x = 3\\,\\frac{1}{2}r + \\frac{GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 2\\,\\frac{1}{2}\\,r + M"), "x = 2\\,\\frac{1}{2}r + \\frac{GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = r\\,3\\,\\frac{1}{2} + M"), "x = r3\\,\\frac{1}{2} + \\frac{GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 3\\,\\tfrac{1}{2}\\,r + M"), "x = 3\\,\\tfrac{1}{2}r + \\frac{GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 3\\,\\dfrac{1}{2}\\,r + M"), "x = 3\\,\\dfrac{1}{2}r + \\frac{GM}{c^{2}}")
+    // A mixed number the author wrote stays one, and a fraction that is not
+    // all numerals is no mixed number, so the kern beside it still goes.
+    assert.strictEqual(rawRestored("x = 3\\frac{1}{2}r + M"), "x = 3\\frac{1}{2}r + \\frac{GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 3\\frac{1}{2}r + \\frac{GM}{c^2}", GEO), "x = 3\\frac{1}{2}r + M")
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{\\pi}{2}\\,r + M"), "x = 3\\frac{\\pi}{2}r + \\frac{GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{r}{2} + M"), "x = 3\\frac{r}{2} + \\frac{GM}{c^{2}}")
+  })
+
+  test("(a) a strip that leaves a numeral at a fraction's edge keeps it apart, or declines", () => {
+    // Live, these fused: 32M for 6M, 2½M for M, 3½M for 1.5M.
+    declines("E = 3 \\frac{2G}{c^2} M", BARED("3", "2"), [GEO])
+    declines("x = \\frac{2G}{c^2}\\frac{1}{2}M", BARED("2", "\\frac{1}{2}"), [GEO])
+    declines("x = 3\\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    declines("E = 2 c^2 \\frac{1}{2} m", FUSED("2", "\\frac{1}{2}"), [GEO])
+    // A kern the author wrote is rebuilt between them, as `2\,G\,3\,M` gives `2\,3M`.
+    assert.strictEqual(rawRestored("E = 3\\,\\frac{2G}{c^2}\\, M", GEO), "E = 3\\,2M")
+    assert.strictEqual(rawRestored("E = 2\\, c^2\\, \\frac{1}{2} m", GEO), "E = 2\\,\\frac{1}{2}m")
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{G}{c^{2}}\\,\\frac{1}{2}M", GEO), "x = 3\\,\\frac{1}{2}M")
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{G}{2c^2}M", GEO), "x = 3\\,\\frac{1}{2}M")
+    // With no numeral on the other side, the collapsed fraction is set as it prints.
+    assert.strictEqual(rawRestored("x = \\frac{2G}{c^2} M", GEO), "x = 2M")
+    assert.strictEqual(rawRestored("x = r\\frac{G}{2c^2}", GEO), "x = r\\frac{1}{2}")
+  })
+
+  test("(g) a digit superscript declines across braces, in both orders", () => {
+    const DIGIT = (tex: string) => `a digit superscript on “${tex}” — a component index or a power`
+    // Live, these shipped under m⁻⁴ or translated on the power reading.
+    declines("{R^{2}}_{0} = 0", DIGIT("{R^{2}}_{0}"))
+    declines("{R^{2}}_{00} = \\frac{M^2}{r^6}", DIGIT("{R^{2}}_{00}"), [SI])
+    declines("{R^{2}}_{00} = \\frac{G^2M^2}{c^4r^6}", DIGIT("{R^{2}}_{00}"), [GEO])
+    declines("{R_{00}}^{2} = 0", DIGIT("{R_{00}}^{2}"))
+    declines("{\\Gamma^{2}}_{00} = 0", DIGIT("{\\Gamma^{2}}_{00}"))
+    declines("{\\Gamma_{00}}^{2} = 0", DIGIT("{\\Gamma_{00}}^{2}"))
+    // Braces followed by a rider are the same notation.
+    declines("{R^{2}}{}_{0} = 0", DIGIT("{R^{2}}{}_{0}"))
+    declines("{R_{00}}{}^{2} = 0", DIGIT("{R_{00}}{}^{2}"))
+    // The digits 0 and 1 keep the component reading; a base with no indexed
+    // reading, or an identity the registry spells out, keeps the power.
+    assert.strictEqual(rawRestored("{R^{0}}_{101} = \\frac{M}{r^3}"), "{R^{0}}_{101} = \\frac{GM}{r^{3}c^{2}}")
+    assert.strictEqual(rawRestored("{R^{1}}_{010} = \\frac{M}{r^3}"), "{R^{1}}_{010} = \\frac{GM}{r^{3}c^{2}}")
+    assert.strictEqual(rawRestored("{R^{0}}{}_{101} = \\frac{M}{r^3}"), "{R^{0}}{}_{101} = \\frac{GM}{r^{3}c^{2}}")
+    assert.strictEqual(rawRestored("{R_{00}}^{1} = 0"), "{R_{00}}^{1} = 0")
+    assert.strictEqual(rawRestored("{r^{2}}_{0} = 0"), "{r^{2}}_{0} = 0")
+    assert.strictEqual(rawRestored("{H_0}^{2} = \\frac{1}{r^2}"), "{H_{0}}^{2} = \\frac{c^{2}}{r^{2}}")
+  })
 })
