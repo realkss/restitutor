@@ -2563,6 +2563,16 @@ describe("batch-1 review fixes", () => {
     declines("x = r\\sin^{2}{}^{3}(M/t)", FLOATING("{}^{3}", "\\sin^{2}"))
     declines("x = r\\sin{}{}^{2}(M/t)", FLOATING("{}^{2}", "\\sin"))
     declines("x = r\\sin{}^{2}x", FLOATING("{}^{2}", "\\sin"))
+    // Braced, the script still opened the argument: `r\sin\frac{G{{}^{2}}(M/t)}{c^{3}}`
+    // and `r\ln\frac{{{}^{2}}(r/M)c^{2}}{G}`.
+    declines("x = r\\sin{{}^{2}}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
+    declines("x = r\\sin{\\,{}^{2}}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
+    declines("x = r\\sin{{}^{2}(M/t)}", FLOATING("{}^{2}", "\\sin"), [SI])
+    declines("x = r\\sin{{}_{0}}(M/t)", FLOATING("{}_{0}", "\\sin"), [SI])
+    declines("x = r\\ln{{}^{2}}(r/M)", FLOATING("{}^{2}", "\\ln"), [SI])
+    declines("x = r\\sin{{{}^{2}}}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
+    declines("x = r\\sin{{}{}^{2}}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
+    declines("x = r\\sin{{}^{2}}^{3}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
     // A power on the head itself, and an empty group with no script, are read as before.
     assert.strictEqual(rawRestored("x = r\\sin^{2}(M/t)"), "x = r\\sin^{2}(GM/tc^{3})")
     assert.strictEqual(rawRestored("x = r\\sin^{2}\\,(M/t)"), "x = r\\sin^{2}\\,(GM/tc^{3})")
@@ -2602,6 +2612,17 @@ describe("batch-1 review fixes", () => {
     declines("E = \\breve{G} M", ACCENTED("\\breve{G}", "G"))
     declines("E = \\hat{c}^{2} M", ACCENTED("\\hat{c}", "c"))
     declines("E = \\vec{c}\\cdot\\vec{p}", ACCENTED("\\vec{c}", "c"), [GEO])
+    // A script on the letter under the accent: live at GEO `\bar{1}M`,
+    // `\overline{1}M` and `\hat{1}t^{2}/t`; at SI `\frac{G\bar{c^{2}}M}{c^{4}}`.
+    declines("x = \\bar{c^{2}} M", ACCENTED("\\bar{c^{2}}", "c"))
+    declines("x = \\overline{c^{2}} M", ACCENTED("\\overline{c^{2}}", "c"))
+    declines("x = \\hat{c^{2}}\\,t^{2}/t", ACCENTED("\\hat{c^{2}}", "c"), [GEO])
+    // c_0 is not in the registry, so it is also named unknown; the reason is the accent's.
+    const subscripted = run("x = \\hat{c_{0}} M")
+    assert.ok(subscripted.kind === "declined", JSON.stringify(subscripted))
+    assert.deepStrictEqual(subscripted.reasons, [ACCENTED("\\hat{c_{0}}", "c")])
+    declines("x = \\bar{{c}^{2}} M", ACCENTED("\\bar{{c}^{2}}", "c"))
+    declines("x = \\tilde{G^{2}} M", ACCENTED("\\tilde{G^{2}}", "G"))
     // An accent over any other letter, or over an expression the constant is part of, is read.
     assert.strictEqual(rawRestored("E = \\bar{m}c^2", GEO), "E = \\bar{m}")
     assert.strictEqual(rawRestored("E = \\bar{m}c^2"), "E = \\bar{m}c^{2}")

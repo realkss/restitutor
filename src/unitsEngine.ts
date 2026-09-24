@@ -2083,14 +2083,40 @@ function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
  * engine cannot say which. Read as the rider it would be after a tensor, it
  * opened the argument, and the constant restored at the argument's head took
  * it: `r\sin{}^{2}(M/t)` shipped as `r\sin\frac{G{}^{2}(M/t)}{c^{3}}`, with
- * the square on G.
+ * the square on G. Braces around the script change none of this: the argument
+ * opens on whatever its first group opens on, so `r\sin{{}^{2}}(M/t)` and
+ * `r\sin{\,{}^{2}(M/t)}` shipped the same square on G, and the guard looks
+ * through groups (and the base of a script on a group) to the first thing the
+ * argument opens on.
  */
 function floatingScriptAfterHeadGuard(headNode: any, next: any, ctx: Ctx): void {
-  const script = unwrap(next)
+  const script = argumentOpener(next)
   if (script?.type !== "supsub" || !(script.base == null || isEmptyOrdgroup(unwrap(script.base)))) return
   throw new Unsupported(
     `the floating script “${supsubTex("{}", script, ctx)}” after “${functionHeadTex(headNode, ctx)}” — the function's power or a script on its argument — which is not supported`,
   )
+}
+
+/**
+ * The first node an argument opens on, looking through groups (their spacing
+ * and empty groups skipped) and into the base of a script set on a group. A
+ * script whose base is empty is itself the opener, and is returned.
+ */
+function argumentOpener(node: any): any {
+  let cur = unwrap(node)
+  for (;;) {
+    if (cur?.type === "ordgroup") {
+      const first = cur.body.find((x: any) => x && !SKIP_TYPES.has(x.type) && !isEmptyOrdgroup(unwrap(x)))
+      if (first == null) return cur
+      cur = unwrap(first)
+    } else if (cur?.type === "supsub" && cur.base != null && !isEmptyOrdgroup(unwrap(cur.base))) {
+      const base = unwrap(cur.base)
+      if (base?.type !== "ordgroup") return cur
+      cur = base
+    } else {
+      return cur
+    }
+  }
 }
 
 /**
@@ -2767,16 +2793,25 @@ function constantFontGuard(text: string, font: any, ctx: Ctx): void {
  * a vector, `\bar{G}` a mean or a label, `\hat{c}` a unit vector or an
  * operator. Read through the accent, the letter was the constant itself, and
  * a geometrized target set it to one under its accent: `\vec{c} M` shipped as
- * `\vec{1}M`, and `\hat{c} = 1` as `\hat{1} = 1`. An accent over more than
- * the letter (`\overline{cM}`) is an accent on an expression the constant is
- * part of, and stays read.
+ * `\vec{1}M`, and `\hat{c} = 1` as `\hat{1} = 1`. A script on the letter
+ * under the accent changes nothing: `\bar{c^{2}}` is the barred symbol
+ * squared, not the constant squared, and GEO shipped `\bar{1}M` for it, so the
+ * guard looks through the script to its base, as the font guard does for
+ * `\mathbf{c^{2}}`. An accent over more than the letter (`\overline{cM}`) is
+ * an accent on an expression the constant is part of, and stays read.
  */
 function accentedConstantGuard(label: string, base: any, inner: { emit: () => string }, ctx: Ctx): void {
   let cur = unwrap(base)
-  while (cur?.type === "ordgroup") {
-    const body = cur.body.filter((x: any) => x && !SKIP_TYPES.has(x.type))
-    if (body.length !== 1) return
-    cur = unwrap(body[0])
+  for (;;) {
+    if (cur?.type === "ordgroup") {
+      const body = cur.body.filter((x: any) => x && !SKIP_TYPES.has(x.type))
+      if (body.length !== 1) return
+      cur = unwrap(body[0])
+    } else if (cur?.type === "supsub" && cur.base != null) {
+      cur = unwrap(cur.base)
+    } else {
+      break
+    }
   }
   const text = cur?.type === "mathord" || cur?.type === "textord" ? cur.text : null
   if (text !== "c" && text !== "G") return
