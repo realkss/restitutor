@@ -344,11 +344,49 @@ type Ctx = {
    * (analyzeAccentBody).
    */
   constantsRead: ("c" | "G")[]
+  /**
+   * A replay for the numeral-fusion net (numeralFusionNet): every power of c
+   * or G, written or restored, is emitted as one opaque mark (netOpaque), and
+   * so, in a masked replay to a geometrized target, is every factor the live
+   * strip drops whole. The numerals in them are a constant's power, which a
+   * restoration changes, or go with what a strip removes: none of them is a
+   * number the output sets beside another. This is decided by what the
+   * analysis read, never by how a power is spelled (`c^{\frac{10}{5}}`,
+   * `\left(\frac{G}{c^2}\right)^{10}`).
+   */
+  net: boolean
 }
 
 /** Constants are inserted (or stripped) only in a live emission, never in a masked one. */
 function emitsConstants(ctx: Ctx): boolean {
   return !ctx.mask
+}
+
+/** Open and close an opaque mark in a net replay; neither is TeX, and no other emission holds one. */
+const NET_OPEN = "\u0002"
+const NET_CLOSE = "\u0003"
+
+/**
+ * TeX the numeral-fusion net reads as one visible mark and does not read
+ * into: a letter prints there, and the digits inside are not the author's
+ * number (Ctx.net).
+ */
+function netOpaque(tex: string): string {
+  return tex === "" ? tex : `${NET_OPEN}${tex}${NET_CLOSE}`
+}
+
+/**
+ * Whether the live strip drops the factor whole, asked from inside a masked
+ * replay, where nothing is stripped and `vanishes` would say no.
+ */
+function vanishesLive(f: Factor, ctx: Ctx): boolean {
+  const masked = ctx.mask
+  ctx.mask = false
+  try {
+    return f.vanishes?.() === true
+  } finally {
+    ctx.mask = masked
+  }
 }
 
 /** A live emission to a geometrized target, where every c and G is set to one and vanishes. */
@@ -1149,7 +1187,7 @@ function termInsertion(t: TermInfo, target: Dim, ctx: Ctx): { a: number; b: numb
  */
 function termQuote(t: TermInfo, ctx: Ctx): string {
   try {
-    return maskedEmission(ctx, () => emitTerm(t))
+    return maskedEmission(ctx, () => emitTerm(t, ctx))
   } catch {
     return t.src
   }
@@ -1313,7 +1351,7 @@ function emitSum(
   return terms
     .map((t, idx) => {
       const ins = emitsConstants(ctx) ? insertions[idx] : null
-      const body = ins ? emitTermWith(t, ins.a, ins.b) : emitTerm(t)
+      const body = ins ? emitTermWith(t, ins.a, ins.b, ctx) : emitTerm(t, ctx)
       const lead = idx === 0 ? leadSign(t.sign) : ` ${foldedOp(ops[idx - 1], t.sign)} `
       return lead + body
     })
@@ -2367,7 +2405,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
           unitConstant: true,
           vanishes: () => stripsConstants(ctx),
           emit: () => {
-            if (!stripsConstants(ctx)) return src
+            if (!stripsConstants(ctx)) return ctx.net ? netOpaque(src) : src
             ctx.mutated = true
             return ""
           },
@@ -2389,8 +2427,8 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const emit = () => {
         // Stripped constants may empty a side: \frac{c^4}{4GM} → \frac{1}{4M},
         // \frac{v}{c} → v.
-        const numTex = joinFactors(frac.num) || "1"
-        const denTex = joinFactors(frac.den)
+        const numTex = joinFactors(frac.num, ctx) || "1"
+        const denTex = joinFactors(frac.den, ctx)
         if (denTex === "") return numTex
         return `${cmd}{${numTex}}{${denTex}}`
       }
@@ -2937,7 +2975,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
           unitConstant: true,
           vanishes: () => stripsConstants(ctx),
           emit: () => {
-            if (!stripsConstants(ctx)) return wholeTex
+            if (!stripsConstants(ctx)) return ctx.net ? netOpaque(wholeTex) : wholeTex
             ctx.mutated = true
             return ""
           },
@@ -3068,12 +3106,17 @@ function formatExp(tex: string, e12: number): string {
  * where a factor vanished (`2\ G\ M` → `2\ \ M`) say twice what the author
  * said once (separatorAcross). Wherever nothing vanished, the glue is kept as
  * written.
+ *
+ * In a masked replay for the numeral-fusion net, a factor the live strip drops
+ * whole is one opaque mark (Ctx.net): the numerals in it go with it, and what
+ * it printed between its neighbors is gone from the live emission.
  */
-function joinFactors(factors: Factor[]): string {
+function joinFactors(factors: Factor[], ctx: Ctx): string {
   // Every factor is emitted, the vanishing ones too: emission is where a strip
   // is recorded (ctx.mutated), and a translation whose strips all vanished
   // was reported unchanged and skipped the re-read backstop.
-  const parts: EmittedFactor[] = factors.map((f) => ({ f, tex: f.emit() }))
+  const dropped = (f: Factor) => ctx.net && ctx.mask && ctx.strip && f.kind !== "glue" && vanishesLive(f, ctx)
+  const parts: EmittedFactor[] = factors.map((f) => ({ f, tex: dropped(f) ? netOpaque(f.emit()) : f.emit() }))
   const out: string[] = []
   // The glue runs since the last surviving factor, a new run opening wherever a factor vanished.
   let runs: EmittedFactor[][] = [[]]
@@ -3215,16 +3258,16 @@ function sumVanishes(sum: SumInfo): boolean {
   return !sum.multiTerm && sum.terms[0].sign === "" && productVanishes(sum.terms[0].factors)
 }
 
-function emitTerm(t: TermInfo): string {
+function emitTerm(t: TermInfo, ctx: Ctx): string {
   // Stripped constants may leave a side of a "/" (or the whole term) empty.
   if (t.slashIdx >= 0) {
-    const num = joinFactors(t.factors.slice(0, t.slashIdx))
-    const den = joinFactors(t.factors.slice(t.slashIdx + 1))
+    const num = joinFactors(t.factors.slice(0, t.slashIdx), ctx)
+    const den = joinFactors(t.factors.slice(t.slashIdx + 1), ctx)
     if (den === "") return num === "" ? "1" : num
     if (num === "") return `1/${den}`
     return `${num}/${den}`
   }
-  return joinFactors(t.factors) || "1"
+  return joinFactors(t.factors, ctx) || "1"
 }
 
 /**
@@ -3265,8 +3308,8 @@ function partsWith(factors: Factor[], gTex: string, cTex: string): string[] {
 }
 
 /** Rebuild a term with c^(a/12) G^(b/12) inserted in the culturally expected slots. */
-function emitTermWith(t: TermInfo, a12: number, b12: number): string {
-  if (a12 === 0 && b12 === 0) return emitTerm(t)
+function emitTermWith(t: TermInfo, a12: number, b12: number, ctx: Ctx): string {
+  if (a12 === 0 && b12 === 0) return emitTerm(t, ctx)
 
   // Half-integer powers read best inside a square root when there is one.
   if ((a12 % D12 !== 0 || b12 % D12 !== 0) && t.slashIdx < 0) {
@@ -3275,16 +3318,18 @@ function emitTermWith(t: TermInfo, a12: number, b12: number): string {
       const bodyTerm = t.factors[sqrtIdx].sqrt!.bodyTerm!
       // The body's sign is the sum's to emit, and rebuilt from the term alone it
       // went missing: `x = \sqrt{-Mr}` came back as `\sqrt{\frac{GMr}{c^{2}}}`.
-      const inner = leadSign(bodyTerm.sign) + emitTermWith(bodyTerm, a12 * 2, b12 * 2)
+      const inner = leadSign(bodyTerm.sign) + emitTermWith(bodyTerm, a12 * 2, b12 * 2, ctx)
       const parts = t.factors.map((f, idx) => (idx === sqrtIdx ? `\\sqrt{${inner}}` : f.emit()))
       return joinTex(parts)
     }
   }
 
-  const cNum = a12 > 0 ? formatExp("c", a12) : ""
-  const cDen = a12 < 0 ? formatExp("c", -a12) : ""
-  const gNum = b12 > 0 ? formatExp("G", b12) : ""
-  const gDen = b12 < 0 ? formatExp("G", -b12) : ""
+  // A power restored, which a replay for the numeral-fusion net marks opaque (Ctx.net).
+  const restored = (tex: "c" | "G", e12: number) => (ctx.net ? netOpaque(formatExp(tex, e12)) : formatExp(tex, e12))
+  const cNum = a12 > 0 ? restored("c", a12) : ""
+  const cDen = a12 < 0 ? restored("c", -a12) : ""
+  const gNum = b12 > 0 ? restored("G", b12) : ""
+  const gDen = b12 < 0 ? restored("G", -b12) : ""
 
   // A source-level “x/y” term keeps its slash form (the separator factor at
   // slashIdx is skipped and re-emitted between the halves).
@@ -3321,13 +3366,13 @@ function emitTermWith(t: TermInfo, a12: number, b12: number): string {
   const merged = mergeConstants(t.factors, a12, b12)
   const numParts = partsWith(
     merged.factors,
-    merged.b12 > 0 ? formatExp("G", merged.b12) : "",
-    merged.a12 > 0 ? formatExp("c", merged.a12) : "",
+    merged.b12 > 0 ? restored("G", merged.b12) : "",
+    merged.a12 > 0 ? restored("c", merged.a12) : "",
   )
   const numerator = joinTex(numParts) || "1"
   const mergedDen =
-    (merged.b12 < 0 ? formatExp("G", -merged.b12) : "") +
-    (merged.a12 < 0 ? formatExp("c", -merged.a12) : "")
+    (merged.b12 < 0 ? restored("G", -merged.b12) : "") +
+    (merged.a12 < 0 ? restored("c", -merged.a12) : "")
   if (mergedDen === "") return numerator
   return `\\frac{${numerator}}{${mergedDen}}`
 }
@@ -3801,6 +3846,7 @@ export function dimensionOf(
     mask: false,
     font: null,
     constantsRead: [],
+    net: false,
   }
   const legendOut = () =>
     Array.from(ctx.legend.values()).map((record) => ({
@@ -3850,15 +3896,12 @@ type NumeralLine = (string | null)[]
  * an operator, a root. A fraction's numerator and denominator, and a script,
  * are lines of their own, whose numerals never meet one outside them
  * (`c^{2}5` is c²·5, not a 25), and a numeric script is that line as well as
- * part of the numeral it may sit on (`10^{23}` holds the pair 2, 3). The
- * digits of a numeric power of c or G are not counted.
+ * part of the numeral it may sit on (`10^{23}` holds the pair 2, 3). An opaque
+ * mark (netOpaque) prints something visible, and nothing in it is read.
  */
 function numeralLines(tex: string, lines: NumeralLine[] = []): NumeralLine[] {
   const line: NumeralLine = []
   lines.push(line)
-  // The letter the next script sits on, when it is a bare letter: braces and
-  // whitespace print nothing and keep it, anything else ends it.
-  let letter: string | null = null
   let i = 0
   while (i < tex.length) {
     const ch = tex[i]
@@ -3866,8 +3909,15 @@ function numeralLines(tex: string, lines: NumeralLine[] = []): NumeralLine[] {
       i += 1
     } else if (/[0-9.]/.test(ch)) {
       line.push(ch)
-      letter = null
       i += 1
+    } else if (ch === NET_OPEN) {
+      let depth = 0
+      do {
+        if (tex[i] === NET_OPEN) depth += 1
+        else if (tex[i] === NET_CLOSE) depth -= 1
+        i += 1
+      } while (depth > 0 && i < tex.length)
+      line.push(null)
     } else if (ch === "^" || ch === "_") {
       const script = texArgumentAt(tex, i + 1)
       const numeric = /^[\s{}0-9.+\-/]*$/.test(script.body)
@@ -3879,17 +3929,13 @@ function numeralLines(tex: string, lines: NumeralLine[] = []): NumeralLine[] {
       // The script's own digits are a line of their own whatever it sits on:
       // a strip inside a script fuses digits there (`10^{2G3}` to `10^{23}`,
       // `2^{1\frac{G}{c^2}0}` to `2^{10}`, `e^{2\,G\,3}` to `e^{23}`), and the
-      // power carries them into the value. The one exception is a power of c or G, which an insertion
-      // adds and a strip removes whole with its letter; counting its digits on
-      // one side only would be a difference no number made.
-      if (!numeric || (letter !== "c" && letter !== "G")) numeralLines(script.body, lines)
+      // power carries them into the value.
+      numeralLines(script.body, lines)
       i = script.end
     } else if (ch === "\\") {
       i = controlSequenceMarks(tex, i, line, lines)
-      letter = null
     } else {
       line.push(null)
-      letter = /[a-zA-Z]/.test(ch) ? ch : null
       i += 1
     }
   }
@@ -4058,37 +4104,41 @@ function numeralRuns(tex: string): string[][] {
   return runs
 }
 
-/** How many pairs of numerals the runs set side by side. */
-function adjacencyCount(runs: string[][]): number {
-  return runs.reduce((count, run) => count + run.length - 1, 0)
+/**
+ * A run as the net matches it: its numerals without the scripts on them, which
+ * a strip inside the script changes (in `10^{23}` from `10^{2G3}`, the run
+ * made is the 2 and 3, not the 10, which is still the author's).
+ */
+function bareRun(marks: string[]): string {
+  return marks.map((mark) => mark.replace(/[\^_][\s\S]*$/, "")).join(" ")
 }
 
 /**
- * The two numerals to name, for `from` setting more of them side by side
- * than `against`: a run of `from` that `against` does not print, split after
- * its longest head that `against` does print as a run (`32` against the
- * source's `3` and `2` names 3 and 2). Runs are matched without the scripts
- * on their numerals, which a strip inside the script changes: in `10^{23}`
- * from `10^{2G3}`, the run made is the 2 and 3, not the 10.
+ * The first run of two numerals or more in `from` that `against` does not
+ * print, or null. Each run of `against` answers for one run of `from` at
+ * most, so a number made in one place is never offset by a number removed,
+ * or split, in another.
  */
-function unmatchedPair(from: string[][], against: string[][]): [string, string] {
-  const bare = (marks: string[]) => marks.map((mark) => mark.replace(/[\^_][\s\S]*$/, "")).join("")
-  const spelled = against.map(bare)
-  const pool = [...spelled]
-  const unmatched = from.find((run) => {
-    const at = pool.indexOf(bare(run))
-    if (at < 0) return run.length > 1
-    pool.splice(at, 1)
-    return false
-  })
-  const run = unmatched ?? from.find((candidate) => candidate.length > 1)!
-  let at = run.length - 1
-  while (at > 1 && !spelled.includes(bare(run.slice(0, at)))) at -= 1
-  return [run.slice(0, at).join(""), run.slice(at).join("")]
+function unmatchedRun(from: string[][], against: string[][]): string[] | null {
+  const pool = against.map(bareRun)
+  for (const run of from) {
+    const at = pool.indexOf(bareRun(run))
+    if (at >= 0) pool.splice(at, 1)
+    else if (run.length > 1) return run
+  }
+  return null
 }
 
-function numeralFusionReason(leftTex: string, rightTex: string): string {
-  return `the numerals ending “${leftTex}” and opening “${rightTex}”, which a stripped constant leaves side by side as one number — not supported`
+/**
+ * The two numerals to name for a run `against` does not print: the run split
+ * after its longest head that `against` does print as a run (`32` against the
+ * source's `3` and `2` names 3 and 2).
+ */
+function pairToName(run: string[], against: string[][]): [string, string] {
+  const spelled = against.map(bareRun)
+  let at = run.length - 1
+  while (at > 1 && !spelled.includes(bareRun(run.slice(0, at)))) at -= 1
+  return [run.slice(0, at).join(""), run.slice(at).join("")]
 }
 
 /**
@@ -4104,27 +4154,45 @@ function numeralFusionReason(leftTex: string, rightTex: string): string {
  * source may mean 3½.
  *
  * Guards that matched these shapes term by term were passed, one review round
- * after another, by a shape one bracket or one delimiter away. The net counts
- * instead, over the whole output: the adjacencies the live emission prints
- * against those the masked emission, the source as written, prints. A strip
- * only removes, which can make an adjacency and cannot undo one. An insertion
- * adds letters, scripts and structure, which can undo one and cannot make
- * one, since a constant written between two numerals is never folded away
- * (separatesNumerals). So a count that differs is a number made or split.
+ * after another, by a shape one bracket or one delimiter away. The net reads
+ * the whole output instead: the runs of numerals the live emission prints
+ * against those the masked emission, the source as written, prints, both
+ * replayed with the constants opaque (Ctx.net). Outside the constants, the
+ * two hold the same numerals, so a run of two or more that one prints and
+ * the other does not is a number made or split. Runs are matched one for
+ * one, never counted: a total let a number made in one place offset the
+ * digits of a stripped power (`3\,\left(\frac{G}{c^2}\right)^{10}\left(\frac{c^2}{G}\right)^{9}\,\frac{1}{2}\,M`
+ * shipped as `3\frac{1}{2}M`, 3½ M where the value is 1.5 M), and digits a
+ * strip removed with their constant read as a number split (the `3M` of
+ * `3\,\left(\frac{G}{c^2}\right)^{10}\left(\frac{c^2}{G}\right)^{10}\,\frac{G}{c^2}\,M`
+ * declined, naming the 1 and 0 of the power).
+ *
+ * A strip only removes, which can make a run and cannot split one, so to a
+ * geometrized target only a run made is asked. A restoration adds letters,
+ * scripts and structure, which split a run, and it moves a constant it folds
+ * into another power of itself, which can make one where that constant was
+ * all that stood between two numerals.
  */
-function numeralFusionNet(live: string, masked: string): void {
+function numeralFusionNet(live: string, masked: string, stripped: boolean): void {
   const printed = numeralRuns(live)
   const written = numeralRuns(masked)
-  const made = adjacencyCount(printed) - adjacencyCount(written)
-  if (made === 0) return
-  if (made > 0) {
-    const [left, right] = unmatchedPair(printed, written)
-    throw new Unsupported(numeralFusionReason(left, right))
+  const made = unmatchedRun(printed, written)
+  if (made != null) {
+    const [left, right] = pairToName(made, written)
+    throw new Unsupported(
+      stripped
+        ? `the numerals ending “${left}” and opening “${right}”, which a stripped constant leaves side by side as one number — not supported`
+        : `the numerals ending “${left}” and opening “${right}”, which the restoration sets side by side as one number, moving the constant written between them — not supported`,
+    )
   }
-  const [left, right] = unmatchedPair(written, printed)
-  throw new Unsupported(
-    `the numerals ending “${left}” and opening “${right}”, one number or a product, which a constant restored between or into them would leave only as the product — not supported`,
-  )
+  if (stripped) return
+  const split = unmatchedRun(written, printed)
+  if (split != null) {
+    const [left, right] = pairToName(split, printed)
+    throw new Unsupported(
+      `the numerals ending “${left}” and opening “${right}”, one number or a product, which a constant restored between or into them would leave only as the product — not supported`,
+    )
+  }
 }
 
 /**
@@ -4222,6 +4290,7 @@ function translateCore(
     mask: false,
     font: null,
     constantsRead: [],
+    net: false,
   }
 
   // The floater only ever fires on a .katex-display, so every equation it sees
@@ -4329,8 +4398,17 @@ function translateCore(
       )
     }
     // The masked replay is the source as written, so the numerals it sets
-    // side by side are the author's; the live one must set the same count.
-    numeralFusionNet(restoredTex, masked)
+    // side by side are the author's; the live one must set the same. Both are
+    // replayed once more with the constants opaque (Ctx.net), and the replays
+    // leave nothing behind: a strip they repeat was recorded the first time.
+    const mutated = ctx.mutated
+    ctx.net = true
+    try {
+      numeralFusionNet(rebuild(), maskedEmission(ctx, rebuild), ctx.strip)
+    } finally {
+      ctx.net = false
+      ctx.mutated = mutated
+    }
     // The masked replay proves the emitters reproduced what the reader wrote; it
     // cannot see a restoration that analysis solved and emission then dropped or
     // misplaced. `ds = d(r - t)` came back verbatim while reporting a change,

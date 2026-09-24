@@ -2760,6 +2760,63 @@ describe("batch-1 review fixes", () => {
     }
   })
 
+  test("the net matches runs one for one, and the digits a strip removes go with their constant", () => {
+    const GSI: TargetSpec = { system: "si", geometrized: true }
+    const WRITTEN = (left: string, right: string) =>
+      `the numerals ending “${left}” and opening “${right}”, one number or a product, which a constant restored between or into them would leave only as the product — not supported`
+    // Step 7c review, round 2. The net compared totals, and the digits of a
+    // stripped power offset the adjacency a strip made: live at GEO and at
+    // geometrized SI, `3\frac{1}{2}M` (3½ M where the value is 1.5 M),
+    // `2\left.3\right|M` (23 M for 6 M) and `32M` (for 6 M).
+    const made: [string, string, string][] = [
+      ["x = 3\\,\\left(\\frac{G}{c^2}\\right)^{10}\\left(\\frac{c^2}{G}\\right)^{9}\\,\\frac{1}{2}\\,M", "3", "\\frac{1}{2}"],
+      ["x = 3\\,\\frac{G}{2\\,c^{\\frac{10}{5}}}\\,M", "3", "\\frac{1}{2}"],
+      ["x = 3\\,\\frac{G}{c^{\\frac{10}{5}}}\\,\\frac{1}{2}\\,M", "3", "\\frac{1}{2}"],
+      ["x = 2\\,\\frac{G}{c^{\\frac{10}{5}}}\\,\\frac{1}{2}\\,M", "2", "\\frac{1}{2}"],
+      ["x = 2\\,\\left.\\frac{3G}{c^{\\frac{10}{5}}}\\right|M", "2", "3"],
+      ["x = 3\\,G\\,2\\,c^{-\\frac{12}{6}} M", "3", "2"],
+      ["x = 3\\,G\\,2\\,c^{-\\tfrac{12}{6}} M", "3", "2"],
+      ["x = 3\\,G\\,2\\,c^{-\\dfrac{12}{6}} M", "3", "2"],
+      ["x = 3\\,\\left(\\frac{G}{c^2}\\right)^{10}\\left(\\frac{c^2}{G}\\right)^{9}\\,2\\,M", "3", "2"],
+      // Before, the 1 and 0 of the power were named as a number the author set.
+      ["x = 3\\,G^{\\frac{10}{10}}\\,2\\,\\frac{M}{c^2}", "3", "2"],
+    ]
+    for (const [tex, left, right] of made) {
+      declines(tex, FUSED(left, right), [GEO, GSI])
+      assert.strictEqual(run(tex, SI).kind, "translated", tex)
+    }
+    // A number made in one place is not offset by one the author wrote elsewhere.
+    declines("x = 3\\,\\frac{G}{2c^2}\\,M + 3\\,\\frac{1}{2}\\,M", FUSED("3", "\\frac{1}{2}"), [GEO])
+    // The digits of a power that vanishes with its constant were never a number
+    // of the author's, and nothing is restored at a geometrized target: these
+    // translate, as `3M` did before step 7c.
+    for (const target of [GEO, GSI]) {
+      assert.strictEqual(
+        rawRestored("x = 3\\,\\left(\\frac{G}{c^2}\\right)^{10}\\left(\\frac{c^2}{G}\\right)^{10}\\,\\frac{G}{c^2}\\,M", target),
+        "x = 3M",
+      )
+      assert.strictEqual(rawRestored("x = \\frac{G}{c^{\\frac{10}{5}}}\\,1\\,5\\,M", target), "x = 1\\,5M")
+    }
+    // A restored power's digits are not the author's either, nor are those of
+    // a power written as a fraction, restored or not.
+    assert.strictEqual(
+      rawRestored("x = 3\\,\\left(\\frac{G}{c^2}\\right)^{10}\\left(\\frac{c^2}{G}\\right)^{9}\\,\\frac{1}{2}\\,M"),
+      "x = 3\\left(\\frac{G}{c^{2}}\\right)^{10}\\left(\\frac{c^{2}}{G}\\right)^{9}\\frac{G^{9}}{2c^{18}}M",
+    )
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{G}{2\\,c^{\\frac{10}{5}}}\\,M"), "x = 3\\frac{G}{2c^{\\frac{10}{5}}}M")
+    // At a restoring target a run the author set still may not be parted, and
+    // one the restoration makes by moving a constant it folds says so: `G` was
+    // folded into its own restored power, leaving `2\ \ 3`, which reads as 23.
+    declines("x = 3\\,\\frac{1}{2}\\,\\left(\\frac{c^2}{G}\\right)^{10} M", WRITTEN("3", "\\frac{1}{2}"), [SI])
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}\\,\\left(\\frac{c^2}{G}\\right)^{10} M", GEO), "x = 3\\,\\frac{1}{2}M")
+    declines(
+      "x = 2\\ G\\ 3\\ M",
+      "the numerals ending “2” and opening “3”, which the restoration sets side by side as one number, moving the constant written between them — not supported",
+      [SI],
+    )
+    declines("x = 2\\ G\\ 3\\ M", FUSED("2", "3"), [GEO])
+  })
+
   test("a strip that makes a fraction of numerals after a numeral declines, spacing or not", () => {
     // Live at GEO, `3\,\frac{G}{2c^2}M` shipped as `3\,\frac{1}{2}M`: the
     // value is 1.5M, and a thin space before ½ is how 3½ is set.
