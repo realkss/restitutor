@@ -3484,6 +3484,36 @@ describe("statement layer: lists, connectives, wide space and the unit summary",
     }
   })
 
+  test("a bare 1 on any row of a display with a list row declines unless it is a pure number", () => {
+    // The list row is what makes the display readable, so every statement in
+    // it is judged, not the list row's alone: these shipped with the 1 bare
+    // under a banner of m² s⁻², kg, m s⁻¹ and m² s⁻², where |Φ| ≪ c², a
+    // declared mass, v ≪ c and Φ ≪ c² were meant.
+    const aligned = (...rows: string[]) => `\\begin{aligned}\n${rows.join(" \\\\\n")}\n\\end{aligned}`
+    const weakField = aligned("g_{tt} &\\approx -(1 + 2\\Phi), \\qquad g_{rr} \\approx 1 - 2\\Phi", "|\\Phi| &\\ll 1")
+    declines(weakField, UNIT_ONE("|\\Phi| &\\ll 1"), [SI, HL])
+    expect(weakField, GEO, weakField, "\\text{dimensionless}", false)
+    const declared = aligned("r_s &= 2M, \\qquad t = 0", "M &= 1")
+    declines(declared, UNIT_ONE("M &= 1"), [SI, HL, GEO])
+    declines(aligned("M &= 1", "r_s &= 2M, \\qquad t = 0"), UNIT_ONE("M &= 1"), [SI, HL, GEO])
+    const slow = aligned("E &\\approx m + \\tfrac{1}{2}mv^{2}, \\qquad r_{s} = 2M", "v &\\ll 1")
+    declines(slow, UNIT_ONE("v &\\ll 1"), [SI, HL])
+    expect(slow, GEO, slow, "\\mathrm{cm};\\ \\mathrm{cm};\\ \\text{dimensionless}", false)
+    const weak = aligned("r_{s} &= 2M, \\qquad r \\gg M", "\\Phi &\\ll 1")
+    declines(weak, UNIT_ONE("\\Phi &\\ll 1"), [SI, HL])
+    expect(weak, GEO, weak, "\\mathrm{cm};\\ \\mathrm{cm};\\ \\text{dimensionless}", false)
+    // Against a pure number the 1 on another row is one.
+    expect(
+      aligned("r_s &= 2M, \\qquad t = 0", "\\frac{r}{r_s} &= 1"),
+      SI,
+      aligned("r_{s} &= \\frac{2GM}{c^{2}}, \\qquad t = 0", "\\frac{r}{r_{s}} &= 1"),
+      `${M};\\ ${S};\\ \\text{dimensionless}`,
+      true,
+    )
+    // It is judged once the display is read, so a list on a later row is the reason.
+    declines(aligned("r_s &= 2M, \\qquad M = 1", "\\theta &= 0, \\pi"), LIST, [SI, GEO])
+  })
+
   test("what is not a list of statements keeps its decline", () => {
     for (const tex of [
       "\\theta = 0, \\pi",

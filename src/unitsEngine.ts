@@ -4263,8 +4263,8 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Carried): RowResult
   // Insertions are solved once, during analysis; emission can then be replayed.
   // A side that is nothing but a literal 1 is a convention marker rather than a
   // quantity, so it stays a bare 1 (the same transparency a literal 0 has had).
-  // In a line of several statements it may only against a pure number
-  // (unitLiteralGuard, in translateLine).
+  // In a display with a line of several statements it may only against a
+  // pure number (unitLiteralGuard, in translateCore).
   const resolvedTarget = target
   const isUnitLiteralSide = (sum: SumInfo | null) => sum != null && !sum.multiTerm && sum.terms[0].isUnitLiteral
   const insertionsPerSide = sums.map((sum) => {
@@ -4348,8 +4348,12 @@ type Separator = { kind: "list" | "connective" | "wide"; tex: string; pre: any[]
 
 type LineItem = { row: RowResult } | { tex: string }
 
-/** A display line as statements: each translated as its own row, in order, with the separators between them. */
-type LineResult = { items: LineItem[]; rows: RowResult[] }
+/**
+ * A display line as statements: each translated as its own row, in order,
+ * with the separators between them. `split` is set when the line held more
+ * than one statement (a separator, or wide space that split a piece).
+ */
+type LineResult = { items: LineItem[]; rows: RowResult[]; split: boolean }
 
 const isListPunct = (n: any) => n?.type === "atom" && n.family === "punct" && (n.text === "," || n.text === ";")
 
@@ -4481,27 +4485,39 @@ function dimensionlessIn(d: Dim, geometrized: boolean): boolean {
 }
 
 /**
- * A statement of a split line with a side that is a bare 1 (translateRow
- * leaves it bare, a convention marker) declines unless its dimension is a
- * pure number in the target. Beside a quantity with units the 1 stands for
- * that quantity's unit value, which the notation does not state: at SI
- * `v \ll 1` means v ≪ c and `\frac{M}{r} \ll 1` means GM/(rc²) ≪ 1, yet both
- * shipped with the 1 bare under a banner of m s⁻¹ and kg m⁻¹, beside a first
- * statement restored in full. Whether a lone 1 is restored or declined is the
- * owner's ruling (integration §4.2 item 9, plan step 19), so this is the
- * conservative default, and it covers only what the statement layer newly
- * reads: a line with a separator in it, which declined whole before it. A
- * single statement keeps its reading until the ruling. Against a pure number
- * the 1 is one (`g_{tt} = -1 \qquad v \ll 1` in Geometrized units), and a 1
- * inside a sum is an ordinary term, restored like any other. A symbol the
- * registry does not know leaves no target to judge, since its dimension was
- * read as a pure number's: `v\xi \ll 1` may well be dimensionless. The line
- * declines for the unknown instead, which is the truer reason.
+ * In a display with a split line, a statement with a side that is a bare 1
+ * (translateRow leaves it bare, a convention marker) declines unless its
+ * dimension is a pure number in the target. Beside a quantity with units the
+ * 1 stands for that quantity's unit value, which the notation does not
+ * state: at SI `v \ll 1` means v ≪ c and `\frac{M}{r} \ll 1` means
+ * GM/(rc²) ≪ 1, yet both shipped with the 1 bare under a banner of m s⁻¹ and
+ * kg m⁻¹, beside a first statement restored in full. Whether a lone 1 is
+ * restored or declined is the owner's ruling (integration §4.2 item 9, plan
+ * step 19), so this is the conservative default, and it covers only what the
+ * statement layer newly reads: a display with a line of several statements
+ * in it, which declined whole before the layer. It covers every statement of
+ * that display, not the split line's alone: in `\begin{aligned} r_s &= 2M,
+ * \qquad t = 0 \\ M &= 1 \end{aligned}` the list row is what made the display
+ * readable, and the `M = 1` on the row below shipped under a kg banner. A
+ * display with no split line keeps its reading until the ruling, a single
+ * statement and a two-row `g_{tt} \approx -(1+2\Phi) \\ |\Phi| \ll 1` alike.
+ * Against a pure number the 1 is one (`g_{tt} = -1 \qquad v \ll 1` in
+ * Geometrized units), and a 1 inside a sum is an ordinary term, restored
+ * like any other. A symbol the registry does not know leaves no target to
+ * judge, since its dimension was read as a pure number's: `v\xi \ll 1` may
+ * well be dimensionless. The display declines for the unknown instead, which
+ * is the truer reason. It runs once every line is read, so a reason read in
+ * any line (a list, an ambiguous continuation) is the one the reader sees.
  */
-function unitLiteralGuard(row: RowResult, ctx: Ctx): void {
-  if (!row.unitLiteralSide || ctx.unknown.size > 0 || dimensionlessIn(row.target, ctx.strip)) return
-  const statement = maskedEmission(ctx, () => rowTexOf(row))
-  throw new Unsupported(`a side that is the number 1 in “${statement}”, whose units the equation does not state`)
+function unitLiteralGuard(lines: LineResult[], ctx: Ctx): void {
+  if (!lines.some((line) => line.split) || ctx.unknown.size > 0) return
+  for (const line of lines) {
+    for (const row of line.rows) {
+      if (!row.unitLiteralSide || dimensionlessIn(row.target, ctx.strip)) continue
+      const statement = maskedEmission(ctx, () => rowTexOf(row))
+      throw new Unsupported(`a side that is the number 1 in “${statement}”, whose units the equation does not state`)
+    }
+  }
 }
 
 /**
@@ -4543,10 +4559,9 @@ function unitLiteralGuard(row: RowResult, ctx: Ctx): void {
  * (declarationGuard, in translateRow), and one declaration declines the whole
  * line: `c = 1, \qquad r_s = 2M` would otherwise restore c in r_s after
  * declaring it 1. The pieces are checked in order, as they are translated,
- * so a reason read in an earlier statement is the one the reader sees. Only
- * once every piece is read as a statement is a bare 1 judged: a statement
- * with one for a side declines unless it is a pure number in the target
- * (unitLiteralGuard). Judged earlier, it named the 1 in `0 < t < 1,\ 0 < r
+ * so a reason read in an earlier statement is the one the reader sees. A bare
+ * 1 is not judged here but once the whole display is read (unitLiteralGuard,
+ * in translateCore). Judged earlier, it named the 1 in `0 < t < 1,\ 0 < r
  * < 2M`, a line that declines as a list before it is statements at all.
  */
 function translateLine(nodes: any[], ctx: Ctx, carried: Carried): LineResult {
@@ -4630,8 +4645,7 @@ function translateLine(nodes: any[], ctx: Ctx, carried: Carried): LineResult {
       items.push({ row })
     })
   })
-  if (split) for (const row of rows) unitLiteralGuard(row, ctx)
-  return { items, rows }
+  return { items, rows, split }
 }
 
 /**
@@ -5533,6 +5547,7 @@ function translateCore(
         gaps.push(gap ? `[${gap.number}${gap.unit}]` : "")
       }
       if (!anyRel) return "no-anchor"
+      unitLiteralGuard(results, ctx)
       const rebuild = () => {
         const body = results
           .map(
@@ -5549,6 +5564,7 @@ function translateCore(
     const line = translateLine(nodes, ctx, null)
     const stated = line.rows.filter((res) => res.hadRel)
     if (stated.length === 0) return "no-anchor"
+    unitLiteralGuard([line], ctx)
     const rebuild = () => lineTexOf(line)
     const restored = rebuild()
     checkRebuilt(restored, rebuild)
