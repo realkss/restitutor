@@ -1691,6 +1691,23 @@ describe("reassembly fidelity and upright words", () => {
     assert.strictEqual(rawRestored("ds^2 = -c^2\\mathrm{d}t^2 + dx^2"), "ds^2 = -c^{2}\\mathrm{d}t^2 + dx^2")
   })
 
+  test("a differential does not make an upright letter a variable", () => {
+    // Live, the operand bypassed the guard: the metre after a d was restored as
+    // a mass (c^{2}d\mathrm{m}) and the second as an arc length.
+    declinesWith("E = d\\mathrm{m}", UPRIGHT_LETTER("m"))
+    declinesWith("E = \\mathrm{d}\\mathrm{m}", UPRIGHT_LETTER("m"))
+    declinesWith("v = \\frac{dr}{d\\mathrm{s}}", UPRIGHT_LETTER("s"))
+    declinesWith("v = \\frac{d\\mathrm{s}}{dt}", UPRIGHT_LETTER("s"))
+    declinesWith("E = d^2\\mathrm{m}", UPRIGHT_LETTER("m"))
+    // Through a script on the operand, outside the font or inside it.
+    declinesWith("E = d\\mathrm{m}^{2}", UPRIGHT_LETTER("m"))
+    declinesWith("E = d\\mathrm{m^2}", UPRIGHT_LETTER("m"))
+    declinesWith("E = d\\mathrm{m}_{1}", UPRIGHT_LETTER("m"))
+    // The upright d is the differential itself and keeps its reading.
+    assert.strictEqual(rawRestored("ds = \\mathrm{d}t"), "ds = c\\mathrm{d}t")
+    assert.strictEqual(rawRestored("v = \\frac{\\mathrm{d}r}{\\mathrm{d}t}"), "v = \\frac{\\mathrm{d}r}{\\mathrm{d}t}")
+  })
+
   test("prose and placeholders say what they are", () => {
     const PROSE = (word: string) => `prose (“${word}”) inside the equation — select a single equation`
     const PLACEHOLDER = (word: string) =>

@@ -1508,6 +1508,32 @@ function uprightLetterGuard(text: string, upright: boolean): void {
   }
 }
 
+/**
+ * Whether an upright font stands on the way down to `unwrap(node)`. The script
+ * and differential paths read their letter through unwrap, which discards the
+ * font, so they must ask before the letter is looked up: `d\mathrm{m}` shipped
+ * as `c^{2}d\mathrm{m}`, the metre restored as a mass, while `\mathrm{m}c^2`
+ * declined.
+ */
+function underUprightFont(node: any): boolean {
+  let cur = node
+  while (cur != null) {
+    if (cur.type === "font") {
+      if (UPRIGHT_FONTS.has(cur.font)) return true
+      cur = cur.body
+    } else if (WRAPPER_TYPES.has(cur.type)) {
+      const body = (Array.isArray(cur.body) ? cur.body : [cur.body]).filter(
+        (x: any) => x && !SKIP_TYPES.has(x.type),
+      )
+      if (body.length !== 1) return false
+      cur = body[0]
+    } else {
+      return false
+    }
+  }
+  return false
+}
+
 function derivativePrefix(n: any): "d" | "partial" | null {
   if (n?.type === "mathord" && n.text === "d") return "d"
   if (n?.type === "mathord" && n.text === "\\partial") return "partial"
@@ -1531,6 +1557,7 @@ function analyzeDifferential(
   ctx: Ctx,
 ): Factor {
   const opU = unwrap(operandNode)
+  const upright = ctx.font?.upright === true || underUprightFont(operandNode)
   // Reconstructed, never sliced: a font node carries no span of its own, so
   // slicing `\mathrm{d}` yields the bare `d` inside it and the upright head is
   // silently deleted — `-c^2\mathrm{d}t^2` shipped as `-c^{2}dt^2`.
@@ -1542,6 +1569,7 @@ function analyzeDifferential(
     const base = unwrap(opU.base)
     const baseText = textOf(base)
     if (baseText == null) throw new Unsupported(`an unsupported differential “${wholeSrc()}”`)
+    uprightLetterGuard(baseText, upright || underUprightFont(opU.base))
     const sup = opU.sup != null ? classifySup(opU.sup) : null
     if (opU.sub != null) {
       const display = srcOf(opU, ctx)
@@ -1571,6 +1599,7 @@ function analyzeDifferential(
   } else {
     const baseText = textOf(opU)
     if (baseText != null) {
+      uprightLetterGuard(baseText, upright)
       operandDim = resolveSymbol(baseText, srcOf(opU, ctx), ctx, {
         differential: prefix === "d",
       })
@@ -1987,11 +2016,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   const baseText = base != null ? textOf(base) : null
   // A script does not make an upright letter a variable: \mathrm{m}^{2} is a unit.
   if (baseText != null) {
-    const baseFont = peelStyles(n.base)
-    uprightLetterGuard(
-      baseText,
-      ctx.font?.upright === true || (baseFont?.type === "font" && UPRIGHT_FONTS.has(baseFont.font)),
-    )
+    uprightLetterGuard(baseText, ctx.font?.upright === true || underUprightFont(n.base))
   }
   const baseTex = baseTexOf(n.base, ctx)
   const wholeTex = baseTex != null ? supsubTex(baseTex, n, ctx) : null
