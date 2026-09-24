@@ -826,11 +826,17 @@ function nodeListOf(node: any): any[] {
 }
 
 /**
- * Delimiters KaTeX hands over as ordinary symbols rather than open/close atoms,
- * so they reach symbol resolution and would otherwise be reported as unknown
- * dictionary entries.
+ * Bars, by family. KaTeX hands them over as ordinary symbols rather than
+ * open/close atoms, because a bar has no side of its own (pairBars decides
+ * it). A single bar pairs only with a single bar, a double (a norm) only with
+ * a double.
  */
-const BARE_DELIMITERS = new Set(["|", "\\|", "\\vert", "\\Vert"])
+const BAR_FAMILY: Record<string, "single" | "double"> = {
+  "|": "single",
+  "\\vert": "single",
+  "\\|": "double",
+  "\\Vert": "double",
+}
 
 /** Every delimiter pair the engine can group, keyed by the opener's atom text. */
 const CLOSE_FOR: Record<string, string> = {
@@ -848,79 +854,349 @@ const CLOSE_FOR: Record<string, string> = {
   "\\lmoustache": "\\rmoustache",
 }
 
+/** The closing atoms the engine pairs: the values of CLOSE_FOR. */
+const CLOSERS = new Set(Object.values(CLOSE_FOR))
+
+/** \big … \Bigg, indexed by a delimsizing node's `size` − 1. */
+const SIZED_CMDS = ["\\big", "\\Big", "\\bigg", "\\Bigg"]
+/** The l/r/m suffix survives only as the node's mclass: `\bigl(` is mopen, `\big(` is mord. */
+const SIZED_SUFFIX: Record<string, string> = { mopen: "l", mclose: "r", mrel: "m", mord: "" }
+
+/**
+ * ⟨a|, |b⟩ and ⟨a|H|b⟩ are states and amplitudes, not moduli or brackets. A
+ * state's dimension is not fixed by the notation: a normalized state is
+ * dimensionless, a position eigenket |x⟩ carries L^{-1/2}. Read as bars, the
+ * ket `\left|0\right\rangle` shipped as a translation.
+ */
+const DIRAC_REASON =
+  "Dirac bra–ket notation, whose states' dimensions depend on a normalization the dictionary does not record"
+
+/** Every spelling of a vertical bar a `\left`/`\right` pair can carry. */
+const VERT_DELIMS = new Set(["|", "\\vert", "\\lvert", "\\rvert", "\\|", "\\Vert", "\\lVert", "\\rVert"])
+
+type Delim =
+  | { role: "open"; glyph: string; expects: string; tex: string }
+  | { role: "close"; glyph: string; tex: string }
+  | { role: "bar"; family: "single" | "double"; tex: string }
+
+/**
+ * A sized delimiter as written. Size is typography, but the node records it
+ * only as fields and carries no source location, so its TeX is rebuilt from
+ * them: `\bigl(` is size 1, mclass mopen, delim `(`. A spelling rebuilt
+ * wrong is caught by the masked replay like any other emission.
+ */
+function sizedTexOf(n: any): string {
+  return joinTex([`${SIZED_CMDS[n.size - 1]}${SIZED_SUFFIX[n.mclass]}`, n.delim])
+}
+
+/**
+ * What a node is as a delimiter, or null. A sized delimiter opens exactly as
+ * its glyph does and pairs with its partner in any size (`\big(` … `)`). A
+ * sized bar given a side (`\bigl|` … `\bigr|`) is an opener and a closer
+ * whose glyph names its bar family; the reader never sees that glyph, only
+ * the written TeX. A relation-class bar (`\bigm|`) and a null delimiter
+ * (`\big.`) pair with nothing and are declined by analyzeFactor.
+ */
+function delimOf(n: any): Delim | null {
+  if (n?.type === "atom" && n.family === "open" && CLOSE_FOR[n.text]) {
+    return { role: "open", glyph: n.text, expects: CLOSE_FOR[n.text], tex: n.text }
+  }
+  if (n?.type === "atom" && n.family === "close" && CLOSERS.has(n.text)) {
+    return { role: "close", glyph: n.text, tex: n.text }
+  }
+  if ((n?.type === "textord" || n?.type === "mathord") && BAR_FAMILY[n.text]) {
+    return { role: "bar", family: BAR_FAMILY[n.text], tex: n.text }
+  }
+  if (n?.type !== "delimsizing") return null
+  const glyph: string = n.delim
+  const family = BAR_FAMILY[glyph]
+  if (n.mclass === "mopen" || n.mclass === "mord") {
+    if (CLOSE_FOR[glyph]) return { role: "open", glyph, expects: CLOSE_FOR[glyph], tex: sizedTexOf(n) }
+  }
+  if (n.mclass === "mclose" || n.mclass === "mord") {
+    if (CLOSERS.has(glyph)) return { role: "close", glyph, tex: sizedTexOf(n) }
+  }
+  if (family == null) return null
+  if (n.mclass === "mord") return { role: "bar", family, tex: sizedTexOf(n) }
+  if (n.mclass === "mopen") return { role: "open", glyph: `bar:${family}`, expects: `bar:${family}`, tex: sizedTexOf(n) }
+  if (n.mclass === "mclose") return { role: "close", glyph: `bar:${family}`, tex: sizedTexOf(n) }
+  return null
+}
+
+/** The bar family an opener's glyph fixes, if it is a bar with a side (`\lvert`, `\bigl|`). */
+function barFamilyOfOpener(glyph: string): "single" | "double" | undefined {
+  if (glyph === "\\lvert" || glyph === "bar:single") return "single"
+  if (glyph === "\\lVert" || glyph === "bar:double") return "double"
+  return undefined
+}
+
+const isVertGlyph = (glyph: string) =>
+  glyph === "\\lvert" || glyph === "\\rvert" || glyph === "\\lVert" || glyph === "\\rVert" || glyph.startsWith("bar:")
+
+/** A bar, bare or carrying a script on its closing side (`|z|^2` puts the second bar under a supsub). */
+function barOf(n: any): { family: "single" | "double"; tex: string; scripted: boolean } | null {
+  const d = delimOf(n)
+  if (d?.role === "bar") return { family: d.family, tex: d.tex, scripted: false }
+  if (n?.type === "supsub") {
+    const b = delimOf(unwrap(n.base))
+    if (b?.role === "bar") return { family: b.family, tex: b.tex, scripted: true }
+  }
+  return null
+}
+
+/**
+ * Whether a list sets a bar anywhere a bra–ket could hide one: bare or sized
+ * bars, `\mid`, `\middle|`, and bars inside braces, `\mathinner` (which
+ * `\braket` builds) and style wrappers. `\langle{0|p|0}\rangle` hid its bars
+ * in a brace group and translated as a bracket of moduli.
+ */
+function holdsBar(list: any[]): boolean {
+  return list.some((x) => {
+    if (x == null) return false
+    if (barOf(x) != null || (x.type === "atom" && x.text === "\\mid")) return true
+    if ((x.type === "delimsizing" || x.type === "middle") && BAR_FAMILY[x.delim]) return true
+    if (x.type === "ordgroup" || WRAPPER_TYPES.has(x.type)) return holdsBar(Array.isArray(x.body) ? x.body : [x.body])
+    return false
+  })
+}
+
+function isMeaningfulNode(n: any): boolean {
+  return n != null && !SKIP_TYPES.has(n.type) && !isEmptyOrdgroup(n)
+}
+
+/** The unpaired-bar decline. It claims no meaning: evaluation bars, conditionals and family mismatches all land here. */
+function unpairedBarReason(tex: string): string {
+  return `a bar “${tex}” the engine cannot pair as an absolute value`
+}
+
 /** Group flat ( … ) / [ … ] runs into synthetic nodes so sums inside plain parens don't split terms. */
 function groupDelims(nodes: any[]): any[] {
   const out: any[] = []
   const stack: any[][] = [out]
-  const openers: string[] = []
+  const openers: Extract<Delim, { role: "open" }>[] = []
 
-  /** Pop the open group matching `closeAtom` and return the finished synthetic node. */
-  const closeGroup = (closeAtom: any): any => {
-    if (openers.length === 0 || openers[openers.length - 1] !== closeAtom.text) {
+  /** Pop the open group matching `close` and return the finished synthetic node. */
+  const closeGroup = (close: Extract<Delim, { role: "close" }>, closeNode: any): any => {
+    const top = openers[openers.length - 1]
+    if (top == null || top.expects !== close.glyph) {
       // Saying "unbalanced delimiters" is a claim about the reader's equation,
-      // and it is usually false: a Dirac ket |0\rangle is balanced, but its
-      // opener is a bare | that KaTeX hands over as an ordinary symbol rather
-      // than an open-family atom, so the engine has nothing to pair. Report
-      // what the engine actually found instead.
+      // and it is usually false: a ket |0⟩ or a bra ⟨a| is balanced, but its
+      // bar is not a partner of an angle bracket. Report what the engine
+      // actually found instead, quoting the delimiters as they were written.
+      const angleAgainstBar =
+        top != null &&
+        ((top.glyph === "\\langle" && isVertGlyph(close.glyph)) || (isVertGlyph(top.glyph) && close.glyph === "\\rangle"))
+      if (angleAgainstBar || (close.glyph === "\\rangle" && holdsBar(stack[stack.length - 1]))) {
+        throw new Unsupported(DIRAC_REASON)
+      }
       throw new Unsupported(
-        openers.length === 0
-          ? `the closing delimiter “${closeAtom.text}” with no opener the engine recognizes`
-          : `the closing delimiter “${closeAtom.text}” where “${openers[openers.length - 1]}” was open`,
+        top == null
+          ? `the closing delimiter “${close.tex}” with no opener the engine recognizes`
+          : `the closing delimiter “${close.tex}” where “${top.tex}” was open`,
       )
     }
     openers.pop()
-    stack.pop()
+    const body = stack.pop()!
     const parent = stack[stack.length - 1]
     const group = parent[parent.length - 1]
+    // ⟨a|b⟩ and ⟨0|N|0⟩: bars inside angle brackets are bra–ket separators.
+    if (top.glyph === "\\langle" && holdsBar(body)) throw new Unsupported(DIRAC_REASON)
+    // The written closer, which is not always the opener's partner glyph as
+    // spelled: `\big(` closes on `)`, `\bigr)` or `\Big)` alike.
+    group.close = close.tex
     // The group spans opener to closer only when both are located in the same
     // text; a span stitched from two lexers would index neither, and dropping
     // the lexer would pass it off as the equation's own.
-    if (group.loc && closeAtom.loc) {
+    if (group.loc && closeNode?.loc) {
       group.loc =
-        group.loc.lexer === closeAtom.loc.lexer
-          ? { lexer: group.loc.lexer, start: group.loc.start, end: closeAtom.loc.end }
+        group.loc.lexer === closeNode.loc.lexer
+          ? { lexer: group.loc.lexer, start: group.loc.start, end: closeNode.loc.end }
           : null
     }
     return group
   }
 
-  for (const raw of nodes) {
-    const n = raw
-    const fam = n?.family
-    if (n?.type === "atom" && fam === "open" && CLOSE_FOR[n.text]) {
+  for (const n of nodes) {
+    // `{[}` … `{]}` (LaTeXML's spelling): braces fence the delimiter off from
+    // its partner, so the engine has nothing it could pair.
+    if (n?.type === "ordgroup") {
+      const inner = n.body.filter(isMeaningfulNode)
+      const fenced = inner.length === 1 ? delimOf(inner[0]) : null
+      if (fenced != null && fenced.role !== "bar") {
+        throw new Unsupported(`a delimiter set apart in braces (“{${fenced.tex}}”), which the engine cannot pair`)
+      }
+    }
+    const d = delimOf(n)
+    if (d?.role === "open") {
       const group: any = {
         type: "__group",
         body: [] as any[],
-        open: n.text,
-        close: CLOSE_FOR[n.text],
+        open: d.tex,
+        close: null,
+        bar: barFamilyOfOpener(d.glyph),
         loc: n.loc,
       }
       stack[stack.length - 1].push(group)
       stack.push(group.body)
-      openers.push(CLOSE_FOR[n.text])
+      openers.push(d)
       continue
     }
-    if (n?.type === "atom" && fam === "close") {
-      closeGroup(n)
+    if (d?.role === "close") {
+      closeGroup(d, n)
       continue
     }
-    // A closing delimiter that carries a script is swallowed as the *base* of a
-    // supsub — `(1+v)^2` puts `)` under the supsub — so the close atom never
-    // reaches this level on its own. Close the group here and re-attach the
-    // script to the finished group, or the opener would sit on the stack for
-    // ever and the row would be reported as unbalanced.
+    // KaTeX files the factorial and the question mark with the closing delimiters.
+    if (n?.type === "atom" && n.family === "close") {
+      throw new Unsupported(
+        n.text === "!" ? "a factorial “!”, which is not supported yet" : `the symbol “${n.text}” in this position`,
+      )
+    }
     if (n?.type === "supsub") {
-      const scriptedClose = unwrap(n.base)
-      if (scriptedClose?.type === "atom" && scriptedClose.family === "close") {
-        const group = closeGroup(scriptedClose)
+      const scripted = delimOf(unwrap(n.base))
+      // A closing delimiter that carries a script is swallowed as the *base* of a
+      // supsub — `(1+v)^2` puts `)` under the supsub — so the close atom never
+      // reaches this level on its own. Close the group here and re-attach the
+      // script to the finished group, or the opener would sit on the stack for
+      // ever and the row would be reported as unbalanced.
+      if (scripted?.role === "close") {
+        const group = closeGroup(scripted, unwrap(n.base))
         const parent = stack[stack.length - 1]
         parent[parent.length - 1] = { ...n, base: group }
         continue
       }
+      // A nuclide's prescript, `(^{12}C…)`, sets its script on the opener.
+      if (scripted?.role === "open") {
+        throw new Unsupported(`a script on the opening delimiter “${scripted.tex}”, which the engine cannot read`)
+      }
     }
     stack[stack.length - 1].push(n)
   }
-  if (openers.length > 0) throw new Unsupported("unbalanced delimiters")
+  if (openers.length > 0) {
+    if (openers.some((o) => o.glyph === "\\langle") && stack.some(holdsBar)) throw new Unsupported(DIRAC_REASON)
+    throw new Unsupported("unbalanced delimiters")
+  }
+  return pairBars(out)
+}
+
+/**
+ * Pair the bare bars of one level. A bar carries no side of its own, so the
+ * pairing is read from the only things that fix it: every bar opens or
+ * closes; pairs are balanced, of one family, and hold something that does not
+ * end on a binary operator; a bar at the start, or after an operator, a
+ * relation, punctuation, an alignment tab, a slash or a function name
+ * (`\ln|z|`) opens; a bar at the end, before a relation, punctuation or a tab,
+ * or wearing a script, closes. When exactly one pairing satisfies that, the
+ * notation admits no other reading and it is taken: |x| has the dimension of
+ * x. None declines, and so do several, since the choice between them would be
+ * a guess.
+ */
+function pairBars(level: any[]): any[] {
+  const bars: number[] = []
+  level.forEach((n, idx) => {
+    if (barOf(n) != null) bars.push(idx)
+  })
+  if (bars.length === 0) return level
+  const first = barOf(level[bars[0]])!
+  // Old-style bra–kets set the angle brackets as the relations < and >:
+  // `<1|p|1>` read |p| as a modulus between two comparisons.
+  const isRel = (n: any, texts: string[]) => n?.type === "atom" && n.family === "rel" && texts.includes(n.text)
+  const lt = level.findIndex((n) => isRel(n, ["<", "\\lt"]))
+  const gt = level.map((n) => isRel(n, [">", "\\gt"])).lastIndexOf(true)
+  if (lt >= 0 && bars.some((idx) => lt < idx && idx < gt)) throw new Unsupported(DIRAC_REASON)
+  const ambiguous = `absolute-value bars “${first.tex}” whose pairing is ambiguous`
+  // The search below is exponential in the bar count; no physics row comes near this.
+  if (bars.length > 12) throw new Unsupported(ambiguous)
+
+  const prevOf = (idx: number) => {
+    for (let j = idx - 1; j >= 0; j -= 1) if (isMeaningfulNode(level[j])) return level[j]
+    return null
+  }
+  const nextOf = (idx: number) => {
+    for (let j = idx + 1; j < level.length; j += 1) if (isMeaningfulNode(level[j])) return level[j]
+    return null
+  }
+  const isAtom = (n: any, families: string[]) => n?.type === "atom" && families.includes(n.family)
+  const mustOpen = bars.map((idx) => {
+    const prev = prevOf(idx)
+    const afterFunction = prev?.type === "op" || (prev?.type === "supsub" && unwrap(prev.base)?.type === "op")
+    // A slash divides by what follows it: in m/|v| the bar begins the divisor.
+    const afterSlash = prev?.type === "textord" && prev.text === "/"
+    return prev == null || prev.type === "__tab" || afterFunction || afterSlash || isAtom(prev, ["bin", "rel", "punct"])
+  })
+  const mustClose = bars.map((idx) => {
+    const next = nextOf(idx)
+    return barOf(level[idx])!.scripted || next == null || next.type === "__tab" || isAtom(next, ["rel", "punct"])
+  })
+  const contentOk = (openIdx: number, closeIdx: number) => {
+    const inner = level.slice(openIdx + 1, closeIdx).filter(isMeaningfulNode)
+    return inner.length > 0 && !isAtom(inner[inner.length - 1], ["bin"])
+  }
+
+  const solutions: ("O" | "C")[][] = []
+  const roles: ("O" | "C")[] = []
+  const open: number[] = []
+  const walk = (k: number): void => {
+    if (solutions.length > 1) return
+    if (k === bars.length) {
+      if (open.length === 0) solutions.push([...roles])
+      return
+    }
+    const bar = barOf(level[bars[k]])!
+    if (!mustClose[k]) {
+      roles.push("O")
+      open.push(k)
+      walk(k + 1)
+      open.pop()
+      roles.pop()
+    }
+    const top = open[open.length - 1]
+    if (!mustOpen[k] && top != null) {
+      if (barOf(level[bars[top]])!.family === bar.family && contentOk(bars[top], bars[k])) {
+        roles.push("C")
+        open.pop()
+        walk(k + 1)
+        open.push(top)
+        roles.pop()
+      }
+    }
+  }
+  walk(0)
+  if (solutions.length === 0) throw new Unsupported(unpairedBarReason(first.tex))
+  if (solutions.length > 1) throw new Unsupported(ambiguous)
+
+  const roleAt = new Map<number, "O" | "C">()
+  bars.forEach((idx, k) => roleAt.set(idx, solutions[0][k]))
+  const out: any[] = []
+  const lists: any[][] = [out]
+  const groups: any[] = []
+  level.forEach((n, idx) => {
+    const role = roleAt.get(idx)
+    const bar = barOf(n)
+    if (role === "O" && bar != null) {
+      const group: any = { type: "__group", body: [], open: bar.tex, close: null, bar: bar.family, loc: n.loc }
+      lists[lists.length - 1].push(group)
+      lists.push(group.body)
+      groups.push(group)
+      return
+    }
+    if (role === "C" && bar != null) {
+      lists.pop()
+      const group = groups.pop()
+      group.close = bar.tex
+      const closeNode = bar.scripted ? unwrap(n.base) : n
+      // Located only when both bars are located in the same text (closeGroup).
+      if (group.loc && closeNode.loc) {
+        group.loc =
+          group.loc.lexer === closeNode.loc.lexer
+            ? { lexer: group.loc.lexer, start: group.loc.start, end: closeNode.loc.end }
+            : null
+      }
+      const parent = lists[lists.length - 1]
+      if (bar.scripted) parent[parent.length - 1] = { ...n, base: group }
+      return
+    }
+    lists[lists.length - 1].push(n)
+  })
   return out
 }
 
@@ -2253,13 +2529,13 @@ function delimitedArgumentOf(node: any): { group: any; scripted: any | null } | 
     throw new Unsupported(evaluationBarReason(scripted))
   }
   const opener = group.type === "leftright" ? group.left : group.open
-  if (opener === "." || BAR_OPENERS.has(opener)) return null
+  if (opener === "." || (group.type === "leftright" ? BAR_OPENERS.has(opener) : group.bar != null)) return null
   return { group, scripted }
 }
 
 /** Closers that make `\left.` an evaluation bar. */
 const EVALUATION_BARS = new Set(["|", "\\vert", "\\rvert"])
-/** Openers of a modulus or a norm. */
+/** `\left` openers of a modulus or a norm; a bar group records its family instead (groupDelims). */
 const BAR_OPENERS = new Set(["|", "\\vert", "\\lvert", "\\|", "\\Vert", "\\lVert"])
 
 /** Why an evaluation bar declines, named by what its scripts make it. */
@@ -2434,15 +2710,11 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     case "mathord":
     case "textord": {
       const text = n.text as string
-      // A bare vertical bar is a delimiter, not a symbol: it has no dimension to
-      // look up, and which of a pair opens and which closes is not decidable
-      // from the token alone (|v| versus \langle a|b \rangle). Saying so is a
-      // truthful decline; calling it a dictionary miss is a category error.
-      if (BARE_DELIMITERS.has(text)) {
-        throw new Unsupported(
-          `the delimiter “${text}”, which the engine cannot pair with its partner`,
-        )
-      }
+      // A bar reaches symbol resolution only by a path that never paired it
+      // (pairBars pairs or declines every bar of a level it sees). A bar has
+      // no dimension to look up; calling it a dictionary miss is a category
+      // error.
+      if (BAR_FAMILY[text]) throw new Unsupported(unpairedBarReason(text))
       uprightLetterGuard(text, ctx.font?.upright === true)
       constantFontGuard(text, ctx.font?.node ?? null, ctx)
       if (text === "\\pi" || text === "i" || text === "e" || text === "\\infty") {
@@ -2526,8 +2798,21 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     case "leftright":
     case "__group": {
       const body = n.body
+      // \left|0\right\rangle and \left\langle\psi\right| are a ket and a bra;
+      // read as bars, the ket shipped as a translation.
+      if (
+        n.type === "leftright" &&
+        ((n.left === "\\langle" && (VERT_DELIMS.has(n.right) || holdsBar(body))) ||
+          (VERT_DELIMS.has(n.left) && n.right === "\\rangle"))
+      ) {
+        throw new Unsupported(DIRAC_REASON)
+      }
       bracketBodyGuard(body)
       const inner = parseSum(body, ctx, { anchor: "internal" })
+      const tensor = isSingleBarGroup(n) ? barredTensorTex(body, ctx) : null
+      if (tensor != null && !dimIsZero(inner.dim)) {
+        throw new Unsupported(`bars around the tensor “${tensor}” — a modulus or a determinant, which differ in dimension`)
+      }
       const open = n.type === "leftright" ? `\\left${n.left}` : n.open
       const close = n.type === "leftright" ? `\\right${n.right}` : n.close
       // Control-word delimiters (\langle, \lbrace, \lVert …) would otherwise
@@ -2625,8 +2910,90 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     }
     case "atom":
       throw new Unsupported(`the symbol “${n.text}” in this position`)
+    case "delimsizing":
+      // Whatever groupDelims did not pair: `\bigm|` (a relation-class bar),
+      // `\big.`, a sized glyph that is no delimiter pair (`\big/`).
+      throw new Unsupported(`the sized delimiter “${sizedTexOf(n)}”, which the engine cannot pair`)
     default:
-      throw new Unsupported(`the construct “${n.type}”, which is not supported yet`)
+      throw new Unsupported(`the construct “${constructName(n)}”, which is not supported yet`)
+  }
+}
+
+/**
+ * The construct as the reader wrote it, for a decline: KaTeX's node types
+ * (enclose, horizBrace, xArrow, cr) name the parser's internals. A labelled
+ * node carries its command. `\boxed` is the one exception: KaTeX builds it as
+ * an `\fbox`, and the node keeps no location to read the written command
+ * from, so the reason names `\fbox`.
+ */
+function constructName(n: any): string {
+  if (typeof n.label === "string" && n.label.startsWith("\\")) return n.label
+  if (n.type === "array") return "matrix or array environment"
+  if (n.type === "cr") return "\\\\ line break outside an aligned environment"
+  if (n.type === "hbox") return "\\hbox"
+  return n.type
+}
+
+/** Single vertical bars on both sides: |x|, \lvert x\rvert, \bigl|x\bigr|, \left|x\right|. */
+function isSingleBarGroup(n: any): boolean {
+  if (n.type === "leftright") return ["|", "\\vert", "\\lvert"].includes(n.left) && ["|", "\\vert", "\\rvert"].includes(n.right)
+  return n.bar === "single"
+}
+
+/**
+ * The TeX of a lone tensor set between single bars, or null: an indexed
+ * symbol, its base possibly under accents and fonts (`\tilde{T}_{ab}`,
+ * `\mathbf{T}_{ab}`), with any staggered continuations (`T^{a}{}_{b}`), and
+ * two or more index tokens across the run. |T_{ab}| is the modulus of a
+ * component or the determinant of the matrix, whose dimensions differ unless
+ * the tensor is dimensionless; counted over the first supsub alone, the mixed
+ * tensor |T^{a}{}_{b}| passed as a modulus.
+ */
+function barredTensorTex(body: any[], ctx: Ctx): string | null {
+  const run = body.filter(isMeaningfulNode)
+  const [head, ...riders] = run.map(unwrap)
+  if (head?.type !== "supsub" || textOf(decoratedSymbolOf(head.base)) == null) return null
+  if (!riders.every((r) => r?.type === "supsub" && isBlankNode(r.base))) return null
+  const indexCount = (script: any) => {
+    if (script == null) return 0
+    const tokens = nodeListOf(script).filter(isMeaningfulNode)
+    return allIndexTokens(tokens, true) ? tokens.length : 0
+  }
+  const count = [head, ...riders].reduce((sum, s) => sum + indexCount(s.sub) + indexCount(s.sup), 0)
+  if (count < 2) return null
+  return joinTex(run.map((x) => decoratedTexOf(x, ctx)))
+}
+
+/**
+ * The TeX of an indexed symbol for a quotation, accents rebuilt: an accent
+ * node has no location, so a slice of `\tilde T_{ab}` quoted `T_{ab}`.
+ */
+function decoratedTexOf(raw: any, ctx: Ctx): string {
+  const n = peelStyles(raw)
+  if (n?.type === "accent") {
+    const body = decoratedTexOf(n.base, ctx)
+    return `${n.label}{${body.startsWith("{") && outerBracesArePartners(body) ? body.slice(1, -1) : body}}`
+  }
+  if (n?.type === "supsub" && n.base != null) return `${decoratedTexOf(n.base, ctx)}${scriptsTex(n, ctx)}`
+  return wrappedTexOf(raw, ctx)
+}
+
+/** The symbol under accents, fonts, styles and single-child braces. */
+function decoratedSymbolOf(node: any): any {
+  let cur = unwrap(node)
+  for (;;) {
+    if (cur?.type === "accent") {
+      cur = unwrap(cur.base)
+      continue
+    }
+    if (cur?.type === "ordgroup") {
+      const inner = cur.body.filter(isMeaningfulNode)
+      if (inner.length === 1) {
+        cur = unwrap(inner[0])
+        continue
+      }
+    }
+    return cur
   }
 }
 
@@ -2988,6 +3355,8 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   }
 
   const baseText = base != null ? textOf(base) : null
+  // A scripted bar is a closing bar pairBars never saw, not a symbol.
+  if (baseText != null && BAR_FAMILY[baseText]) throw new Unsupported(unpairedBarReason(baseText))
   // A script does not make an upright letter a variable: \mathrm{m}^{2} is a unit.
   if (baseText != null) {
     uprightLetterGuard(baseText, ctx.font?.upright === true || underUprightFont(n.base))

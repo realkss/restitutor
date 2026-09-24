@@ -64,6 +64,23 @@ describe("the decline ledger", () => {
       bare: { ...GR.bare, c: { dim: [0, 0, 0, 0, 0], gloss: "central charge", si: "1" } },
     }
     assert.strictEqual(classifyOutcome(translateTex("E = m", katex, centralCharge, SI)).class, "reassembly")
+    // Bars, sized delimiters, bra–kets and the constructs named as written are
+    // the reader's; a row cut inside a delimiter pair is a parse problem.
+    for (const tex of [
+      "p(a|b) = 1",
+      "|x|y|z| = r",
+      "a|0\\rangle = 0",
+      "P = |T_{ab}|",
+      "p = x\\bigm| y",
+      "{[}a,b{]} = 1",
+      "x = 2!\\,r",
+      "r(^{12}C) = 1",
+      "E = \\bigl| p )",
+      "E = \\boxed{m}",
+    ]) {
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    }
+    assert.strictEqual(outcome("E = \\bigl[p + m").class, "parse")
     // Relations nothing is restored across, a comma or a relation inside
     // brackets, a sign beside a branch sign and a sign label are the reader's;
     // a relation with an empty side and a bare sign pattern are not one equation.

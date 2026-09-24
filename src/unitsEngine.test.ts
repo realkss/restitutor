@@ -783,15 +783,14 @@ describe("review regressions", () => {
     }
   })
 
-  test("F9: a bare | is declined as a delimiter, not as an unknown symbol", () => {
-    const result = run("E = m|v|")
+  test("F9: bars pair as an absolute value, and an unpairable | is a bar, not an unknown symbol", () => {
+    // Since step 8 the pairing of m|v| is unique, and |v| has the dimension of v.
+    assert.strictEqual(restored("E = m|v|"), "E=m|v|c")
+    const result = run("p(a|b) = 1")
     assert.strictEqual(result.kind, "declined", JSON.stringify(result))
     if (result.kind === "declined") {
       assert.deepStrictEqual(result.unknown, [], "| is a delimiter, never a dictionary miss")
-      assert.ok(
-        result.reasons.some((r) => r.includes("delimiter")),
-        JSON.stringify(result.reasons),
-      )
+      assert.deepStrictEqual(result.reasons, ["a bar “|” the engine cannot pair as an absolute value"])
     }
   })
 
@@ -1072,14 +1071,14 @@ describe("declining honestly", () => {
         JSON.stringify(integral.reasons),
       )
     }
-    // A Dirac ket is balanced; the engine simply cannot pair its bare | opener,
-    // and must not tell the reader their own equation is unbalanced.
+    // A Dirac ket is balanced, and the reason says what it is rather than
+    // telling the reader their own equation is unbalanced.
     const ket = run("a_i^{\\text{in}} |0_{\\text{in}}\\rangle = 0")
     assert.strictEqual(ket.kind, "declined", JSON.stringify(ket))
     if (ket.kind === "declined") {
       assert.ok(!ket.reasons.some((r) => r.includes("unbalanced")), JSON.stringify(ket.reasons))
       assert.ok(
-        ket.reasons.some((r) => r.includes("no opener the engine recognizes")),
+        ket.reasons.some((r) => r.includes("Dirac bra–ket notation")),
         JSON.stringify(ket.reasons),
       )
     }
@@ -2981,5 +2980,169 @@ describe("batch-1 review fixes", () => {
     declines("t = r \\hspace{0.9em} - r", UNWRITTEN("\\hspace{0.9em}"), [SI])
     declines("x = \\frac{\\ G\\ M}{c^2}", UNWRITTEN("\\ "), [GEO])
     declines("x = \\frac{M}{\\ c^2}\\,G", UNWRITTEN("\\ "), [GEO])
+  })
+})
+
+describe("delimiters: bars, sized delimiters, Dirac notation and construct names", () => {
+  const parse = (tex: string) => katex.__parse(tex, { strict: false, trust: false, displayMode: true })
+  const rawRestored = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = (result as Extract<TranslationResult, { kind: "translated" }>).restoredTex
+    rendersInKatex(out)
+    return out
+  }
+  const declines = (tex: string, reason: string, targets: TargetSpec[] = [SI, GEO]) => {
+    for (const target of targets) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [reason], tex)
+        assert.deepStrictEqual(result.unknown, [], tex)
+      }
+    }
+  }
+  const DIRAC =
+    "Dirac bra–ket notation, whose states' dimensions depend on a normalization the dictionary does not record"
+  const UNPAIRED = (bar: string) => `a bar “${bar}” the engine cannot pair as an absolute value`
+  const TENSOR = (tensor: string) =>
+    `bars around the tensor “${tensor}” — a modulus or a determinant, which differ in dimension`
+
+  test("KaTeX shapes the pairing reads", () => {
+    // Bars are ordinary symbols, with no side of their own.
+    assert.deepStrictEqual(
+      parse("|p\\|\\vert\\Vert").map((n: any) => [n.type, n.text]),
+      [
+        ["textord", "|"],
+        ["mathord", "p"],
+        ["textord", "\\|"],
+        ["textord", "\\vert"],
+        ["textord", "\\Vert"],
+      ],
+    )
+    // A sized delimiter's side survives only as its mclass.
+    assert.deepStrictEqual(
+      parse("\\big| \\bigm| \\bigr) \\Bigg\\langle").map((n: any) => [n.type, n.size, n.mclass, n.delim]),
+      [
+        ["delimsizing", 1, "mord", "|"],
+        ["delimsizing", 1, "mrel", "|"],
+        ["delimsizing", 1, "mclose", ")"],
+        ["delimsizing", 4, "mord", "\\langle"],
+      ],
+    )
+    // \braket builds a \mathinner around a braced body; \middle| is its own node.
+    const [braket] = parse("\\braket{1|E|1}")
+    assert.deepStrictEqual([braket.type, braket.mclass, braket.body[0].text], ["mclass", "minner", "\\langle"])
+    assert.strictEqual(braket.body[1].type, "ordgroup")
+    const [middled] = parse("\\left\\langle a \\middle| b\\right\\rangle")
+    assert.deepStrictEqual([middled.body[1].type, middled.body[1].delim], ["middle", "|"])
+    // The factorial is a close atom; a prescript is a script on the opener.
+    const [, bang] = parse("2!")
+    assert.deepStrictEqual([bang.type, bang.family, bang.text], ["atom", "close", "!"])
+    const [prescript] = parse("(^{12}C)")
+    assert.deepStrictEqual([prescript.type, prescript.base.type, prescript.base.family], ["supsub", "atom", "open"])
+    // \boxed is an enclose labelled \fbox, with no location of its own.
+    const [boxed] = parse("\\boxed{m}")
+    assert.deepStrictEqual([boxed.type, boxed.label, boxed.loc], ["enclose", "\\fbox", undefined])
+  })
+
+  test("bars pair as an absolute value when exactly one pairing exists", () => {
+    for (const [tex, out] of [
+      ["E^2 = |\\vec{p}|^2 + m^2", "E^{2} = |\\vec{p}|^{2}c^{2} + m^{2}c^{4}"],
+      ["E = |p| + m", "E = |p|c + mc^{2}"],
+      ["\\Phi = -\\frac{M}{|x|}", "\\Phi = -\\frac{GM}{|x|}"],
+      ["E = m|v|", "E = m|v|c"],
+      // A bar after a slash opens the divisor, so |p||v|/|v| has one pairing.
+      ["E = |p||v|/|v|", "E = |p||v|c/|v|"],
+      ["E = m/|v|", "E = mc^{3}/|v|"],
+      // Double bars are a norm, which has the dimension of what it measures.
+      ["E = \\|p\\|", "E = \\|p\\|c"],
+      ["E = \\Vert p\\Vert", "E = \\Vert p\\Vert c"],
+    ]) {
+      assert.strictEqual(rawRestored(tex), out, tex)
+      const geo = run(tex, GEO)
+      assert.ok(geo.kind === "translated" && !geo.changed, `${tex} → ${JSON.stringify(geo)}`)
+    }
+    // Nested bars pair uniquely; a dimensionless tensor passes the tensor guard,
+    // since its modulus and its determinant are both dimensionless.
+    assert.strictEqual(rawRestored("r = |x - |y||"), "r = |x - |y||")
+    assert.strictEqual(rawRestored("h_{ab} = |h_{ab}|"), "h_{ab} = |h_{ab}|")
+    assert.strictEqual(rawRestored("r = \\sqrt{|g|}\\,x"), "r = \\sqrt{|g|}x")
+    const d = dimensionOf("|p|", katexDefault, reg)
+    assert.ok(d.kind === "dim", JSON.stringify(d))
+    assert.deepStrictEqual(d.dim, [12, 12, -12, 0, 0])
+  })
+
+  test("a bar with no unique pairing declines, claiming no meaning for it", () => {
+    declines("p(a|b) = 1", UNPAIRED("|"))
+    // An evaluation bar and a family mismatch are not conditionals either.
+    declines("x = x\\big|_{t=0}", UNPAIRED("\\big|"))
+    declines("E = \\|p|", UNPAIRED("\\|"))
+    declines("|x|y|z| = r", "absolute-value bars “|” whose pairing is ambiguous")
+  })
+
+  test("sized delimiters pair as their glyphs do and are re-emitted as written", () => {
+    assert.strictEqual(rawRestored("E = \\bigl[p + m\\bigr]"), "E = \\bigl[p + mc\\bigr]c")
+    assert.strictEqual(rawRestored("E = \\big(p + m\\big)"), "E = \\big(p + mc\\big)c")
+    assert.strictEqual(rawRestored("E = \\Bigl\\{p + m\\Bigr\\}"), "E = \\Bigl\\{p + mc\\Bigr\\}c")
+    assert.strictEqual(rawRestored("E = \\Big|p\\Big|"), "E = \\Big|p\\Big|c")
+    assert.strictEqual(rawRestored("E = \\bigl|p\\bigr|"), "E = \\bigl|p\\bigr|c")
+    assert.strictEqual(rawRestored("E = \\big(p + m\\big)", GEO), "E = \\big(p + m\\big)")
+    // A relation-class bar and a null delimiter pair with nothing.
+    declines("p = x\\bigm| y", "the sized delimiter “\\bigm|”, which the engine cannot pair")
+    declines("E = \\big. p", "the sized delimiter “\\big.”, which the engine cannot pair")
+    // A mismatch quotes the opener as written, never an internal glyph name.
+    declines("E = \\bigl| p )", "the closing delimiter “)” where “\\bigl|” was open")
+    declines("E = \\bigl| p \\bigr\\|", "the closing delimiter “\\bigr\\|” where “\\bigl|” was open")
+    declines("E = (p]", "the closing delimiter “]” where “(” was open")
+  })
+
+  test("Dirac bra–kets decline in every spelling, bars hidden in braces included", () => {
+    for (const tex of [
+      "\\langle 0|N|0\\rangle = 1",
+      "a|0\\rangle = 0",
+      "\\lvert\\psi\\rangle = 0",
+      "E = \\big\\langle p\\big|",
+      "a_i^{\\text{in}} |0_{\\text{in}}\\rangle = 0",
+      "x = \\left\\langle a \\middle| b\\right\\rangle",
+      // Reviewer counterexamples: the bars hid in a brace group or a
+      // \mathinner, or the angle brackets were written as the relations < >.
+      "\\langle{0|p|0}\\rangle = 1",
+      "E = \\langle {0|p|0} \\rangle",
+      "E = \\braket{1|E|1}",
+      "E = <1|p|1>",
+    ]) {
+      declines(tex, DIRAC)
+    }
+    // Live wrong before step 8: the ket translated as a bracket of bars.
+    declines("\\left|0\\right\\rangle = 0", DIRAC)
+    // An angle bracket with no bar in it is still an expectation value.
+    assert.strictEqual(rawRestored("E = \\langle p\\rangle"), "E = \\langle p\\rangle c")
+  })
+
+  test("bars around a dimensional tensor decline: a modulus or a determinant", () => {
+    declines("P = |T_{ab}|", TENSOR("T_{ab}"))
+    declines("P = \\left|T_{ab}\\right|", TENSOR("T_{ab}"))
+    declines("P = \\lvert T_{ab}\\rvert", TENSOR("T_{ab}"))
+    declines("P = \\big|T_{ab}\\big|", TENSOR("T_{ab}"))
+    // Reviewer counterexamples: a staggered mixed tensor translated as a
+    // modulus, an accent hid the base, and a font garbled the quotation.
+    declines("\\rho = |T^{a}{}_{b}|", TENSOR("T^{a}{}_{b}"))
+    declines("P = |T_{a}{}^{b}|", TENSOR("T_{a}{}^{b}"))
+    declines("P = |\\tilde T_{ab}|", TENSOR("\\tilde{T}_{ab}"))
+    declines("P = |\\mathbf{T}_{ab}|", TENSOR("\\mathbf{T}_{ab}"))
+  })
+
+  test("factorials, prescripts, braced delimiters and constructs are named as written", () => {
+    declines("x = 2!\\,r", "a factorial “!”, which is not supported yet")
+    declines("r(^{12}C) = 1", "a script on the opening delimiter “(”, which the engine cannot read")
+    declines("{[}a,b{]} = 1", "a delimiter set apart in braces (“{[}”), which the engine cannot pair")
+    declines("x = r ?", "the symbol “?” in this position")
+    const CONSTRUCT = (name: string) => `the construct “${name}”, which is not supported yet`
+    declines("E = \\boxed{m}", CONSTRUCT("\\fbox"))
+    declines("E = \\hbox{m}", CONSTRUCT("\\hbox"))
+    declines("E = \\xrightarrow{F} m", CONSTRUCT("\\xrightarrow"))
+    declines("E = \\overbrace{m}", CONSTRUCT("\\overbrace"))
+    declines("E = \\begin{pmatrix} m \\end{pmatrix}", CONSTRUCT("matrix or array environment"))
   })
 })
