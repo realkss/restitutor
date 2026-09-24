@@ -3688,6 +3688,32 @@ describe("index tokens, primes and the canonical symbol key", () => {
     assert.deepStrictEqual(declined("x^{\\cdots} = 0").reasons, ["a symbolic exponent on the dimensional base “x”"])
   })
 
+  test("a decorated, grouped or continued superscript on a group is not read as an index (review fix)", () => {
+    // On a group the superscript could be a symbolic power, and the group's
+    // dimension passed through unchanged shipped `…^{\alpha_1}c` as if the
+    // exponent were 1. These declined before the new index tokens and still do.
+    const UNREADABLE = ["a super/subscript construct the engine could not read"]
+    for (const tex of [
+      "r = M\\left(\\frac{t}{M}\\right)^{\\alpha_1}",
+      "z = \\left(\\frac{r}{M}\\right)^{\\beta'}",
+      "r = M(t/M)^{{2}}",
+      "z = (r/M)^{\\gamma_1}",
+      "r = M\\left[\\frac{t}{M}\\right]^{\\alpha_1}",
+      "r = M\\left(\\frac{t}{M}\\right)^{\\mu_1\\cdots\\mu_n}",
+      // A braced symbol is a compound base: r has no indexed entry to vouch
+      // for an index, and r^{α₁} is not r.
+      "r = {r}^{\\alpha_1}",
+    ]) {
+      assert.deepStrictEqual(declined(tex).reasons, UNREADABLE, tex)
+    }
+    // Braces only group: a braced numeral is the numeral, so `p^{{2}}` is not
+    // the component p² of the four-momentum; the component shape still is one.
+    assert.deepStrictEqual(declined("E = p^{{2}}").reasons, ["a symbolic exponent on the dimensional base “p”"])
+    assert.strictEqual(rawRestored("E = p^{{0}}"), "E = p^{{0}}c")
+    // A plain index letter on a symbol keeps its indexed reading.
+    assert.strictEqual(rawRestored("E = p^{\\alpha_1}"), "E = p^{\\alpha_1}c")
+  })
+
   test("the angular guard reads θ and φ through a prime, a label and braces on the index", () => {
     const ANGULAR = (tex: string) =>
       `an angular coordinate index on “${tex}” — components along θ and φ do not share the registry's length dimension`

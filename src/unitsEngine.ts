@@ -1317,6 +1317,27 @@ function isGenuineIndex(node: any): boolean {
 }
 
 /**
+ * Whether an index list holds a decorated, grouped or ellipsis token (μ′, μ₁,
+ * {cd}, ⋯), as opposed to plain index letters and digits only. A superscript
+ * on a compound base (a group, a fraction, a braced symbol) is not read with
+ * these: there a superscript that could be an index list could as well be a
+ * symbolic power, no indexed entry vouches for the index reading, and the
+ * base's dimension passed through unchanged would then be wrong. The plain
+ * letters keep their older reading there, which already misreads
+ * `(\frac{r}{M})^{\alpha}` as an index; these tokens do not extend it to
+ * `(\frac{t}{M})^{\alpha_1}`, `(\frac{r}{M})^{\beta'}`, `(t/M)^{{2}}` or
+ * `{r}^{\alpha_1}`, which decline as unreadable scripts. On a bare symbol the
+ * index reading goes through the dictionary's indexed entries, which is what
+ * vouches for it.
+ */
+function hasDecoratedIndexToken(nodes: any[]): boolean {
+  return nodes.some((x) => {
+    const u = unwrap(x)
+    return u?.type === "ordgroup" || u?.type === "supsub" || isEllipsis(u)
+  })
+}
+
+/**
  * The index letters of an index list, read through the tokens that decorate
  * or group them: the angular guard asks which coordinates a component names,
  * and `\theta'` or `{\theta\theta}` names θ as `\theta` does.
@@ -1411,14 +1432,18 @@ function classifySupNodes(nodes: any[]): { p: number; q: number } | "index" | "s
   }
   // Unsigned all-digit superscripts of the component-index shape are indices,
   // not powers: T^{00}, u^0, x^0. Only a single digit 1–3 stays a power (r²).
-  if (sign === 1) {
-    const digitStr = digitsOf(rest)
-    if (digitStr != null && (digitStr === "0" || /^[0-3]{2,}$/.test(digitStr))) {
-      return "index"
-    }
-  }
+  const isComponent = (digits: string) => sign === 1 && (digits === "0" || /^[0-3]{2,}$/.test(digits))
+  const digitStr = digitsOf(rest)
+  if (digitStr != null && isComponent(digitStr)) return "index"
   const whole = intOf(rest)
   if (whole != null) return { p: sign * whole, q: 1 }
+  // Braces only group, so a numeral in braces is still that numeral: `p^{{2}}`
+  // typesets as p², and the index-token rule below, which opens brace groups
+  // inside an index list, read it as the component p² of the four-momentum.
+  // The digit rule decides the braced digits as it decides bare ones: the
+  // component shape is an index, and a braced power is not read.
+  const braced = digitsOf(openGroups(rest))
+  if (braced != null) return isComponent(braced) ? "index" : "expr"
   try {
     if (allIndexTokens(nodes)) return "index"
   } catch {
@@ -1455,6 +1480,14 @@ function digitsOf(nodes: any[]): string | null {
     digits += text
   }
   return digits.length > 0 ? digits : null
+}
+
+/** A node list with its brace groups opened, at any depth. */
+function openGroups(nodes: any[]): any[] {
+  return nodes.flatMap((x) => {
+    const u = unwrap(x)
+    return u?.type === "ordgroup" ? openGroups(u.body.filter(isMeaningfulNode)) : [x]
+  })
 }
 
 function intOf(nodes: any[]): number | null {
@@ -3825,7 +3858,8 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   if (base != null) {
     bracedDigitGuard(n, base, ctx)
     const subIsIndex = n.sub == null || allIndexTokens(nodeListOf(n.sub), true)
-    const supIsReadable = sup == null || sup === "index" || typeof sup === "object"
+    const supIsReadable =
+      sup == null || (sup === "index" && !hasDecoratedIndexToken(nodeListOf(n.sup))) || typeof sup === "object"
     if (subIsIndex && supIsReadable) {
       const inner = analyzeFactor(n.base, ctx)
       const scaled =
