@@ -172,6 +172,7 @@ describe("the decline ledger", () => {
       "x = r^{n}",
       "x = \\left[r\\right]_{0}^{R}",
       "x = \\left.r\\right|_{0}",
+      "x = (r)_{2M}",
       "x = (r)_{r=0}",
     ])
       assert.strictEqual(outcome(tex).class, "unsupported", tex)

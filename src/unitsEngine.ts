@@ -4593,12 +4593,22 @@ function summandsOf(nodes: any[]): any[][] | null {
  * where the power 0 has none, and the twelfth power of Lennard-Jones's
  * `\left(\frac{\sigma}{r}\right)^{12}` was read as the component 1,2.
  *
- * A subscript alone on a bracket group (R8) annotates it — an evaluation
- * point, an averaging domain, a variable held fixed, a component — and never
- * multiplies it: `\langle r\rangle_{S}` is a length. The group keeps its
- * dimension and the subscript is emitted as written, never read. A relation
- * in it is a condition the group is evaluated at, which may itself need
- * restoring, and declines; so does a big operator or a function there.
+ * A subscript alone on a bracket group (R8) annotates it — an averaging
+ * domain, a variable held fixed, a state, a component — and never multiplies
+ * it: `\langle r\rangle_{S}` is a length. The group keeps its dimension and
+ * the subscript is emitted as written, never read, so it is kept only where
+ * restoration could not touch it: one label-like token (isAnnotationLabel).
+ * Anything more may be an evaluation point, which needs restoring as the body
+ * does, and declines as one: kept as written, the ISCO's
+ * `\left(1 - \frac{2M}{r}\right)_{6M}` came back at SI as
+ * `\left(1 - \frac{2GM}{rc^{2}}\right)_{6M}`, and on a geometrized target the
+ * body lost its constants while `_{6GM/c^2}` kept them. The reason says "may":
+ * a group's subscript is as often a label the engine cannot tell from a
+ * quantity (`\langle T\rangle_{4d}`, `\langle O\rangle_{EAdS}`) or an index
+ * list it does not read (`(A\wedge B)_{\mu_{1}\cdots\mu_{p+q}}`), where under
+ * an evaluation bar it is the point itself. A relation there is a
+ * condition the group is evaluated at, which may itself need restoring, and
+ * declines too; so does a big operator or a function there.
  * Scripts on both sides of a group are never read as an annotation and a
  * power: `\left[\frac{r}{r_s}\right]_{0}^{v}` is F(v) − F(0), and read so,
  * the upper limit, which has the dimension of the variable it bounds, was
@@ -4668,6 +4678,11 @@ function analyzeScriptedCompound(
       }
       const annotation = nodeListOf(n.sub).some(isMeaningfulNode)
       if (annotation && !containsDeep(n.sub, (x) => x.type === "op" || x.type === "operatorname")) {
+        if (!isAnnotationLabel(n.sub)) {
+          throw new Unsupported(
+            `a subscript “${scriptSrc(n.sub, ctx)}” on a group, which may be an evaluation point and is not supported yet`,
+          )
+        }
         const inner = analyzeFactor(n.base, ctx)
         const scripts = scriptsTex(n, ctx)
         return scripted(inner, inner.dim, () => scripts)
@@ -4685,6 +4700,55 @@ function analyzeScriptedCompound(
 
   throw new Unsupported("a super/subscript construct the engine could not read")
 }
+
+/**
+ * Whether a subscript on a bracket group is one label-like token (R8), which
+ * restoration cannot touch and which is therefore safe to emit as written: a
+ * letter or a symbol in any font, bare or carrying a subscript of its own
+ * (`S`, `t_0`, `\bm{R}_{s}`, `r_{\rm ISCO}`); an upright word (`\rm ADM`,
+ * `\text{ISCO}`); a lone sign; `\infty`; or a run of digits. A run of letters
+ * under any other font may be a product, as it may be anywhere (UPRIGHT_FONTS).
+ * A symbol's own subscript names it and is never restored anywhere, so
+ * `r_{c}` is a label. A bare c or G is not: it is the constant a geometrized
+ * target strips, and kept as written `\left(M c^{2}\right)_{G}` came back as
+ * `\left(M\right)_{G}`. Anything combining a symbol with a numeral, a slash,
+ * a fraction, a root or another factor (`6M`, `t/M`, `\frac{M}{2}`,
+ * `2GM/c^{2}`) is a quantity, not a label.
+ */
+function isAnnotationLabel(sub: any): boolean {
+  const nodes = nodeListOf(sub).filter(isMeaningfulNode)
+  if (nodes.length === 0) return false
+  if (nodes.every((x) => /^[0-9]$/.test(textOf(x) ?? ""))) return true
+  if (nodes.length !== 1) return false
+  const styled = peelStyles(nodes[0])
+  if (styled?.type === "font" || styled?.type === "text") {
+    const word = (styled.type === "text" ? styled.body : nodeListOf(styled.body)).filter(isMeaningfulNode)
+    const letters = word.map((x: any) => textOf(x) ?? "")
+    const isLetter = (t: string) => /^([A-Za-z]|\\[A-Za-z]+)$/.test(t)
+    if (letters.length === 0 || !letters.every(isLetter)) return false
+    if (letters.length === 1) return !RESTORED_CONSTANTS.has(letters[0])
+    return styled.type === "text" ? UPRIGHT_TEXT_FONTS.has(styled.font) : UPRIGHT_FONTS.has(styled.font)
+  }
+  // Braces and a style around one token only package it: `\bm{R}_{s}` is a
+  // boldsymbol over a group holding R.
+  const sole = (x: any): any => {
+    const v = unwrap(x)
+    const inner = v?.type === "ordgroup" ? v.body.filter(isMeaningfulNode) : null
+    return inner?.length === 1 ? sole(inner[0]) : v
+  }
+  const u = sole(nodes[0])
+  if (isSignToken(u)) return true
+  const isLabelSymbol = (x: any) => {
+    const v = sole(x)
+    if (textOf(v) === "\\infty") return true
+    return v?.type === "mathord" && !RESTORED_CONSTANTS.has(v.text)
+  }
+  if (u?.type === "supsub") return u.sup == null && u.sub != null && isLabelSymbol(u.base)
+  return isLabelSymbol(u)
+}
+
+/** The constants restoration inserts and a geometrized target strips. */
+const RESTORED_CONSTANTS = new Set(["c", "G"])
 
 function sumAsFactorList(sum: SumInfo): Factor[] {
   // A single slash-free term flattens; anything else stays one opaque unit so

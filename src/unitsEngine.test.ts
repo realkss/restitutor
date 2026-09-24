@@ -4213,6 +4213,9 @@ describe("exponents and groups (step 12)", () => {
     `the superscript “${sup}” on “${base}”, which the engine cannot read as a power or an index`
   const LIMITS = "evaluation limits, which are not supported yet"
   const CONDITION = "an evaluation condition in a subscript, which is not supported yet"
+  const POINT = "an evaluation point in a subscript, which is not supported yet"
+  const GROUP_POINT = (sub: string) =>
+    `a subscript “${sub}” on a group, which may be an evaluation point and is not supported yet`
   const UNREADABLE = "a super/subscript construct the engine could not read"
 
   test("KaTeX: an inline slash in a superscript is a textord between the digits", () => {
@@ -4309,7 +4312,68 @@ describe("exponents and groups (step 12)", () => {
     for (const tex of ["\\left.\\frac{\\partial V}{\\partial r}\\right|_{r=0} = 0", "x = (r)_{r=0}"]) {
       assert.deepStrictEqual(reasons(tex), [CONDITION], tex)
     }
-    assert.deepStrictEqual(reasons("x = \\left.r\\right|_{0}"), ["an evaluation point in a subscript, which is not supported yet"])
+    assert.deepStrictEqual(reasons("x = \\left.r\\right|_{0}"), [POINT])
+    // Only one label-like token is kept as written; a subscript restoration
+    // could touch may be an evaluation point, and declines as one. Kept, the
+    // body was restored and the point was not (reviewer counterexamples).
+    const GSI: TargetSpec = { system: "si", geometrized: true }
+    for (const [tex, sub] of [
+      ["\\theta = \\left(1 - \\frac{2M}{r}\\right)_{6M}", "6M"],
+      ["\\theta = \\left[\\frac{1 - 2M/r}{\\sqrt{1 - 3M/r}}\\right]_{6M}", "6M"],
+      ["v = \\left(\\frac{dr}{dt}\\right)_{6M}", "6M"],
+      ["x = (r)_{2M}", "2M"],
+      ["x = (r)_{t/M}", "t/M"],
+      ["x = (r)_{\\frac{M}{2}}", "\\frac{M}{2}"],
+      ["x = (r)_{\\sqrt{M}}", "\\sqrt{M}"],
+      ["x = \\langle r\\rangle_{\\text{6M}}", "\\text{6M}"],
+      ["\\theta = \\left(1 - \\frac{2GM}{rc^2}\\right)_{6GM/c^2}", "6GM/c^2"],
+      ["x = (r)_{2GM/c^{2}}", "2GM/c^{2}"],
+      ["E = \\left(M c^{2}\\right)_{G}", "G"],
+    ]) {
+      for (const target of [SI, GEO, GSI]) {
+        const result = run(tex, target)
+        assert.ok(result.kind === "declined", `${tex} at ${JSON.stringify(target)} → ${JSON.stringify(result)}`)
+        assert.deepStrictEqual(result.reasons, [GROUP_POINT(sub)], tex)
+      }
+    }
+    // Under a bar the subscript is the point itself.
+    for (const target of [SI, GEO, GSI]) {
+      const result = run("x = \\left.r\\right|_{2M}", target)
+      assert.ok(result.kind === "declined" && result.reasons[0] === POINT, JSON.stringify(result))
+    }
+    // Labels: a symbol in any font, bare or with its own subscript, a word, a
+    // sign, ∞, digits.
+    assert.strictEqual(rawRestored("\\langle r\\rangle_{S} = 2M", GEO), "\\langle r\\rangle_{S} = 2M")
+    unchanged("x = \\left[r\\right]_{t_0}")
+    assert.strictEqual(
+      rawRestored("\\theta = \\left(1 - \\frac{2M}{r}\\right)_{r_{\\rm ISCO}}"),
+      "\\theta = \\left(1 - \\frac{2GM}{rc^{2}}\\right)_{r_{\\rm ISCO}}",
+    )
+    for (const tex of [
+      "x = \\langle r\\rangle_{\\rm ADM}",
+      "x = \\langle r\\rangle_{\\text{ISCO}}",
+      "x = \\langle r\\rangle_{\\bm{R}_{s}}",
+      "x = \\langle r\\rangle_{{\\bm{R}}_{s}}",
+      "x = \\langle r\\rangle_{+}",
+      "x = \\langle r\\rangle_{\\infty}",
+      "x = (r)_{12}",
+      "v = \\left(\\frac{dr}{dt}\\right)_{E}",
+    ]) {
+      unchanged(tex)
+    }
+    // A symbol's own subscript names it; a bare constant, or letters in a font
+    // that may set a product, is no label.
+    unchanged("x = (r)_{r_c}")
+    for (const [tex, sub] of [
+      ["x = \\langle r\\rangle_{\\mathrm{G}}", "\\mathrm{G}"],
+      ["x = \\langle r\\rangle_{\\mathbf{AB}}", "\\mathbf{AB}"],
+    ]) {
+      assert.deepStrictEqual(reasons(tex), [GROUP_POINT(sub)], tex)
+    }
+    // A label the engine cannot tell from a quantity says "may" (corpus shapes).
+    assert.deepStrictEqual(reasons("x = \\langle r\\rangle_{4d}"), [GROUP_POINT("4d")])
+    assert.deepStrictEqual(reasons("x = \\langle r\\rangle_{EAdS}"), [GROUP_POINT("EAdS")])
+    assert.strictEqual(rawRestored("x = (r + M)_{0}"), "x = (r + \\frac{GM}{c^{2}})_{0}")
     // Evaluation limits: the upper limit was restored as an exponent against a
     // pure number, `^{\frac{v}{c}}`, `^{\frac{GM}{rc^{2}}}` (reviewer counterexamples).
     for (const tex of [
