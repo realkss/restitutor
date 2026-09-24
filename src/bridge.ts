@@ -5,7 +5,7 @@
 // can show the convention-layer diagnosis for whatever target the engine is
 // translating into.
 import type { Dim, HubRegistry, RegEntry, TargetSpec, UnitSystem } from "./unitsEngine"
-import { dimensionOf } from "./unitsEngine"
+import { dimensionOf, symbolKey } from "./unitsEngine"
 import type { DetectionReport } from "./detect"
 import type { MinedDefinition, MinedSymbol } from "./mine"
 import { EM_FLAVOR } from "./rendering"
@@ -89,18 +89,34 @@ export function registryTrusts(s: MinedSymbol): boolean {
 type ReadingTable = "bare" | "exact" | "indexed"
 
 /**
- * Where a symbol's reading lives: a subscripted symbol is an exact reading,
- * and an index-like subscript (T_{ab}, g_{\mu\nu}) also reads the base as
- * indexed; anything else is a bare reading.
+ * Where a symbol's reading lives, under the key the engine looks the symbol up
+ * by (symbolKey): a subscripted symbol is an exact reading, and an index-like
+ * subscript (T_{ab}, g_{\mu\nu}) also reads the base as indexed; anything else
+ * is a bare reading. A primed symbol is placed under its primed name, so
+ * `t^{\prime}` is read at bare["t'"] and `p_{\mu}^{\prime}` at exact["p'_\mu"]
+ * and indexed["p'"]; stripped of its superscript, it lent its reading to the
+ * unprimed four-momentum p_μ. A spelling with any other superscript (a power,
+ * a label) has no key and is placed nowhere, never on its base's entries.
  */
 function placementsOf(symbol: string): { table: ReadingTable; key: string }[] {
-  const m = /^(.+?)_(?:\{([^{}]*)\}|(\\?[A-Za-z0-9]+))$/.exec(symbol.replace(/\^.*$/, ""))
-  if (!m) return [{ table: "bare", key: symbol }]
-  const base = m[1]
-  const sub = (m[2] ?? m[3] ?? "").replace(/[{}\s]/g, "")
-  const out: { table: ReadingTable; key: string }[] = [{ table: "exact", key: `${base}_${sub}` }]
-  if (INDEX_LIKE.test(sub)) out.push({ table: "indexed", key: base })
+  const key = symbolKey(symbol)
+  if (key == null) return []
+  const at = subscriptAt(key)
+  if (at < 0) return [{ table: "bare", key }]
+  const out: { table: ReadingTable; key: string }[] = [{ table: "exact", key }]
+  if (INDEX_LIKE.test(key.slice(at + 1))) out.push({ table: "indexed", key: key.slice(0, at) })
   return out
+}
+
+/** Where a key's subscript begins: its first `_` outside the braces of a base like `\mathbf{J}`, or -1. */
+function subscriptAt(key: string): number {
+  let depth = 0
+  for (let i = 0; i < key.length; i += 1) {
+    if (key[i] === "{") depth += 1
+    else if (key[i] === "}") depth -= 1
+    else if (key[i] === "_" && depth === 0) return i
+  }
+  return -1
 }
 
 /**
@@ -206,7 +222,8 @@ export function registryWithDefinitions(
   return out
 }
 
-const symbolKey = (tex: string) => tex.replace(/[{}\s]/g, "")
+/** A legend entry and a defined symbol are one symbol when they are spelled alike, braces and spaces aside. */
+const spellingKey = (tex: string) => tex.replace(/[{}\s]/g, "")
 
 /**
  * The other half of the trust boundary, for definitions. A defining
@@ -239,8 +256,8 @@ export function usableDefinitions(
     if (ENGINE_CONSTANTS.has(d.symbol) || /^\s*1\s*$/.test(d.expr)) continue
     const r = dimensionOf(d.expr, katex, registry)
     if (r.kind !== "dim" || r.dim.every((x) => x === 0)) continue
-    if (!r.legend.every((e) => ENGINE_CONSTANTS.has(e.tex) || derived.has(symbolKey(e.tex)))) continue
-    derived.add(symbolKey(d.symbol))
+    if (!r.legend.every((e) => ENGINE_CONSTANTS.has(e.tex) || derived.has(spellingKey(e.tex)))) continue
+    derived.add(spellingKey(d.symbol))
     registry = withReading(registry, d.symbol, r.dim, () => ({ dim: r.dim, gloss: "defined in the text", si: siUnitOf(r.dim) }))
     out.push(d)
   }

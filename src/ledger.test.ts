@@ -138,6 +138,13 @@ describe("the decline ledger", () => {
       assert.strictEqual(outcome(tex).class, "unsupported", tex)
     const geometrized = classifyOutcome(translateTex("x = 2G3M", katex, GR, { system: "hl", geometrized: true }))
     assert.strictEqual(geometrized.class, "unsupported", geometrized.reason)
+    // A primed symbol is looked up under its own name, and one the registry
+    // lacks is an unknown symbol; a prime the engine cannot read as part of a
+    // name, on a compound expression or mixed into a superscript, is the reader's.
+    assert.strictEqual(outcome("x' = x").class, "unknown-symbol")
+    assert.deepStrictEqual(outcome("x' = x").unknown, ["x'"])
+    for (const tex of ["(r)' = 1", "x^{2\\prime} = r", "x'^{\\prime} = r"])
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)

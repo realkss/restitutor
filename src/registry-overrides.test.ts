@@ -63,6 +63,29 @@ describe("page declarations extend the registry", () => {
     assert.strictEqual(reg2.indexed.m, undefined)
     assert.strictEqual(reg2.bare.m.gloss, "mass")
   })
+  test("a declaration is placed under the engine's key: a primed one under its primed name, a superscripted one nowhere", () => {
+    // Placed at bare["t^{\prime}"], the reading was never read; the engine looks up "t'".
+    const boost = registryWithDeclarations(GR, mined("where $t^{\\prime}$ is the time in the boosted frame."))
+    assert.ok(boost.bare["t'"])
+    assert.strictEqual(boost.bare["t^{\\prime}"], undefined)
+    const t = translateTex("t' = t\\cosh\\phi - x\\sinh\\phi", katex, boost)
+    assert.ok(t.kind === "translated" && t.restoredTex === "t' = t\\cosh\\phi - \\frac{x\\sinh\\phi}{c}", JSON.stringify(t))
+    // Stripped of its prime, p'_μ lent its reading to the unprimed four-momentum.
+    const primedMomentum = registryWithDeclarations(GR, mined("where $p_{\\mu}^{\\prime}$ is the momentum in the primed frame."))
+    assert.ok(primedMomentum.exact["p'_\\mu"])
+    assert.ok(primedMomentum.indexed["p'"])
+    assert.strictEqual(primedMomentum.exact["p_\\mu"], undefined)
+    assert.strictEqual(primedMomentum.indexed.p, GR.indexed.p)
+    // A label, a power: no key, so the base's entries are never touched.
+    for (const sentence of [
+      "where $u_{j}^{\\rm out}$ is the outgoing velocity.",
+      "where $T^{\\rm eff}$ is the effective temperature.",
+      "where $m_1^2$ is the mass of the primary.",
+    ]) {
+      assert.strictEqual(mined(sentence).length, 1, sentence)
+      assert.strictEqual(registryWithDeclarations(GR, mined(sentence)), GR, sentence)
+    }
+  })
   test("the trust boundary is an allowlist: every caveated reading stays on the card and out of the registry", () => {
     // E&M nouns: the dimension depends on a unit system the page never named,
     // so the SI reading would restore the wrong constants without a word.

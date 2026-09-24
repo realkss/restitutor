@@ -1234,6 +1234,58 @@ function textOf(node: any): string | null {
   return null
 }
 
+/**
+ * Index tokens beyond the single letter, each a notational fact about an index
+ * list. A prime or a one-token label on an index letter names another index of
+ * the same family: x^{μ′} = Λ^{μ′}{}_{ν}x^{ν} is the coordinate in another
+ * chart, and μ₁ … μₙ run over the same values as μ. Braces inside an index list
+ * only group (R_{ab{cd}}), and an ellipsis inside one is a continuation
+ * (S_{\mu_1\cdots\mu_n}). None of them names an amount, and the dimension is
+ * the tensor's: x⁰ = ct holds in the primed chart as well.
+ *
+ * None of them applies through a font. An upright letter in an index list is a
+ * label, not an index (`\nu_{\rm e}` is the electron neutrino's ν, not ν with
+ * an index e), so a decorated or grouped token read through a font would read
+ * a label as a component.
+ */
+const ELLIPSES = new Set(["\\@cdots", "\\cdots", "\\ldots", "\\@ldots", "\\dots", "\\dotsb", "\\dotsc", "\\dotsi"])
+
+function isEllipsis(node: any): boolean {
+  const u = unwrap(node)
+  return u != null && (u.type === "atom" || u.type === "textord") && ELLIPSES.has(u.text)
+}
+
+/** Whether a node is set in no font, so a letter in it is the italic variable. */
+function isPlain(node: any): boolean {
+  return peelStyles(node)?.type !== "font"
+}
+
+/**
+ * μ′, a″, ν_1: an index letter carrying only primes above it and at most one
+ * letter or digit below. The coordinate labels count only where they count
+ * undecorated, in subscript position.
+ */
+function isDecoratedIndex(u: any, coordinates: boolean): boolean {
+  if (u?.type !== "supsub" || (u.sup == null && u.sub == null) || !isPlain(u.base)) return false
+  const base = textOf(u.base)
+  if (base == null || !(LATIN_INDICES.has(base) || GREEK_INDICES.has(base) || (coordinates && COORDINATE_LABELS.has(base)))) {
+    return false
+  }
+  const primes = u.sup == null || primeCount(u.sup) > 0
+  const label =
+    u.sub == null ||
+    ((tokens) => tokens.length === 1 && isPlain(tokens[0]) && /^[0-9a-zA-Z]$/.test(textOf(tokens[0]) ?? ""))(
+      nodeListOf(u.sub).filter(isMeaningfulNode),
+    )
+  return primes && label
+}
+
+/** The number of primes in a script that is nothing but primes (x′, x″, μ^{\prime}), else 0. */
+function primeCount(script: any): number {
+  const nodes = nodeListOf(script).filter(isMeaningfulNode)
+  return nodes.length > 0 && nodes.every((x) => textOf(x) === "\\prime") ? nodes.length : 0
+}
+
 function isIndexToken(node: any, coordinates = false): boolean {
   const u = unwrap(node)
   if (!u) return false
@@ -1241,10 +1293,42 @@ function isIndexToken(node: any, coordinates = false): boolean {
     return u.family !== "punct" // commas in indices (derivative notation) are handled as unsupported elsewhere
   }
   if (SKIP_TYPES.has(u.type)) return true
+  if (isPlain(node)) {
+    if (isEllipsis(u)) return true
+    if (u.type === "ordgroup") {
+      const body = u.body.filter(isMeaningfulNode)
+      return body.length > 0 && body.every((x: any) => isPlain(x) && isIndexToken(x, coordinates))
+    }
+    if (u.type === "supsub") return isDecoratedIndex(u, coordinates)
+  }
   const text = textOf(u)
   if (text == null) return false
   if (LATIN_INDICES.has(text) || GREEK_INDICES.has(text) || DIGIT_INDICES.has(text)) return true
   return coordinates && COORDINATE_LABELS.has(text)
+}
+
+/**
+ * An index token that names an index: not a bracket, a spacing or an
+ * ellipsis. A list of those alone (`T_{()}`, `x^{\cdots}`) indexes nothing.
+ */
+function isGenuineIndex(node: any): boolean {
+  const u = unwrap(node)
+  return u != null && !SKIP_TYPES.has(u.type) && u.type !== "atom" && !isEllipsis(u)
+}
+
+/**
+ * The index letters of an index list, read through the tokens that decorate
+ * or group them: the angular guard asks which coordinates a component names,
+ * and `\theta'` or `{\theta\theta}` names θ as `\theta` does.
+ */
+function indexLettersOf(nodes: any[]): string[] {
+  return nodes.flatMap((x) => {
+    const u = unwrap(x)
+    if (u?.type === "ordgroup") return indexLettersOf(u.body)
+    if (u?.type === "supsub") return indexLettersOf([u.base])
+    const text = textOf(u)
+    return text == null ? [] : [text]
+  })
 }
 
 /**
@@ -1264,7 +1348,7 @@ function allRiderTokens(nodes: any[]): boolean {
     return u && !SKIP_TYPES.has(u.type)
   })
   if (meaningful.length === 0) return false
-  return meaningful.every((n) => isIndexToken(n) || RIDER_LABELS.has(textOf(n) ?? ""))
+  return meaningful.every((n) => isIndexToken(n) || RIDER_LABELS.has(textOf(n) ?? "")) && meaningful.some(isGenuineIndex)
 }
 
 /**
@@ -1286,7 +1370,7 @@ function allIndexTokens(nodes: any[], coordinates = false): boolean {
   ) {
     throw new Unsupported("comma/semicolon derivative indices, which are not supported yet")
   }
-  return meaningful.every((n) => isIndexToken(n, coordinates))
+  return meaningful.every((n) => isIndexToken(n, coordinates)) && meaningful.some(isGenuineIndex)
 }
 
 function isSignToken(n: any): boolean {
@@ -1302,8 +1386,13 @@ function isSignToken(n: any): boolean {
  */
 function classifySup(sup: any): { p: number; q: number } | "index" | "prime" | "signLabel" | "expr" {
   const nodes = nodeListOf(sup).filter((n) => !SKIP_TYPES.has(n.type))
-  if (nodes.length === 0) return "expr"
   if (nodes.some((n) => textOf(n) === "\\prime")) return "prime"
+  return classifySupNodes(nodes)
+}
+
+/** classifySup over a superscript's nodes, spacing removed: also what follows a run of primes (x′², X′^μ). */
+function classifySupNodes(nodes: any[]): { p: number; q: number } | "index" | "signLabel" | "expr" {
+  if (nodes.length === 0) return "expr"
   if (isSignToken(nodes[nodes.length - 1])) return "signLabel"
   let sign = 1
   let rest = nodes
@@ -1336,6 +1425,26 @@ function classifySup(sup: any): { p: number; q: number } | "index" | "prime" | "
     // fall through to "expr"
   }
   return "expr"
+}
+
+type PrimeSplit = { count: number; rest: any[]; restRaw: any[] }
+
+/**
+ * The run of primes leading a superscript, and what follows it: `x'^{2}`
+ * parses to one superscript holding the prime and the group {2}, so the group
+ * is opened to classify its content. Null when no prime leads, or when a prime
+ * also stands after the run (`x^{2\prime}`, `x'^{\prime}`): primes that do not
+ * lead their superscript do not spell one name.
+ */
+function splitPrimes(sup: any): PrimeSplit | null {
+  const nodes = nodeListOf(sup).filter(isMeaningfulNode)
+  let count = 0
+  while (count < nodes.length && textOf(nodes[count]) === "\\prime") count += 1
+  if (count === 0) return null
+  const restRaw = nodes.slice(count)
+  const rest = restRaw.flatMap((r) => (r.type === "ordgroup" ? r.body.filter(isMeaningfulNode) : [r]))
+  if (rest.some((r) => textOf(r) === "\\prime")) return null
+  return { count, rest, restRaw }
 }
 
 function digitsOf(nodes: any[]): string | null {
@@ -1397,6 +1506,112 @@ function plainNumeralValue(f: Factor): number | null {
 
 function subKeyText(sub: any, ctx: Ctx): string {
   return srcOf(sub, ctx).replace(/[{}\s]/g, "")
+}
+
+/**
+ * The dictionary key of one symbol as a page writes it, the key the engine
+ * looks that symbol up by, or null when the spelling is not one symbol the
+ * dictionary keys. Page declarations are placed in the registry under it
+ * (src/bridge.ts), so a reading a page gives lands where the engine reads.
+ *
+ * A primed symbol is a symbol in its own right, keyed by its own spelling:
+ * `t'`, and `\alpha'` for the Regge slope, which is not the lapse α. The number
+ * of primes is part of the name (t″ is not t′), and the shorthand `'` and the
+ * written `^{\prime}` spell the same name. The primes go before the subscript
+ * whichever the author wrote first, since `x'_\mu` and `x_\mu'` typeset (and
+ * parse) as one symbol: `p_{\mu}^{\prime}` is `p'_\mu`, never p_μ itself. A
+ * subscript is keyed by its spelling with braces and spaces removed, as the
+ * exact lookup keys it (`T_{\mu \nu}` is `T_\mu\nu`); a font command written as
+ * the whole subscript keys by its argument, as KaTeX gives that font no
+ * position of its own and the lookup reads the letter under it (`r_\mathrm{s}`
+ * is `r_s`).
+ *
+ * A superscript that is anything but primes — a power, an index, a label —
+ * names no dictionary entry, and neither do primes mixed with one
+ * (`x'^{\prime}`, which KaTeX parses as one superscript): those give null, as
+ * does anything that does not parse as a base and its scripts.
+ *
+ * The base is kept as written. A base under a font (`\mathbf{E}`) is to its
+ * page another symbol than the letter, while the engine reads the letter under
+ * the font; so a page's reading of it keys where no lookup reaches, never on
+ * the letter's own entry.
+ */
+export function symbolKey(tex: string): string | null {
+  const src = tex.trim()
+  let at = 0
+  const skipSpace = () => {
+    while (at < src.length && /\s/.test(src[at])) at += 1
+  }
+  const controlWord = (): string | null => {
+    const word = /^\\[A-Za-z]+/.exec(src.slice(at))?.[0]
+    if (word != null) at += word.length
+    return word ?? null
+  }
+  const group = (): string | null => {
+    let depth = 0
+    for (let i = at; i < src.length; i += 1) {
+      if (src[i] === "\\") i += 1
+      else if (src[i] === "{") depth += 1
+      else if (src[i] === "}" && --depth === 0) {
+        const body = src.slice(at + 1, i)
+        at = i + 1
+        return body
+      }
+    }
+    return null
+  }
+  const argument = (): string | null => {
+    skipSpace()
+    if (src[at] === "{") return group()
+    if (src[at] === "\\") {
+      const word = controlWord()
+      return word != null && SCRIPT_FONT_COMMANDS.has(word.slice(1)) ? argument() : word
+    }
+    return at < src.length && !/[_^'}]/.test(src[at]) ? src[at++] : null
+  }
+
+  let base: string | null
+  if (src[at] === "\\") {
+    base = controlWord()
+    if (base != null && src[at] === "{") {
+      const arg = group()
+      base = arg == null ? null : `${base}{${arg}}`
+    }
+  } else {
+    base = at < src.length && !/[\s_^'{}]/.test(src[at]) ? src[at++] : null
+  }
+  if (base == null) return null
+
+  let primes = 0
+  let primeRuns = 0
+  let sub: string | null = null
+  let sup = false
+  for (skipSpace(); at < src.length; skipSpace()) {
+    const mark = src[at]
+    if (mark === "'") {
+      primeRuns += 1
+      while (src[at] === "'") {
+        primes += 1
+        at += 1
+      }
+      continue
+    }
+    if (mark !== "_" && mark !== "^") return null
+    at += 1
+    const arg = argument()
+    if (arg == null) return null
+    if (mark === "_") {
+      if (sub != null) return null
+      sub = arg.replace(/[{}\s]/g, "")
+    } else {
+      const run = /^(?:\\prime)+$/.exec(arg.replace(/[{}\s]/g, ""))?.[0]
+      if (sup || run == null) return null
+      sup = true
+      primes += run.length / "\\prime".length
+    }
+  }
+  if (primeRuns > 1 || (primeRuns === 1 && sup)) return null
+  return `${base}${"'".repeat(primes)}${sub != null ? `_${sub}` : ""}`
 }
 
 function resolveSymbol(
@@ -2174,6 +2389,9 @@ const FONT_SPELLINGS: Record<string, string[]> = {
 const OLD_STYLE_SWITCHES = new Set(["rm", "bf", "it", "cal", "sf", "tt"])
 const OLD_STYLE_GROUP = /^\{\\(?:rm|bf|it|cal|sf|tt) /
 
+/** The font commands that take an argument, as symbolKey meets them written as a whole script. */
+const SCRIPT_FONT_COMMANDS = new Set(Object.values(FONT_SPELLINGS).flat().filter((cmd) => !OLD_STYLE_SWITCHES.has(cmd)))
+
 function fontCmdOf(font: any, ctx: Ctx): string {
   const span = spanOf(font.body, ctx.input)
   const written = span ? /\\([a-zA-Z]+)\s*\{?\s*$/.exec(ctx.input.slice(0, span[0])) : null
@@ -2371,6 +2589,20 @@ function analyzeDifferential(
   const wholeSrc = () => joinTex([wrappedTexOf(prefixNode, ctx), wrappedTexOf(operandNode, ctx)])
   const prefixHasOrder = unwrap(prefixNode)?.type === "supsub"
 
+  // A primed operand is the primed symbol, looked up under its own name. Read
+  // as any other scripted operand, it was looked up as the unprimed symbol and
+  // sliced without the shorthand primes it has no span for: `dx'_{\mu}` read
+  // as dx_μ.
+  if (opU?.type === "supsub" && opU.sup != null && classifySup(opU.sup) === "prime") {
+    const primed = readPrimed(opU, ctx, {
+      upright: upright || underUprightFont(opU.base),
+      differential: prefix === "d",
+      scalePower: !prefixHasOrder,
+    })
+    const prefixTex = wrappedTexOf(prefixNode, ctx)
+    return { kind: "diff", dim: primed.dim, emit: () => joinTex([prefixTex, primed.tex]) }
+  }
+
   let operandDim: Dim
   if (opU?.type === "supsub") {
     const base = unwrap(opU.base)
@@ -2509,9 +2741,9 @@ function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
 function floatingScriptAfterHeadGuard(headNode: any, next: any, ctx: Ctx): void {
   const script = argumentOpener(next)
   if (!isFloatingScript(script)) return
-  // A prime on nothing (`\sin{}'`) is the primed-symbol decline's, which the
-  // script meets when it is read; the prime KaTeX makes of `'` has no source
-  // span to name it by here.
+  // A prime on nothing (`\sin{}'`) is a floating script the primed-symbol
+  // reading declines when it meets it; the prime KaTeX makes of `'` has no
+  // source span to name it by here.
   if (script.sup != null && classifySup(script.sup) === "prime") return
   throw new Unsupported(
     `the floating script “${supsubTex("{}", script, ctx)}” after “${functionHeadTex(headNode, ctx)}” — the function's power or a script on its argument — which is not supported`,
@@ -3096,26 +3328,38 @@ function scriptSrc(node: any, ctx: Ctx): string {
  * dominant spelling of mixed tensors (\Gamma^{\rho}_{\mu\nu}, \delta^{\mu}_{\nu},
  * T^{\alpha}_{\ \alpha}); rebuilding every one of them subscript first made the
  * reassembly backstop decline them all as divergent.
+ *
+ * Shorthand primes have no span at all: KaTeX makes `x'` a superscript of a
+ * loc-less \prime, and `x'_\mu` and `x_\mu'` parse to the same tree. There the
+ * apostrophe itself says where the primes stood, found in the source between
+ * the base and the subscript.
  */
 function supWrittenFirst(n: any, ctx: Ctx): boolean {
   if (n.sub == null || n.sup == null) return false
   const sub = spanOf(n.sub, ctx.input)
   const sup = spanOf(n.sup, ctx.input)
+  if (sub != null && sup == null) {
+    const base = spanOf(n.base, ctx.input)
+    return base != null && ctx.input.slice(base[1], sub[0]).includes("'")
+  }
   return sub != null && sup != null && sup[0] < sub[0]
 }
 
 /**
- * The scripts of a supsub, in the order they were written. A font written as
- * the whole script (`r_\mathrm{s}`) is set without a brace pair of its own,
- * as written: KaTeX parses `r_{\mathrm{s}}` to another node (a group around
- * the font), which the dictionary keys by another spelling, so the braced
- * rebuild read back as an unknown symbol instead of the Schwarzschild radius.
+ * One script of a supsub. A font written as the whole script (`r_\mathrm{s}`)
+ * is set without a brace pair of its own, as written: KaTeX parses
+ * `r_{\mathrm{s}}` to another node (a group around the font), which the
+ * dictionary keys by another spelling, so the braced rebuild read back as an
+ * unknown symbol instead of the Schwarzschild radius.
  */
-function scriptsTex(n: any, ctx: Ctx): string {
-  const script = (mark: string, node: any) =>
-    node.type === "font" ? `${mark}${scriptSrc(node, ctx)}` : `${mark}{${scriptSrc(node, ctx)}}`
-  const sub = n.sub != null ? script("_", n.sub) : ""
-  const sup = n.sup != null ? script("^", n.sup) : ""
+function scriptTex(mark: string, node: any, ctx: Ctx): string {
+  return node.type === "font" ? `${mark}${scriptSrc(node, ctx)}` : `${mark}{${scriptSrc(node, ctx)}}`
+}
+
+/** The scripts of a supsub, in the order they were written; `supTex` replaces a superscript rebuilt elsewhere (primes). */
+function scriptsTex(n: any, ctx: Ctx, supTex?: string): string {
+  const sub = n.sub != null ? scriptTex("_", n.sub, ctx) : ""
+  const sup = n.sup != null ? (supTex ?? scriptTex("^", n.sup, ctx)) : ""
   return supWrittenFirst(n, ctx) ? sup + sub : sub + sup
 }
 
@@ -3152,10 +3396,11 @@ function baseTexOf(rawBase: any, ctx: Ctx): string | null {
  * emitting scripts in source order brings it in, and the ruling never covered
  * it. So an indexed reading with a superscript and θ or φ in either script
  * declines by name — in either script order, so the spelling never decides the
- * reading. An identity the registry spells out (an `exact` entry) is not an
- * indexed reading and is left alone, as is a subscript that is not an index
- * list, and a superscript that is neither a power nor an index list keeps its
- * own reason.
+ * reading, and through a prime, a label or braces on the index (`\theta'`,
+ * `{\theta\theta}`), which leave it the same coordinate. An identity the
+ * registry spells out (an `exact` entry) is not an indexed reading and is left
+ * alone, as is a subscript that is not an index list, and a superscript that
+ * is neither a power nor an index list keeps its own reason.
  *
  * A power on \partial or \nabla is a derivative order, not a component, and it
  * is the ruling's own case: the Teukolsky operator's \partial_\phi^2 is among the
@@ -3180,7 +3425,7 @@ function angularIndexGuard(baseText: string, n: any, displayTex: string, ctx: Ct
   if (typeof sup === "object") {
     if (baseText === "\\partial" || baseText === "\\nabla") return
   } else if (sup !== "index" && !indexList(supNodes)) return
-  if ([...subNodes, ...supNodes].some((x) => ANGULAR_LABELS.has(textOf(x) ?? ""))) {
+  if (indexLettersOf([...subNodes, ...supNodes]).some((x) => ANGULAR_LABELS.has(x))) {
     throw new Unsupported(
       `an angular coordinate index on “${displayTex}” — components along θ and φ do not share the registry's length dimension`,
     )
@@ -3398,10 +3643,92 @@ function innermostFontOf(node: any): any {
   return font
 }
 
+const SIGN_LABEL_REASON =
+  "a sign standing as a superscript (a light-cone index or a charge label), which is neither a power nor a dictionary index"
+
+/**
+ * A primed superscript rebuilt as written. Written primes (`^{\prime}`,
+ * `^{\prime\,2}`) sit in a script with a span of its own, and are sliced with
+ * it. Shorthand primes have no span, and a slice across them drops them —
+ * `x'^{2}` locates only its 2 — so they come back as apostrophes, followed by
+ * whatever the author raised after them, sliced from its own span.
+ */
+function primedSupTex(sup: any, split: PrimeSplit, ctx: Ctx): string {
+  if (locIsOwn(sup.loc, ctx.input)) return `^{${scriptSrc(sup, ctx)}}`
+  const ticks = "'".repeat(split.count)
+  if (split.restRaw.length === 0) return ticks
+  const rest = split.restRaw.length === 1 ? scriptSrc(split.restRaw[0], ctx) : srcOfNodes(split.restRaw, ctx)
+  return `${ticks}^{${rest}}`
+}
+
+/**
+ * A primed symbol, read by lookup under its own name (see symbolKey): x′ is
+ * "x'" and α′ is "\alpha'", and nothing is borrowed from the unprimed letter.
+ * Across the corpus the prime marks another frame's coordinate, a second
+ * point, a derivative, a redefined coordinate or an unrelated constant (α′,
+ * the Regge slope, is a length squared where the registry's α is the lapse),
+ * so "x′ has the dimension of x" is false as often as it is true, and it is
+ * never assumed. What follows the primes is read as it is on any symbol: a
+ * power scales the primed symbol (`\alpha'^{2}` is (α′)²), an index list sends
+ * the lookup to its indexed reading (`X'^{\mu}`), and a subscript to its exact
+ * reading and then its indexed one (`x'_\mu`), under the same guards.
+ *
+ * The primed name is the one a reader sees in the legend and in the unknown
+ * list, primes before the subscript and without the power: `x_{\mu}'` is
+ * listed as `x'_{\mu}`, and `\alpha^{\prime\,2}` as `\alpha'`. An index list
+ * after the primes is shown as written (`x'^{\mu}`), as an indexed symbol's
+ * indices are. The emission is the scripts as written, in the order written.
+ */
+function readPrimed(
+  n: any,
+  ctx: Ctx,
+  opts: { upright: boolean; differential: boolean; scalePower: boolean },
+): { dim: Dim; tex: string } {
+  const base = unwrap(n.base)
+  if (base == null || isEmptyOrdgroup(base)) throw new Unsupported("a floating super/subscript")
+  const split = splitPrimes(n.sup)
+  if (split == null) throw new Unsupported("a prime mixed into a superscript the engine could not read")
+  // A decorated big operator (\sum', \int') names itself, as it does wearing limits.
+  if (base.type === "op" && !(base.name && FUNC_OPS.has(base.name))) analyzeFactor(n.base, ctx)
+  const baseText = textOf(base)
+  const baseTex = baseTexOf(n.base, ctx)
+  if (baseText == null || baseTex == null) {
+    throw new Unsupported("a prime on a compound expression, which the engine cannot read as a symbol")
+  }
+  if (BAR_FAMILY[baseText]) throw new Unsupported(unpairedBarReason(baseText))
+  uprightLetterGuard(baseText, opts.upright)
+  const ticks = "'".repeat(split.count)
+  const key = `${baseText}${ticks}`
+  const tex = baseTex + scriptsTex(n, ctx, primedSupTex(n.sup, split, ctx))
+  const rest = split.rest.length > 0 ? classifySupNodes(split.rest) : null
+  const display = rest === "index" ? tex : baseTex + ticks + (n.sub != null ? scriptTex("_", n.sub, ctx) : "")
+  // The guards see the scripts the primed symbol carries, the primes set aside.
+  const scripts = { sub: n.sub, sup: rest == null ? null : { type: "ordgroup", body: split.rest } }
+  if (n.sub != null) {
+    angularIndexGuard(key, scripts, tex, ctx)
+    componentDigitGuard(key, scripts, rest, tex, ctx)
+  }
+  if (rest === "signLabel") throw new Unsupported(SIGN_LABEL_REASON)
+  let d = resolveSymbol(key, display, ctx, {
+    sub: n.sub,
+    indices: n.sub == null && rest === "index",
+    differential: opts.differential,
+  })
+  if (rest === "expr") throw new Unsupported(`an exponent on “${tex}” that could not be read`)
+  if (typeof rest === "object" && rest != null && opts.scalePower) d = dimScale(d, rest.p, rest.q)
+  return { dim: d, tex }
+}
+
+function analyzePrimed(n: any, ctx: Ctx): Factor {
+  const upright = ctx.font?.upright === true || underUprightFont(n.base)
+  const primed = readPrimed(n, ctx, { upright, differential: false, scalePower: true })
+  return { kind: "sym", dim: primed.dim, emit: () => primed.tex }
+}
+
 function analyzeSupsub(n: any, ctx: Ctx): Factor {
   const base = unwrap(n.base)
   const sup = n.sup != null ? classifySup(n.sup) : null
-  if (sup === "prime") throw new Unsupported("a primed symbol, which is not in the dictionary")
+  if (sup === "prime") return analyzePrimed(n, ctx)
 
   // A decorated big operator (\int_0^\infty, \sum_{i}) is an integral or a sum
   // wearing limits, not an unreadable script: let the op say so itself.
@@ -3409,11 +3736,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
     analyzeFactor(n.base, ctx)
   }
 
-  if (sup === "signLabel") {
-    throw new Unsupported(
-      "a sign standing as a superscript (a light-cone index or a charge label), which is neither a power nor a dictionary index",
-    )
-  }
+  if (sup === "signLabel") throw new Unsupported(SIGN_LABEL_REASON)
 
   // {}^{d} / {}_{\mu\nu} index riders (as in R_{abc}{}^{d} or \Gamma^{\rho}{}_{\mu\nu}).
   if (base == null || (base.type === "ordgroup" && base.body.length === 0)) {

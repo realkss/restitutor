@@ -8,6 +8,7 @@ import {
   TranslationResult,
   findRegistryForSlug,
   stripTrailingPunctuation,
+  symbolKey,
   translateTex,
 } from "./unitsEngine"
 
@@ -1420,10 +1421,12 @@ describe("source fidelity: foreign-lexer locs, spacing as written, control space
 
   test("a macro-built token no longer slices the equation: keys and quotes are the source's", () => {
     // \cdots is located in its macro body; the subscript used to key itself as
-    // T_{T_{a\cdots b}}, an entry no registry could ever hold.
-    const dots = run("T_{a\\cdots b} = r")
+    // T_{T_{a\cdots b}}, an entry no registry could ever hold. (An ellipsis in
+    // an index list is a continuation, so the unknown is a base the registry
+    // does not index.)
+    const dots = run("S_{a\\cdots b} = r")
     assert.strictEqual(dots.kind, "declined", JSON.stringify(dots))
-    if (dots.kind === "declined") assert.deepStrictEqual(dots.unknown, ["T_{a\\cdots b}"])
+    if (dots.kind === "declined") assert.deepStrictEqual(dots.unknown, ["S_{a\\cdots b}"])
     // The term was quoted as “ar = a~bb”; a group keeps its own span too.
     for (const [tex, quoted] of [
       ["r = a~b", "“a~b”"],
@@ -2578,9 +2581,10 @@ describe("batch-1 review fixes", () => {
     declines("x = r\\sin{{}^{2}}^{3}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
     declines("x = r\\sin{{\\,}{}^{2}}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
     declines("x = r\\sin{\\,}^{2}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
-    // A prime on nothing keeps the primed-symbol reason: its script has no
-    // source to name it by, and naming it failed as an unrecovered fragment.
-    declines("x = r\\sin{}'(M/t)", "a primed symbol, which is not in the dictionary", [SI])
+    // A prime on nothing is a floating script, declined when it is read: its
+    // script has no source to name it by, and naming it here failed as an
+    // unrecovered fragment.
+    declines("x = r\\sin{}'(M/t)", "a floating super/subscript", [SI])
     // A power on the head itself, and an empty group with no script, are read as before.
     assert.strictEqual(rawRestored("x = r\\sin^{2}(M/t)"), "x = r\\sin^{2}(GM/tc^{3})")
     assert.strictEqual(rawRestored("x = r\\sin^{2}\\,(M/t)"), "x = r\\sin^{2}\\,(GM/tc^{3})")
@@ -3600,5 +3604,247 @@ describe("statement layer: lists, connectives, wide space and the unit summary",
       true,
     )
     assert.strictEqual(one.statementUnitTex, undefined)
+  })
+})
+
+describe("index tokens, primes and the canonical symbol key", () => {
+  const rawRestored = (tex: string, target: TargetSpec = SI, registry: HubRegistry = reg) => {
+    const result = translateTex(tex, katex, registry, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    return (result as Extract<TranslationResult, { kind: "translated" }>).restoredTex
+  }
+  const declined = (tex: string, registry: HubRegistry = reg) => {
+    const result = translateTex(tex, katex, registry, SI)
+    assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+    return result as Extract<TranslationResult, { kind: "declined" }>
+  }
+  // Primed symbols as a page would declare them: the bridge places a reading
+  // under symbolKey's name, and these stand in for such placements.
+  const L = { dim: [0, 12, 0, 0, 0] as HubRegistry["bare"][string]["dim"], gloss: "coordinate in another chart", si: "m" }
+  const primed: HubRegistry = {
+    ...reg,
+    bare: {
+      ...reg.bare,
+      "x'": L,
+      "t'": { dim: [0, 0, 12, 0, 0], gloss: "time in the boosted frame", si: "s" },
+      "\\alpha'": { dim: [0, 24, 0, 0, 0], gloss: "Regge slope", si: "m²" },
+    },
+    indexed: { ...reg.indexed, "x'": L, "\\Gamma'": reg.indexed["\\Gamma"] },
+  }
+
+  test("KaTeX: a shorthand prime and what is raised after it share one superscript; a primed index is a supsub", () => {
+    const parse = (tex: string) => katex.__parse(tex, { strict: false, trust: false, displayMode: true })
+    const [power] = parse("x'^{2}")
+    assert.deepStrictEqual(
+      power.sup.body.map((n: any) => [n.type, n.loc == null]),
+      [
+        ["textord", true],
+        ["ordgroup", false],
+      ],
+    )
+    assert.strictEqual(power.sup.loc, undefined, "the shorthand superscript grew a span")
+    const [index] = parse("x^{\\mu'}")
+    assert.strictEqual(index.sup.body[0].type, "supsub")
+    assert.strictEqual(index.sup.body[0].base.text, "\\mu")
+    assert.strictEqual(index.sup.body[0].sup.body[0].text, "\\prime")
+  })
+
+  test("a primed, labelled, grouped or continued index is an index (R5b, F-P2)", () => {
+    // Carroll's transformation laws declined as a symbolic exponent on x.
+    assert.strictEqual(
+      rawRestored("x^{\\mu'} = \\Lambda^{\\mu'}{}_{\\nu}x^{\\nu}"),
+      "x^{\\mu'} = \\Lambda^{\\mu'}{}_{\\nu}x^{\\nu}",
+    )
+    for (const target of [SI, { system: "hl", geometrized: false } as TargetSpec]) {
+      assert.strictEqual(
+        rawRestored("T_{\\mu^{\\prime}\\nu^{\\prime}} = \\rho u_{\\mu^{\\prime}} u_{\\nu^{\\prime}}", target),
+        "T_{\\mu^{\\prime}\\nu^{\\prime}} = \\rho u_{\\mu^{\\prime}}u_{\\nu^{\\prime}}c^{2}",
+      )
+    }
+    assert.strictEqual(
+      rawRestored("T_{\\mu^{\\prime}\\nu^{\\prime}} = \\rho u_{\\mu^{\\prime}} u_{\\nu^{\\prime}}", GEO),
+      "T_{\\mu^{\\prime}\\nu^{\\prime}} = \\rho u_{\\mu^{\\prime}}u_{\\nu^{\\prime}}",
+    )
+    assert.strictEqual(rawRestored("T_{\\mu'\\nu'} = \\rho u_{\\mu'}u_{\\nu'}"), "T_{\\mu'\\nu'} = \\rho u_{\\mu'}u_{\\nu'}c^{2}")
+    assert.strictEqual(
+      rawRestored("T^{\\mu'}{}_{\\nu'} = \\rho u^{\\mu'}u_{\\nu'}"),
+      "T^{\\mu'}{}_{\\nu'} = \\rho u^{\\mu'}u_{\\nu'}c^{2}",
+    )
+    assert.strictEqual(rawRestored("R_{ab{cd}} = -R_{ba{cd}}"), "R_{ab{cd}} = -R_{ba{cd}}")
+    assert.strictEqual(rawRestored("x^{\\mu_1} = 0"), "x^{\\mu_1} = 0")
+    assert.strictEqual(rawRestored("T_{a\\cdots b} = \\rho"), "T_{a\\cdots b} = \\rho c^{2}")
+  })
+
+  test("what is not an index list stays out of one", () => {
+    // The unknown is the source's own slice (the macro-span fix).
+    assert.deepStrictEqual(declined("S_{\\mu_{1}\\cdots\\mu_{n}} = 0").unknown, ["S_{\\mu_{1}\\cdots\\mu_{n}}"])
+    // An upright letter is a label, never an index: not through a subscript
+    // on an index, nor under a font.
+    assert.deepStrictEqual(declined("T_{\\nu_{\\rm e}} = \\rho").unknown, ["T_{\\nu_{\\rm e}}"])
+    assert.deepStrictEqual(declined("T_{\\mathbf{\\mu}'} = \\rho").unknown, ["T_{\\mathbf{\\mu}'}"])
+    assert.deepStrictEqual(declined("x^{\\mu_{\\rm e}} = 0").reasons, ["a symbolic exponent on the dimensional base “x”"])
+    // Brackets and an ellipsis alone index nothing.
+    assert.deepStrictEqual(declined("T_{()} = \\rho").unknown, ["T_{()}"])
+    assert.deepStrictEqual(declined("x^{\\cdots} = 0").reasons, ["a symbolic exponent on the dimensional base “x”"])
+  })
+
+  test("the angular guard reads θ and φ through a prime, a label and braces on the index", () => {
+    const ANGULAR = (tex: string) =>
+      `an angular coordinate index on “${tex}” — components along θ and φ do not share the registry's length dimension`
+    for (const [tex, quoted] of [
+      ["\\Gamma^{\\mu}_{\\theta'\\theta'} = 0", "\\Gamma^{\\mu}_{\\theta'\\theta'}"],
+      ["\\Gamma^{\\mu}_{{\\theta\\theta}} = 0", "\\Gamma^{\\mu}_{{\\theta\\theta}}"],
+      ["\\Gamma^{\\theta'}_{rr} = 0", "\\Gamma^{\\theta'}_{rr}"],
+    ]) {
+      assert.deepStrictEqual(declined(tex).reasons, [ANGULAR(quoted)], tex)
+    }
+    // A primed symbol's own indexed reading is guarded as any other is.
+    assert.deepStrictEqual(declined("\\Gamma'^{\\mu}_{\\theta\\theta} = 0", primed).reasons, [
+      ANGULAR("\\Gamma'^{\\mu}_{\\theta\\theta}"),
+    ])
+    assert.deepStrictEqual(declined("\\Gamma'^{2}_{00} = 0", primed).reasons, [
+      "a digit superscript on “\\Gamma'^{2}_{00}” — a component index or a power",
+    ])
+    // The subscript ruling still reads them.
+    assert.strictEqual(rawRestored("g_{\\theta'\\theta'} = 0"), "g_{\\theta'\\theta'} = 0")
+  })
+
+  test("a primed symbol is looked up under its own name and borrows nothing from its letter", () => {
+    // Unknown only is asserted: an unknown reads as dimensionless, so the
+    // decline may also name a term with no completion.
+    const unknown = (tex: string, registry: HubRegistry = reg) => declined(tex, registry).unknown
+    assert.deepStrictEqual(unknown("x' = x"), ["x'"])
+    // α′, the Regge slope, is not the lapse α.
+    assert.deepStrictEqual(unknown("\\alpha' = \\ell_P^{2}"), ["\\alpha'"])
+    assert.deepStrictEqual(unknown("f'(r) = 2M/r^{2}"), ["f'"])
+    // The number of primes is part of the name.
+    assert.deepStrictEqual(unknown("t'' = t", primed), ["t''"])
+    // Primes before or after the subscript, shorthand or written, are one name,
+    // listed primes first; each re-emits without a reassembly fault.
+    for (const [tex, name] of [
+      ["x'_{\\mu} = x_{\\mu}", "x'_{\\mu}"],
+      ["x_{\\mu}' = x_{\\mu}", "x'_{\\mu}"],
+      ["X^{\\prime}_{\\mu} = x_{\\mu}", "X'_{\\mu}"],
+    ]) {
+      const result = declined(tex)
+      assert.deepStrictEqual(result.unknown, [name], tex)
+      assert.ok(!result.reasons.some((r) => r.includes("reassembly")), JSON.stringify(result.reasons))
+    }
+    // The listed name carries no power.
+    assert.deepStrictEqual(unknown("x'^{2} = r^2"), ["x'"])
+    // c′ and G′ are not the constants.
+    const notC = declined("c' = 1")
+    assert.deepStrictEqual([notC.reasons, notC.unknown], [[], ["c'"]])
+    assert.deepStrictEqual(unknown("G'M = r"), ["G'"])
+    // A label after the primes is not read, and the primed name is still its own.
+    const labelled = declined("u'^{\\rm out} = u")
+    assert.deepStrictEqual(labelled.unknown, ["u'"])
+    assert.deepStrictEqual(labelled.reasons, ["an exponent on “u'^{\\rm out}” that could not be read"])
+  })
+
+  test("a declared primed symbol translates, its primes re-emitted as written", () => {
+    // A-P3–A-P5: the boost, shorthand and written, and unchanged when geometrized.
+    assert.strictEqual(
+      rawRestored("t' = t\\cosh\\phi - x\\sinh\\phi", SI, primed),
+      "t' = t\\cosh\\phi - \\frac{x\\sinh\\phi}{c}",
+    )
+    assert.strictEqual(
+      rawRestored("t^{\\prime} = t\\cosh\\phi - x\\sinh\\phi", SI, primed),
+      "t^{\\prime} = t\\cosh\\phi - \\frac{x\\sinh\\phi}{c}",
+    )
+    assert.strictEqual(rawRestored("t' = t\\cosh\\phi - x\\sinh\\phi", GEO, primed), "t' = t\\cosh\\phi - x\\sinh\\phi")
+    // The scripts in the order written, shorthand primes as apostrophes.
+    for (const tex of [
+      "x'_{\\mu} = x_{\\mu}",
+      "x_{\\mu}' = x_{\\mu}",
+      "x^{\\prime}_{\\mu} = x_{\\mu}",
+      "x_{\\mu}^{\\prime} = x_{\\mu}",
+      "x'^{\\mu} = x^{\\mu}",
+      "\\alpha^{\\prime\\,2} = r^{4}",
+      "\\alpha'^{2} = r^{4}",
+    ]) {
+      assert.strictEqual(rawRestored(tex, SI, primed), tex)
+    }
+    assert.strictEqual(rawRestored("x'^2 = r^2", SI, primed), "x'^{2} = r^{2}")
+    assert.strictEqual(rawRestored("t^{\\prime} = x^\\prime", SI, primed), "t^{\\prime} = \\frac{x^{\\prime}}{c}")
+    // The legend shows the primed name, primes before the subscript, and an
+    // index list as written.
+    const legend = translateTex("x_{\\mu}' x'^{\\mu} = \\alpha'", katex, primed, SI)
+    assert.ok(legend.kind === "translated", JSON.stringify(legend))
+    if (legend.kind === "translated") {
+      assert.deepStrictEqual(
+        legend.legend.map((e) => e.tex),
+        ["x'_{\\mu}", "x'^{\\mu}", "\\alpha'"],
+      )
+    }
+  })
+
+  test("a primed differential is the primed symbol under d (A-N9)", () => {
+    // Read as any scripted operand, `dx^{\prime}_{\mu}` was looked up as dx_μ.
+    assert.ok(declined("\\mathrm{d}x' = dx").unknown.includes("x'"))
+    assert.deepStrictEqual(declined("ds = dx'").unknown, ["x'"])
+    assert.deepStrictEqual(declined("ds = dx^{\\prime}_{\\mu}").unknown, ["x'_{\\mu}"])
+    assert.deepStrictEqual(declined("ds = dx'_{\\mu}").unknown, ["x'_{\\mu}"])
+    assert.strictEqual(rawRestored("dt' = ds", SI, primed), "dt' = \\frac{ds}{c}")
+    assert.strictEqual(rawRestored("\\mathrm{d}t' = ds", SI, primed), "\\mathrm{d}t' = \\frac{ds}{c}")
+    assert.strictEqual(rawRestored("ds = dx'", SI, primed), "ds = dx'")
+  })
+
+  test("primes the engine cannot read as part of a name decline by name (A-N7, A-N8)", () => {
+    const COMPOUND = "a prime on a compound expression, which the engine cannot read as a symbol"
+    const MIXED = "a prime mixed into a superscript the engine could not read"
+    for (const [tex, reason] of [
+      ["(r)' = 1", COMPOUND],
+      ["\\vec{k}' = k", COMPOUND],
+      ["x^{2\\prime} = r", MIXED],
+      ["x'^{\\prime} = r", MIXED],
+      ["x'^{+} = x", "a sign standing as a superscript (a light-cone index or a charge label), which is neither a power nor a dictionary index"],
+      ["\\mathrm{m}' = M", "the upright letter “m” — a unit, a label or an operator, not a variable"],
+    ]) {
+      const result = declined(tex)
+      assert.deepStrictEqual(result.reasons, [reason], tex)
+      assert.deepStrictEqual(result.unknown, [], tex)
+    }
+    // A primed big operator names itself.
+    assert.ok(declined("E = \\sum' p").reasons[0].includes("integrals, sums, and limits"))
+  })
+
+  test("symbolKey: the name the engine looks a symbol up by", () => {
+    for (const [tex, key] of [
+      ["t", "t"],
+      ["t'", "t'"],
+      ["t^{\\prime}", "t'"],
+      ["t^\\prime", "t'"],
+      ["t''", "t''"],
+      ["\\alpha^{\\prime\\prime}", "\\alpha''"],
+      ["\\alpha '", "\\alpha'"],
+      ["p'_\\mu", "p'_\\mu"],
+      ["p_\\mu'", "p'_\\mu"],
+      ["p_{\\mu}^{\\prime}", "p'_\\mu"],
+      ["p^{\\prime}_{\\mu}", "p'_\\mu"],
+      ["T_{\\mu \\nu}", "T_\\mu\\nu"],
+      ["r_s", "r_s"],
+      ["r_\\mathrm{s}", "r_s"],
+      ["r_{\\rm s}", "r_\\rms"],
+      ["\\mathbf{J}_i", "\\mathbf{J}_i"],
+    ] as const) {
+      assert.strictEqual(symbolKey(tex), key, tex)
+    }
+    // A superscript other than primes names no entry, nor do primes mixed with one.
+    for (const tex of ["x'^{\\mu}", "x'^{2}", "x'^{\\prime}", "x^{\\prime}'", "x'_\\mu'", "u_{j}^{\\rm out}", "T^{\\rm eff}", "m_1^2", "T_ab", "x_{\\mu}_{\\nu}", "", "{x}"]) {
+      assert.strictEqual(symbolKey(tex), null, tex)
+    }
+  })
+
+  test("symbolKey agrees with the engine: a reading placed under the key is the one the engine reads", () => {
+    const reading = { dim: [0, 12, 0, 0, 0] as HubRegistry["bare"][string]["dim"], gloss: "a declared length", si: "m" }
+    for (const tex of ["t'", "t^{\\prime}", "t^\\prime", "\\alpha''", "q'_\\mu", "q_{\\mu}'", "q_{\\mu}^{\\prime}", "Q_{\\mu \\nu}", "Q_\\mathrm{s}"]) {
+      const key = symbolKey(tex)!
+      const table = key.includes("_") ? "exact" : "bare"
+      const declared: HubRegistry = { ...reg, [table]: { ...reg[table], [key]: reading } }
+      const result = translateTex(`${tex} = r`, katex, declared, SI)
+      assert.strictEqual(result.kind, "translated", `${tex} (key ${key}) → ${JSON.stringify(result)}`)
+      if (result.kind === "translated") assert.ok(result.legend.some((e) => e.gloss === "a declared length"), tex)
+    }
   })
 })
