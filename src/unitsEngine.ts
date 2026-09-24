@@ -4418,6 +4418,42 @@ function wideSplit(piece: any[]): { parts: any[][]; runs: any[][] } {
 
 const LIST_REASON = "lists or multiple statements — select a single equation"
 
+/** The relations of SUPPORTED_RELS that order their sides, and so bound them. */
+const ORDER_RELS = new Set([
+  "<",
+  ">",
+  "\\le",
+  "\\leq",
+  "\\leqq",
+  "\\leqslant",
+  "\\ge",
+  "\\geq",
+  "\\geqq",
+  "\\geqslant",
+  "\\ll",
+  "\\gg",
+  "\\lesssim",
+  "\\gtrsim",
+  "\\lessapprox",
+  "\\gtrapprox",
+])
+
+/**
+ * Whether the relations on the two sides of a comma, the last before it and
+ * the first after it, are both order relations: then the comma can list the
+ * terms between them, which both bounds share (`0 < t,\ r < 2M` for t and r
+ * each in (0, 2M)), as well as separate two statements. The shared list is a
+ * convention of bounds, the interval an inequality chain draws; across an
+ * equality it would equate the listed terms with each other, which no one
+ * writes a list to say, so `r_s = 2M, \qquad t = 0` stays two statements.
+ * The relations are read at the top level of each statement, as the split is.
+ */
+function sharesOperands(left: any[], right: any[]): boolean {
+  const lastRel = [...left].reverse().map(relTextOf).find((rel) => rel != null)
+  const firstRel = right.map(relTextOf).find((rel) => rel != null)
+  return lastRel != null && firstRel != null && ORDER_RELS.has(lastRel) && ORDER_RELS.has(firstRel)
+}
+
 /**
  * A display line as the statements it holds. One line may state several
  * things: a list (`r_s = 2M, \qquad t = 0`), an implication
@@ -4437,10 +4473,15 @@ const LIST_REASON = "lists or multiple statements — select a single equation"
  *   a statement (wideSplit).
  * Every statement must hold a relation and end at none, and none but the
  * first may open at one (the first may continue the chain above it). Between
- * two complete relations a comma, a semicolon or a connective has no
- * single-chain reading, so the split is a fact of the notation; a line that
- * falls short of it declines. Only a leading connective may have nothing
- * before it: its left operand is the previous display, or the prose.
+ * two complete relations a semicolon or a connective has no single-chain
+ * reading, so the split is a fact of the notation; a line that falls short of
+ * it declines. A comma has a second reading, and is a fact only without it:
+ * between two order relations it can list the terms they share, and
+ * `a < x,\ y < b` is the standard way to put x and y both in (a, b). Split,
+ * `0 < t,\ r < 2M` gave t the bound of r, a length where t needs a time, so a
+ * comma with an order relation on each side of it (sharesOperands) declines
+ * as a list. Only a leading connective may have nothing before it: its left
+ * operand is the previous display, or the prose.
  *
  * The rule is looser than the extension's own splitter (src/tex.ts
  * splitStatements), which wants spacing on both sides of a comma and splits
@@ -4521,6 +4562,9 @@ function translateLine(nodes: any[], ctx: Ctx, carried: Carried): LineResult {
         )
       }
       if (!isStatement(piece, i === 0)) throw new Unsupported("a relation with nothing on one side of it")
+      if (before?.kind === "list" && before.tex === "," && sharesOperands(pieces[i - 1], piece)) {
+        throw new Unsupported(LIST_REASON)
+      }
     }
     const { parts, runs } = wideSplit(piece)
     parts.forEach((part, j) => {

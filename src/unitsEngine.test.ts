@@ -3418,6 +3418,33 @@ describe("statement layer: lists, connectives, wide space and the unit summary",
     )
   })
 
+  test("a comma between two order relations may list the terms they share, and declines", () => {
+    // `0 < t,\ r < 2M` puts t and r both in (0, 2M). Split, it gave t the
+    // bound of r, 2GM/c², a length, at SI.
+    for (const tex of [
+      "0 < t,\\ r < 2M",
+      "0 < t,\\; r < 2M",
+      "0 < t,\\, r < 2M",
+      "-M < r,\\; t < M",
+      "0 \\le r,\\quad t \\le 2M",
+      "r > 2M,\\quad t > M",
+      "E \\ll M,\\ r \\gg M",
+      // Two whole chains are the same shape at the comma: the engine cannot
+      // tell a list of bounded terms from them, so they decline alike.
+      "0 < t < 1,\\ 0 < r < 2M",
+      "r_s = 2M,\\ 0 < t,\\ r < 2M",
+    ]) {
+      declines(tex, LIST)
+    }
+    // A semicolon, a connective or wide space lists no terms, and neither does
+    // a comma with an equality on one side of it.
+    expect("0 < t;\\ r < 2M", SI, "0 < t; \\  r < \\frac{2GM}{c^{2}}", `${S};\\ ${M}`, true)
+    expect("0 < t \\implies r < 2M", SI, "0 < t \\implies r < \\frac{2GM}{c^{2}}", `${S};\\ ${M}`, true)
+    expect("0 < t \\qquad r < 2M", SI, "0 < t \\qquad r < \\frac{2GM}{c^{2}}", `${S};\\ ${M}`, true)
+    expect("0 < t,\\ r = 2M", SI, "0 < t, \\  r = \\frac{2GM}{c^{2}}", `${S};\\ ${M}`, true)
+    expect("r_s = 2M,\\ t > 0", SI, "r_{s} = \\frac{2GM}{c^{2}}, \\  t > 0", `${M};\\ ${S}`, true)
+  })
+
   test("continuation rows and the array banner", () => {
     const chain = expect(
       "\\begin{aligned} r &= 2M \\\\ &= M, \\quad t = 0 \\end{aligned}",

@@ -69,6 +69,28 @@ describe("overToFrac", () => {
       assert.ok(result.kind === "translated" && result.statementUnitTex?.length === 2, tex)
     }
   })
+  test("a comma between two order relations stays whole, and the engine declines it as a list", () => {
+    // `0 < t,\quad r < 2M` puts t and r both in (0, 2M): split, t took the
+    // bound of r. The comma may stand in the separator or beside it.
+    for (const tex of [
+      "0 < t,\\quad r < 2M",
+      "0 < t, \\qquad r < 2M",
+      "0 < t\\ \\ ,\\ \\ r < 2M",
+      "-M < r ,\\quad t < M",
+      "0 \\le r \\quad , \\quad t \\le 2M",
+    ]) {
+      assert.deepStrictEqual(splitStatements(tex), [tex])
+      const result = translateTex(tex, katex, GR, SI)
+      assert.ok(
+        result.kind === "declined" && result.reasons[0] === "lists or multiple statements — select a single equation",
+        `${tex} → ${JSON.stringify(result)}`,
+      )
+    }
+    // A semicolon lists no terms, nor does a comma with an equality beside it.
+    assert.deepStrictEqual(splitStatements("0 < t;\\qquad r < 2M"), ["0 < t", "r < 2M"])
+    assert.deepStrictEqual(splitStatements("0 < t,\\quad r = 2M"), ["0 < t", "r = 2M"])
+    assert.deepStrictEqual(splitStatements("r_s = 2M,\\qquad t > 0"), ["r_s = 2M", "t > 0"])
+  })
   test("what is not several statements stays whole: tuples, index ranges, a qualifier with no relation, a matrix", () => {
     assert.deepStrictEqual(splitStatements("X^{\\mu}=(t,\\vec{x})"), ["X^{\\mu}=(t,\\vec{x})"])
     assert.deepStrictEqual(splitStatements("\\mu=0,\\ldots,D-1"), ["\\mu=0,\\ldots,D-1"])

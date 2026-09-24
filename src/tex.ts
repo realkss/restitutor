@@ -74,8 +74,9 @@ const TRAILING_OPERATOR = /(?:[+\-=]|\\times|\\cdot|\\pm|\\mp|\\otimes|\\wedge|\
 const LEADING_OPERATOR = /^\s*(?:[+\-]|\\times|\\cdot|\\pm|\\mp|\\otimes)(?![A-Za-z])/
 const RELATION_TOKEN = /=|:=|\\equiv|\\approx|\\simeq|\\sim|\\propto|\\cong|\\leq?|\\geq?|\\neq?|\\to|\\rightarrow|\\mapsto|\\ll|\\gg|<|>/g
 
-/** The index of the first relation at brace and bracket depth zero, or -1. */
-function topLevelRelation(s: string): number {
+/** The relations at brace and bracket depth zero, in order: where each stands, and how it is written. */
+function topLevelRelations(s: string): { index: number; token: string }[] {
+  const out: { index: number; token: string }[] = []
   let depth = 0
   for (let i = 0; i < s.length; i++) {
     const ch = s[i]
@@ -91,11 +92,34 @@ function topLevelRelation(s: string): number {
       if (m && m.index === i) {
         // A macro must end here: \leq is not \left, \to is not \tolerance.
         const after = s[i + m[0].length]
-        if (!(m[0].startsWith("\\") && after !== undefined && /[A-Za-z]/.test(after))) return i
+        if (!(m[0].startsWith("\\") && after !== undefined && /[A-Za-z]/.test(after))) {
+          out.push({ index: i, token: m[0] })
+          i += m[0].length - 1 // := is one relation, not : and then =
+        }
       }
     }
   }
-  return -1
+  return out
+}
+
+/** The index of the first relation at brace and bracket depth zero, or -1. */
+function topLevelRelation(s: string): number {
+  return topLevelRelations(s)[0]?.index ?? -1
+}
+
+const ORDER_TOKEN = /^(?:<|>|\\leq?|\\geq?|\\ll|\\gg)$/
+
+/**
+ * Whether a comma between two statements can instead list the terms both
+ * bounds share: the relation before it and the relation after it both order
+ * their sides. `0 < t,\quad r < 2M` puts t and r both in (0, 2M); split, it
+ * gave t the bound of r. The engine's statement layer (translateLine) declines
+ * the same shape, so the line is left whole for it to decline.
+ */
+function sharesOperands(left: string, right: string): boolean {
+  const before = topLevelRelations(left).pop()
+  const after = topLevelRelations(right)[0]
+  return before != null && after != null && ORDER_TOKEN.test(before.token) && ORDER_TOKEN.test(after.token)
 }
 
 const hasRelation = (s: string) => topLevelRelation(s) >= 0
@@ -198,7 +222,9 @@ function splitTopLevel(s: string, separator: (rest: string) => number): string[]
  * as an equation group; a line split at "and", a semicolon or a \qquad,
  * and at a \quad when every piece is a relation of its own. A line that
  * does not split cleanly into relations is returned whole — the engine's
- * decline names it, and a wrong split would be a wrong claim.
+ * decline names it, and a wrong split would be a wrong claim. So is a line
+ * with a comma between two order relations (sharesOperands), wherever the
+ * comma stands: in the separator, or beside it.
  */
 export function splitStatements(tex: string): string[] {
   const t = tex.trim()
@@ -210,9 +236,34 @@ export function splitStatements(tex: string): string[] {
     const folded = foldRows(rows).map((s) => s.tex.replace(SPACING, "").trim()).filter(Boolean)
     return folded.length ? folded : [t]
   }
-  const strong = splitTopLevel(t, (rest) => AND.exec(rest)?.[0].length ?? 0)
-  let pieces = strong.length > 1 ? strong : splitTopLevel(t, (rest) => QUAD.exec(rest)?.[0].length ?? 0)
-  pieces = pieces.map((p) => p.replace(SPACING, "").replace(/^[,.]+|[,.]+$/g, "").replace(SPACING, "").trim()).filter(Boolean)
-  if (pieces.length > 1 && pieces.every(hasRelation)) return pieces
+  let seps: string[] = []
+  const at = (re: RegExp) => (rest: string) => {
+    const n = re.exec(rest)?.[0].length ?? 0
+    if (n > 0) seps.push(rest.slice(0, n))
+    return n
+  }
+  let raw = splitTopLevel(t, at(AND))
+  if (raw.length === 1) {
+    seps = []
+    raw = splitTopLevel(t, at(QUAD))
+  }
+  // Each kept piece, and whether a comma stands between it and the one before.
+  const pieces: string[] = []
+  const commaBefore: boolean[] = []
+  let comma = false
+  raw.forEach((p, k) => {
+    const bare = p.replace(SPACING, "")
+    const clean = bare.replace(/^[,.]+|[,.]+$/g, "").replace(SPACING, "").trim()
+    if (clean) {
+      if (pieces.length > 0) commaBefore.push(comma || bare.startsWith(","))
+      pieces.push(clean)
+      comma = false
+    } else if (bare.includes(",")) {
+      comma = true
+    }
+    comma = comma || bare.endsWith(",") || (seps[k]?.includes(",") ?? false)
+  })
+  const shared = pieces.some((p, j) => j > 0 && commaBefore[j - 1] && sharesOperands(pieces[j - 1], p))
+  if (pieces.length > 1 && pieces.every(hasRelation) && !shared) return pieces
   return [t]
 }
