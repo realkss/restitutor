@@ -332,6 +332,12 @@ type Ctx = {
   /** Geometrized target: verify consistency but strip c/G factors instead of inserting. */
   strip: boolean
   /**
+   * Set only while the core reads back an equation it has just restored (the
+   * re-read backstop in checkRebuilt). A group read there as dimensionless
+   * may have had its c and G stripped (isDimensionlessGroup).
+   */
+  rereading: boolean
+  /**
    * Masked re-emission: suppress every insertion and every strip, so the emitters
    * reproduce the source equation and nothing else. What comes out is compared
    * against the source, which is how a mutating translation gets the same
@@ -4587,7 +4593,8 @@ function summandsOf(nodes: any[]): any[][] | null {
  * `\frac{\left(\frac{r}{M}\right)^{\alpha}c^{2}}{G}`. The index reading is
  * kept only where the notation fixes it or the two readings agree: on a sum
  * of tensors, each read through its indexed entry (`(k_{1} + k_{2})^{\mu}`),
- * and on a dimensionless base, where any power is dimensionless too. Digits
+ * and on a dimensionless base (isDimensionlessGroup), where any power is
+ * dimensionless too, and the scripted group is read as a pure number. Digits
  * of the component shape (classifySupNodes) are held to the same rule: read
  * as components, `\left(\frac{r}{M}\right)^{0}` kept the dimension of r/M
  * where the power 0 has none, and the twelfth power of Lennard-Jones's
@@ -4620,10 +4627,11 @@ function summandsOf(nodes: any[]): any[][] | null {
  * either.
  *
  * A symbolic exponent on a bracket group with no subscript (R9) is read as on
- * a symbol: on a dimensionless group it is a dimensionless expression,
- * restored against that (`\left(\frac{r}{r_{s}}\right)^{\frac{v}{c}}`); on a
- * dimensional one it is not read (unreadExponentReason). Never on a group
- * with a subscript, whose superscript may be an upper limit.
+ * a symbol: on a dimensionless group (isDimensionlessGroup) it is a
+ * dimensionless expression, restored against that
+ * (`\left(\frac{r}{r_{s}}\right)^{\frac{v}{c}}`); on a dimensional one it is
+ * not read (unreadExponentReason). Never on a group with a subscript, whose
+ * superscript may be an upper limit.
  */
 function analyzeScriptedCompound(
   n: any,
@@ -4665,10 +4673,17 @@ function analyzeScriptedCompound(
     })
     if (subIsIndex && supIsReadable) {
       const inner = analyzeFactor(n.base, ctx)
-      if (sup === "index" && !kept && !dimIsZero(inner.dim) && !isTensorSum(base, ctx)) {
+      const dimensionless = isDimensionlessGroup(inner.dim, ctx)
+      if (sup === "index" && !kept && !dimensionless && !isTensorSum(base, ctx)) {
         throw new Unsupported(`a superscript “${scriptSrc(n.sup, ctx)}” on a group, which may be an exponent or an index`)
       }
-      const scaled = !kept && typeof sup === "object" && sup != null ? dimScale(inner.dim, sup.p, sup.q) : inner.dim
+      const scaled = kept
+        ? inner.dim
+        : typeof sup === "object" && sup != null
+          ? dimScale(inner.dim, sup.p, sup.q)
+          : sup === "index" && dimensionless
+            ? ZERO
+            : inner.dim
       const scripts = scriptsTex(n, ctx)
       return scripted(inner, scaled, () => scripts)
     }
@@ -4690,7 +4705,7 @@ function analyzeScriptedCompound(
     }
     if (bracket && n.sub == null && sup === "expr") {
       const inner = analyzeFactor(n.base, ctx)
-      if (!dimIsZero(inner.dim)) {
+      if (!isDimensionlessGroup(inner.dim, ctx)) {
         throw new Unsupported(unreadExponentReason(n.sup, maskedEmission(ctx, inner.emit), ctx))
       }
       const exponent = parseSum(nodeListOf(n.sup), ctx, { anchor: "forced", target: ZERO })
@@ -4699,6 +4714,31 @@ function analyzeScriptedCompound(
   }
 
   throw new Unsupported("a super/subscript construct the engine could not read")
+}
+
+/**
+ * Whether a group's dimension leaves every power of it dimensionless, which is
+ * what lets R10 keep an index letter on it and R9 read a symbolic exponent.
+ * In a first pass that is a zero dimension, and nothing else: the group is
+ * read as written, and `z = \left(\frac{r}{M}\right)^{\alpha}` at SI declines,
+ * because whether α is a power, and so whether the group needs c and G inside
+ * it, is what the notation does not say.
+ *
+ * The re-read backstop (checkRebuilt) reads an equation this engine has just
+ * emitted, and on a geometrized target that equation has had its c and G
+ * stripped. A group the first pass read as dimensionless comes back without
+ * them, and what is left has the dimension of the constants removed:
+ * `\left(\frac{GM}{rc^{2}}\right)^{\alpha}` is emitted as
+ * `\left(\frac{M}{r}\right)^{\alpha}`, whose M/r has the dimension of c²/G.
+ * Read by the first-pass rule, the re-read declined that correct output as a
+ * reassembly fault. There a group whose dimension is a product of powers of c
+ * and G (solveCG) is dimensionless too: set to one, as the target sets them,
+ * such constants leave a pure number. Only there: on a restoring target
+ * nothing is stripped, and the re-read keeps the zero rule.
+ */
+function isDimensionlessGroup(d: Dim, ctx: Ctx): boolean {
+  if (dimIsZero(d)) return true
+  return ctx.rereading && ctx.strip && typeof solveCG(d) !== "string"
 }
 
 /**
@@ -6004,6 +6044,7 @@ export function dimensionOf(
     unknown: new Map(),
     mutated: false,
     strip: false,
+    rereading: false,
     mask: false,
     font: null,
     constantsRead: [],
@@ -6545,6 +6586,7 @@ function translateCore(
     unknown: new Map(),
     mutated: false,
     strip: spec.geometrized,
+    rereading,
     mask: false,
     font: null,
     constantsRead: [],

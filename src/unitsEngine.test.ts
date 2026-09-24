@@ -4305,6 +4305,47 @@ describe("exponents and groups (step 12)", () => {
     assert.deepStrictEqual(declined("z = (-1)^{n}").unknown, ["n"])
   })
 
+  test("a dimensionless group reads back after a geometrized target strips its constants (review fix)", () => {
+    // The first pass reads these groups as dimensionless and strips c and G;
+    // what is left has the dimension of the constants removed (M/r that of
+    // c²/G), and the re-read backstop declined the correct output as a
+    // reassembly fault (reviewer counterexamples; step 11 shipped them).
+    const GSI: TargetSpec = { system: "si", geometrized: true }
+    for (const [tex, out] of [
+      ["\\theta = \\left(\\frac{GM}{rc^{2}}\\right)^{\\alpha}", "\\theta = \\left(\\frac{M}{r}\\right)^{\\alpha}"],
+      ["\\theta = \\left(\\frac{GM\\omega}{c^{3}}\\right)^{\\gamma}", "\\theta = \\left(M\\omega\\right)^{\\gamma}"],
+      ["\\theta = \\left(\\frac{v}{c}\\right)^{\\alpha}", "\\theta = \\left(v\\right)^{\\alpha}"],
+      ["\\theta = \\left(\\frac{rc^{2}}{GM}\\right)^{0}", "\\theta = \\left(\\frac{r}{M}\\right)^{0}"],
+      ["\\rho = \\rho_{c}\\left(\\frac{rc^{2}}{GM}\\right)^{-\\alpha}", "\\rho = \\rho_{c}\\left(\\frac{r}{M}\\right)^{-\\alpha}"],
+      ["t = M\\left(\\frac{GM}{rc^{2}}\\right)^{\\alpha}", "t = M\\left(\\frac{M}{r}\\right)^{\\alpha}"],
+      // R9: the exponent is stripped with the group.
+      ["\\theta = \\left(\\frac{rc^2}{GM}\\right)^{v/c}", "\\theta = \\left(\\frac{r}{M}\\right)^{v}"],
+      ["\\theta = \\left(\\frac{rc^2}{GM}\\right)^{\\frac{tc^{3}}{GM}}", "\\theta = \\left(\\frac{r}{M}\\right)^{\\frac{t}{M}}"],
+      // A sum was never affected: it is restored against a pure number inside.
+      ["\\theta = \\left(1 - \\frac{2GM}{rc^{2}}\\right)^{\\alpha}", "\\theta = \\left(1 - \\frac{2M}{r}\\right)^{\\alpha}"],
+    ]) {
+      for (const target of [GEO, GSI]) {
+        assert.strictEqual(rawRestored(tex, target), out, `${tex} at ${JSON.stringify(target)}`)
+      }
+    }
+    unchanged("\\theta = \\left(\\frac{GM}{rc^{2}}\\right)^{\\alpha}")
+    // A first pass keeps the zero rule at every target: the stripped shape,
+    // written so, is a dimensional group, and a time is no pure number anywhere.
+    for (const target of [SI, GEO, GSI]) {
+      for (const [tex, reason] of [
+        ["z = (\\frac{r}{M})^{\\alpha}", GROUP_INDEX("\\alpha")],
+        ["z = \\left(\\frac{r}{M}\\right)^{0}", GROUP_INDEX("0")],
+        ["\\theta = \\left(\\frac{r}{M}\\right)^{\\alpha} \\frac{GM}{rc^{2}}", GROUP_INDEX("\\alpha")],
+        ["\\theta = \\left(\\frac{GM}{c^{3}}\\right)^{\\alpha}", GROUP_INDEX("\\alpha")],
+        ["z = \\left(\\frac{r}{M}\\right)^{n+1}", SYMBOLIC_POWER("\\left(\\frac{r}{M}\\right)")],
+      ]) {
+        const result = run(tex, target)
+        assert.ok(result.kind === "declined", `${tex} at ${JSON.stringify(target)} → ${JSON.stringify(result)}`)
+        assert.deepStrictEqual(result.reasons, [reason], `${tex} at ${JSON.stringify(target)}`)
+      }
+    }
+  })
+
   test("a subscript alone on a bracket group annotates it (R8); both scripts do not", () => {
     assert.strictEqual(rawRestored("\\langle r\\rangle_{S} = 2M"), "\\langle r\\rangle_{S} = \\frac{2GM}{c^{2}}")
     unchanged("x = \\left[r\\right]_{t_0}")
