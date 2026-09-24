@@ -874,6 +874,25 @@ const DIRAC_REASON =
 /** Every spelling of a vertical bar a `\left`/`\right` pair can carry. */
 const VERT_DELIMS = new Set(["|", "\\vert", "\\lvert", "\\rvert", "\\|", "\\Vert", "\\lVert", "\\rVert"])
 
+/**
+ * Every spelling of an angle bracket a delimiter command can carry, keyed to
+ * the glyph the pairing reads. KaTeX normalizes `\lang` to `\langle`, but
+ * keeps `<`, `\lt` and `⟨` as written in a `\left`/`\right` pair and a sized
+ * delimiter, where they typeset as angle brackets all the same. Tested
+ * against `\langle` alone, the ket `\left|0\right>`, a spelling common in
+ * older papers, shipped as a translation.
+ */
+const ANGLE_GLYPH: Record<string, string> = {
+  "\\langle": "\\langle",
+  "<": "\\langle",
+  "\\lt": "\\langle",
+  "⟨": "\\langle",
+  "\\rangle": "\\rangle",
+  ">": "\\rangle",
+  "\\gt": "\\rangle",
+  "⟩": "\\rangle",
+}
+
 type Delim =
   | { role: "open"; glyph: string; expects: string; tex: string }
   | { role: "close"; glyph: string; tex: string }
@@ -894,8 +913,10 @@ function sizedTexOf(n: any): string {
  * its glyph does and pairs with its partner in any size (`\big(` … `)`). A
  * sized bar given a side (`\bigl|` … `\bigr|`) is an opener and a closer
  * whose glyph names its bar family; the reader never sees that glyph, only
- * the written TeX. A relation-class bar (`\bigm|`) and a null delimiter
- * (`\big.`) pair with nothing and are declined by analyzeFactor.
+ * the written TeX. A sized angle bracket in any spelling (`\bigl<`,
+ * `\bigr\gt`) is read as `\langle` or `\rangle`. A relation-class bar
+ * (`\bigm|`) and a null delimiter (`\big.`) pair with nothing and are
+ * declined by analyzeFactor.
  */
 function delimOf(n: any): Delim | null {
   if (n?.type === "atom" && n.family === "open" && CLOSE_FOR[n.text]) {
@@ -908,7 +929,7 @@ function delimOf(n: any): Delim | null {
     return { role: "bar", family: BAR_FAMILY[n.text], tex: n.text }
   }
   if (n?.type !== "delimsizing") return null
-  const glyph: string = n.delim
+  const glyph: string = ANGLE_GLYPH[n.delim] ?? n.delim
   const family = BAR_FAMILY[glyph]
   if (n.mclass === "mopen" || n.mclass === "mord") {
     if (CLOSE_FOR[glyph]) return { role: "open", glyph, expects: CLOSE_FOR[glyph], tex: sizedTexOf(n) }
@@ -2798,12 +2819,13 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     case "leftright":
     case "__group": {
       const body = n.body
-      // \left|0\right\rangle and \left\langle\psi\right| are a ket and a bra;
-      // read as bars, the ket shipped as a translation.
+      // \left|0\right\rangle and \left\langle\psi\right| are a ket and a bra,
+      // in any spelling of the angle bracket (\left|0\right>); read as bars,
+      // the ket shipped as a translation.
       if (
         n.type === "leftright" &&
-        ((n.left === "\\langle" && (VERT_DELIMS.has(n.right) || holdsBar(body))) ||
-          (VERT_DELIMS.has(n.left) && n.right === "\\rangle"))
+        ((ANGLE_GLYPH[n.left] === "\\langle" && (VERT_DELIMS.has(n.right) || holdsBar(body))) ||
+          (VERT_DELIMS.has(n.left) && ANGLE_GLYPH[n.right] === "\\rangle"))
       ) {
         throw new Unsupported(DIRAC_REASON)
       }
@@ -2954,17 +2976,33 @@ function isSingleBarGroup(n: any): boolean {
  */
 function barredTensorTex(body: any[], ctx: Ctx): string | null {
   const run = body.filter(isMeaningfulNode)
-  const [head, ...riders] = run.flatMap(decoratedRunOf)
-  if (head?.type !== "supsub" || textOf(decoratedSymbolOf(head.base)) == null) return null
-  if (!riders.every((r) => r?.type === "supsub" && isBlankNode(r.base))) return null
+  const scripted = indexedRunOf(run)
+  if (scripted == null) return null
   const indexCount = (script: any) => {
     if (script == null) return 0
     const tokens = nodeListOf(script).filter(isMeaningfulNode)
     return allIndexTokens(tokens, true) ? tokens.length : 0
   }
-  const count = [head, ...riders].reduce((sum, s) => sum + indexCount(s.sub) + indexCount(s.sup), 0)
+  const count = scripted.reduce((sum, s) => sum + indexCount(s.sub) + indexCount(s.sup), 0)
   if (count < 2) return null
   return joinTex(run.map((x) => decoratedTexOf(x, ctx)))
+}
+
+/**
+ * The script-carrying nodes of a lone indexed symbol, innermost first, or
+ * null when the run is not one: a supsub on a symbol, followed by staggered
+ * continuations on blank bases. A base that is itself an indexed symbol under
+ * its decorations is read the same way, so the staggering `{T^{\mu}}_{\nu}`,
+ * a braced indexed symbol carrying a further script, counts its indices as
+ * `T^{\mu}{}_{\nu}` does; read only through its outer supsub, whose base has
+ * no text, the mixed tensor passed as a modulus.
+ */
+function indexedRunOf(nodes: any[]): any[] | null {
+  const [head, ...riders] = nodes.flatMap(decoratedRunOf)
+  if (head?.type !== "supsub") return null
+  if (!riders.every((r) => r?.type === "supsub" && isBlankNode(r.base))) return null
+  const inner = textOf(decoratedSymbolOf(head.base)) != null ? [] : indexedRunOf([head.base])
+  return inner == null ? null : [...inner, head, ...riders]
 }
 
 /**

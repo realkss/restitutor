@@ -3116,8 +3116,34 @@ describe("delimiters: bars, sized delimiters, Dirac notation and construct names
     }
     // Live wrong before step 8: the ket translated as a bracket of bars.
     declines("\\left|0\\right\\rangle = 0", DIRAC)
-    // An angle bracket with no bar in it is still an expectation value.
+    // Review round: KaTeX keeps the angle brackets `<`, `>`, `\lt` and `⟨` as
+    // written in \left/\right and sized delimiters, and a ket spelled with
+    // them still translated.
+    assert.deepStrictEqual(
+      parse("\\left|0\\right> \\bigl\\lt").map((n: any) => [n.type, n.right ?? n.delim]),
+      [
+        ["leftright", ">"],
+        ["delimsizing", "\\lt"],
+      ],
+    )
+    for (const tex of [
+      "\\left|0\\right> = 0",
+      "E = a\\left|0\\right>",
+      "E = \\left<p\\right|",
+      "E = \\left\\lt p\\right|",
+      "E = \\left<a\\middle|b\\right>",
+      "E = \\left|p\\right⟩",
+      "E = \\bigl<p\\bigr|",
+      "E = \\big|p\\big>",
+    ]) {
+      declines(tex, DIRAC)
+    }
+    // An angle bracket with no bar in it is still an expectation value, in
+    // any spelling, and is re-emitted as written.
     assert.strictEqual(rawRestored("E = \\langle p\\rangle"), "E = \\langle p\\rangle c")
+    assert.strictEqual(rawRestored("E = \\left<p\\right>"), "E = \\left<p\\right>c")
+    assert.strictEqual(rawRestored("E = \\bigl<p\\bigr>"), "E = \\bigl<p\\bigr>c")
+    assert.strictEqual(rawRestored("E = \\bigl\\lt p\\bigr\\gt"), "E = \\bigl\\lt p\\bigr\\gt c")
   })
 
   test("bars around a dimensional tensor decline: a modulus or a determinant", () => {
@@ -3142,10 +3168,20 @@ describe("delimiters: bars, sized delimiters, Dirac notation and construct names
     declines("\\rho = |\\tilde{T^{a}{}_{b}}|", TENSOR("\\tilde{T^{a}{}_{b}}"))
     declines("\\rho = |\\overline{T}_{ab}|", TENSOR("\\overline{T}_{ab}"))
     declines("\\rho = |\\overline{T_{ab}}|", TENSOR("\\overline{T_{ab}}"))
+    // Second review round: a braced indexed symbol carrying a further script
+    // (`{T^{\mu}}_{\nu}`) read only through its outer supsub, whose base has
+    // no text, and the mixed tensor passed as a modulus.
+    declines("\\rho = |{T^{a}}_{b}|", TENSOR("{T^{a}}_{b}"))
+    declines("\\rho = |{T_{a}}_{b}|", TENSOR("{T_{a}}_{b}"))
+    declines("\\rho = \\left|{T^{\\mu}}_{\\nu}\\right|", TENSOR("{T^{\\mu}}_{\\nu}"))
+    declines("\\rho = \\lvert{T_{a}}^{b}\\rvert", TENSOR("{T_{a}}^{b}"))
+    declines("\\rho = |{{T^{a}}_{b}}^{c}|", TENSOR("{{T^{a}}_{b}}^{c}"))
+    declines("\\rho = |{T^{a}{}_{b}}_{c}|", TENSOR("{T^{a}{}_{b}}_{c}"))
     // The wrappers change nothing else: one index is still a component's
     // modulus, and a dimensionless tensor still passes.
     assert.strictEqual(rawRestored("\\rho = |{T_{a}}|"), "\\rho = \\frac{|{T_{a}}|}{c^{2}}")
     assert.strictEqual(rawRestored("h_{ab} = |\\tilde{h_{ab}}|"), "h_{ab} = |\\tilde{h_{ab}}|")
+    assert.strictEqual(rawRestored("h_{ab} = |{h_{a}}_{b}|"), "h_{ab} = |{h_{a}}_{b}|")
   })
 
   test("factorials, prescripts, braced delimiters and constructs are named as written", () => {
