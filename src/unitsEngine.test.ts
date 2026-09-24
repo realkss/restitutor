@@ -2573,6 +2573,11 @@ describe("batch-1 review fixes", () => {
     declines("x = r\\sin{{{}^{2}}}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
     declines("x = r\\sin{{}{}^{2}}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
     declines("x = r\\sin{{}^{2}}^{3}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
+    declines("x = r\\sin{{\\,}{}^{2}}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
+    declines("x = r\\sin{\\,}^{2}(M/t)", FLOATING("{}^{2}", "\\sin"), [SI])
+    // A prime on nothing keeps the primed-symbol reason: its script has no
+    // source to name it by, and naming it failed as an unrecovered fragment.
+    declines("x = r\\sin{}'(M/t)", "a primed symbol, which is not in the dictionary", [SI])
     // A power on the head itself, and an empty group with no script, are read as before.
     assert.strictEqual(rawRestored("x = r\\sin^{2}(M/t)"), "x = r\\sin^{2}(GM/tc^{3})")
     assert.strictEqual(rawRestored("x = r\\sin^{2}\\,(M/t)"), "x = r\\sin^{2}\\,(GM/tc^{3})")
@@ -2623,6 +2628,18 @@ describe("batch-1 review fixes", () => {
     assert.deepStrictEqual(subscripted.reasons, [ACCENTED("\\hat{c_{0}}", "c")])
     declines("x = \\bar{{c}^{2}} M", ACCENTED("\\bar{{c}^{2}}", "c"))
     declines("x = \\tilde{G^{2}} M", ACCENTED("\\tilde{G^{2}}", "G"))
+    // An empty group, a script on nothing or brackets beside the lone letter:
+    // live at GEO `\bar{1}M`, `\vec{1}M`, `\hat{1}M`, `\overline{1}M`, and
+    // `\bar{{}^{2}}M` with the square stripped as c² under the bar.
+    declines("x = \\bar{c{}} M", ACCENTED("\\bar{c}", "c"))
+    declines("x = \\bar{{}c} M", ACCENTED("\\bar{c}", "c"))
+    declines("x = \\vec{{}c} M", ACCENTED("\\vec{c}", "c"))
+    declines("x = \\hat{G{}} M", ACCENTED("\\hat{G}", "G"))
+    declines("x = \\overline{c{}} M", ACCENTED("\\overline{c}", "c"))
+    declines("x = \\bar{{c}{}} M", ACCENTED("\\bar{{c}}", "c"))
+    declines("x = \\bar{c{}^{2}} M", ACCENTED("\\bar{c{}^{2}}", "c"))
+    declines("x = \\bar{(c)} M", ACCENTED("\\bar{(c)}", "c"))
+    declines("x = \\bar{\\left(c\\right)} M", ACCENTED("\\bar{\\left(c\\right)}", "c"))
     // An accent over any other letter, or over an expression the constant is part of, is read.
     assert.strictEqual(rawRestored("E = \\bar{m}c^2", GEO), "E = \\bar{m}")
     assert.strictEqual(rawRestored("E = \\bar{m}c^2"), "E = \\bar{m}c^{2}")
@@ -2643,6 +2660,20 @@ describe("batch-1 review fixes", () => {
     declines("x = r3\\,\\frac{G}{2c^2}M", BARED("3", "\\frac{1}{2}"), [GEO])
     // A strip that makes the numeral before an author's fraction does the same.
     declines("x = \\frac{3G}{c^2}\\,\\frac{1}{2}M", BARED("3", "\\frac{1}{2}"), [GEO])
+    // A script on the fraction, or null delimiters around it, change nothing:
+    // live at GEO `3\frac{1}{2}^{2}M` (0.75M, read as 3½ squared) and
+    // `3\left.\frac{1}{2}\right.M` (1.5M, read as 3½ M).
+    declines("x = 3\\,\\frac{G}{2c^2}^{2}M", BARED("3", "\\frac{1}{2}^{2}"), [GEO])
+    declines("x = 3\\frac{G}{2c^2}^{2}M", BARED("3", "\\frac{1}{2}^{2}"), [GEO])
+    declines("x = 3\\,{\\frac{G}{2c^2}}^{2}M", BARED("3", "{\\frac{1}{2}}^{2}"), [GEO])
+    declines("x = 3\\,\\frac{G}{2c^2}_{0}M", BARED("3", "\\frac{1}{2}_{0}"), [GEO])
+    declines("x = 3\\,\\left.\\frac{G}{2c^2}\\right.M", BARED("3", "\\left.\\frac{1}{2}\\right."), [GEO])
+    declines("x = 3\\left.\\frac{G}{2c^2}\\right.M", BARED("3", "\\left.\\frac{1}{2}\\right."), [GEO])
+    declines("x = 3\\,\\left.\\frac{G}{2c^2}\\right.^{2}M", BARED("3", "\\left.\\frac{1}{2}\\right.^{2}"), [GEO])
+    // A numeral left at the edge of a scripted or null-delimited fraction keeps
+    // the kern: live, `2\left.3\right.M` read as 23M where the value is 6M.
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{2G}{c^2}^{2}M", GEO), "x = 3\\,2^{2}M")
+    assert.strictEqual(rawRestored("x = 2\\,\\left.\\frac{3G}{c^2}\\right.M", GEO), "x = 2\\,\\left.3\\right.M")
     // A mixed number the author set stays one; a product sign, a bracket or a
     // symbol in the fraction is no mixed number; whole numerals keep the kern.
     assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}\\,r + \\frac{GM}{c^2}", GEO), "x = 3\\,\\frac{1}{2}r + M")
@@ -2665,6 +2696,12 @@ describe("batch-1 review fixes", () => {
     declines("x = 3\\,\\frac{1}{2}\\frac{M}{r}t", WRITTEN("3", "\\frac{1}{2}"), [SI])
     declines("x = \\frac{3\\frac{1}{2}M}{r}r", WRITTEN("3", "\\frac{1}{2}"), [SI])
     declines("x = M\\,3\\,\\frac{1}{2}", WRITTEN("3", "\\frac{1}{2}"), [SI])
+    // A script on the fraction, or null delimiters around it: live at SI
+    // `\frac{3G\frac{1}{2}^{2}M}{c^{2}}` and `\frac{3G\left.\frac{1}{2}\right.M}{c^{2}}`.
+    declines("x = 3\\,\\frac{1}{2}^{2}M", WRITTEN("3", "\\frac{1}{2}^{2}"), [SI])
+    declines("x = 3\\,\\left.\\frac{1}{2}\\right.M", WRITTEN("3", "\\left.\\frac{1}{2}\\right."), [SI])
+    declines("x = 3\\,{\\frac{1}{2}}^{2}M", WRITTEN("3", "{\\frac{1}{2}}^{2}"), [SI])
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}^{2}M", GEO), "x = 3\\,\\frac{1}{2}^{2}M")
     // With no insertion there, or a product sign or a symbol in the way, it prints as written.
     assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}\\,r + M"), "x = 3\\,\\frac{1}{2}r + \\frac{GM}{c^{2}}")
     assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}M", GEO), "x = 3\\,\\frac{1}{2}M")

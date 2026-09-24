@@ -1077,6 +1077,22 @@ function isEmptyOrdgroup(n: any): boolean {
   return n?.type === "ordgroup" && Array.isArray(n.body) && n.body.length === 0
 }
 
+/**
+ * A node that sets nothing: spacing, or a group (braces, a style or a font)
+ * holding nothing but spacing and such groups. `{}`, `{\,}` and `{{}}` are all
+ * blank, and a script set on one is a script on nothing.
+ */
+function isBlankNode(n: any): boolean {
+  if (n == null || SKIP_TYPES.has(n.type)) return true
+  const cur = unwrap(n)
+  return cur?.type === "ordgroup" && Array.isArray(cur.body) && cur.body.every(isBlankNode)
+}
+
+/** A script on nothing (`{}^{2}`, `{}_{0}`): a rider, or a script on whatever it is set beside. */
+function isFloatingScript(n: any): boolean {
+  return n?.type === "supsub" && isBlankNode(n.base)
+}
+
 /** Fold a unary sign into the preceding binary operator: `a - -b` reads `a + b`. */
 function foldedOp(op: string, sign: string): string {
   if (sign !== "-") return op
@@ -2091,7 +2107,11 @@ function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
  */
 function floatingScriptAfterHeadGuard(headNode: any, next: any, ctx: Ctx): void {
   const script = argumentOpener(next)
-  if (script?.type !== "supsub" || !(script.base == null || isEmptyOrdgroup(unwrap(script.base)))) return
+  if (!isFloatingScript(script)) return
+  // A prime on nothing (`\sin{}'`) is the primed-symbol decline's, which the
+  // script meets when it is read; the prime KaTeX makes of `'` has no source
+  // span to name it by here.
+  if (script.sup != null && classifySup(script.sup) === "prime") return
   throw new Unsupported(
     `the floating script “${supsubTex("{}", script, ctx)}” after “${functionHeadTex(headNode, ctx)}” — the function's power or a script on its argument — which is not supported`,
   )
@@ -2106,10 +2126,10 @@ function argumentOpener(node: any): any {
   let cur = unwrap(node)
   for (;;) {
     if (cur?.type === "ordgroup") {
-      const first = cur.body.find((x: any) => x && !SKIP_TYPES.has(x.type) && !isEmptyOrdgroup(unwrap(x)))
+      const first = cur.body.find((x: any) => !isBlankNode(x))
       if (first == null) return cur
       cur = unwrap(first)
-    } else if (cur?.type === "supsub" && cur.base != null && !isEmptyOrdgroup(unwrap(cur.base))) {
+    } else if (cur?.type === "supsub" && !isBlankNode(cur.base)) {
       const base = unwrap(cur.base)
       if (base?.type !== "ordgroup") return cur
       cur = base
@@ -2425,7 +2445,21 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       // swallow the following letter: `\langle`+`v` must not become `\langlev`.
       const emit = () => joinTex([open, inner.emit(), close])
       const vanishes = () => sumVanishes(inner)
-      return { kind: "group", dim: inner.dim, emit, isBareSum: false, vanishes, ...partsOf(inner) }
+      // Null delimiters print nothing but a sliver of space, so `\left. … \right.`
+      // is at its edges what its body is: `3\,\left.\frac{G}{2c^2}\right.M`
+      // stripped to `3\left.\frac{1}{2}\right.M`, the mixed number 3½ M where
+      // the value is 1.5 M.
+      const bare = n.type === "leftright" && n.left === "." && n.right === "."
+      return {
+        kind: "group",
+        dim: inner.dim,
+        emit,
+        isBareSum: false,
+        vanishes,
+        numeralEdge: bare ? (side) => sumNumeralEdge(inner, side) : undefined,
+        numeralFraction: bare ? () => sumNumeralFraction(inner) : undefined,
+        ...partsOf(inner),
+      }
     }
     case "accent": {
       // Accent nodes carry no source location — reconstruct label{base}.
@@ -2797,17 +2831,24 @@ function constantFontGuard(text: string, font: any, ctx: Ctx): void {
  * under the accent changes nothing: `\bar{c^{2}}` is the barred symbol
  * squared, not the constant squared, and GEO shipped `\bar{1}M` for it, so the
  * guard looks through the script to its base, as the font guard does for
- * `\mathbf{c^{2}}`. An accent over more than the letter (`\overline{cM}`) is
- * an accent on an expression the constant is part of, and stays read.
+ * `\mathbf{c^{2}}`. Nor does anything set beside the letter that prints
+ * nothing or only dresses it: an empty group (`\bar{c{}}`, `\bar{{}c}`), a
+ * script on nothing, which is the letter's own (`\bar{c{}^{2}}` stripped the
+ * square as c² under the bar), or brackets around the letter alone
+ * (`\bar{(c)}`); GEO shipped `\bar{1}M` for each. An accent over more than the
+ * letter (`\overline{cM}`) is an accent on an expression the constant is part
+ * of, and stays read.
  */
 function accentedConstantGuard(label: string, base: any, inner: { emit: () => string }, ctx: Ctx): void {
   let cur = unwrap(base)
   for (;;) {
+    if (cur?.type === "leftright") cur = { type: "ordgroup", body: cur.body }
     if (cur?.type === "ordgroup") {
-      const body = cur.body.filter((x: any) => x && !SKIP_TYPES.has(x.type))
+      let body = cur.body.filter((x: any) => !isBlankNode(x) && !isFloatingScript(x))
+      if (body.length === 3 && isBracketAtom(body[0], "open") && isBracketAtom(body[2], "close")) body = [body[1]]
       if (body.length !== 1) return
       cur = unwrap(body[0])
-    } else if (cur?.type === "supsub" && cur.base != null) {
+    } else if (cur?.type === "supsub" && !isBlankNode(cur.base)) {
       cur = unwrap(cur.base)
     } else {
       break
@@ -2819,6 +2860,12 @@ function accentedConstantGuard(label: string, base: any, inner: { emit: () => st
   throw new Unsupported(
     `the accented “${written}” — another symbol (a vector, a mean, an operator or a label), not the constant ${text}`,
   )
+}
+
+/** An opening or closing bracket written bare: `(`, `[`, `)`, `]`. */
+function isBracketAtom(n: any, family: "open" | "close"): boolean {
+  const cur = unwrap(n)
+  return cur?.type === "atom" && cur.family === family
 }
 
 /**
@@ -2959,6 +3006,12 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
         emit: () => `${inner.emit()}${scripts}`,
         // A script on nothing is nothing: `(c)^{2}` vanishes with its base.
         vanishes: inner.vanishes,
+        // The scripts print after the base, so the factor opens on what its
+        // base opens on: `3\,\frac{G}{2c^2}^{2}M` stripped to
+        // `3\frac{1}{2}^{2}M`, which reads as 3½ squared where the value is
+        // 0.75 M, and a numeral left at the base's edge meets the one beside it.
+        numeralEdge: (side) => inner.numeralEdge?.(side) === true,
+        numeralFraction: () => inner.numeralFraction?.() === true,
         parts: [inner],
       }
     }
