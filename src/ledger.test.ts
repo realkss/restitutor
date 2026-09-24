@@ -20,7 +20,7 @@ describe("the decline ledger", () => {
     assert.deepStrictEqual(outcome("\\psi_4 = \\chi \\, \\Xi^{ab} \\, T_{ab}").unknown, ["\\psi_{4}", "\\chi", "\\Xi^{ab}"])
     assert.strictEqual(outcome("\\Sigma = \\frac{M}{\\pi R^2}").class, "no-completion")
     assert.strictEqual(outcome("S = \\frac{A}{4}").class, "kept-explicit")
-    assert.strictEqual(outcome("x = \\pm t").class, "unsupported")
+    assert.strictEqual(outcome("x = \\pm t").class, "translated")
     assert.strictEqual(outcome("\\mathrm{SL}(2,\\mathbb{R})").class, "refused")
     assert.strictEqual(outcome("G_{ab} + \\Lambda g_{ab} = {8\\pi G \\over c^{4}} T_{ab}").class, "reassembly")
     assert.strictEqual(outcome("r_s = \\frac{2M}").class, "parse")
@@ -56,6 +56,25 @@ describe("the decline ledger", () => {
       bare: { ...GR.bare, c: { dim: [0, 0, 0, 0, 0], gloss: "central charge", si: "1" } },
     }
     assert.strictEqual(classifyOutcome(translateTex("E = m", katex, centralCharge, SI)).class, "reassembly")
+    // Relations nothing is restored across, a comma or a relation inside
+    // brackets, a sign beside a branch sign and a sign label are the reader's;
+    // a relation with an empty side and a bare sign pattern are not one equation.
+    for (const tex of [
+      "x \\to 2M",
+      "r \\leftrightarrow M",
+      "E = :Mc^2:",
+      "r \\parallel M",
+      "r \\mid M",
+      "r \\not= 2M",
+      "(u, v) = 0",
+      "g_{00}(r \\to \\infty) = -1",
+      "r = M \\pm -a",
+      "x = X^{n+}",
+      "\\begin{aligned} r &= 2M \\\\ &\\ne M \\end{aligned}",
+    ])
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    for (const tex of ["E = <p>", "E =", "= 2M", "(-+++)"]) assert.strictEqual(outcome(tex).class, "fragment", tex)
+    assert.strictEqual(outcome("r \\ne 2M").class, "translated")
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)

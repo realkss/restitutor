@@ -1855,3 +1855,227 @@ describe("function tail: argument extent and the re-read backstop", () => {
     assert.strictEqual(rawRestored("E = mc^2\\ "), "E = mc^{2}")
   })
 })
+
+describe("relations core: relations, continuation rows, branch signs", () => {
+  const translated = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = result as Extract<TranslationResult, { kind: "translated" }>
+    rendersInKatex(out.restoredTex)
+    return out
+  }
+  const rawRestored = (tex: string, target: TargetSpec = SI) => translated(tex, target).restoredTex
+  const declines = (tex: string, reason: string, targets: TargetSpec[] = [SI, GEO]) => {
+    for (const target of targets) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") assert.deepStrictEqual(result.reasons, [reason], tex)
+    }
+  }
+  const COLON =
+    "a colon that is not part of “:=” (normal ordering, a ratio, or a map), which the engine does not read"
+  const EMPTY_SIDE = "a relation with nothing on one side of it"
+  const COMMA_IN_BRACKETS =
+    "a comma inside brackets (function arguments, a tuple, a commutator, or an inner product), which the engine does not read as a product"
+  const REL_IN_BRACKETS =
+    "a relation inside brackets (an evaluation point, a limit, a conditional, or an index swap), which is not a factor"
+  const SIGN_RUN = "a sign directly beside “\\pm” or “\\mp”, which the engine does not fold"
+  const SIGN_LABEL =
+    "a sign standing as a superscript (a light-cone index or a charge label), which is neither a power nor a dictionary index"
+
+  test("equality-type relations are restored across like =", () => {
+    // \lesssim and \gtrsim can mean "≤ C·(…)" with C absorbed, the caveat \sim
+    // already carries; the owner holds that reading open, and they restore as \sim does.
+    for (const rel of [
+      "\\doteq",
+      "\\approxeq",
+      "\\lesssim",
+      "\\gtrsim",
+      "\\leqslant",
+      "\\geqslant",
+      "\\leqq",
+      "\\geqq",
+      "\\lessapprox",
+      "\\gtrapprox",
+    ]) {
+      const out = translated(`r ${rel} 2M`)
+      assert.strictEqual(out.restoredTex, `r ${rel} \\frac{2GM}{c^{2}}`, rel)
+      assert.strictEqual(out.targetUnitTex, "\\mathrm{m}", rel)
+      assert.strictEqual(rawRestored(`r ${rel} 2M`, GEO), `r ${rel} 2M`, rel)
+    }
+  })
+
+  test("≠ is read from its MathML half and re-emitted as it was written", () => {
+    // Dead since KaTeX 0.16.47, which builds \neq and \ne as htmlmathml: every
+    // ≠ statement declined as the unsupported construct "htmlmathml".
+    assert.strictEqual(rawRestored("r \\neq 2M"), "r \\neq \\frac{2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("r \\ne 2M"), "r \\ne \\frac{2GM}{c^{2}}")
+    assert.strictEqual(
+      rawRestored("\\begin{aligned} r &\\ne 2M \\end{aligned}"),
+      "\\begin{aligned}\nr &\\ne \\frac{2GM}{c^{2}}\n\\end{aligned}",
+    )
+    // The relations reviewer's counterexamples: sliced between its neighbours,
+    // the spelling swallowed the head of a loc-less neighbour, and each of
+    // these declined as a reassembly fault.
+    assert.strictEqual(rawRestored("r \\ne \\frac{M}{2}"), "r \\ne \\frac{GM}{2c^{2}}")
+    assert.strictEqual(rawRestored("r \\ne \\sqrt{M^2}"), "r \\ne \\frac{G\\sqrt{M^{2}}}{c^{2}}")
+    assert.strictEqual(rawRestored("\\bar r \\ne 2M"), "\\bar{r} \\ne \\frac{2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("\\bar{r} \\ne 2M"), "\\bar{r} \\ne \\frac{2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("\\left(r\\right) \\ne 2M"), "\\left(r\\right) \\ne \\frac{2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("\\frac{r}{M} \\neq 2"), "\\frac{r}{M} \\neq \\frac{2G}{c^{2}}")
+    // With no located node before it in its row, the spelling cannot be read,
+    // and the relation declines rather than being emitted in another spelling.
+    declines(
+      "\\begin{aligned} r &= 2M \\\\ &\\ne M \\end{aligned}",
+      "the relation “\\neq”, whose written spelling the engine could not read",
+    )
+    declines("r \\not= 2M", "a relation negated with \\not, which is not supported yet (\\neq is)")
+    declines("r \\not< 2M", "a relation negated with \\not, which is not supported yet (\\neq is)")
+  })
+
+  test(":= is a definition; a colon on its own is not", () => {
+    assert.strictEqual(rawRestored("r_s := 2M"), "r_{s} := \\frac{2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("r_s \\coloneqq 2M"), "r_{s} \\coloneqq \\frac{2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("r_s \\coloneqq \\frac{2M}{1}"), "r_{s} \\coloneqq \\frac{2GM}{1c^{2}}")
+    // =: has no corpus instance, and `E = :Mc^2:` (a normal-ordered product) is
+    // `=` then `:`: read as a definition, it shipped as `E =: Mc^{2}`.
+    for (const tex of ["2M =: r_s", "E = :Mc^2:", "r = :2M:", "r = : 2M :.", "a : b = r : M", "E = mc^2:"]) {
+      declines(tex, COLON)
+    }
+    // The closing colon is no longer stripped as sentence punctuation.
+    assert.strictEqual(stripTrailingPunctuation("E = :Mc^2:"), "E = :Mc^2:")
+    assert.strictEqual(stripTrailingPunctuation("E = :Mc^2:."), "E = :Mc^2:")
+    assert.strictEqual(stripTrailingPunctuation("x = y \\:"), "x = y")
+  })
+
+  test("relations nothing is restored across say what they are", () => {
+    declines("r \\to 2M", "the arrow “\\to” — a substitution, a limit, or a map, none of which fixes a dimension")
+    declines(
+      "r \\rightarrow r + M",
+      "the arrow “\\rightarrow” — a substitution, a limit, or a map, none of which fixes a dimension",
+    )
+    declines("r \\mapsto 2M", "the arrow “\\mapsto” — a substitution, a limit, or a map, none of which fixes a dimension")
+    declines("r \\leftrightarrow M", "the exchange “\\leftrightarrow” (a swap or a duality), which is not an equation")
+    declines("r \\parallel M", "“\\parallel” (a norm bar or “parallel to”), which the engine does not read")
+    declines("r \\mid M", "“\\mid” (a conditional or an inner-product bar), which the engine does not read")
+    declines("E \\propto M", "a proportionality — constants are absorbed in ∝, so restoring them is not meaningful")
+  })
+
+  test("a relation or a comma inside brackets declines by name", () => {
+    for (const tex of ["(u, v) = 0", "g_{ab} = (-1, 1, 1, 1)", "\\eta_{ab} = (-,+,+,+)", "x = \\sin(a, b)", "x = [r; M]"]) {
+      declines(tex, COMMA_IN_BRACKETS)
+    }
+    for (const tex of ["g_{00}(r \\to \\infty) = -1", "(r_s = 2M)", "x = \\sin(r = M)"]) declines(tex, REL_IN_BRACKETS)
+    // ≠ counts as a relation there too.
+    const neq = run("f = (r \\ne 0)")
+    assert.strictEqual(neq.kind, "declined", JSON.stringify(neq))
+    if (neq.kind === "declined") assert.deepStrictEqual(neq.reasons, [REL_IN_BRACKETS])
+  })
+
+  test("a relation with an empty side declines", () => {
+    // `E = <p>` read as E, nothing, p, nothing, and shipped as `E = < pc >`;
+    // ledger #423's `\ll` written as `<<` shipped a relation between nothing.
+    for (const tex of ["E = <p>", "E =", "r < < M", "{\\frac{{dx^{i}}}{{d\\tau}}}<<{\\frac{{dt}}{{d\\tau}}}"]) {
+      declines(tex, EMPTY_SIDE)
+    }
+    // A row that opens at a relation with no chain before it has nothing to continue.
+    declines("= 2M", "a row that begins at “=” with nothing before it to anchor it")
+  })
+
+  test("a row that opens at a relation continues the chain before it", () => {
+    // Anchored on its own content, the continuation shipped `= M` in kilograms.
+    const chain = translated("\\begin{aligned} r &= 2M \\\\ &= M \\end{aligned}")
+    assert.strictEqual(
+      chain.restoredTex,
+      "\\begin{aligned}\nr &= \\frac{2GM}{c^{2}} \\\\\n&= \\frac{GM}{c^{2}}\n\\end{aligned}",
+    )
+    assert.strictEqual(chain.targetUnitTex, "\\mathrm{m}")
+    assert.strictEqual(
+      rawRestored("\\begin{aligned} r &= 0 \\\\ &= M \\end{aligned}"),
+      "\\begin{aligned}\nr &= 0 \\\\\n&= \\frac{GM}{c^{2}}\n\\end{aligned}",
+    )
+    // Passed as unchanged in kilograms, though 2M must become a length.
+    const bound = translated("\\begin{aligned}0 &< r \\\\ &< 2M\\end{aligned}")
+    assert.strictEqual(bound.restoredTex, "\\begin{aligned}\n0 &< r \\\\\n&< \\frac{2GM}{c^{2}}\n\\end{aligned}")
+    assert.strictEqual(bound.changed, true)
+    assert.strictEqual(bound.targetUnitTex, "\\mathrm{m}")
+    // Gathered rows continue the same way, and a new statement anchors afresh.
+    assert.strictEqual(
+      rawRestored("\\begin{gathered} r = 2M \\\\ = M \\end{gathered}"),
+      "\\begin{gathered}\nr = \\frac{2GM}{c^{2}} \\\\\n= \\frac{GM}{c^{2}}\n\\end{gathered}",
+    )
+    assert.strictEqual(
+      rawRestored("\\begin{aligned} E &= M \\\\ r &= 2M \\\\ &= 3M \\end{aligned}"),
+      "\\begin{aligned}\nE &= Mc^{2} \\\\\nr &= \\frac{2GM}{c^{2}} \\\\\n&= \\frac{3GM}{c^{2}}\n\\end{aligned}",
+    )
+  })
+
+  test("± and ∓ are branch signs: both branches take the same constants", () => {
+    const cases: [string, string, string][] = [
+      ["r = M \\pm a", "r = \\frac{GM}{c^{2}} \\pm a", "\\mathrm{m}"],
+      ["r = M \\mp a", "r = \\frac{GM}{c^{2}} \\mp a", "\\mathrm{m}"],
+      ["r = \\pm M", "r = \\pm \\frac{GM}{c^{2}}", "\\mathrm{m}"],
+      ["x = \\pm t", "x = \\pm tc", "\\mathrm{m}"],
+      ["t = \\pm r + 2M", "t = \\pm \\frac{r}{c} + \\frac{2GM}{c^{3}}", "\\mathrm{s}"],
+      [
+        "r = GM \\pm \\sqrt{G^2M^2 - a^2}",
+        "r = \\frac{GM}{c^{2}} \\pm \\frac{\\sqrt{G^{2}M^{2} - a^{2}c^{4}}}{c^{2}}",
+        "\\mathrm{m}",
+      ],
+      ["E = \\pm \\sqrt{p^2 + M^2}", "E = \\pm \\sqrt{p^{2} + M^{2}c^{2}}c", "\\mathrm{kg}\\,\\mathrm{m}^{2}\\,\\mathrm{s}^{-2}"],
+      ["r = e^{\\pm i \\omega t} M", "r = \\frac{Ge^{\\pm i\\omega t}M}{c^{2}}", "\\mathrm{m}"],
+      // `= \pm 1` states a value, not a unit convention, and is restored like `= -1`.
+      ["v = \\pm 1", "v = \\pm 1c", "\\mathrm{m}\\,\\mathrm{s}^{-1}"],
+      // Ledger #830 (gr-qc/9712019), with G explicit and c = 1.
+      [
+        "{\\frac{{dt}}{{dr}}}=\\pm\\left(1-{\\frac{{2GM}}{r}}\\right)^{-1}",
+        "{\\frac{{dt}}{{dr}}} = \\pm \\frac{\\left(1 - \\frac{{\\frac{{2GM}}{r}}}{c^{2}}\\right)^{-1}}{c}",
+        "\\mathrm{m}^{-1}\\,\\mathrm{s}",
+      ],
+    ]
+    for (const [tex, out, unit] of cases) {
+      const result = translated(tex)
+      assert.strictEqual(result.restoredTex, out, tex)
+      assert.strictEqual(result.targetUnitTex, unit, tex)
+    }
+    const kv = translated("\\omega = \\pm k v")
+    assert.strictEqual(kv.restoredTex, "\\omega = \\pm kv")
+    assert.strictEqual(kv.changed, false)
+    // Geometrized, the branch sign survives the strip.
+    assert.strictEqual(rawRestored("r = M \\pm a", GEO), "r = M \\pm a")
+    assert.strictEqual(rawRestored("r = \\mp\\frac{GM}{c^2} \\pm a", GEO), "r = \\mp M \\pm a")
+    assert.strictEqual(rawRestored("r = \\pm\\frac{GM}{c^2}", GEO), "r = \\pm M")
+    // A definition's sum must already agree, branch or not.
+    const length = dimensionOf("\\frac{2GM}{c^2} \\pm r", katexDefault, reg)
+    assert.ok(length.kind === "dim", JSON.stringify(length))
+    assert.deepStrictEqual(length.dim, [0, 12, 0, 0, 0])
+    const mixed = dimensionOf("M \\pm a", katexDefault, reg)
+    assert.ok(mixed.kind === "declined", JSON.stringify(mixed))
+    assert.deepStrictEqual(mixed.reasons, ["terms of different dimension — nothing is restored to reconcile a definition"])
+  })
+
+  test("a sign beside a branch sign would need a fold that keeps no branch, and declines", () => {
+    for (const tex of ["r = M \\pm -a", "r = M - \\pm a", "r = -\\pm a", "r = \\pm -a", "r = M \\pm \\mp a"]) {
+      declines(tex, SIGN_RUN)
+    }
+  })
+
+  test("a root keeps the sign of its body", () => {
+    // Rebuilt from the body term alone, the sign went missing: `x = \sqrt{-Mr}`
+    // shipped as `x = \sqrt{\frac{GMr}{c^{2}}}`.
+    assert.strictEqual(rawRestored("x = \\sqrt{-M r}"), "x = \\sqrt{-\\frac{GMr}{c^{2}}}")
+    assert.strictEqual(rawRestored("x = \\sqrt{\\pm M r}"), "x = \\sqrt{\\pm \\frac{GMr}{c^{2}}}")
+    assert.strictEqual(rawRestored("x = \\sqrt{+M r}"), "x = \\sqrt{+\\frac{GMr}{c^{2}}}")
+    assert.strictEqual(rawRestored("v = \\sqrt{-\\frac{M}{r}}"), "v = \\sqrt{-\\frac{GM}{r}}")
+    assert.strictEqual(rawRestored("x = \\sqrt{-M r}", GEO), "x = \\sqrt{-Mr}")
+  })
+
+  test("a sign in a superscript is a label, and a run of signs is a pattern", () => {
+    for (const tex of ["x = \\sigma^{\\pm}", "x = X^{n+}", "x = X^{+}", "x = X^{-}_{L}", "x = {}^{+}X"]) {
+      declines(tex, SIGN_LABEL)
+    }
+    declines("(-+++)", "signs with nothing to act on (a sign pattern such as a metric signature)")
+    // A sign with an operand after it is not a label: this is still a symbolic power.
+    declines("r^{\\pm 1} = M", "a symbolic exponent on the dimensional base “r”")
+  })
+})

@@ -370,7 +370,8 @@ type Factor = {
 
 type TermInfo = {
   /**
-   * The sign written before the term's first factor, folded: "", "-", or "+".
+   * The sign written before the term's first factor, folded: "", "-", or "+",
+   * or a branch sign "\pm" or "\mp", which is never folded with another.
    * A written "+" is kept rather than read as nothing, so the term re-emits as
    * the source spells it (`E = +m` came back as `E = m`, and the backstop
    * declined the divergence).
@@ -433,23 +434,56 @@ const FUNC_OPS = new Set([
   "\\log",
   "\\exp",
 ])
+/**
+ * Relations restored across: each states an equality or a comparison of value,
+ * and either holds only between like quantities. ≠ and the definition := are
+ * not rel atoms of their own and are read in translateRow (see relTextOf).
+ *
+ * \sim, \lesssim and \gtrsim carry a caveat the owner holds open: in analysis
+ * they can mean "≤ C·(…)" with the constant C absorbed, which is ∝'s problem.
+ * They are restored like an equality all the same; `E \lesssim M` gives
+ * `E \lesssim Mc^{2}`, as `E \sim M` always has.
+ */
 const SUPPORTED_RELS = new Set([
   "=",
   "\\approx",
   "\\simeq",
   "\\equiv",
-  "\\neq",
-  "\\ne",
+  "\\doteq",
+  "\\approxeq",
   "<",
   ">",
   "\\le",
   "\\leq",
+  "\\leqq",
+  "\\leqslant",
   "\\ge",
   "\\geq",
+  "\\geqq",
+  "\\geqslant",
   "\\ll",
   "\\gg",
   "\\sim",
+  "\\lesssim",
+  "\\gtrsim",
+  "\\lessapprox",
+  "\\gtrapprox",
 ])
+/** Single arrows: a substitution (which may change dimension on purpose, k → k/|k|), a limit, or a map. */
+const ARROWS = new Set([
+  "\\to",
+  "\\rightarrow",
+  "\\longrightarrow",
+  "\\leftarrow",
+  "\\longleftarrow",
+  "\\gets",
+  "\\mapsto",
+  "\\longmapsto",
+])
+/** A swap or a duality, never an equality. */
+const EXCHANGES = new Set(["\\leftrightarrow", "\\longleftrightarrow", "\\rightleftarrows", "\\leftrightarrows"])
+/** The branch signs: `a \pm b` abbreviates the pair of sums a + b and a − b. */
+const BRANCH_OPS = new Set(["\\pm", "\\mp"])
 const LATIN_INDICES = new Set("abcdefghijk".split(""))
 /**
  * CEO RULING 2026-08-17 — coordinate labels count as index tokens.
@@ -802,11 +836,22 @@ function allIndexTokens(nodes: any[], coordinates = false): boolean {
   return meaningful.every((n) => isIndexToken(n, coordinates))
 }
 
-/** Parse a superscript as a rational power, or classify it. */
-function classifySup(sup: any): { p: number; q: number } | "index" | "prime" | "expr" {
+function isSignToken(n: any): boolean {
+  const u = unwrap(n)
+  return u?.type === "atom" && u.family === "bin" && (u.text === "+" || u.text === "-" || BRANCH_OPS.has(u.text))
+}
+
+/**
+ * Parse a superscript as a rational power, or classify it. A superscript that
+ * is only signs, or that ends in one (`X^{+}`, `\sigma^{\pm}`, `X^{n+}`), is a
+ * label — a light-cone index or a charge state. A sign there has no operand,
+ * so it is never read as a power.
+ */
+function classifySup(sup: any): { p: number; q: number } | "index" | "prime" | "signLabel" | "expr" {
   const nodes = nodeListOf(sup).filter((n) => !SKIP_TYPES.has(n.type))
   if (nodes.length === 0) return "expr"
   if (nodes.some((n) => textOf(n) === "\\prime")) return "prime"
+  if (isSignToken(nodes[nodes.length - 1])) return "signLabel"
   let sign = 1
   let rest = nodes
   const first = unwrap(nodes[0])
@@ -1012,6 +1057,11 @@ function isPureConstant(t: TermInfo): boolean {
   return meaningful.length > 0 && meaningful.every((f) => f.constant != null)
 }
 
+/** A sum's leading sign as emitted. A branch sign is a control word, set apart: `\pm` + `M` reads `\pmM`. */
+function leadSign(sign: string): string {
+  return BRANCH_OPS.has(sign) ? `${sign} ` : sign
+}
+
 function emitSum(
   terms: TermInfo[],
   ops: string[],
@@ -1022,12 +1072,21 @@ function emitSum(
     .map((t, idx) => {
       const ins = emitsConstants(ctx) ? insertions[idx] : null
       const body = ins ? emitTermWith(t, ins.a, ins.b) : emitTerm(t)
-      const lead = idx === 0 ? t.sign : ` ${foldedOp(ops[idx - 1], t.sign)} `
+      const lead = idx === 0 ? leadSign(t.sign) : ` ${foldedOp(ops[idx - 1], t.sign)} `
       return lead + body
     })
     .join("")
 }
 
+/**
+ * A sum's terms, split at its signs. `a \pm b` abbreviates the pair of sums
+ * a + b and a − b, and each branch is a sum the sum rule governs. What a term
+ * needs restored depends on its dimension, never on its sign, so both branches
+ * take the same constants and one emission, keeping \pm, serves both; the same
+ * holds for \mp and for a branch sign leading the first term. A sign written
+ * beside a branch sign (`a \pm -b`, `-\pm a`) would have to be folded into it,
+ * and no fold keeps both branches, so it declines.
+ */
 function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing | null = null): SumInfo {
   const grouped = groupDelims(nodes)
   const termNodeLists: any[][] = []
@@ -1035,30 +1094,38 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing 
   const signs: string[] = []
   let current: any[] = []
   let pendingSign = ""
+  let sawSign = false
   for (const n of grouped) {
     if (isEmptyOrdgroup(n)) continue
     if (current.length === 0 && n != null && SKIP_TYPES.has(n.type)) continue
     const pm = isPlusMinus(n)
-    if (pm != null && current.length === 0) {
-      if (pm === "-") pendingSign = pendingSign === "-" ? "+" : "-"
+    const branch = n?.type === "atom" && n.family === "bin" && BRANCH_OPS.has(n.text) ? (n.text as string) : null
+    if ((pm != null || branch != null) && current.length === 0) {
+      sawSign = true
+      const besideBranch =
+        BRANCH_OPS.has(pendingSign) || (ops.length > 0 && BRANCH_OPS.has(ops[ops.length - 1]))
+      if (besideBranch || (branch != null && (pendingSign !== "" || ops.length > 0))) {
+        throw new Unsupported("a sign directly beside “\\pm” or “\\mp”, which the engine does not fold")
+      }
+      if (branch != null) pendingSign = branch
+      else if (pm === "-") pendingSign = pendingSign === "-" ? "+" : "-"
       else if (pendingSign === "") pendingSign = "+"
       continue
     }
-    if (pm != null) {
+    if (pm != null || branch != null) {
       termNodeLists.push(current)
       signs.push(pendingSign)
-      ops.push(pm)
+      ops.push((pm ?? branch) as string)
       current = []
       pendingSign = ""
       continue
     }
-    if (n?.type === "atom" && n.family === "bin" && (n.text === "\\pm" || n.text === "\\mp")) {
-      throw new Unsupported("a \\pm or \\mp branch, which is not supported")
-    }
     current.push(n)
   }
   if (current.length === 0 && termNodeLists.length === 0) {
-    throw new Unsupported("an empty expression")
+    throw new Unsupported(
+      sawSign ? "signs with nothing to act on (a sign pattern such as a metric signature)" : "an empty expression",
+    )
   }
   if (current.length === 0) throw new Unsupported("an expression that ends in an operator")
   termNodeLists.push(current)
@@ -1314,7 +1381,8 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     dim: total,
     pureNumeral,
     isZero: numeralsAre(0),
-    isUnitLiteral: sign !== "-" && numeralsAre(1),
+    // `v = \pm 1` states a value, not a convention: it is restored like `v = -1`.
+    isUnitLiteral: sign !== "-" && !BRANCH_OPS.has(sign) && numeralsAre(1),
     src: srcOfNodes(nodes, ctx),
   }
 }
@@ -1749,7 +1817,7 @@ function analyzeDelimitedFunction(
     }
     scripts = scriptsTex(scripted, ctx)
   }
-  if (containsRel(group.body)) throw new Unsupported("a relation nested inside a group")
+  bracketBodyGuard(group.body)
   const inner = parseSum(group.body, ctx, { anchor: "forced", target: ZERO })
   const open = group.type === "leftright" ? `\\left${group.left}` : group.open
   const close = group.type === "leftright" ? `\\right${group.right}` : group.close
@@ -1912,7 +1980,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     case "leftright":
     case "__group": {
       const body = n.body
-      if (containsRel(body)) throw new Unsupported("a relation nested inside a group")
+      bracketBodyGuard(body)
       const inner = parseSum(body, ctx, { anchor: "internal" })
       const open = n.type === "leftright" ? `\\left${n.left}` : n.open
       const close = n.type === "leftright" ? `\\right${n.right}` : n.close
@@ -2121,6 +2189,12 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
     analyzeFactor(n.base, ctx)
   }
 
+  if (sup === "signLabel") {
+    throw new Unsupported(
+      "a sign standing as a superscript (a light-cone index or a charge label), which is neither a power nor a dictionary index",
+    )
+  }
+
   // {}^{d} / {}_{\mu\nu} index riders (as in R_{abc}{}^{d} or \Gamma^{\rho}{}_{\mu\nu}).
   if (base == null || (base.type === "ordgroup" && base.body.length === 0)) {
     const supIsIndex = n.sup == null || sup === "index" || allRiderTokens(nodeListOf(n.sup))
@@ -2216,8 +2290,9 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
 
 function sumAsFactorList(sum: SumInfo): Factor[] {
   // A single slash-free term flattens; anything else stays one opaque unit so
-  // its internal structure (division, +/-) survives re-emission.
-  if (!sum.multiTerm && sum.terms[0].slashIdx < 0 && sum.terms[0].sign !== "-") {
+  // its internal structure (division, +/-, a branch sign) survives re-emission.
+  const sign = sum.terms[0].sign
+  if (!sum.multiTerm && sum.terms[0].slashIdx < 0 && sign !== "-" && !BRANCH_OPS.has(sign)) {
     return sum.terms[0].factors
   }
   return [
@@ -2231,7 +2306,26 @@ function sumAsFactorList(sum: SumInfo): Factor[] {
 }
 
 function containsRel(nodes: any[]): boolean {
-  return nodes.some((n) => n?.type === "atom" && n.family === "rel")
+  return nodes.some((n) => relTextOf(n) != null)
+}
+
+/**
+ * What brackets hold when they hold no quantity. Juxtaposition reads `f(x)` as
+ * a product, so an argument list is never read, and the reason says what the
+ * comma or the relation is rather than "select a single equation": that was
+ * the wording 175 ledger statements got for a function-argument comma.
+ */
+function bracketBodyGuard(body: any[]): void {
+  if (containsRel(body)) {
+    throw new Unsupported(
+      "a relation inside brackets (an evaluation point, a limit, a conditional, or an index swap), which is not a factor",
+    )
+  }
+  if (groupDelims(body).some((n) => n?.type === "atom" && n.family === "punct" && (n.text === "," || n.text === ";"))) {
+    throw new Unsupported(
+      "a comma inside brackets (function arguments, a tuple, a commutator, or an inner product), which the engine does not read as a product",
+    )
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2324,8 +2418,10 @@ function emitTermWith(t: TermInfo, a12: number, b12: number): string {
   if ((a12 % D12 !== 0 || b12 % D12 !== 0) && t.slashIdx < 0) {
     const sqrtIdx = t.factors.findIndex((f) => f.kind === "sqrt" && f.sqrt?.bodyTerm)
     if (sqrtIdx >= 0 && t.factors.filter((f) => f.kind === "sqrt").length === 1) {
-      const sqrtFactor = t.factors[sqrtIdx]
-      const inner = emitTermWith(sqrtFactor.sqrt!.bodyTerm!, a12 * 2, b12 * 2)
+      const bodyTerm = t.factors[sqrtIdx].sqrt!.bodyTerm!
+      // The body's sign is the sum's to emit, and rebuilt from the term alone it
+      // went missing: `x = \sqrt{-Mr}` came back as `\sqrt{\frac{GMr}{c^{2}}}`.
+      const inner = leadSign(bodyTerm.sign) + emitTermWith(bodyTerm, a12 * 2, b12 * 2)
       const parts = t.factors.map((f, idx) => (idx === sqrtIdx ? `\\sqrt{${inner}}` : f.emit()))
       return joinTex(parts)
     }
@@ -2507,6 +2603,92 @@ function rowTexOf(row: RowResult): string {
   return tex
 }
 
+/**
+ * Relations KaTeX builds from a macro as an `htmlmathml` pair, recognized by
+ * the character of their MathML half: the relation each one is, and the
+ * commands that write it. Since KaTeX 0.16.47 `\neq` and `\ne` arrive this way
+ * rather than as rel atoms, and every ≠ statement had declined as an
+ * unsupported "htmlmathml" construct. ≕ (`\eqqcolon`, a definition written
+ * right to left) is left out with `=:`: the corpus has none, and `E = :Mc^2:`,
+ * a normal-ordered product, is exactly `=` followed by `:`.
+ */
+const HTMLMATHML_RELS: Record<string, { rel: string; spellings: string[] }> = {
+  "≠": { rel: "\\neq", spellings: ["\\neq", "\\ne"] },
+  "≔": { rel: ":=", spellings: ["\\coloneqq"] },
+}
+
+function htmlmathmlRelOf(n: any): { rel: string; spellings: string[] } | null {
+  if (n?.type !== "htmlmathml" || !Array.isArray(n.mathml) || n.mathml.length !== 1) return null
+  const m = n.mathml[0]
+  const body = (m?.type === "mclass" && m.mclass === "mrel") || m?.type === "op" ? m.body : null
+  if (!Array.isArray(body) || body.length !== 1 || body[0]?.type !== "textord") return null
+  return HTMLMATHML_RELS[body[0].text] ?? null
+}
+
+/** The relation a node stands for, or null: a rel atom's text, or ≠ and ≔ from their MathML half. */
+function relTextOf(n: any): string | null {
+  if (n?.type === "atom" && n.family === "rel") return n.text
+  return htmlmathmlRelOf(n)?.rel ?? null
+}
+
+/** KaTeX's `\not`: an htmlmathml node whose MathML half is the combining long solidus U+0338. */
+function isNotSlash(n: any): boolean {
+  return (
+    n?.type === "htmlmathml" &&
+    Array.isArray(n.mathml) &&
+    n.mathml.length === 1 &&
+    n.mathml[0]?.type === "textord" &&
+    n.mathml[0].text === "\u0338"
+  )
+}
+
+/** Whatever closes the node before a relation: whitespace, closing braces, an alignment tab, a `\right` delimiter. */
+const CLOSING_SYNTAX = /^(?:\s|\}|&|\\right\s*(?:\\[a-zA-Z]+|\\.|[^\s\\]))*/
+
+/**
+ * The spelling of a relation built from a macro, which carries no loc of its
+ * own. It is read forward from the end of the nearest located node before it,
+ * past only the syntax that closes that node, and accepted only when the first
+ * command found there is one of the relation's own spellings. Anything else
+ * gives null: the relation declines rather than being emitted as something the
+ * reader did not write.
+ *
+ * Forward, not between the neighbours on both sides: the node after a relation
+ * is often located only inside itself — a fraction at its numerator, a root at
+ * its radicand — so the slice up to it swallowed `\frac{` and `\sqrt{`, and
+ * `r \ne \frac{M}{2}` declined as a reassembly fault.
+ */
+function relSpellingOf(grouped: any[], idx: number, ctx: Ctx, spellings: string[]): string | null {
+  let start = 0
+  for (let j = idx - 1; j >= 0; j -= 1) {
+    const span = spanOf(grouped[j], ctx.input)
+    if (span) {
+      start = span[1]
+      break
+    }
+  }
+  const rest = ctx.input.slice(start).replace(CLOSING_SYNTAX, "")
+  const word = /^\\[a-zA-Z]+/.exec(rest)?.[0]
+  return word != null && spellings.includes(word) ? word : null
+}
+
+/** The decline for a relation nothing is restored across, named by what it is. */
+function unsupportedRelReason(text: string): string {
+  if (text === "\\propto") {
+    return "a proportionality — constants are absorbed in ∝, so restoring them is not meaningful"
+  }
+  if (ARROWS.has(text)) {
+    return `the arrow “${text}” — a substitution, a limit, or a map, none of which fixes a dimension`
+  }
+  if (EXCHANGES.has(text)) return `the exchange “${text}” (a swap or a duality), which is not an equation`
+  if (text === ":") {
+    return "a colon that is not part of “:=” (normal ordering, a ratio, or a map), which the engine does not read"
+  }
+  if (text === "\\parallel") return "“\\parallel” (a norm bar or “parallel to”), which the engine does not read"
+  if (text === "\\mid") return "“\\mid” (a conditional or an inner-product bar), which the engine does not read"
+  return `the unsupported relation “${text}”`
+}
+
 function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowResult {
   const grouped = groupDelims(nodes)
 
@@ -2515,24 +2697,41 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
   const tabAtRel: boolean[] = []
   let current: any[] = []
   let pendingTab = false
-  for (const n of grouped) {
+  const pushRel = (text: string) => {
+    sides.push(current)
+    rels.push(text)
+    tabAtRel.push(pendingTab)
+    pendingTab = false
+    current = []
+  }
+  for (let gi = 0; gi < grouped.length; gi += 1) {
+    const n = grouped[gi]
     if (n?.type === "__tab") {
       pendingTab = true
       continue
     }
-    if (n?.type === "atom" && n.family === "rel") {
-      if (!SUPPORTED_RELS.has(n.text)) {
-        throw new Unsupported(
-          n.text === "\\propto"
-            ? "a proportionality — constants are absorbed in ∝, so restoring them is not meaningful"
-            : `the unsupported relation “${n.text}”`,
-        )
+    if (isNotSlash(n)) throw new Unsupported("a relation negated with \\not, which is not supported yet (\\neq is)")
+    const built = htmlmathmlRelOf(n)
+    if (built != null) {
+      const spelled = relSpellingOf(grouped, gi, ctx, built.spellings)
+      if (spelled == null) {
+        throw new Unsupported(`the relation “${built.rel}”, whose written spelling the engine could not read`)
       }
-      sides.push(current)
-      rels.push((safeSrc(n, ctx) || n.text).trim())
-      tabAtRel.push(pendingTab)
-      pendingTab = false
-      current = []
+      pushRel(spelled)
+      continue
+    }
+    if (n?.type === "atom" && n.family === "rel") {
+      // `:=` is two rel atoms. Adjacent, they are one relation, a definition,
+      // and the defined side has by definition the dimension of its definiens.
+      // A colon on its own (normal ordering `:X:`, a ratio, a map) is not.
+      const next = grouped[gi + 1]
+      if (n.text === ":" && next?.type === "atom" && next.family === "rel" && next.text === "=") {
+        pushRel(":=")
+        gi += 1
+        continue
+      }
+      if (!SUPPORTED_RELS.has(n.text)) throw new Unsupported(unsupportedRelReason(n.text))
+      pushRel((safeSrc(n, ctx) || n.text).trim())
       continue
     }
     // Spacing shims sit between the tab and the relation without ending the column.
@@ -2562,22 +2761,29 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
       : parseSum(side, ctx, { anchor: "none" }, spacing),
   )
 
-  // Anchor on the first side that has a non-zero term (literal zeros carry any
-  // dimension); a row that opens at "=" inherits the previous row's target.
-  let target: Dim | null = null
-  for (const sum of sums) {
-    if (sum == null) continue
-    const anchor = sumAnchor(sum.terms)
-    if (anchor != null) {
-      target = anchor
-      break
+  // Only a row's first side may be empty, and only as a continuation. An empty
+  // side anywhere else relates nothing: `E = <p>` read as E, then nothing, then
+  // p, and shipped as `E = < pc >`.
+  if (sums.some((sum, idx) => sum == null && idx > 0)) {
+    throw new Unsupported("a relation with nothing on one side of it")
+  }
+
+  // A row that opens at a relation continues the previous row's chain
+  // (`r &= 2M \\ &= M`), so its sides take that chain's dimension. Anchored on
+  // its own content instead, that row shipped as `= M` in kilograms while the
+  // chain was in metres, and `0 &< r \\ &< 2M` passed as unchanged. With no
+  // chain before it, nothing anchors it. Any other row anchors on its first
+  // side that has a non-zero term (literal zeros carry any dimension).
+  let target: Dim
+  if (sums[0] == null) {
+    if (carriedTarget == null) {
+      throw new Unsupported("a row that begins at “=” with nothing before it to anchor it")
     }
+    target = carriedTarget
+  } else {
+    const anchored = sums.map((sum) => (sum == null ? null : sumAnchor(sum.terms))).find((d) => d != null)
+    target = anchored ?? carriedTarget ?? ZERO // every term a literal zero: identity
   }
-  if (target == null) target = carriedTarget
-  if (target == null && sums.some((s) => s == null)) {
-    throw new Unsupported("a row that begins at “=” with nothing before it to anchor it")
-  }
-  if (target == null) target = ZERO // every term a literal zero: identity
 
   // Insertions are solved once, during analysis; emission can then be replayed.
   // A side that is nothing but a literal 1 is a convention marker rather than a
@@ -2604,6 +2810,9 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
  * “\<char>” is only a control token when its backslash is an escape — the run
  * of backslashes ending there must have odd total length (in “x \\ ” the
  * matched backslash is the tail of a row separator).
+ * A trailing colon is not sentence punctuation: it can close a normal-ordered
+ * product, and stripping it rewrote `E = :Mc^2:` into `E = :Mc^2`, an equation
+ * the reader did not write. Kept, a lone colon declines as what it is.
  * Exported: the stage-2 extractor uses this same stripper, so the two layers
  * cannot disagree about what a delimiter dot is.
  */
@@ -2615,12 +2824,12 @@ export function stripTrailingPunctuation(tex: string): string {
   let t = tex.replace(/\s+$/, "")
   if ((/\\+$/.exec(t)?.[0].length ?? 0) % 2 === 1) t += " "
   for (;;) {
-    let m = t.match(/(\\(?:quad|qquad)|\\[,;:! ]|[.,;:~]|\s)$/)
+    let m = t.match(/(\\(?:quad|qquad)|\\[,;:! ]|[.,;~]|\s)$/)
     if (!m) return t
     if (m[0].startsWith("\\")) {
       const runBefore = (t.slice(0, t.length - m[0].length).match(/\\*$/) ?? [""])[0].length
       if ((runBefore + 1) % 2 === 0) {
-        m = t.match(/([.,;:~]|\s)$/)
+        m = t.match(/([.,;~]|\s)$/)
         if (!m) return t
       }
     }
@@ -2712,7 +2921,7 @@ export function dimensionOf(
     }))
   try {
     const nodes = katex.__parse(tex, { strict: false, trust: false, displayMode: true })
-    if (groupDelims(nodes).some((n) => n?.type === "atom" && n.family === "rel")) {
+    if (containsRel(groupDelims(nodes))) {
       throw new Unsupported("a relation — an expression is wanted here, not an equation")
     }
     const sum = parseSum(nodes, ctx, { anchor: "none" })

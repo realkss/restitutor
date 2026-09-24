@@ -40,23 +40,22 @@ const STRUCTURAL: [RegExp, OutcomeClass][] = [
   [/name of a mathematical object|a set or an algebra|relation between sets or maps/, "refused"],
   [/reassembly fault/, "reassembly"],
   [/KaTeX could not parse|unbalanced delimiters/, "parse"],
-  // A trailing "d" the engine reads as a derivative, and a bar inside
-  // parentheses it reads as a relation (p(d | H)), are the reader's, not
-  // the carrier's; they are tried before the fragment wordings they share.
-  [/reads as a derivative|relation nested inside a group/, "unsupported"],
+  // A trailing "d" the engine reads as a derivative, and a relation or a
+  // comma inside brackets (p(d | H), X(σ,τ)), are the reader's, not the
+  // carrier's; they are tried before the fragment wordings they share.
+  [/reads as a derivative|a relation inside brackets|a comma inside brackets/, "unsupported"],
   // The carrier was not one equation: an alignment block, a list of
-  // statements, a row cut at its relation, a trailing operator, nothing.
-  // After the extractor rejoins equation-group rows, what remains here is
-  // mostly the engine reading an argument comma as a list separator. Spacing
-  // between two factors is the same question asked of a chain: two
-  // statements set side by side, or one product.
-  [/lists or multiple statements|a row that begins at|a trailing .* with nothing after it|an empty expression|explicit spacing between two factors|^prose \(/, "fragment"],
+  // statements, a row cut at its relation, a relation with an empty side, a
+  // trailing operator, a bare sign pattern, nothing. Spacing between two
+  // factors is the same question asked of a chain: two statements set side
+  // by side, or one product.
+  [/lists or multiple statements|a row that begins at|a relation with nothing on one side|a trailing .* with nothing after it|an empty expression|signs with nothing to act on|explicit spacing between two factors|^prose \(/, "fragment"],
   [/a proportionality/, "proportional"],
   // The equation IS a units declaration (c = G = 1): nothing to restore.
   [/a relation between the constants themselves/, "declaration"],
   // Constructs the engine's reader does not handle, in its several wordings.
   [
-    /not supported|could not be read|could not read|cannot read|floating super\/subscript|symbolic exponent|unsupported (?:relation|accent|differential)|closing delimiter|cannot pair with its partner|in this position|primed symbol|time derivative of a compound|integrals, sums, and limits|an angular coordinate index|the upright (?:word|words|letter) |the multi-letter name |an unspecified constant|a constant to restore inside the font/,
+    /not supported|could not be read|could not read|cannot read|floating super\/subscript|symbolic exponent|unsupported (?:relation|accent|differential)|closing delimiter|cannot pair with its partner|in this position|primed symbol|time derivative of a compound|integrals, sums, and limits|an angular coordinate index|the upright (?:word|words|letter) |the multi-letter name |an unspecified constant|a constant to restore inside the font|the arrow “|the exchange “|a colon that is not part of|which the engine does not read|neither a power nor a dictionary index|a sign directly beside/,
     "unsupported",
   ],
 ]
