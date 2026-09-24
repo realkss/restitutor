@@ -2414,4 +2414,73 @@ describe("batch-1 review fixes", () => {
     // Inside brackets the delimiters already make one expression.
     assert.strictEqual(rawRestored("E = (m\\qquad + M)"), "E = (m + M)c^{2}")
   })
+
+  // Round 1: numerals that kerns or a stripped constant kept apart fused into
+  // another number, and the digit guard missed the staggered-index spelling.
+  const FUSED = (left: string, right: string) =>
+    `the numerals “${left}” and “${right}” with nothing but a stripped constant between them, which would set them side by side as one number — not supported`
+
+  test("(f) a kern between two numerals is emitted, rebuilt from its width", () => {
+    // Live, the kern was dropped and the numerals fused: 310^{2}, 2.510^{-3}, 32, 3.5.
+    assert.strictEqual(rawRestored("x = 3\\,10^{2} M"), "x = \\frac{3\\,10^{2}GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 3\\;10^{2}\\,M"), "x = \\frac{3\\;10^{2}GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 2.5\\,10^{-3}\\,M"), "x = \\frac{2.5\\,10^{-3}GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 3\\,2 M"), "x = \\frac{3\\,2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 3\\,.5\\,M"), "x = \\frac{3\\,.5GM}{c^{2}}")
+    assert.strictEqual(rawRestored("E = 5\\,10^{2}\\,m c^2", GEO), "E = 5\\,10^{2}m")
+    // A kern no command gives cannot be rebuilt, so it declines by name.
+    declines(
+      "x = 3\\hspace{1pt}2 M",
+      "spacing between two numerals that the engine cannot re-emit as written, which is not supported",
+      [SI],
+    )
+    // Control spacing was always kept; a kern beside anything but a numeral is still dropped.
+    assert.strictEqual(rawRestored("x = 3\\ 10^{2} M"), "x = \\frac{3\\ 10^{2}GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 3~10^{2} M"), "x = \\frac{3~10^{2}GM}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 2\\,\\pi\\, M"), "x = \\frac{2\\pi GM}{c^{2}}")
+    assert.strictEqual(rawRestored("E = m\\,c^2"), "E = mc^{2}")
+  })
+
+  test("(a) a stripped constant between two numerals leaves a separator the source wrote, or declines", () => {
+    // Live, the numerals fused: M/55 for M/25, 23M, 510^{2}m, 10^{3}5M.
+    assert.strictEqual(rawRestored("x = \\frac{G\\,M}{5\\,c^2\\,5}", GEO), "x = \\frac{M}{5\\,5}")
+    assert.strictEqual(rawRestored("x = 2\\,G\\,3\\,M", GEO), "x = 2\\,3M")
+    assert.strictEqual(rawRestored("E = 5\\,c^2\\,10^{2}\\,m", GEO), "E = 5\\,10^{2}m")
+    assert.strictEqual(rawRestored("x = 10^{3}\\,G\\,5 M", GEO), "x = 10^{3}\\,5M")
+    assert.strictEqual(rawRestored("x = 1.5\\,G\\,.5\\,M", GEO), "x = 1.5\\,.5M")
+    // A strip that bares a numeral inside a group is seen from outside it.
+    assert.strictEqual(rawRestored("x = 2\\,{G\\,3}\\,M", GEO), "x = 2\\,{3}M")
+    // With nothing written between them, nothing from the source can keep them apart.
+    declines("x = 2G3M", FUSED("2", "3"), [GEO])
+    declines("x = \\frac{2 G 3 M}{c^2}", FUSED("2", "3"), [GEO])
+    declines("x = 2 G^{2} 3 M", FUSED("2", "3"), [GEO])
+    // Written glue stays as it did, and a kern beside a non-numeral still goes.
+    assert.strictEqual(rawRestored("x = 2\\ G\\ 3\\ M", GEO), "x = 2\\ 3\\ M")
+    assert.strictEqual(rawRestored("x = 2\\cdot G\\cdot 3 M", GEO), "x = 2\\cdot3M")
+    assert.strictEqual(rawRestored("x = 2\\,G\\,M", GEO), "x = 2M")
+  })
+
+  test("(a) a written constant between two numerals is not folded away at SI", () => {
+    // Live, folding G into the inserted constants left the kerns alone between 2 and 3.
+    assert.strictEqual(rawRestored("x = 2\\,G\\,3\\,M"), "x = \\frac{2G3M}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 2G3M"), "x = \\frac{2G3M}{c^{2}}")
+    // Anywhere else it still folds and moves to the head.
+    assert.strictEqual(rawRestored("x = M G"), "x = \\frac{GM}{c^{2}}")
+    assert.strictEqual(rawRestored("E = mc"), "E = mc^{2}")
+  })
+
+  test("(g) a digit superscript declines across a floating rider too", () => {
+    const DIGIT = (tex: string) => `a digit superscript on “${tex}” — a component index or a power`
+    // Live, these shipped as m⁻⁴, m⁻⁶, m⁻⁴, and the component R₀₀.
+    declines("R^{2}{}_{323} = 0", DIGIT("R^{2}{}_{323}"))
+    declines("R^{3}{}_{232} = 0", DIGIT("R^{3}{}_{232}"))
+    declines("R^{2}{}_{0} = 0", DIGIT("R^{2}{}_{0}"))
+    declines("R^{2}{}_{0} = \\frac{M^2}{r^6}", DIGIT("R^{2}{}_{0}"))
+    declines("R_{00}{}^{2} = 0", DIGIT("R_{00}{}^{2}"))
+    declines("\\Gamma^{2}{}_{00} = 0", DIGIT("\\Gamma^{2}{}_{00}"))
+    // The digits 0 and 1 keep the component reading.
+    assert.strictEqual(rawRestored("R^{0}{}_{101} = \\frac{M}{r^3}"), "R^{0}{}_{101} = \\frac{GM}{r^{3}c^{2}}")
+    assert.strictEqual(rawRestored("R^{1}{}_{010} = \\frac{M}{r^3}"), "R^{1}{}_{010} = \\frac{GM}{r^{3}c^{2}}")
+    assert.strictEqual(rawRestored("R_{00}{}^{0} = 0"), "R_{00}{}^{0} = 0")
+  })
 })

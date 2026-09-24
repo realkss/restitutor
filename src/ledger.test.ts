@@ -99,6 +99,12 @@ describe("the decline ledger", () => {
       assert.strictEqual(outcome(tex).class, "unsupported", tex)
     assert.strictEqual(outcome("c = 3\\times10^{8}").class, "declaration")
     assert.strictEqual(outcome("r \\ne 2M").class, "translated")
+    // Round 1: numerals a kern or a stripped constant kept apart, and a digit
+    // superscript across a rider, are the reader's too.
+    for (const tex of ["x = 3\\hspace{1pt}2 M", "R^{2}{}_{323} = 0", "R_{00}{}^{2} = 0"])
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    const geometrized = classifyOutcome(translateTex("x = 2G3M", katex, GR, { system: "hl", geometrized: true }))
+    assert.strictEqual(geometrized.class, "unsupported", geometrized.reason)
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)

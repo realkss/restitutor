@@ -397,6 +397,20 @@ type Factor = {
    * would leave a `1` beside the factors that remain.
    */
   vanishes?: () => boolean
+  /**
+   * Whether the factor prints a numeral at its first or last edge, as a live
+   * emission prints it: a digit run, raised or not (`3`, `10^{8}`), or a brace
+   * group that opens or closes on one, braces printing nothing. Two such edges
+   * with nothing printed between them read as one number (keepNumeralsApart).
+   */
+  numeralEdge?: (side: "first" | "last") => boolean
+  /**
+   * On the glue a kern makes: the one command KaTeX gives the kern's width
+   * (`\,`, `\quad`), or null when none does. A kern has no source span, so it
+   * emits nothing, and this is what it is rebuilt as where it keeps two
+   * numerals apart.
+   */
+  kern?: string | null
   frac?: { cmd: string; num: Factor[]; den: Factor[] }
   sqrt?: { bodyTerm: TermInfo | null }
 }
@@ -1498,7 +1512,8 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     }
     if (SKIP_TYPES.has(n.type)) {
       const text = spacingTexOf(raw, ctx)
-      push({ kind: "glue", dim: ZERO, emit: () => text })
+      const kern = n.type === "kern" ? kernCommandOf(n) : undefined
+      push({ kind: "glue", dim: ZERO, emit: () => text, kern })
       i += 1
       continue
     }
@@ -1535,13 +1550,13 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
       const power = end < nodes.length ? numeralPowerOf(nodes[end]) : null
       const frozen = text
       if (power == null) {
-        push({ kind: "num", dim: ZERO, emit: () => frozen })
+        push({ kind: "num", dim: ZERO, emit: () => frozen, numeralEdge: () => true })
       } else {
         const exponent = symbolicExponentOf(power, ctx)
         const written = frozen + srcOf(power, ctx)
         const base = frozen + srcOf(power.base, ctx)
         const emit = exponent == null ? () => written : () => `${base}^{${exponent.emit()}}`
-        push({ kind: "num", dim: ZERO, emit })
+        push({ kind: "num", dim: ZERO, emit, numeralEdge: () => true })
         end += 1
       }
       i = end
@@ -1592,6 +1607,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
       continue
     }
 
+    riderDigitGuard(nodes, i, ctx)
     push(analyzeFactor(raw, ctx))
     i += 1
   }
@@ -1599,6 +1615,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
   // Thrown only once every factor has been read, so a truer reason (\text
   // content, an unsupported construct) is the one the reader sees.
   if (spacedFactors) throw new Unsupported(SPACING_REASON)
+  keepNumeralsApart(factors)
 
   const numDim = factors.slice(0, slashIdx < 0 ? factors.length : slashIdx)
   const denDim = slashIdx < 0 ? [] : factors.slice(slashIdx + 1)
@@ -1646,7 +1663,9 @@ function safeSrc(node: any, ctx: Ctx): string {
  * written as `~` (KaTeX defines no other macro with that body). Kerns carry no
  * span at all and are dropped: the backstop's comparison ignores the ones it
  * can name (`\,`, `\;`, `\quad`, …), and any other (`\enspace`, `\hspace`)
- * leaves the rebuilt equation short of the source, so it declines.
+ * leaves the rebuilt equation short of the source, so it declines. Between
+ * two numerals a dropped kern fuses them, so there it is rebuilt instead
+ * (keepNumeralsApart).
  */
 function spacingTexOf(raw: any, ctx: Ctx): string {
   const own = safeSrc(raw, ctx)
@@ -2082,14 +2101,16 @@ const KERN_COMMANDS: Record<string, string> = {
   "2em": "\\qquad",
 }
 
+/** The command KaTeX gives a kern's width, or null when no command does. */
+function kernCommandOf(n: any): string | null {
+  return KERN_COMMANDS[`${n.dimension?.number}${n.dimension?.unit}`] ?? null
+}
+
 function headSpacingTex(skips: any[], headTex: string, ctx: Ctx): string {
   return skips
     .map((raw) => {
       const n = unwrap(raw)
-      const tex =
-        n?.type === "kern"
-          ? (KERN_COMMANDS[`${n.dimension?.number}${n.dimension?.unit}`] ?? "")
-          : spacingTexOf(raw, ctx)
+      const tex = n?.type === "kern" ? (kernCommandOf(n) ?? "") : spacingTexOf(raw, ctx)
       if (tex === "") {
         throw new Unsupported(
           `spacing between “${headTex}” and its argument that the engine cannot re-emit as written, which is not supported`,
@@ -2379,7 +2400,8 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const live = inner.terms[0].factors.filter((f) => f.kind !== "glue")
       const openArgument = !inner.multiTerm && live[live.length - 1]?.openArgument === true
       const vanishes = () => sumVanishes(inner)
-      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument, vanishes, ...partsOf(inner) }
+      const numeralEdge = (side: "first" | "last") => sumNumeralEdge(inner, side)
+      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument, vanishes, numeralEdge, ...partsOf(inner) }
     }
     case "atom":
       throw new Unsupported(`the symbol “${n.text}” in this position`)
@@ -2527,17 +2549,65 @@ function componentDigitGuard(
   displayTex: string,
   ctx: Ctx,
 ): void {
-  if (typeof sup !== "object" || sup == null || sup.q !== 1 || sup.p < 2 || sup.p > 9) return
-  if (baseText === "\\partial" || baseText === "\\nabla" || !ctx.reg.indexed[baseText]) return
-  if (ctx.reg.exact[`${baseText}_${subKeyText(n.sub, ctx)}`]) return
-  if (digitsOf(nodeListOf(n.sup).filter((x) => !SKIP_TYPES.has(x.type))) == null) return
-  let indexSub: boolean
+  if (!isDigitPower(n.sup, sup) || !componentLookup(baseText, n.sub, ctx)) return
+  throw new Unsupported(`a digit superscript on “${displayTex}” — a component index or a power`)
+}
+
+/** A superscript that is a single digit 2–9 as written, where a power and a component index both read. */
+function isDigitPower(supNode: any, sup: ReturnType<typeof classifySup> | null): boolean {
+  if (typeof sup !== "object" || sup == null || sup.q !== 1 || sup.p < 2 || sup.p > 9) return false
+  return digitsOf(nodeListOf(supNode).filter((x) => !SKIP_TYPES.has(x.type))) != null
+}
+
+/**
+ * Whether a subscript sends the lookup of `baseText` to `indexed`, where a
+ * component index can stand: an index list, on a base the registry indexes and
+ * does not spell out with that subscript as an identity, and not \partial or
+ * \nabla, whose power is a derivative order.
+ */
+function componentLookup(baseText: string, sub: any, ctx: Ctx): boolean {
+  if (baseText === "\\partial" || baseText === "\\nabla" || !ctx.reg.indexed[baseText]) return false
+  if (ctx.reg.exact[`${baseText}_${subKeyText(sub, ctx)}`]) return false
   try {
-    indexSub = allIndexTokens(nodeListOf(n.sub), true)
+    return allIndexTokens(nodeListOf(sub), true)
   } catch {
-    indexSub = false
+    return false
   }
-  if (!indexSub) return
+}
+
+/**
+ * The component-digit guard across a floating rider. `R^{2}{}_{323}` and
+ * `R_{00}{}^{2}` stagger the indices as `R^{0}{}_{101}` does, with a digit 2–9
+ * where a power can stand, and the rider path reads a `{}` script as an index
+ * with no dimension: `R^{2}{}_{323} = 0` shipped as m⁻⁴, the Ricci scalar
+ * squared beside an index, and `R_{00}{}^{2} = 0` as the component R₀₀, with
+ * the digit read as an index. It is the notation componentDigitGuard declines,
+ * spelled across two script nodes, and it declines with the same reason: a
+ * digit power on an indexed base followed by a rider with an index subscript,
+ * or an index subscript followed by a rider with a digit power. The digits 0
+ * and 1 keep the index reading there as they do on one node.
+ */
+function riderDigitGuard(nodes: any[], at: number, ctx: Ctx): void {
+  const n = unwrap(nodes[at])
+  if (n?.type !== "supsub" || n.base == null) return
+  const baseText = textOf(n.base)
+  if (baseText == null || baseText === "\\partial" || baseText === "\\nabla" || !ctx.reg.indexed[baseText]) return
+  let next = at + 1
+  while (next < nodes.length && SKIP_TYPES.has(unwrap(nodes[next])?.type)) next += 1
+  const rider = next < nodes.length ? unwrap(nodes[next]) : null
+  if (rider?.type !== "supsub" || !(rider.base == null || isEmptyOrdgroup(unwrap(rider.base)))) return
+  const powerThenIndex =
+    n.sup != null &&
+    isDigitPower(n.sup, classifySup(n.sup)) &&
+    rider.sub != null &&
+    componentLookup(baseText, rider.sub, ctx)
+  const indexThenPower =
+    n.sub != null &&
+    componentLookup(baseText, n.sub, ctx) &&
+    rider.sup != null &&
+    isDigitPower(rider.sup, classifySup(rider.sup))
+  if (!powerThenIndex && !indexThenPower) return
+  const displayTex = `${wrappedTexOf(nodes[at], ctx)}${supsubTex("{}", rider, ctx)}`
   throw new Unsupported(`a digit superscript on “${displayTex}” — a component index or a power`)
 }
 
@@ -2791,35 +2861,131 @@ function formatExp(tex: string, e12: number): string {
  * as `E = m~\cdot~`, and `-c^2\ dt^2` as `-\ dt^2`. Between two survivors one
  * run of glue stays, the first one written that holds any: two runs merged
  * where a factor vanished (`2\ G\ M` → `2\ \ M`) say twice what the author
- * said once. Wherever nothing vanished, the glue is kept as written.
+ * said once. Wherever nothing vanished, the glue is kept as written. Where
+ * the two survivors are numerals, what stays must still print between them
+ * (separatorAcross).
  */
 function joinFactors(factors: Factor[]): string {
   // Every factor is emitted, the vanishing ones too: emission is where a strip
   // is recorded (ctx.mutated), and a translation whose strips all vanished
   // was reported unchanged and skipped the re-read backstop.
-  const parts = factors.map((f) => ({ f, tex: f.emit() }))
+  const parts: EmittedFactor[] = factors.map((f) => ({ f, tex: f.emit() }))
   const out: string[] = []
   // The glue runs since the last surviving factor, a new run opening wherever a factor vanished.
-  let runs: string[][] = [[]]
-  let survived = false
-  for (const { f, tex } of parts) {
-    if (f.kind === "glue") {
-      runs[runs.length - 1].push(tex)
+  let runs: EmittedFactor[][] = [[]]
+  let last: EmittedFactor | null = null
+  for (const part of parts) {
+    if (part.f.kind === "glue") {
+      runs[runs.length - 1].push(part)
       continue
     }
-    if (f.vanishes?.() === true) {
+    if (part.f.vanishes?.() === true) {
       runs.push([])
       continue
     }
-    if (runs.length === 1) out.push(...runs[0])
-    else if (survived) out.push(...(runs.find((run) => run.some((glue) => glue !== "")) ?? []))
-    out.push(tex)
-    survived = true
+    if (runs.length === 1) out.push(...runs[0].map((glue) => glue.tex))
+    else if (last != null) out.push(...separatorAcross(last, part, runs))
+    out.push(part.tex)
+    last = part
     runs = [[]]
   }
-  if (!survived) return ""
-  if (runs.length === 1) out.push(...runs[0])
+  if (last == null) return ""
+  if (runs.length === 1) out.push(...runs[0].map((glue) => glue.tex))
   return joinTex(out)
+}
+
+type EmittedFactor = { f: Factor; tex: string }
+
+/**
+ * The glue that stays between two survivors where factors vanished between
+ * them: the first run written that holds any. Between two numerals that is
+ * not enough when every run prints nothing, for the numerals fuse into another
+ * number: `\frac{GM}{5\,c^2\,5}` stripped to `\frac{M}{55}`, where the value is
+ * M/25, and `2\,G\,3\,M` to `23M`. There the first run holding a kern stays,
+ * each kern rebuilt from its width (keepNumeralsApart). With no kern written
+ * (`2G3M`), nothing from the source can keep them apart, and the row declines
+ * rather than set a separator the author did not write.
+ */
+function separatorAcross(left: EmittedFactor, right: EmittedFactor, runs: EmittedFactor[][]): string[] {
+  const written = runs.find((run) => run.some((glue) => glue.tex !== ""))
+  if (written != null) return written.map((glue) => glue.tex)
+  if (!numeralsMeet(left.f, right.f)) return []
+  const kerned = runs.find((run) => run.some((glue) => glue.f.kern !== undefined))
+  if (kerned == null) {
+    throw new Unsupported(
+      `the numerals “${left.tex}” and “${right.tex}” with nothing but a stripped constant between them, which would set them side by side as one number — not supported`,
+    )
+  }
+  return kerned.map((glue) => (glue.f.kern !== undefined ? rebuiltKern(glue.f).emit() : glue.tex))
+}
+
+/** A factor that prints a numeral last, set before one that prints a numeral first. */
+function numeralsMeet(left: Factor, right: Factor): boolean {
+  return left.numeralEdge?.("last") === true && right.numeralEdge?.("first") === true
+}
+
+/** A kern's glue, emitting the command its width is written with; a kern no command gives declines. */
+function rebuiltKern(glue: Factor): Factor {
+  const tex = glue.kern
+  if (tex == null) {
+    throw new Unsupported("spacing between two numerals that the engine cannot re-emit as written, which is not supported")
+  }
+  return { ...glue, emit: () => tex }
+}
+
+/**
+ * Kerns carry no source span and emission drops them (spacingTexOf), which is
+ * inert between most factors and not between two numerals: `3\,10^{2}` came
+ * back as `310^{2}`, `2.5\,10^{-3}` as `2.510^{-3}` and `3\,2` as `32`, each a
+ * different number, and the backstop's comparison, which ignores the kern it
+ * lost, passed them. Where nothing that prints stands between a factor that
+ * prints a numeral last and one that prints a numeral first, every kern
+ * between them is emitted, rebuilt from its width as headSpacingTex rebuilds
+ * one. The edges are asked as a live emission prints them, so a strip that
+ * bares a numeral inside a group (`2\,{G\,3}`) is seen here; factors that
+ * vanish between two numerals are separatorAcross's.
+ */
+function keepNumeralsApart(factors: Factor[]): void {
+  let prev = -1
+  for (let k = 0; k < factors.length; k += 1) {
+    const f = factors[k]
+    if (f.kind === "glue" || f.vanishes?.() === true) continue
+    const between = factors.slice(prev + 1, k)
+    if (
+      prev >= 0 &&
+      between.length > 0 &&
+      between.every((glue) => glue.kind === "glue" && glue.emit() === "") &&
+      numeralsMeet(factors[prev], f)
+    ) {
+      for (let g = prev + 1; g < k; g += 1) {
+        if (factors[g].kern !== undefined) factors[g] = rebuiltKern(factors[g])
+      }
+    }
+    prev = k
+  }
+}
+
+/**
+ * Whether a sum, as a live emission prints it, opens or closes on a numeral.
+ * A signed first term opens on its sign. A product whose every factor vanished
+ * prints the 1 emitTerm leaves in its place (`{2 + c^2}` prints `2 + 1`), and
+ * an emptied denominator prints nothing, so its term ends on the numerator.
+ */
+function sumNumeralEdge(sum: SumInfo, side: "first" | "last"): boolean {
+  const term = side === "first" ? sum.terms[0] : sum.terms[sum.terms.length - 1]
+  if (side === "first" && term.sign !== "") return false
+  if (term.slashIdx < 0) return productNumeralEdge(term.factors, side) ?? true
+  const num = term.factors.slice(0, term.slashIdx)
+  const den = term.factors.slice(term.slashIdx + 1)
+  if (side === "first") return productNumeralEdge(num, side) ?? true
+  return productNumeralEdge(den, side) ?? productNumeralEdge(num, side) ?? true
+}
+
+/** The numeral edge of a product's surviving factors, or null when every one vanished. */
+function productNumeralEdge(factors: Factor[], side: "first" | "last"): boolean | null {
+  const live = factors.filter((f) => f.kind !== "glue" && f.vanishes?.() !== true)
+  if (live.length === 0) return null
+  return live[side === "first" ? 0 : live.length - 1].numeralEdge?.(side) === true
 }
 
 /** Every factor of a product vanishes under the strip, and there is at least one. */
@@ -2958,6 +3124,12 @@ function emitTermWith(t: TermInfo, a12: number, b12: number): string {
  * Fold an inserted power of c or G into a power of the same constant already in
  * the term. Without this, `c` needing a c⁻¹ emitted `\frac{Gc}{c}` instead of
  * `G`, and `mc` needing another c emitted `mcc` instead of `mc^{2}`.
+ *
+ * A constant that alone keeps two numerals apart stays where it is written:
+ * folded, it left them side by side, and `x = 2\,G\,3\,M` restored to
+ * `\frac{23GM}{c^{2}}` (the kerns between print nothing). Kept, it is not
+ * folded, and an inserted power of it is set beside the product as it would
+ * be with no constant written.
  */
 function mergeConstants(
   factors: Factor[],
@@ -2968,12 +3140,28 @@ function mergeConstants(
   let a = a12
   let b = b12
   const rest: Factor[] = []
-  for (const f of factors) {
-    if (f.constant?.tex === "c") a += f.constant.e12
-    else if (f.constant?.tex === "G") b += f.constant.e12
-    else rest.push(f)
-  }
+  factors.forEach((f, k) => {
+    if (f.constant == null || separatesNumerals(rest, factors.slice(k + 1))) rest.push(f)
+    else if (f.constant.tex === "c") a += f.constant.e12
+    else b += f.constant.e12
+  })
   return { factors: rest, a12: a, b12: b }
+}
+
+/**
+ * Whether a factor set between `before` and `after` is all that keeps two
+ * numerals apart: the last factor before it and the first after it that is
+ * not itself a constant to fold meet as numerals (numeralsMeet), with nothing
+ * printed between them.
+ */
+function separatesNumerals(before: Factor[], after: Factor[]): boolean {
+  let left = before.length - 1
+  while (left >= 0 && before[left].kind === "glue") left -= 1
+  let right = 0
+  while (right < after.length && (after[right].kind === "glue" || after[right].constant != null)) right += 1
+  if (left < 0 || right >= after.length || !numeralsMeet(before[left], after[right])) return false
+  const between = [...before.slice(left + 1), ...after.slice(0, right)]
+  return between.every((f) => f.kind !== "glue" || f.emit() === "")
 }
 
 // ---------------------------------------------------------------------------
