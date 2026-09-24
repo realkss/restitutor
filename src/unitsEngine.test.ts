@@ -2804,17 +2804,104 @@ describe("batch-1 review fixes", () => {
       "x = 3\\left(\\frac{G}{c^{2}}\\right)^{10}\\left(\\frac{c^{2}}{G}\\right)^{9}\\frac{G^{9}}{2c^{18}}M",
     )
     assert.strictEqual(rawRestored("x = 3\\,\\frac{G}{2\\,c^{\\frac{10}{5}}}\\,M"), "x = 3\\frac{G}{2c^{\\frac{10}{5}}}M")
-    // At a restoring target a run the author set still may not be parted, and
-    // one the restoration makes by moving a constant it folds says so: `G` was
-    // folded into its own restored power, leaving `2\ \ 3`, which reads as 23.
+    // At a restoring target a run the author set still may not be parted.
     declines("x = 3\\,\\frac{1}{2}\\,\\left(\\frac{c^2}{G}\\right)^{10} M", WRITTEN("3", "\\frac{1}{2}"), [SI])
     assert.strictEqual(rawRestored("x = 3\\,\\frac{1}{2}\\,\\left(\\frac{c^2}{G}\\right)^{10} M", GEO), "x = 3\\,\\frac{1}{2}M")
-    declines(
-      "x = 2\\ G\\ 3\\ M",
-      "the numerals ending “2” and opening “3”, which the restoration sets side by side as one number, moving the constant written between them — not supported",
-      [SI],
-    )
+    // Step 7d: a control space or a `~` prints nothing between two numerals, so
+    // the G written between them stays in place instead of being folded into
+    // its restored power, which left `2\ \ 3` (read as 23) and declined.
+    assert.strictEqual(rawRestored("x = 2\\ G\\ 3\\ M"), "x = \\frac{2\\ G\\ 3\\ M}{c^{2}}")
+    assert.strictEqual(rawRestored("x = 2~G~3~M", HL), "x = \\frac{2~G~3~M}{c^{2}}")
     declines("x = 2\\ G\\ 3\\ M", FUSED("2", "3"), [GEO])
+  })
+
+  test("the net compares numerals and signs by identity, never by spelling (step 7d)", () => {
+    const GSI: TargetSpec = { system: "si", geometrized: true }
+    const WRITTEN = (left: string, right: string) =>
+      `the numerals ending “${left}” and opening “${right}”, one number or a product, which a constant restored between or into them would leave only as the product — not supported`
+    // Step 7c review: runs matched by spelling let a number split in one term
+    // answer for one made in the other, and these shipped at SI and HL:
+    // `\frac{2G\,\left.3\right.M}{c^{2}} + \frac{2\ \ 3G\ M}{c^{2}}`, the first
+    // term's 2 and 3 parted by G, the second's set side by side as 23.
+    const offset: [string, string, string][] = [
+      ["x = 2\\,\\left.3\\right.\\,M + 2\\ G\\ 3\\ M", "2", "3"],
+      ["x = 2\\ G\\ 3\\ M + 2\\,\\left.3\\right.\\,M", "2", "3"],
+      ["x = 2\\,\\left.3\\right.\\,M + 2~G~3~M", "2", "3"],
+      ["x = 2~G~3~M + 2\\,\\left.3\\right.\\,M", "2", "3"],
+      ["x = 2\\,\\left.3\\right.\\,M + 2\\ G\\ 3\\ M + r", "2", "3"],
+      ["x = 5\\,\\left.7\\right.\\,M + 5\\ G\\ 7\\ M", "5", "7"],
+      ["x = 2\\,\\left.3\\right.\\,\\left(\\frac{c^2}{G}\\right)^{10} M + 2\\ G\\ 3\\ M", "2", "3"],
+    ]
+    for (const [tex, left, right] of offset) {
+      declines(tex, WRITTEN(left, right), [SI, HL])
+      declines(tex, FUSED(left, right), [GEO, GSI])
+    }
+    // The pair named is the one that meets, each numeral whole: before, the
+    // made run's whole tail was named as the numeral opening it (“\frac{1}{3}2”).
+    declines("x = 3\\,\\frac{G}{3c^2}\\,2M", FUSED("3", "\\frac{1}{3}"), [GEO])
+    declines("x = 10^{3}\\,G\\,5 M", FUSED("10^{3}", "5"), [GEO])
+    // Numerals spelled alike are still two numerals: the author's `10^{3}` does
+    // not answer for the `1^{2}0^{2}` a strip makes in the other term, nor the
+    // author's `\frac{1}{2}\frac{1}{2}` for the pair a strip sets side by side.
+    declines("x = 10^{3}M + 1^{2}\\,G\\,0^{2}\\,\\frac{M}{c^2}", FUSED("1^{2}", "0^{2}"), [GEO, GSI])
+    declines(
+      "x = \\frac{1}{2}\\frac{1}{2}M + \\frac{1}{2}\\,G\\,\\frac{1}{2}\\frac{M}{c^2}",
+      FUSED("\\frac{1}{2}", "\\frac{1}{2}"),
+      [GEO, GSI],
+    )
+
+    // A sign on a factor that a strip leaves right after another factor reads
+    // as a sign between terms: live at GEO `3{-2}M`, which reads 3 − 2M where
+    // the value is −6M, and `3{+M}`, 3 + M for 3M.
+    const STRIPPED = (signed: string) =>
+      `the sign on “${signed}”, which a stripped constant leaves right after another factor, where it reads as a sign between terms — not supported`
+    const stripped: [string, string, string][] = [
+      ["x = 3\\,\\frac{G}{c^2}\\,{-2}M", "-2", "x = 3\\frac{G}{c^{2}}{-2}M"],
+      ["x = 3\\,G\\,{-2}\\,\\frac{M}{c^2}", "-2", "x = 3G{-2}\\frac{M}{c^{2}}"],
+      ["x = 3\\,\\frac{G}{c^2}\\,{+M}", "+M", "x = 3\\frac{G}{c^{2}}{+M}"],
+      // Inside a group, or with the sign's factor null-delimited or set in a
+      // font, the strip moves it all the same: live `3{{-2}}M`, `{3}{-2}M`,
+      // `3\left.-2\right.M` and `3\mathbf{-2}M`.
+      ["x = 3\\,{G{-2}}M", "-2", "x = \\frac{3{G{-2}}M}{c^{2}}"],
+      ["x = {3G}{-2}\\frac{M}{c^2}", "-2", "x = {3G}{-2}\\frac{M}{c^{2}}"],
+      ["x = 3\\,G\\,\\left.-2\\right.\\,\\frac{M}{c^2}", "-2", "x = 3G\\left.-2\\right.\\frac{M}{c^{2}}"],
+      ["x = 3\\,G\\,\\mathbf{-2}\\,\\frac{M}{c^2}", "-2", "x = 3G\\mathbf{-2}\\frac{M}{c^{2}}"],
+    ]
+    for (const [tex, signed, asWritten] of stripped) {
+      declines(tex, STRIPPED(signed), [GEO, GSI])
+      assert.strictEqual(rawRestored(tex, SI), asWritten)
+      assert.strictEqual(rawRestored(tex, HL), asWritten)
+    }
+    // With no numeral beside it (`M{-2}`, M − 2 for −2M), with ± or ∓, and with
+    // the author's own `3{-2}M` in the other term, which is another sign.
+    declines("x = M\\,G\\,{-2}\\frac{1}{c^2}", STRIPPED("-2"), [GEO, GSI])
+    declines("x = 3\\,\\frac{G}{c^2}\\,{\\pm 2}M", STRIPPED("\\pm 2"), [GEO, GSI])
+    declines("x = 3\\,\\frac{G}{c^2}\\,{\\mp 2}M", STRIPPED("\\mp 2"), [GEO, GSI])
+    declines("x = 3\\,\\frac{G}{c^2}\\,{-2}M + 3{-2}M", STRIPPED("-2"), [GEO, GSI])
+    // A sign the author set right after a factor stays the author's reading,
+    // and a strip that leaves it after a relation, a sign or a product sign
+    // leaves it a sign on its factor.
+    assert.strictEqual(rawRestored("x = 3{-2}M", GEO), "x = 3{-2}M")
+    assert.strictEqual(rawRestored("x = \\frac{G}{c^2}{-2}M", GEO), "x = {-2}M")
+    assert.strictEqual(rawRestored("x = r + \\frac{G}{c^2}{-2}M", GEO), "x = r + {-2}M")
+    assert.strictEqual(rawRestored("x = 3\\cdot\\frac{G}{c^2}{-2}M", GEO), "x = 3\\cdot{-2}M")
+    assert.strictEqual(rawRestored("x = 3\\,\\frac{G}{c^2}\\cdot{-2}M", GEO), "x = 3\\cdot{-2}M")
+    // The restoration's side of the same reading: live at SI and HL,
+    // `x = {-2}M` shipped as `\frac{G{-2}M}{c^{2}}`, which reads (G − 2M)/c²,
+    // and a G folded from after the sign to before it read 3G − 2M.
+    const RESTORED = (signed: string) =>
+      `the sign on “${signed}”, which the restoration sets right after another factor, where it reads as a sign between terms — not supported`
+    declines("x = {-2}M", RESTORED("-2"), [SI, HL])
+    declines("x = 3\\,{-2}\\,G\\,M", RESTORED("-2"), [SI, HL])
+    declines("x = 3{-2}M", RESTORED("-2"), [SI, HL])
+    assert.strictEqual(rawRestored("x = {-2}M", GEO), "x = {-2}M")
+    // A G folded into its restored power and set back where it was written
+    // keeps the sign's neighbor, as the author wrote it.
+    assert.strictEqual(rawRestored("x = 3\\,G\\,{-2}\\,M"), "x = \\frac{3G{-2}M}{c^{2}}")
+    declines("x = 3\\,G\\,{-2}\\,M", STRIPPED("-2"), [GEO])
+    // A sign between terms is no sign on a factor, and a restoration beside one reads as before.
+    assert.strictEqual(rawRestored("E = -m"), "E = -mc^{2}")
+    assert.strictEqual(rawRestored("x = r - M"), "x = r - \\frac{GM}{c^{2}}")
   })
 
   test("a strip that makes a fraction of numerals after a numeral declines, spacing or not", () => {

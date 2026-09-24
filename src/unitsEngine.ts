@@ -345,16 +345,21 @@ type Ctx = {
    */
   constantsRead: ("c" | "G")[]
   /**
-   * A replay for the numeral-fusion net (numeralFusionNet): every power of c
-   * or G, written or restored, is emitted as one opaque mark (netOpaque), and
-   * so, in a masked replay to a geometrized target, is every factor the live
-   * strip drops whole. The numerals in them are a constant's power, which a
-   * restoration changes, or go with what a strip removes: none of them is a
-   * number the output sets beside another. This is decided by what the
-   * analysis read, never by how a power is spelled (`c^{\frac{10}{5}}`,
-   * `\left(\frac{G}{c^2}\right)^{10}`).
+   * Set during the pair of replays the numeral-fusion net reads
+   * (numeralFusionNet), live and masked, and null otherwise. It holds the
+   * identity each factor and each signed term is given there (netId), the
+   * same in both replays, so the net compares what the output sets side by
+   * side by which numeral and which factor it is, never by spelling.
+   *
+   * In these replays every power of c or G, written or restored, is emitted
+   * as one opaque mark (netOpaque), and so, in a masked replay to a
+   * geometrized target, is every factor the live strip drops whole. The
+   * numerals in them are a constant's power, which a restoration changes, or
+   * go with what a strip removes: none of them is a number the output sets
+   * beside another. This is decided by what the analysis read, never by how a
+   * power is spelled (`c^{\frac{10}{5}}`, `\left(\frac{G}{c^2}\right)^{10}`).
    */
-  net: boolean
+  net: Map<object, string> | null
 }
 
 /** Constants are inserted (or stripped) only in a live emission, never in a masked one. */
@@ -367,12 +372,63 @@ const NET_OPEN = "\u0002"
 const NET_CLOSE = "\u0003"
 
 /**
+ * The tags a net replay sets in its TeX (Ctx.net), each an identity closed by
+ * NET_TAG_CLOSE; none is TeX, and no other emission holds one. NET_NUMERAL
+ * opens a numeral factor's digits, NET_END closes any factor, and NET_SIGN
+ * opens the sign written before a sum's first term.
+ */
+const NET_NUMERAL = "\u0004"
+const NET_TAG_CLOSE = "\u0005"
+const NET_END = "\u0006"
+const NET_SIGN = "\u0007"
+const NET_TAG = /[\u0004\u0006\u0007][^\u0005]*\u0005/g
+
+/**
  * TeX the numeral-fusion net reads as one visible mark and does not read
  * into: a letter prints there, and the digits inside are not the author's
  * number (Ctx.net).
  */
 function netOpaque(tex: string): string {
   return tex === "" ? tex : `${NET_OPEN}${tex}${NET_CLOSE}`
+}
+
+/** The identity a net replay gives a factor or a term, the same in the live replay and the masked one. */
+function netId(net: Map<object, string>, thing: object): string {
+  let id = net.get(thing)
+  if (id == null) {
+    id = String(net.size + 1)
+    net.set(thing, id)
+  }
+  return id
+}
+
+/**
+ * A factor's TeX as a product sets it. In a net replay, a numeral factor's
+ * digits are tagged with its identity, and the end of every factor with the
+ * factor's, so the net knows which numeral each digit is and which factor a
+ * sign is set right after. Glue is no factor and is not tagged.
+ */
+function factorTex(f: Factor, tex: string, ctx: Ctx): string {
+  if (ctx.net == null || f.kind === "glue") return tex
+  const id = netId(ctx.net, f)
+  const numeral = f.kind === "num" && /^[0-9.]/.test(tex) ? `${NET_NUMERAL}${id}${NET_TAG_CLOSE}` : ""
+  return `${numeral}${tex}${NET_END}${id}${NET_TAG_CLOSE}`
+}
+
+/**
+ * The 1 emission sets where nothing is left of a product: a strip emptied it,
+ * or every constant in it folded into a restored power. In a net replay it is
+ * tagged as made, for no numeral the author wrote is that one.
+ */
+function emptyProductTex(ctx: Ctx): string {
+  return ctx.net == null ? "1" : `${NET_NUMERAL}made${NET_TAG_CLOSE}1`
+}
+
+/** A sum's leading sign as a term sets it, tagged in a net replay with the term's identity. */
+function leadSignTex(t: TermInfo, ctx: Ctx): string {
+  const sign = leadSign(t.sign)
+  if (ctx.net == null || sign === "") return sign
+  return `${NET_SIGN}${netId(ctx.net, t)}${NET_TAG_CLOSE}${sign}`
 }
 
 /**
@@ -1352,7 +1408,7 @@ function emitSum(
     .map((t, idx) => {
       const ins = emitsConstants(ctx) ? insertions[idx] : null
       const body = ins ? emitTermWith(t, ins.a, ins.b, ctx) : emitTerm(t, ctx)
-      const lead = idx === 0 ? leadSign(t.sign) : ` ${foldedOp(ops[idx - 1], t.sign)} `
+      const lead = idx === 0 ? leadSignTex(t, ctx) : ` ${foldedOp(ops[idx - 1], t.sign)} `
       return lead + body
     })
     .join("")
@@ -2405,7 +2461,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
           unitConstant: true,
           vanishes: () => stripsConstants(ctx),
           emit: () => {
-            if (!stripsConstants(ctx)) return ctx.net ? netOpaque(src) : src
+            if (!stripsConstants(ctx)) return ctx.net != null ? netOpaque(src) : src
             ctx.mutated = true
             return ""
           },
@@ -2427,7 +2483,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const emit = () => {
         // Stripped constants may empty a side: \frac{c^4}{4GM} → \frac{1}{4M},
         // \frac{v}{c} → v.
-        const numTex = joinFactors(frac.num, ctx) || "1"
+        const numTex = joinFactors(frac.num, ctx) || emptyProductTex(ctx)
         const denTex = joinFactors(frac.den, ctx)
         if (denTex === "") return numTex
         return `${cmd}{${numTex}}{${denTex}}`
@@ -2975,7 +3031,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
           unitConstant: true,
           vanishes: () => stripsConstants(ctx),
           emit: () => {
-            if (!stripsConstants(ctx)) return ctx.net ? netOpaque(wholeTex) : wholeTex
+            if (!stripsConstants(ctx)) return ctx.net != null ? netOpaque(wholeTex) : wholeTex
             ctx.mutated = true
             return ""
           },
@@ -3115,8 +3171,11 @@ function joinFactors(factors: Factor[], ctx: Ctx): string {
   // Every factor is emitted, the vanishing ones too: emission is where a strip
   // is recorded (ctx.mutated), and a translation whose strips all vanished
   // was reported unchanged and skipped the re-read backstop.
-  const dropped = (f: Factor) => ctx.net && ctx.mask && ctx.strip && f.kind !== "glue" && vanishesLive(f, ctx)
-  const parts: EmittedFactor[] = factors.map((f) => ({ f, tex: dropped(f) ? netOpaque(f.emit()) : f.emit() }))
+  const dropped = (f: Factor) => ctx.net != null && ctx.mask && ctx.strip && f.kind !== "glue" && vanishesLive(f, ctx)
+  const parts: EmittedFactor[] = factors.map((f) => ({
+    f,
+    tex: factorTex(f, dropped(f) ? netOpaque(f.emit()) : f.emit(), ctx),
+  }))
   const out: string[] = []
   // The glue runs since the last surviving factor, a new run opening wherever a factor vanished.
   let runs: EmittedFactor[][] = [[]]
@@ -3263,11 +3322,11 @@ function emitTerm(t: TermInfo, ctx: Ctx): string {
   if (t.slashIdx >= 0) {
     const num = joinFactors(t.factors.slice(0, t.slashIdx), ctx)
     const den = joinFactors(t.factors.slice(t.slashIdx + 1), ctx)
-    if (den === "") return num === "" ? "1" : num
-    if (num === "") return `1/${den}`
+    if (den === "") return num === "" ? emptyProductTex(ctx) : num
+    if (num === "") return `${emptyProductTex(ctx)}/${den}`
     return `${num}/${den}`
   }
-  return joinFactors(t.factors, ctx) || "1"
+  return joinFactors(t.factors, ctx) || emptyProductTex(ctx)
 }
 
 /**
@@ -3277,8 +3336,8 @@ function emitTerm(t: TermInfo, ctx: Ctx): string {
  * `2\pi k_B c`). Both insertion positions are computed on the factor list
  * first, so neither insertion shifts the other.
  */
-function partsWith(factors: Factor[], gTex: string, cTex: string): string[] {
-  const parts = factors.map((f) => (f.isBareSum ? `\\left(${f.emit()}\\right)` : f.emit()))
+function partsWith(factors: Factor[], gTex: string, cTex: string, ctx: Ctx): string[] {
+  const parts = factors.map((f) => factorTex(f, f.isBareSum ? `\\left(${f.emit()}\\right)` : f.emit(), ctx))
   let headPos = 0
   for (let idx = 0; idx < factors.length; idx += 1) {
     const kind = factors[idx].kind
@@ -3318,14 +3377,19 @@ function emitTermWith(t: TermInfo, a12: number, b12: number, ctx: Ctx): string {
       const bodyTerm = t.factors[sqrtIdx].sqrt!.bodyTerm!
       // The body's sign is the sum's to emit, and rebuilt from the term alone it
       // went missing: `x = \sqrt{-Mr}` came back as `\sqrt{\frac{GMr}{c^{2}}}`.
-      const inner = leadSign(bodyTerm.sign) + emitTermWith(bodyTerm, a12 * 2, b12 * 2, ctx)
-      const parts = t.factors.map((f, idx) => (idx === sqrtIdx ? `\\sqrt{${inner}}` : f.emit()))
+      const inner = leadSignTex(bodyTerm, ctx) + emitTermWith(bodyTerm, a12 * 2, b12 * 2, ctx)
+      const parts = t.factors.map((f, idx) => factorTex(f, idx === sqrtIdx ? `\\sqrt{${inner}}` : f.emit(), ctx))
       return joinTex(parts)
     }
   }
 
-  // A power restored, which a replay for the numeral-fusion net marks opaque (Ctx.net).
-  const restored = (tex: "c" | "G", e12: number) => (ctx.net ? netOpaque(formatExp(tex, e12)) : formatExp(tex, e12))
+  // A power restored, which a replay for the numeral-fusion net marks opaque
+  // and closes as the written factor folded into it, `from`, or else as a
+  // factor no written one is (Ctx.net).
+  const restored = (tex: "c" | "G", e12: number, from?: Factor) =>
+    ctx.net == null
+      ? formatExp(tex, e12)
+      : `${netOpaque(formatExp(tex, e12))}${NET_END}${from == null ? "restored" : netId(ctx.net, from)}${NET_TAG_CLOSE}`
   const cNum = a12 > 0 ? restored("c", a12) : ""
   const cDen = a12 < 0 ? restored("c", -a12) : ""
   const gNum = b12 > 0 ? restored("G", b12) : ""
@@ -3336,8 +3400,8 @@ function emitTermWith(t: TermInfo, a12: number, b12: number, ctx: Ctx): string {
   if (t.slashIdx >= 0) {
     const numF = t.factors.slice(0, t.slashIdx)
     const denF = t.factors.slice(t.slashIdx + 1)
-    const numParts = partsWith(numF, gNum, cNum)
-    const denParts = partsWith(denF, gDen, cDen)
+    const numParts = partsWith(numF, gNum, cNum, ctx)
+    const denParts = partsWith(denF, gDen, cDen, ctx)
     return `${joinTex(numParts)}/${joinTex(denParts)}`
   }
 
@@ -3345,19 +3409,13 @@ function emitTermWith(t: TermInfo, a12: number, b12: number, ctx: Ctx): string {
   const fracIdx = t.factors.findIndex((f) => f.kind === "frac")
   if (fracIdx >= 0 && t.factors[fracIdx].frac) {
     const frac = t.factors[fracIdx].frac!
-    let numParts = partsWith(frac.num, gNum, cNum)
-    const denParts = partsWith(frac.den, gDen, cDen)
     // Drop a now-redundant bare 1 numerator: \frac{1·c⁴}{…} → \frac{c⁴}{…}.
-    if (
-      (gNum || cNum) &&
-      frac.num.length === 1 &&
-      frac.num[0].kind === "num" &&
-      frac.num[0].emit() === "1"
-    ) {
-      numParts = numParts.filter((p) => p !== "1")
-    }
+    const bareOne =
+      (gNum !== "" || cNum !== "") && frac.num.length === 1 && frac.num[0].kind === "num" && frac.num[0].emit() === "1"
+    const numParts = partsWith(bareOne ? [] : frac.num, gNum, cNum, ctx)
+    const denParts = partsWith(frac.den, gDen, cDen, ctx)
     const fracTex = `${frac.cmd}{${joinTex(numParts)}}{${joinTex(denParts)}}`
-    return joinTex(t.factors.map((f, idx) => (idx === fracIdx ? fracTex : f.emit())))
+    return joinTex(t.factors.map((f, idx) => factorTex(f, idx === fracIdx ? fracTex : f.emit(), ctx)))
   }
 
   // Plain product: an inserted constant first folds into a power of the same
@@ -3366,10 +3424,11 @@ function emitTermWith(t: TermInfo, a12: number, b12: number, ctx: Ctx): string {
   const merged = mergeConstants(t.factors, a12, b12)
   const numParts = partsWith(
     merged.factors,
-    merged.b12 > 0 ? restored("G", merged.b12) : "",
-    merged.a12 > 0 ? restored("c", merged.a12) : "",
+    merged.b12 > 0 ? restored("G", merged.b12, merged.folded.G) : "",
+    merged.a12 > 0 ? restored("c", merged.a12, merged.folded.c) : "",
+    ctx,
   )
-  const numerator = joinTex(numParts) || "1"
+  const numerator = joinTex(numParts) || emptyProductTex(ctx)
   const mergedDen =
     (merged.b12 < 0 ? restored("G", -merged.b12) : "") +
     (merged.a12 < 0 ? restored("c", -merged.a12) : "")
@@ -3384,32 +3443,44 @@ function emitTermWith(t: TermInfo, a12: number, b12: number, ctx: Ctx): string {
  *
  * A constant that alone keeps two numerals apart stays where it is written:
  * folded, it left them side by side, and `x = 2\,G\,3\,M` restored to
- * `\frac{23GM}{c^{2}}` (the kerns between print nothing). Kept, it is not
+ * `\frac{23GM}{c^{2}}` (the kerns between print nothing), and `x = 2\ G\ 3\ M`
+ * to `\frac{2\ \ 3G\ M}{c^{2}}`, which reads as 23 all the same. Kept, it is not
  * folded, and an inserted power of it is set beside the product as it would
  * be with no constant written.
+ *
+ * `folded` holds the first written factor of each constant folded away, so
+ * that the power it went into is, to the numeral-fusion net, that factor
+ * moved, not a factor the author never wrote (Ctx.net).
  */
 function mergeConstants(
   factors: Factor[],
   a12: number,
   b12: number,
-): { factors: Factor[]; a12: number; b12: number } {
-  if (!factors.some((f) => f.constant)) return { factors, a12, b12 }
+): { factors: Factor[]; a12: number; b12: number; folded: { c?: Factor; G?: Factor } } {
+  const folded: { c?: Factor; G?: Factor } = {}
+  if (!factors.some((f) => f.constant)) return { factors, a12, b12, folded }
   let a = a12
   let b = b12
   const rest: Factor[] = []
   factors.forEach((f, k) => {
-    if (f.constant == null || separatesNumerals(rest, factors.slice(k + 1))) rest.push(f)
-    else if (f.constant.tex === "c") a += f.constant.e12
+    if (f.constant == null || separatesNumerals(rest, factors.slice(k + 1))) {
+      rest.push(f)
+      return
+    }
+    folded[f.constant.tex] ??= f
+    if (f.constant.tex === "c") a += f.constant.e12
     else b += f.constant.e12
   })
-  return { factors: rest, a12: a, b12: b }
+  return { factors: rest, a12: a, b12: b, folded }
 }
 
 /**
  * Whether a factor set between `before` and `after` is all that keeps two
  * numerals apart: the last factor before it and the first after it that is
  * not itself a constant to fold meet as numerals (numeralsMeet), with nothing
- * printed between them.
+ * printed between them. Spacing prints nothing there, as the numeral-fusion
+ * net reads it: a kern, a control space `\ ` and a `~` alike (`2\ 3` is 23
+ * with its digits grouped), where a product sign prints.
  */
 function separatesNumerals(before: Factor[], after: Factor[]): boolean {
   let left = before.length - 1
@@ -3418,7 +3489,7 @@ function separatesNumerals(before: Factor[], after: Factor[]): boolean {
   while (right < after.length && (after[right].kind === "glue" || after[right].constant != null)) right += 1
   if (left < 0 || right >= after.length || !numeralsMeet(before[left], after[right])) return false
   const between = [...before.slice(left + 1), ...after.slice(0, right)]
-  return between.every((f) => f.kind !== "glue" || f.emit() === "")
+  return between.every((f) => f.kind !== "glue" || printsNothingBetweenNumerals(f.emit()))
 }
 
 // ---------------------------------------------------------------------------
@@ -3846,7 +3917,7 @@ export function dimensionOf(
     mask: false,
     font: null,
     constantsRead: [],
-    net: false,
+    net: null,
   }
   const legendOut = () =>
     Array.from(ctx.legend.values()).map((record) => ({
@@ -3878,37 +3949,75 @@ export function dimensionOf(
 }
 
 /**
+ * A numeral as the net reads it: its TeX, and its identity. A numeral factor's
+ * digits carry the factor's (factorTex), the same in the live replay and the
+ * masked one; a fraction of numerals carries its parts'. A digit no numeral
+ * factor printed carries its spelling: one in an index, a power or a
+ * radical's degree sliced from the source as written, which both replays
+ * print alike.
+ */
+type NumeralMark = { tex: string; id: string }
+
+/**
  * A line of print, as far as numerals go: each numeral in order, and a break
  * (null) wherever something visible stands between two of them.
  */
-type NumeralLine = (string | null)[]
+type NumeralLine = (NumeralMark | null)[]
 
 /**
- * The lines a TeX string prints (numeralLines appends them to `lines`), the
- * first being the string's own. A numeral is a digit, or a decimal point, as
- * a numeral factor reads it (so `32` is two numerals side by side, and a strip
- * that fuses `3` and `2` into `32` shows), or a fraction whose numerator and
- * denominator are both digit runs (`\frac{1}{2}`, `\frac12`). A numeral with
- * a numeric power (`10^{3}`, `\frac{1}{2}^{2}`) is still a numeral at its
- * end. Braces, the null delimiters `\left.` and `\right.`, whitespace,
- * spacing, and commands that only restyle what they hold print nothing
- * between two numerals; anything else is visible: a letter, a bracket or bar,
- * an operator, a root. A fraction's numerator and denominator, and a script,
- * are lines of their own, whose numerals never meet one outside them
- * (`c^{2}5` is c²·5, not a 25), and a numeric script is that line as well as
- * part of the numeral it may sit on (`10^{23}` holds the pair 2, 3). An opaque
- * mark (netOpaque) prints something visible, and nothing in it is read.
+ * What the net reads off a replay: its lines of numerals, and for each sign
+ * a net replay tagged (leadSignTex), the identity of the factor it is set
+ * right after, or null. A sign is set right after a factor when the last
+ * thing printed before it is that factor's end, with nothing but spacing,
+ * braces or null delimiters between: `3{-2}` sets the − right after the 3,
+ * where it reads as a subtraction, and `3\cdot{-2}` and `= {-2}` set it after
+ * no factor.
  */
-function numeralLines(tex: string, lines: NumeralLine[] = []): NumeralLine[] {
+type NetReading = { lines: NumeralLine[]; signs: Map<string, string | null> }
+
+/**
+ * Reads the lines a TeX string prints into `reading`, and returns the
+ * string's own. A numeral is a digit, or a decimal point, as a numeral factor
+ * reads it (so `32` is two numerals side by side, and a strip that fuses `3`
+ * and `2` into `32` shows), or a fraction whose numerator and denominator are
+ * both digit runs (`\frac{1}{2}`, `\frac12`). A numeral with a numeric power
+ * (`10^{3}`, `\frac{1}{2}^{2}`) is still a numeral at its end. Braces, the
+ * null delimiters `\left.` and `\right.`, whitespace, spacing, and commands
+ * that only restyle what they hold print nothing between two numerals;
+ * anything else is visible: a letter, a sign, a bracket or bar, an operator,
+ * a root. A fraction's numerator and denominator, and a script, are lines of
+ * their own, whose numerals never meet one outside them (`c^{2}5` is c²·5,
+ * not a 25), and a numeric script is that line as well as part of the numeral
+ * it may sit on (`10^{23}` holds the pair 2, 3). An opaque mark (netOpaque)
+ * prints something visible, and nothing in it is read.
+ */
+function numeralLines(tex: string, reading: NetReading): NumeralLine {
   const line: NumeralLine = []
-  lines.push(line)
+  reading.lines.push(line)
+  // The factor whose end is the first thing read since the last visible mark.
+  let after: string | null = null
+  const visible = (mark: NumeralMark | null) => {
+    line.push(mark)
+    after = null
+  }
   let i = 0
   while (i < tex.length) {
     const ch = tex[i]
-    if (/[\s{}~]/.test(ch)) {
+    if (ch === NET_NUMERAL || ch === NET_END || ch === NET_SIGN) {
+      const close = tex.indexOf(NET_TAG_CLOSE, i)
+      const id = tex.slice(i + 1, close)
+      i = close + 1
+      if (ch === NET_END) {
+        after ??= id
+      } else if (ch === NET_SIGN) {
+        reading.signs.set(id, after)
+      } else {
+        for (; i < tex.length && /[0-9.]/.test(tex[i]); i += 1) visible({ tex: tex[i], id: `#${id}` })
+      }
+    } else if (/[\s{}~]/.test(ch)) {
       i += 1
     } else if (/[0-9.]/.test(ch)) {
-      line.push(ch)
+      visible({ tex: ch, id: `=${ch}` })
       i += 1
     } else if (ch === NET_OPEN) {
       let depth = 0
@@ -3917,29 +4026,37 @@ function numeralLines(tex: string, lines: NumeralLine[] = []): NumeralLine[] {
         else if (tex[i] === NET_CLOSE) depth -= 1
         i += 1
       } while (depth > 0 && i < tex.length)
-      line.push(null)
+      visible(null)
     } else if (ch === "^" || ch === "_") {
       const script = texArgumentAt(tex, i + 1)
-      const numeric = /^[\s{}0-9.+\-/]*$/.test(script.body)
-      if (numeric && line.length > 0 && line[line.length - 1] != null) {
-        line[line.length - 1] += `${ch}{${script.body.trim()}}`
+      const body = script.body.replace(NET_TAG, "")
+      const numeric = /^[\s{}0-9.+\-/]*$/.test(body)
+      const last = line[line.length - 1]
+      if (numeric && last != null) {
+        last.tex += `${ch}{${body.trim()}}`
+        after = null
       } else {
-        line.push(null)
+        visible(null)
       }
       // The script's own digits are a line of their own whatever it sits on:
       // a strip inside a script fuses digits there (`10^{2G3}` to `10^{23}`,
       // `2^{1\frac{G}{c^2}0}` to `2^{10}`, `e^{2\,G\,3}` to `e^{23}`), and the
       // power carries them into the value.
-      numeralLines(script.body, lines)
+      numeralLines(script.body, reading)
       i = script.end
     } else if (ch === "\\") {
-      i = controlSequenceMarks(tex, i, line, lines)
+      i = controlSequenceMarks(tex, i, visible, reading)
     } else {
-      line.push(null)
+      visible(null)
       i += 1
     }
   }
-  return lines
+  return line
+}
+
+/** Whether glue prints nothing between two numerals, as the net reads it (numeralLines). */
+function printsNothingBetweenNumerals(tex: string): boolean {
+  return numeralLines(tex, { lines: [], signs: new Map() }).length === 0
 }
 
 /** Spacing, and commands that restyle what follows or what they hold without printing anything of their own. */
@@ -4003,15 +4120,23 @@ const KERN_WORDS = new Set(["kern", "mkern", "hskip", "mskip"])
 const KERN_WIDTH = /\s*\{?\s*[-+]?[\d.]+\s*[a-z]{2}\s*\}?/y
 const DELIMITER_SIZES = /^(?:left|right|middle|bigg?|Bigg?)[lrm]?$/
 
-/** Reads the control sequence at `i` into `line` (numeralLines), and returns where the text after it resumes. */
-function controlSequenceMarks(tex: string, i: number, line: NumeralLine, lines: NumeralLine[]): number {
+/**
+ * Reads the control sequence at `i` (numeralLines), handing what it prints
+ * to `visible`, and returns where the text after it resumes.
+ */
+function controlSequenceMarks(
+  tex: string,
+  i: number,
+  visible: (mark: NumeralMark | null) => void,
+  reading: NetReading,
+): number {
   const word = /\\([a-zA-Z]+)/y
   word.lastIndex = i
   const found = word.exec(tex)
   if (found == null) {
     // A control symbol: `\,`, `\:`, `\;`, `\!`, `\>` and a control space print
     // only space; any other (`\\`, `\{`, `\|`) prints.
-    if (!/[,:;!>\s]/.test(tex[i + 1] ?? "")) line.push(null)
+    if (!/[,:;!>\s]/.test(tex[i + 1] ?? "")) visible(null)
     return i + 2
   }
   const name = found[1]
@@ -4019,19 +4144,25 @@ function controlSequenceMarks(tex: string, i: number, line: NumeralLine, lines: 
   if (FRAC_CMDS.has(`\\${name}`)) {
     const num = texArgumentAt(tex, end)
     const den = texArgumentAt(tex, num.end)
-    const numLines = numeralLines(num.body)
-    const denLines = numeralLines(den.body)
-    const numDigits = digitRunOf(numLines)
-    const denDigits = digitRunOf(denLines)
-    line.push(numDigits != null && denDigits != null ? `\\${name}{${numDigits}}{${denDigits}}` : null)
-    lines.push(...numLines, ...denLines)
+    const part = (body: string) => {
+      const from = reading.lines.length
+      numeralLines(body, reading)
+      return digitRunOf(reading.lines.slice(from))
+    }
+    const numDigits = part(num.body)
+    const denDigits = part(den.body)
+    visible(
+      numDigits != null && denDigits != null
+        ? { tex: `\\${name}{${numDigits.tex}}{${denDigits.tex}}`, id: `(${numDigits.id}/${denDigits.id})` }
+        : null,
+    )
     return den.end
   }
   if (DELIMITER_SIZES.test(name)) {
     const nullDelimiter = /\s*\./y
     nullDelimiter.lastIndex = end
     if (nullDelimiter.exec(tex) != null) return nullDelimiter.lastIndex
-    line.push(null)
+    visible(null)
     return end
   }
   if (KERN_WORDS.has(name)) {
@@ -4042,24 +4173,25 @@ function controlSequenceMarks(tex: string, i: number, line: NumeralLine, lines: 
     if (tex[end] === "*") end += 1
     return texArgumentAt(tex, end).end
   }
-  if (!INVISIBLE_WORDS.has(name)) line.push(null)
+  if (!INVISIBLE_WORDS.has(name)) visible(null)
   return end
 }
 
 /**
- * The digits of a fraction's part (controlSequenceMarks) when the part prints
- * a digit run and nothing else, else null. It is read off the part's lines,
- * not its text, so that braces, null delimiters and restyling print nothing
- * here as everywhere else in the net: `\frac{1}{{2}}` and
- * `\frac{1}{\left.2\right.}` are ½ to a reader, as `\frac{1}{2}` is. The part's
- * own line must be digits with no break, and no further line (a script) may
- * hold a numeral.
+ * The digits of a fraction's part (controlSequenceMarks), with their
+ * identities, when the part prints a digit run and nothing else, else null.
+ * It is read off the part's lines, not its text, so that braces, null
+ * delimiters and restyling print nothing here as everywhere else in the net:
+ * `\frac{1}{{2}}` and `\frac{1}{\left.2\right.}` are ½ to a reader, as
+ * `\frac{1}{2}` is. The part's own line must be digits with no break, and no
+ * further line (a script) may hold a numeral.
  */
-function digitRunOf(partLines: NumeralLine[]): string | null {
+function digitRunOf(partLines: NumeralLine[]): NumeralMark | null {
   const [own, ...further] = partLines
-  const digits = own.every((mark) => mark != null && /^[0-9.]$/.test(mark)) ? own.join("") : ""
-  if (!/[0-9]/.test(digits)) return null
-  return further.every((line) => line.every((mark) => mark == null)) ? digits : null
+  const marks = own.every((mark) => mark != null && /^[0-9.]$/.test(mark.tex)) ? (own as NumeralMark[]) : []
+  if (!marks.some((mark) => /[0-9]/.test(mark.tex))) return null
+  if (!further.every((line) => line.every((mark) => mark == null))) return null
+  return { tex: marks.map((mark) => mark.tex).join(""), id: marks.map((mark) => mark.id).join(" ") }
 }
 
 /** The argument a command or script takes at `i`: a brace group's content, a control sequence, or one character. */
@@ -4084,14 +4216,18 @@ function texArgumentAt(tex: string, i: number): { body: string; end: number } {
   return { body: tex.slice(at, at + 1), end: Math.min(at + 1, tex.length) }
 }
 
-/**
- * The runs of numerals a TeX string prints side by side (numeralLines), each
- * as its numerals' TeX; a lone numeral is a run of one.
- */
-function numeralRuns(tex: string): string[][] {
-  const runs: string[][] = []
-  for (const line of numeralLines(tex)) {
-    let run: string[] = []
+/** A replay's TeX as the net reads it (numeralLines). */
+function netReadingOf(tex: string): NetReading {
+  const reading: NetReading = { lines: [], signs: new Map() }
+  numeralLines(tex, reading)
+  return reading
+}
+
+/** The runs of numerals a reading holds side by side; a lone numeral is a run of one. */
+function numeralRuns(reading: NetReading): NumeralMark[][] {
+  const runs: NumeralMark[][] = []
+  for (const line of reading.lines) {
+    let run: NumeralMark[] = []
     for (const mark of [...line, null]) {
       if (mark != null) {
         run.push(mark)
@@ -4104,41 +4240,37 @@ function numeralRuns(tex: string): string[][] {
   return runs
 }
 
-/**
- * A run as the net matches it: its numerals without the scripts on them, which
- * a strip inside the script changes (in `10^{23}` from `10^{2G3}`, the run
- * made is the 2 and 3, not the 10, which is still the author's).
- */
-function bareRun(marks: string[]): string {
-  return marks.map((mark) => mark.replace(/[\^_][\s\S]*$/, "")).join(" ")
+/** Two numerals set side by side, by identity. */
+function pairKey(left: NumeralMark, right: NumeralMark): string {
+  return `${left.id}\n${right.id}`
 }
 
 /**
- * The first run of two numerals or more in `from` that `against` does not
- * print, or null. Each run of `against` answers for one run of `from` at
- * most, so a number made in one place is never offset by a number removed,
- * or split, in another.
+ * The first place in `runs` where two numerals stand side by side that
+ * `against` never sets side by side, or null: the run, and the index of the
+ * numeral after the join.
  */
-function unmatchedRun(from: string[][], against: string[][]): string[] | null {
-  const pool = against.map(bareRun)
-  for (const run of from) {
-    const at = pool.indexOf(bareRun(run))
-    if (at >= 0) pool.splice(at, 1)
-    else if (run.length > 1) return run
+function unmatchedJoin(runs: NumeralMark[][], against: NumeralMark[][]): { run: NumeralMark[]; at: number } | null {
+  const joins = new Set(against.flatMap((run) => run.slice(1).map((mark, k) => pairKey(run[k], mark))))
+  for (const run of runs) {
+    for (let at = 1; at < run.length; at += 1) {
+      if (!joins.has(pairKey(run[at - 1], run[at]))) return { run, at }
+    }
   }
   return null
 }
 
 /**
- * The two numerals to name for a run `against` does not print: the run split
- * after its longest head that `against` does print as a run (`32` against the
- * source's `3` and `2` names 3 and 2).
+ * The two numerals that meet at a join, each whole: the digits of one
+ * numeral factor go together (`10^{3}` and `5`, not `0^{3}` and `5`).
  */
-function pairToName(run: string[], against: string[][]): [string, string] {
-  const spelled = against.map(bareRun)
-  let at = run.length - 1
-  while (at > 1 && !spelled.includes(bareRun(run.slice(0, at)))) at -= 1
-  return [run.slice(0, at).join(""), run.slice(at).join("")]
+function numeralsAt(run: NumeralMark[], at: number): [string, string] {
+  let from = at - 1
+  while (from > 0 && run[from - 1].id === run[at - 1].id) from -= 1
+  let to = at + 1
+  while (to < run.length && run[to].id === run[at].id) to += 1
+  const tex = (marks: NumeralMark[]) => marks.map((mark) => mark.tex).join("")
+  return [tex(run.slice(from, at)), tex(run.slice(at, to))]
 }
 
 /**
@@ -4155,42 +4287,78 @@ function pairToName(run: string[], against: string[][]): [string, string] {
  *
  * Guards that matched these shapes term by term were passed, one review round
  * after another, by a shape one bracket or one delimiter away. The net reads
- * the whole output instead: the runs of numerals the live emission prints
- * against those the masked emission, the source as written, prints, both
- * replayed with the constants opaque (Ctx.net). Outside the constants, the
- * two hold the same numerals, so a run of two or more that one prints and
- * the other does not is a number made or split. Runs are matched one for
- * one, never counted: a total let a number made in one place offset the
- * digits of a stripped power (`3\,\left(\frac{G}{c^2}\right)^{10}\left(\frac{c^2}{G}\right)^{9}\,\frac{1}{2}\,M`
- * shipped as `3\frac{1}{2}M`, 3½ M where the value is 1.5 M), and digits a
- * strip removed with their constant read as a number split (the `3M` of
- * `3\,\left(\frac{G}{c^2}\right)^{10}\left(\frac{c^2}{G}\right)^{10}\,\frac{G}{c^2}\,M`
- * declined, naming the 1 and 0 of the power).
+ * the whole output instead: the numerals the live emission prints against
+ * those the masked emission, the source as written, prints, both replayed
+ * with the constants opaque and every numeral tagged with its identity
+ * (Ctx.net). Each numeral is compared as the one it is, never by spelling:
+ * two numerals the live replay sets side by side that the masked one does
+ * not are a number made, and two the masked replay sets side by side that
+ * the live one does not are a number split. Two readings that set the same
+ * numerals side by side, pair for pair, hold the same runs, so this is the
+ * runs compared as sequences of identities, and nothing made in one place is
+ * offset by anything split, removed or written elsewhere. Matched by
+ * spelling, runs let `x = 2\,\left.3\right.\,M + 2\ G\ 3\ M` ship at SI: the
+ * first term's `2\,\left.3\right.` was split by a restored G, the second
+ * term's 2 and 3 were set side by side by a folded one, and the two runs
+ * spelled 2 3 answered for each other. A numeral no numeral factor printed
+ * is known by its spelling (NumeralMark), which only an index, a power or a
+ * radical's degree sliced from the source as written prints, alike in both
+ * replays; the 1 an emptied product prints is tagged as made (emptyProductTex).
  *
- * A strip only removes, which can make a run and cannot split one, so to a
- * geometrized target only a run made is asked. A restoration adds letters,
- * scripts and structure, which split a run, and it moves a constant it folds
+ * A strip only removes, which can make a join and cannot split one, so to a
+ * geometrized target only a join made is asked. A restoration adds letters,
+ * scripts and structure, which split one, and it moves a constant it folds
  * into another power of itself, which can make one where that constant was
- * all that stood between two numerals.
+ * all that stood between two numerals (separatesNumerals keeps such a
+ * constant in place; this is the net under it).
+ *
+ * Signs are read the same way. A sign written on a factor (`{-2}`, `{+M}`)
+ * that is set right after another factor reads as a sign between terms: `3{-2}M`
+ * reads 3 − 2M. Where the live replay sets such a sign right after another
+ * factor than the masked one does, or right after a factor where the masked
+ * one sets it after none, the translation moved the sign against its
+ * neighbor: `x = 3\,\frac{G}{c^2}\,{-2}M` stripped to `3{-2}M`, which reads
+ * 3 − 2M where the value is −6M, and `x = {-2}M` restored as
+ * `\frac{G{-2}M}{c^{2}}`, which reads (G − 2M)/c². A sign the author set right
+ * after a factor, and a translation leaves there, is the author's reading;
+ * a written constant folded into a restored power is that constant moved
+ * (mergeConstants), so `3\,G\,{-2}\,M` restored as `\frac{3G{-2}M}{c^{2}}`
+ * keeps the sign where the author set it.
  */
-function numeralFusionNet(live: string, masked: string, stripped: boolean): void {
-  const printed = numeralRuns(live)
-  const written = numeralRuns(masked)
-  const made = unmatchedRun(printed, written)
+function numeralFusionNet(
+  live: string,
+  masked: string,
+  stripped: boolean,
+  signQuote: (id: string) => string,
+): void {
+  const printedReading = netReadingOf(live)
+  const writtenReading = netReadingOf(masked)
+  const printed = numeralRuns(printedReading)
+  const written = numeralRuns(writtenReading)
+  const made = unmatchedJoin(printed, written)
   if (made != null) {
-    const [left, right] = pairToName(made, written)
+    const [left, right] = numeralsAt(made.run, made.at)
     throw new Unsupported(
       stripped
         ? `the numerals ending “${left}” and opening “${right}”, which a stripped constant leaves side by side as one number — not supported`
         : `the numerals ending “${left}” and opening “${right}”, which the restoration sets side by side as one number, moving the constant written between them — not supported`,
     )
   }
-  if (stripped) return
-  const split = unmatchedRun(written, printed)
-  if (split != null) {
-    const [left, right] = pairToName(split, printed)
+  if (!stripped) {
+    const split = unmatchedJoin(written, printed)
+    if (split != null) {
+      const [left, right] = numeralsAt(split.run, split.at)
+      throw new Unsupported(
+        `the numerals ending “${left}” and opening “${right}”, one number or a product, which a constant restored between or into them would leave only as the product — not supported`,
+      )
+    }
+  }
+  for (const [id, after] of printedReading.signs) {
+    if (after == null || writtenReading.signs.get(id) === after) continue
     throw new Unsupported(
-      `the numerals ending “${left}” and opening “${right}”, one number or a product, which a constant restored between or into them would leave only as the product — not supported`,
+      stripped
+        ? `the sign on “${signQuote(id)}”, which a stripped constant leaves right after another factor, where it reads as a sign between terms — not supported`
+        : `the sign on “${signQuote(id)}”, which the restoration sets right after another factor, where it reads as a sign between terms — not supported`,
     )
   }
 }
@@ -4290,7 +4458,7 @@ function translateCore(
     mask: false,
     font: null,
     constantsRead: [],
-    net: false,
+    net: null,
   }
 
   // The floater only ever fires on a .katex-display, so every equation it sees
@@ -4398,17 +4566,27 @@ function translateCore(
       )
     }
     // The masked replay is the source as written, so the numerals it sets
-    // side by side are the author's; the live one must set the same. Both are
-    // replayed once more with the constants opaque (Ctx.net), and the replays
-    // leave nothing behind: a strip they repeat was recorded the first time.
+    // side by side are the author's, and the factors its signs are set after;
+    // the live one must set the same. Both are replayed once more with the
+    // constants opaque and the numerals, factors and signs tagged (Ctx.net),
+    // and the replays leave nothing behind: a strip they repeat was recorded
+    // the first time.
     const mutated = ctx.mutated
-    ctx.net = true
+    const net = new Map<object, string>()
+    let printed: string
+    let written: string
+    ctx.net = net
     try {
-      numeralFusionNet(rebuild(), maskedEmission(ctx, rebuild), ctx.strip)
+      printed = rebuild()
+      written = maskedEmission(ctx, rebuild)
     } finally {
-      ctx.net = false
+      ctx.net = null
       ctx.mutated = mutated
     }
+    numeralFusionNet(printed, written, ctx.strip, (id) => {
+      const term = Array.from(net).find(([, value]) => value === id)?.[0] as TermInfo
+      return `${leadSign(term.sign)}${termQuote(term, ctx)}`
+    })
     // The masked replay proves the emitters reproduced what the reader wrote; it
     // cannot see a restoration that analysis solved and emission then dropped or
     // misplaced. `ds = d(r - t)` came back verbatim while reporting a change,
