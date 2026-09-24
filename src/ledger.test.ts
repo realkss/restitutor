@@ -145,6 +145,23 @@ describe("the decline ledger", () => {
     assert.deepStrictEqual(outcome("x' = x").unknown, ["x'"])
     for (const tex of ["(r)' = 1", "x^{2\\prime} = r", "x'^{\\prime} = r"])
       assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    // Step 11: a labelled symbol is looked up under its labelled name; the
+    // readings of scripted bases, labels and named operators that decline are
+    // the reader's.
+    assert.strictEqual(outcome("u^{\\text{out}}_j = u_j").class, "unknown-symbol")
+    for (const tex of [
+      "h^{ij\\mathrm{TT}} = 0",
+      "x = c^{\\dagger}",
+      "\\dot{u}^{a} = u^{b}\\nabla_{b}u^{a}",
+      "\\hat{g}_{ab} = 0",
+      "\\hat{\\bar{h}}_{ab} = 0",
+      "r = (r)^{+}",
+      "\\operatorname{diag}(-1,1,1,1) = g_{ab}",
+      "\\operatorname{Tr} = 1",
+      "\\operatorname{sgn} t = 1",
+      "\\mathrm{Tr}^{2}(T_{ab}) = \\rho",
+    ])
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)

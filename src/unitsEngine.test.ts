@@ -1674,13 +1674,14 @@ describe("reassembly fidelity and upright words", () => {
 
   test("upright words are units, labels or operators, never products of symbols", () => {
     // Live, the first shipped unchanged (H·z), and the others were read as c·m,
-    // G·e·V, the differential dt and T·r.
+    // G·e·V, the differential dt and V·o·l. (Tr, a trace, is read as the
+    // operator it names since step 11.)
     declinesWith("\\omega = 2\\pi\\,\\mathrm{Hz}", UPRIGHT_WORD("Hz"))
     declinesWith("E = \\mathrm{cm}", UPRIGHT_WORD("cm"))
     declinesWith("\\lambda = 21\\,\\mathrm{cm}", UPRIGHT_WORD("cm"))
     declinesWith("E = {\\rm GeV}", UPRIGHT_WORD("GeV"))
     declinesWith("E = \\mathrm{dt}", UPRIGHT_WORD("dt"))
-    declinesWith("\\mathrm{Tr}\\,T = \\rho", UPRIGHT_WORD("Tr"))
+    declinesWith("\\mathrm{Vol}\\,T = \\rho", UPRIGHT_WORD("Vol"))
     declinesWith("\\mathrm{Vol} = r^{3}", UPRIGHT_WORD("Vol"))
     declinesWith("\\text{Var}(x) = r^{2}", UPRIGHT_WORD("Var"))
     // A run with a space in it is quoted as written.
@@ -2079,7 +2080,18 @@ describe("relations core: relations, continuation rows, branch signs", () => {
   })
 
   test("a sign in a superscript is a label, and a run of signs is a pattern", () => {
-    for (const tex of ["x = \\sigma^{\\pm}", "x = X^{n+}", "x = X^{+}", "x = X^{-}_{L}", "x = {}^{+}X"]) {
+    // A lone sign is a label the dictionary can key, and is looked up (step 11);
+    // a sign closing a longer superscript, or set on nothing, is not.
+    for (const [tex, name] of [
+      ["x = \\sigma^{\\pm}", "\\sigma^{\\pm}"],
+      ["x = X^{+}", "X^{+}"],
+      ["x = X^{-}_{L}", "X^{-}_{L}"],
+    ]) {
+      const result = run(tex)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") assert.deepStrictEqual(result.unknown, [name], tex)
+    }
+    for (const tex of ["x = X^{n+}", "x = {}^{+}X"]) {
       declines(tex, SIGN_LABEL)
     }
     declines("(-+++)", "signs with nothing to act on (a sign pattern such as a metric signature)")
@@ -3162,7 +3174,7 @@ describe("delimiters: bars, sized delimiters, Dirac notation and construct names
     // modulus, an accent hid the base, and a font garbled the quotation.
     declines("\\rho = |T^{a}{}_{b}|", TENSOR("T^{a}{}_{b}"))
     declines("P = |T_{a}{}^{b}|", TENSOR("T_{a}{}^{b}"))
-    declines("P = |\\tilde T_{ab}|", TENSOR("\\tilde{T}_{ab}"))
+    declines("P = |\\bar T_{ab}|", TENSOR("\\bar{T}_{ab}"))
     declines("P = |\\mathbf{T}_{ab}|", TENSOR("\\mathbf{T}_{ab}"))
     // Review round: braces, an accent, an overline or an old-style font set
     // around the whole indexed symbol hid it, and the bars read as a modulus.
@@ -3700,12 +3712,13 @@ describe("index tokens, primes and the canonical symbol key", () => {
       "z = (r/M)^{\\gamma_1}",
       "r = M\\left[\\frac{t}{M}\\right]^{\\alpha_1}",
       "r = M\\left(\\frac{t}{M}\\right)^{\\mu_1\\cdots\\mu_n}",
-      // A braced symbol is a compound base: r has no indexed entry to vouch
-      // for an index, and r^{α₁} is not r.
-      "r = {r}^{\\alpha_1}",
     ]) {
       assert.deepStrictEqual(declined(tex).reasons, UNREADABLE, tex)
     }
+    // A braced symbol is the symbol (step 11): r^{α₁} goes to r's indexed
+    // reading, which the dictionary does not have, as it does unbraced.
+    assert.deepStrictEqual(declined("r = {r}^{\\alpha_1}").unknown, ["{r}^{\\alpha_1}"])
+    assert.deepStrictEqual(declined("r = r^{\\alpha_1}").unknown, ["r^{\\alpha_1}"])
     // Braces only group: a braced numeral is the numeral, so `p^{{2}}` is not
     // the component p² of the four-momentum; the component shape still is one.
     assert.deepStrictEqual(declined("E = p^{{2}}").reasons, ["a symbolic exponent on the dimensional base “p”"])
@@ -3762,10 +3775,9 @@ describe("index tokens, primes and the canonical symbol key", () => {
     const notC = declined("c' = 1")
     assert.deepStrictEqual([notC.reasons, notC.unknown], [[], ["c'"]])
     assert.deepStrictEqual(unknown("G'M = r"), ["G'"])
-    // A label after the primes is not read, and the primed name is still its own.
-    const labelled = declined("u'^{\\rm out} = u")
-    assert.deepStrictEqual(labelled.unknown, ["u'"])
-    assert.deepStrictEqual(labelled.reasons, ["an exponent on “u'^{\\rm out}” that could not be read"])
+    // A label after the primes is part of the name (step 11), listed as written.
+    assert.deepStrictEqual(unknown("u'^{\\rm out} = r"), ["u'^{\\rm out}"])
+    assert.deepStrictEqual(unknown("x'^{+} = x"), ["x'^{+}"])
   })
 
   test("a declared primed symbol translates, its primes re-emitted as written", () => {
@@ -3824,7 +3836,7 @@ describe("index tokens, primes and the canonical symbol key", () => {
       ["\\vec{k}' = k", COMPOUND],
       ["x^{2\\prime} = r", MIXED],
       ["x'^{\\prime} = r", MIXED],
-      ["x'^{+} = x", "a sign standing as a superscript (a light-cone index or a charge label), which is neither a power nor a dictionary index"],
+      ["x'^{n+} = x", "a sign standing as a superscript (a light-cone index or a charge label), which is neither a power nor a dictionary index"],
       ["\\mathrm{m}' = M", "the upright letter “m” — a unit, a label or an operator, not a variable"],
     ]) {
       const result = declined(tex)
@@ -3872,5 +3884,278 @@ describe("index tokens, primes and the canonical symbol key", () => {
       assert.strictEqual(result.kind, "translated", `${tex} (key ${key}) → ${JSON.stringify(result)}`)
       if (result.kind === "translated") assert.ok(result.legend.some((e) => e.gloss === "a declared length"), tex)
     }
+  })
+})
+
+describe("bases, accents, labels and named operators (step 11)", () => {
+  const translated = (tex: string, target: TargetSpec = SI, registry: HubRegistry = reg) => {
+    const result = translateTex(tex, katex, registry, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = result as Extract<TranslationResult, { kind: "translated" }>
+    rendersInKatex(out.restoredTex)
+    return out
+  }
+  const rawRestored = (tex: string, target: TargetSpec = SI, registry: HubRegistry = reg) =>
+    translated(tex, target, registry).restoredTex
+  const declined = (tex: string, registry: HubRegistry = reg) => {
+    const result = translateTex(tex, katex, registry, SI)
+    assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+    return result as Extract<TranslationResult, { kind: "declined" }>
+  }
+  const reasons = (tex: string) => declined(tex).reasons
+  const unchanged = (tex: string, registry: HubRegistry = reg) => {
+    const out = translated(tex, SI, registry)
+    assert.strictEqual(out.changed, false, tex)
+    return out
+  }
+  const DOT = (tex: string) =>
+    `a dot on the indexed symbol “${tex}” — a time derivative or the derivative along u^{a}, which differ by a velocity`
+  const SCRIPTED_ACCENT = (accent: string, tex: string) =>
+    `the accent “${accent}” over the scripted symbol “${tex}” — a unit vector, an operator or a transform, which need not keep the symbol's dimension — is not supported yet`
+  const MARK_ON_COMPOUND = (mark: string) =>
+    `the label or mark “${mark}” on a compound expression, which the engine cannot read as a symbol`
+
+  test("KaTeX shapes the label and operator readings rest on", () => {
+    const parse = (tex: string) => katex.__parse(tex, { strict: false, trust: false, displayMode: true })
+    // A \text or \mathrm written as the whole script has no span of its own.
+    const [text] = parse("u^\\text{out}")
+    assert.strictEqual(text.sup.type, "text")
+    assert.strictEqual(text.sup.loc, undefined)
+    const [font] = parse("T^\\mathrm{vac}")
+    assert.strictEqual(font.sup.type, "font")
+    assert.strictEqual(font.sup.loc, undefined)
+    // Marks are bin atoms; a braced accent keeps a span on its braces only.
+    for (const [tex, mark] of [
+      ["a^{\\dagger}", "\\dagger"],
+      ["a^{*}", "*"],
+      ["a^{\\ast}", "\\ast"],
+      ["a^{\\star}", "\\star"],
+      ["a^{\\intercal}", "\\intercal"],
+    ]) {
+      const [node] = parse(tex)
+      assert.deepStrictEqual([node.sup.body[0].type, node.sup.body[0].family, node.sup.body[0].text], ["atom", "bin", mark], tex)
+    }
+    const [braced] = parse("{\\bar h}_{\\mu\\nu}")
+    assert.strictEqual(braced.base.type, "ordgroup")
+    assert.ok(braced.base.loc != null)
+    assert.strictEqual(braced.base.body[0].type, "accent")
+    assert.strictEqual(braced.base.body[0].loc, undefined)
+    // \overline is a node of its own, its body a located group.
+    const [over] = parse("\\overline{T}_{ab}")
+    assert.strictEqual(over.base.type, "overline")
+    // \mathop around a word has no name; \nolimits and \operatorname* set alwaysHandleSupSub.
+    const [mathop] = parse("\\mathop{\\rm Tr}T")
+    assert.deepStrictEqual([mathop.type, mathop.name, mathop.body[0].type], ["op", undefined, "font"])
+    assert.strictEqual(parse("\\mathop{\\rm Tr}\\nolimits T")[0].alwaysHandleSupSub, true)
+    assert.strictEqual(parse("\\operatorname*{Tr}T")[0].alwaysHandleSupSub, true)
+    assert.strictEqual(parse("\\operatorname{tr}(T)")[0].alwaysHandleSupSub, false)
+  })
+
+  test("a braced or font-wrapped symbol is the symbol (R2)", () => {
+    assert.strictEqual(rawRestored("{r}_{s} = 2M"), "{r}_{s} = \\frac{2GM}{c^{2}}")
+    // Braces read as a compound base appended the indices to the bare letter:
+    // T read as a temperature.
+    assert.strictEqual(rawRestored("{T}_{ab} = \\rho"), "{T}_{ab} = \\rho c^{2}")
+    // LaTeXML's braced ∂ (Carroll's notes) was a false dictionary miss.
+    unchanged("{\\partial}_{\\mu}T^{\\mu\\nu} = 0")
+    // The reviewer's R2 blockers: each re-emits as written, no reassembly fault.
+    assert.strictEqual(unchanged("\\boldsymbol{x}_{i} = \\mathbf{x}_{i}").restoredTex, "\\boldsymbol{x}_{i} = \\mathbf{x}_{i}")
+    assert.strictEqual(unchanged("\\bm{x}_i = r").restoredTex, "\\bm{x}_{i} = r")
+    assert.strictEqual(unchanged("{\\bf x}_i = r").restoredTex, "{\\bf x}_{i} = r")
+    assert.strictEqual(unchanged("{\\cal R}_{ab} = 0").restoredTex, "{\\cal R}_{ab} = 0")
+    // An upright letter is still no variable, braced or not.
+    assert.deepStrictEqual(reasons("{\\rm r}_{s} = 2M"), [
+      "the upright letter “r” — a unit, a label or an operator, not a variable",
+    ])
+    // A lone power on a braced symbol keeps its compound reading; the
+    // reviewer's `{\rm d}^{4}x` declines on its d by name, not as a fault.
+    assert.strictEqual(rawRestored("E = {c}^{2}m"), "E = {c}^{2}m")
+    assert.ok(!reasons("{\\rm d}^{4}x = 0")[0].includes("reassembly"))
+    // A braced primed symbol is the primed symbol; a primed accent is a compound.
+    assert.deepStrictEqual(declined("{\\alpha}' = x").unknown, ["{\\alpha}'"])
+    assert.deepStrictEqual(reasons("\\vec{k}' = k"), ["a prime on a compound expression, which the engine cannot read as a symbol"])
+  })
+
+  test("a scripted bar, arrow, check, breve or overline reads the symbol under it with its scripts (R3)", () => {
+    // Read as a compound base, h̄_{μν} looked up the bare h.
+    const box = translated("\\Box\\bar h_{\\mu\\nu} = -16\\pi T_{\\mu\\nu}")
+    assert.strictEqual(box.restoredTex, "\\Box\\bar{h}_{\\mu\\nu} = -\\frac{16\\pi GT_{\\mu\\nu}}{c^{4}}")
+    assert.ok(box.legend.some((e) => e.tex === "\\bar{h}_{\\mu\\nu}" && e.gloss === "metric perturbation"))
+    assert.strictEqual(rawRestored("\\Box\\bar h_{\\mu\\nu} = -16\\pi G T_{\\mu\\nu}", GEO), "\\Box\\bar{h}_{\\mu\\nu} = -16\\pi T_{\\mu\\nu}")
+    assert.strictEqual(rawRestored("\\bar h_{00} = -4\\Phi"), "\\bar{h}_{00} = -\\frac{4\\Phi}{c^{2}}")
+    // T̄_{μν} is the stress–energy tensor, not a temperature, in every spelling.
+    for (const tex of ["\\bar{T}_{\\mu\\nu} = T_{\\mu\\nu}", "{\\bar{T}}_{\\mu\\nu} = T_{\\mu\\nu}", "\\overline{T}_{\\mu\\nu} = T_{\\mu\\nu}"]) {
+      assert.strictEqual(unchanged(tex).targetUnitTex, "\\mathrm{kg}\\,\\mathrm{m}^{-1}\\,\\mathrm{s}^{-2}", tex)
+    }
+    unchanged("\\bar{\\mathbf{h}}_{\\mu\\nu} = 0")
+    assert.strictEqual(rawRestored("\\check{r}_{s} = 2M"), "\\check{r}_{s} = \\frac{2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("\\breve{r}_{s} = 2M"), "\\breve{r}_{s} = \\frac{2GM}{c^{2}}")
+    // A lone power keeps the compound reading it always had.
+    assert.strictEqual(rawRestored("\\bar r^2 = M^2"), "\\bar{r}^{2} = \\frac{G^{2}M^{2}}{c^{4}}")
+    // Under an accent c is another symbol, scripted or not.
+    assert.deepStrictEqual(reasons("\\bar{c}_{ab} = 0"), [
+      "the accented “\\bar{c}” — another symbol (a vector, a mean, an operator or a label), not the constant c",
+    ])
+  })
+
+  test("a dot on an indexed symbol declines: d/dt or the derivative along u^a", () => {
+    // The 1+3 reviewer's counterexamples: read as d/dt, each shipped a c.
+    assert.deepStrictEqual(reasons("\\dot{u}^{a} = u^{b}\\nabla_{b}u^{a}"), [DOT("\\dot{u}^{a}")])
+    assert.deepStrictEqual(reasons("\\dot{h}_{ij} = u^{a}\\nabla_{a}h_{ij}"), [DOT("\\dot{h}_{ij}")])
+    // Deliberately given up: `\dot{x}^{\mu} = u^{\mu}` shipped `u^{\mu}c` (§1.2).
+    assert.deepStrictEqual(reasons("\\dot{x}^{\\mu} = u^{\\mu}"), [DOT("\\dot{x}^{\\mu}")])
+    assert.deepStrictEqual(reasons("\\dot{T}_{ab} = \\rho\\omega"), [DOT("\\dot{T}_{ab}")])
+    assert.deepStrictEqual(reasons("\\dot{x}_{1}^{2} = v^{2}"), [DOT("\\dot{x}_{1}^{2}")])
+    // A dotted identity reads, and its legend row is the symbol under the dot.
+    const rs = unchanged("\\dot{r}_s = v")
+    assert.strictEqual(rs.restoredTex, "\\dot{r}_{s} = v")
+    assert.ok(rs.legend.some((e) => e.tex === "r_{s}" && e.unit === "m"), JSON.stringify(rs.legend))
+    assert.ok(unchanged("\\dot{r} = v").legend.some((e) => e.tex === "r" && e.unit === "m"))
+    unchanged("\\ddot{r}_s = v/t")
+    // A symbol with no indexed reading is looked up, and missed.
+    assert.deepStrictEqual(declined("\\dot{\\zeta}_{k} = 0").unknown, ["\\zeta_{k}"])
+  })
+
+  test("stacked, hat, tilde and wide accents on a scripted symbol decline; the bare letter is never read", () => {
+    assert.deepStrictEqual(reasons("\\hat{\\bar{h}}_{ab} = 0"), ["stacked accents on “\\hat{\\bar{h}}_{ab}”, which are not supported"])
+    assert.deepStrictEqual(reasons("\\bar{\\dot{T}}_{ab} = 0"), ["stacked accents on “\\bar{\\dot{T}}_{ab}”, which are not supported"])
+    // Owner-gated (R1): read through a hat, ĝ_{αβ} was the metric determinant
+    // and θ̂ the polar angle.
+    assert.deepStrictEqual(reasons("\\hat{g}_{\\alpha\\beta} = 0"), [SCRIPTED_ACCENT("\\hat", "\\hat{g}_{\\alpha\\beta}")])
+    assert.deepStrictEqual(reasons("\\hat{x}^{i}\\hat{x}_{i} = 1"), [SCRIPTED_ACCENT("\\hat", "\\hat{x}^{i}")])
+    assert.deepStrictEqual(reasons("{\\hat{\\theta}}^{(\\nu)}({\\hat{e}}_{(\\mu)}) = \\delta^{\\nu}_{\\mu}"), [
+      SCRIPTED_ACCENT("\\hat", "{\\hat{\\theta}}^{(\\nu)}"),
+    ])
+    assert.deepStrictEqual(reasons("\\tilde{h}_{ij} = h_{ij}"), [SCRIPTED_ACCENT("\\tilde", "\\tilde{h}_{ij}")])
+    // Without R1 a wide accent is not read at all; `\widehat{v} = v/c` would ship `vc/c`.
+    assert.deepStrictEqual(reasons("\\widehat{v} = v/c"), ["the unsupported accent “\\widehat”"])
+    assert.deepStrictEqual(reasons("\\widetilde{\\Gamma}^{a}_{bc} = -\\Gamma^{a}_{bc}"), ["the unsupported accent “\\widetilde”"])
+    // An index subscript on an accented letter the dictionary has no reading
+    // for is a miss, not the bare letter (v, a velocity).
+    assert.deepStrictEqual(declined("\\vec{v}_{1} = v").unknown, ["\\vec{v}_{1}"])
+  })
+
+  test("a label is part of the symbol's name, looked up under it and never under its letter (R4)", () => {
+    // Read as its letter, the out-mode shipped as the four-velocity u_j.
+    assert.deepStrictEqual(declined("u^{\\text{out}}_j = u_j").unknown, ["u^{\\text{out}}_{j}"])
+    for (const [tex, name] of [
+      ["E^{(4)} = 0", "E^{(4)}"],
+      ["X^{+} = 0", "X^{+}"],
+      ["\\alpha^{*} = 0", "\\alpha^{*}"],
+      ["c^{*} = 1", "c^{*}"],
+      ["H^{({\\rm R})} = 0", "H^{({\\rm R})}"],
+      ["C^{\\rm(old)}_{00} = 0", "C^{\\rm(old)}_{00}"],
+      ["a^{\\text{in}\\dagger}_{i} = 0", "a^{\\text{in}\\dagger}_{i}"],
+    ]) {
+      assert.deepStrictEqual(declined(tex).unknown, [name], tex)
+    }
+    // A label on G is a name like any other; G^{eff} is not Newton's constant.
+    assert.deepStrictEqual(declined("G^{\\mathrm{eff}} = G").unknown, ["G^{\\mathrm{eff}}"])
+    // One key for every spelling of the label, each re-emitted as written.
+    const vac = { ...reg, indexed: { ...reg.indexed, "T^{\\mathrm{vac}}": reg.indexed.T } }
+    for (const label of ["{\\mathrm{vac}}", "\\mathrm{vac}", "{\\text{vac}}", "\\text{vac}", "{\\rm vac}", "{\\text{\\,vac}}"]) {
+      assert.strictEqual(
+        rawRestored(`T_{ab}^${label} = -\\frac{\\Lambda}{8\\pi}g_{ab}`, SI, vac),
+        `T_{ab}^${label} = -\\frac{\\Lambda c^{4}}{8\\pi G}g_{ab}`,
+        label,
+      )
+    }
+    // A lone sign keys an exact reading like any subscripted name.
+    const light = { ...reg, exact: { ...reg.exact, "X^{+}_L": reg.bare.r } }
+    assert.strictEqual(rawRestored("X^{+}_{L} = 2M", SI, light), "X^{+}_{L} = \\frac{2GM}{c^{2}}")
+    // An unbraced \text label keeps its command.
+    const out = { ...reg, bare: { ...reg.bare, "u^{\\mathrm{out}}": reg.bare.r } }
+    assert.strictEqual(rawRestored("u^\\text{out} = 2M", SI, out), "u^\\text{out} = \\frac{2GM}{c^{2}}")
+  })
+
+  test("what is no label keeps its reading (R4 reviewer counterexamples)", () => {
+    // Upright e, i and d are not labels: these are powers, as they always were.
+    for (const tex of [
+      "E = mc^2e^{\\mathrm{i}kx}",
+      "E = mc^2 e^{-\\mathrm{i}\\omega t}",
+      "E = mc^2\\mathrm{e}^{\\mathrm{i}\\omega t}",
+      "E = mc^2 e^{\\mathrm{i}\\pi}",
+      "E = mc^2 e^{-\\mathrm{i}\\omega t/2}",
+    ]) {
+      unchanged(tex)
+    }
+    // Nor is an operator's name: here it acts on nothing.
+    assert.deepStrictEqual(reasons("z = e^{\\mathrm{Im}}"), ["the operator “\\mathrm{Im}” with nothing to act on"])
+    // A label among index letters is neither.
+    assert.deepStrictEqual(reasons("h^{ij\\mathrm{TT}} = 0"), ["a superscript on “h^{ij\\mathrm{TT}}” that mixes a label with indices"])
+    assert.deepStrictEqual(reasons("C^{{\\rm(new)}\\mu}{}_{\\mu} = 0"), [
+      "a superscript on “C^{{\\rm(new)}\\mu}” that mixes a label with indices",
+    ])
+    // An italic superscript beside a subscript is still a power or a label, unread.
+    assert.deepStrictEqual(reasons("g_i^{n} = 0"), ["an exponent on “g_{i}^{n}” that could not be read"])
+    // A big operator names itself before any label is read.
+    assert.ok(reasons("\\sum^{\\rm N}_{i}x_i = r")[0].includes("integrals, sums, and limits"))
+    // A parenthesized index list is still an index list (a frame component).
+    assert.strictEqual(rawRestored("E = p^{(\\mu)}"), "E = p^{(\\mu)}c")
+  })
+
+  test("a dagger keeps the symbol's reading; on a constant it declines", () => {
+    assert.strictEqual(unchanged("E^{\\dagger} = mc^2").restoredTex, "E^{\\dagger} = mc^{2}")
+    assert.strictEqual(rawRestored("E^{\\dagger} = mc^2", GEO), "E^{\\dagger} = m")
+    assert.deepStrictEqual(reasons("x = c^{\\dagger}"), ["a label or mark on the constant “c”"])
+    assert.deepStrictEqual(reasons("x = \\mathbf{c}^{\\dagger}"), [
+      "the bold “\\mathbf{c}” — another symbol (a vector, a tensor or a label), not the constant c",
+    ])
+  })
+
+  test("a group keeps its dimension under a dagger or a transpose, and reads no other mark (R8b)", () => {
+    for (const mark of ["\\mathrm{T}", "\\dagger", "\\intercal", "\\top", "\\mathsf{T}"]) {
+      assert.strictEqual(unchanged(`A = (x)^{${mark}}x`).restoredTex, `A = (x)^{${mark}}x`, mark)
+    }
+    // These had the false 'symbolic exponent' or sign-label reasons.
+    assert.deepStrictEqual(reasons("r = (r)^{*}"), [MARK_ON_COMPOUND("*")])
+    assert.deepStrictEqual(reasons("r = (r)^{+}"), [MARK_ON_COMPOUND("+")])
+    assert.deepStrictEqual(reasons("r = \\left(r\\right)^{\\rm out}"), [MARK_ON_COMPOUND("\\rm out")])
+  })
+
+  test("named operators: a trace or a part keeps its operand's dimension", () => {
+    assert.strictEqual(rawRestored("\\operatorname{tr}(T_{ab}) = -\\rho"), "\\operatorname{tr}(T_{ab}) = -\\rho c^{2}")
+    assert.strictEqual(rawRestored("\\mathrm{tr}(T_{ab}) = -\\rho"), "\\mathrm{tr}(T_{ab}) = -\\rho c^{2}")
+    assert.strictEqual(rawRestored("{\\rm tr}\\,(T_{ab}) = -\\rho"), "{\\rm tr}(T_{ab}) = -\\rho c^{2}")
+    assert.strictEqual(rawRestored("\\mathop{\\rm Tr}T_{ab} = \\rho"), "\\mathop{\\rm Tr}T_{ab} = \\rho c^{2}")
+    assert.strictEqual(rawRestored("2\\operatorname{Re}(h_{ab}) = \\Phi"), "2\\operatorname{Re}(h_{ab}) = \\frac{\\Phi}{c^{2}}")
+    // G goes after the numerals, before the operator; c at the tail.
+    assert.strictEqual(rawRestored("r = 2\\operatorname{Re}(h_{ab})M"), "r = \\frac{2G\\operatorname{Re}(h_{ab})M}{c^{2}}")
+    assert.strictEqual(rawRestored("M = \\operatorname{Re}(h_{ab})r"), "M = \\frac{\\operatorname{Re}(h_{ab})rc^{2}}{G}")
+    assert.strictEqual(unchanged("\\operatorname{Tr}\\,\\operatorname{Re}(h_{ab}) = 0").restoredTex, "\\operatorname{Tr}\\operatorname{Re}(h_{ab}) = 0")
+    assert.strictEqual(rawRestored("\\operatorname{tr}(T_{ab}) = -\\rho c^2", GEO), "\\operatorname{tr}(T_{ab}) = -\\rho")
+    // Read as T·r it declined as an upright word; read as a trace, the
+    // registry's bare T is a temperature (an owner question), which is said.
+    assert.ok(reasons("\\mathrm{Tr}\\,T = \\rho")[0].startsWith("temperature dimensions that do not balance"))
+    assert.deepStrictEqual(reasons("\\operatorname{Tr} = 1"), ["the operator “\\operatorname{Tr}” with nothing to act on"])
+    assert.deepStrictEqual(reasons("\\mathrm{Tr}/M = 1"), ["the operator “\\mathrm{Tr}” with nothing to act on"])
+    assert.deepStrictEqual(reasons("\\mathrm{Tr}^{2}(T_{ab}) = \\rho^2"), ["a script on the operator “\\mathrm{Tr}”, which is not supported"])
+    assert.deepStrictEqual(reasons("\\operatorname{Tr}_{A} T_{ab} = \\rho"), ["a script on the operator “\\operatorname{Tr}”, which is not supported"])
+  })
+
+  test("named operators: a sign, a transcendental function, a numeral-base logarithm", () => {
+    assert.strictEqual(rawRestored("\\operatorname{sgn}(t - x) = 1"), "\\operatorname{sgn}(t - \\frac{x}{c}) = 1")
+    unchanged("\\text{sgn}(x) = 1")
+    assert.deepStrictEqual(reasons("\\operatorname{sgn} t = 1"), [
+      "the sign function “\\operatorname{sgn}” without a delimited argument, which is not supported",
+    ])
+    assert.strictEqual(rawRestored("\\operatorname{erf}(r/M) = 1"), "\\operatorname{erf}(rc^{2}/GM) = 1")
+    // A power on the name is read as \sin^{2} is.
+    assert.strictEqual(rawRestored("\\operatorname{erf}^{2}(r/M) = 1"), "\\operatorname{erf}^{2}(rc^{2}/GM) = 1")
+    assert.strictEqual(rawRestored("\\log_{2}(r/M) = 1"), "\\log_{2}(rc^{2}/GM) = 1")
+    assert.strictEqual(rawRestored("\\log_{10}(r/M) = 1"), "\\log_{10}(rc^{2}/GM) = 1")
+    for (const tex of ["\\exp_{p}(k^{\\mu}) = x^{\\nu}", "\\log_{b} r = 1"]) {
+      assert.deepStrictEqual(reasons(tex), ["a decorated function the engine cannot read"], tex)
+    }
+    // Any other operator is named; the starred form keeps the general reason.
+    assert.deepStrictEqual(reasons("\\operatorname{diag}(-1,1,1,1) = g_{ab}"), [
+      "the operator “\\operatorname{diag}”, which is not supported",
+    ])
+    assert.deepStrictEqual(reasons("\\operatorname*{argmax} r = 1"), ["an \\operatorname construct, which is not supported"])
+    // The site's signature line, read past its operator, stops at its tuple
+    // (the step-6 test that waited for the named operators).
+    assert.deepStrictEqual(reasons("\\operatorname{sign}(g_{ab}) = (-,+,+,+)"), [
+      "a comma inside brackets (function arguments, a tuple, a commutator, or an inner product), which the engine does not read as a product",
+    ])
   })
 })

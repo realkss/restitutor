@@ -457,7 +457,7 @@ function stripsConstants(ctx: Ctx): boolean {
   return ctx.strip && emitsConstants(ctx)
 }
 
-type FactorKind = "num" | "glue" | "sym" | "diff" | "frac" | "sqrt" | "group" | "func" | "rider"
+type FactorKind = "num" | "glue" | "sym" | "diff" | "frac" | "sqrt" | "group" | "func" | "rider" | "linop"
 
 type Factor = {
   kind: FactorKind
@@ -1319,16 +1319,16 @@ function isGenuineIndex(node: any): boolean {
 /**
  * Whether an index list holds a decorated, grouped or ellipsis token (μ′, μ₁,
  * {cd}, ⋯), as opposed to plain index letters and digits only. A superscript
- * on a compound base (a group, a fraction, a braced symbol) is not read with
- * these: there a superscript that could be an index list could as well be a
+ * on a compound base (a group, a fraction, a root) is not read with these:
+ * there a superscript that could be an index list could as well be a
  * symbolic power, no indexed entry vouches for the index reading, and the
  * base's dimension passed through unchanged would then be wrong. The plain
  * letters keep their older reading there, which already misreads
  * `(\frac{r}{M})^{\alpha}` as an index; these tokens do not extend it to
- * `(\frac{t}{M})^{\alpha_1}`, `(\frac{r}{M})^{\beta'}`, `(t/M)^{{2}}` or
- * `{r}^{\alpha_1}`, which decline as unreadable scripts. On a bare symbol the
- * index reading goes through the dictionary's indexed entries, which is what
- * vouches for it.
+ * `(\frac{t}{M})^{\alpha_1}`, `(\frac{r}{M})^{\beta'}` or `(t/M)^{{2}}`, which
+ * decline as unreadable scripts. On a symbol, braced or not (`{r}^{\alpha_1}`
+ * is r^{α₁}), the index reading goes through the dictionary's indexed
+ * entries, which is what vouches for it.
  */
 function hasDecoratedIndexToken(nodes: any[]): boolean {
   return nodes.some((x) => {
@@ -1403,7 +1403,8 @@ function isSignToken(n: any): boolean {
  * Parse a superscript as a rational power, or classify it. A superscript that
  * is only signs, or that ends in one (`X^{+}`, `\sigma^{\pm}`, `X^{n+}`), is a
  * label — a light-cone index or a charge state. A sign there has no operand,
- * so it is never read as a power.
+ * so it is never read as a power. A lone sign is a label the dictionary can
+ * key (supLabelOf); a longer one is not.
  */
 function classifySup(sup: any): { p: number; q: number } | "index" | "prime" | "signLabel" | "expr" {
   const nodes = nodeListOf(sup).filter((n) => !SKIP_TYPES.has(n.type))
@@ -2158,7 +2159,7 @@ function spacedBetweenFactors(nodes: any[], spacing: FactorSpacing): boolean {
     seenFactor = true
     spaced = false
     wide = false
-    afterHead = isFuncHead(n)
+    afterHead = isFuncHead(n) || namedHeadOf(raw) != null
   }
   return false
 }
@@ -2282,28 +2283,13 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
       continue
     }
 
-    // A delimited group right after a function head is the whole argument:
-    // `\cos(\theta)\,v^{2}` is v² cos θ, and `\sin(t)/M` is sin t over M. The
-    // closing delimiter ends the argument; nothing written after it is read
-    // into the function, and spacing written between the head and the group
-    // is kept (headSpacingTex). Any other argument is the rest of the product,
-    // up to the next function head: `\sin\omega t` is sin(ωt).
+    const named = namedHeadOf(raw)
+    if (named != null) {
+      i = analyzeNamedOperator(named, nodes, i, ctx, push)
+      continue
+    }
     if (isFuncHead(n)) {
-      let next = i + 1
-      while (next < nodes.length && SKIP_TYPES.has(unwrap(nodes[next])?.type)) next += 1
-      floatingScriptAfterHeadGuard(raw, next < nodes.length ? nodes[next] : null, ctx)
-      const delimited = next < nodes.length ? delimitedArgumentOf(nodes[next]) : null
-      if (delimited != null) {
-        push(analyzeDelimitedFunction(raw, nodes.slice(i + 1, next), delimited, ctx))
-        i = next + 1
-        continue
-      }
-      let end = i + 1
-      while (end < nodes.length && !isFuncHead(unwrap(nodes[end]))) end += 1
-      const argNodes = nodes.slice(i + 1, end)
-      if (argNodes.length === 0) throw new Unsupported("a function with no argument")
-      push(analyzeFunction(raw, argNodes, ctx))
-      i = end
+      i = applyFunction(() => functionHeadTex(raw, ctx), nodes, i, ctx, push)
       continue
     }
 
@@ -2312,6 +2298,14 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     i += 1
   }
 
+  // A linear operator acts on the factors after it, on its side of a "/".
+  factors.forEach((f, k) => {
+    if (f.kind !== "linop") return
+    const end = slashIdx > k ? slashIdx : factors.length
+    if (!factors.slice(k + 1, end).some((g) => g.kind !== "glue")) {
+      throw new Unsupported(`the operator “${f.emit()}” with nothing to act on`)
+    }
+  })
   // Thrown only once every factor has been read, so a truer reason (\text
   // content, an unsupported construct) is the one the reader sees.
   if (spacedFactors) throw new Unsupported(SPACING_REASON)
@@ -2628,7 +2622,7 @@ function analyzeDifferential(
   // as dx_μ.
   if (opU?.type === "supsub" && opU.sup != null && classifySup(opU.sup) === "prime") {
     const primed = readPrimed(opU, ctx, {
-      upright: upright || underUprightFont(opU.base),
+      upright,
       differential: prefix === "d",
       scalePower: !prefixHasOrder,
     })
@@ -2710,15 +2704,185 @@ function functionHeadTex(headNode: any, ctx: Ctx): string {
   const opNode = head?.type === "supsub" ? unwrap(head.base) : head
   const opName: string = opNode?.name ?? ""
   if (!opName) throw new Unsupported("a function the engine cannot name")
-  let headTex = opName
-  if (head?.type === "supsub") {
-    const sup = classifySup(head.sup)
-    if (head.sub != null || typeof sup !== "object") {
+  if (head?.type !== "supsub") return opName
+  // log_b x = ln x / ln b: with a numeral for its base, a logarithm is read as
+  // ln is. A base that is a symbol (`\log_{b}`) or a subscript on any other
+  // head (`\exp_{p}`, the exponential map at p) is not.
+  const numeralBase = opName === "\\log" && head.sub != null && digitsOf(nodeListOf(head.sub).filter(isMeaningfulNode)) != null
+  const sup = head.sup != null ? classifySup(head.sup) : null
+  if ((head.sub != null && !numeralBase) || (head.sup != null && typeof sup !== "object")) {
+    throw new Unsupported("a decorated function the engine cannot read")
+  }
+  return opName + scriptsTex(head, ctx)
+}
+
+/**
+ * Operators named by a word (`\operatorname{tr}`, `\mathrm{Tr}`, `{\rm Re}`,
+ * `\text{sgn}`, `\mathop{\rm Tr}`), each read by what the operation does to a
+ * dimension, which is a fact about the operation, not about its operand:
+ *
+ * - linear (Tr, tr, Re, Im): a trace, a real or an imaginary part keeps its
+ *   operand's dimension, and c and G, being real scalars, pass through it
+ *   (c²·Tr X = Tr c²X). The operator is a factor of no dimension, and where
+ *   its operand ends changes neither the term's dimension nor where a constant
+ *   may go.
+ * - sign (sgn, sign): the sign of a quantity is a pure number, and the
+ *   quantity inside it must agree with itself. sgn(x)·y is not sgn(xy), so
+ *   the argument must be delimited.
+ * - transcendental (erf, erfc, sech, csch and the inverse hyperbolic names):
+ *   a power series, read as \sin is, with a dimensionless argument.
+ *
+ * Any other word declines as the word it is (spelledWordReason), or as the
+ * operator it names.
+ */
+type NamedOp = "linear" | "sign" | "transcendental"
+const NAMED_OPS = new Map<string, NamedOp>([
+  ["Tr", "linear"],
+  ["tr", "linear"],
+  ["Re", "linear"],
+  ["Im", "linear"],
+  ["sgn", "sign"],
+  ["sign", "sign"],
+  ...["erf", "erfc", "sech", "csch", "arcsinh", "arccosh", "arctanh", "arsinh", "arcosh", "artanh"].map(
+    (name): [string, NamedOp] => [name, "transcendental"],
+  ),
+])
+
+/** A run of Latin letters and nothing else, as a word; null otherwise. */
+function letterWordOf(nodes: any[]): string | null {
+  let word = ""
+  for (const x of nodes) {
+    if (x == null || !(x.type === "mathord" || x.type === "textord") || !/^[A-Za-z]$/.test(x.text)) return null
+    word += x.text
+  }
+  return word === "" ? null : word
+}
+
+/**
+ * A word naming an operator of the table, as written: `\operatorname{…}` (not
+ * the starred form, which takes limits), an upright font or an upright \text,
+ * braced or not, or `\mathop` around one of them (not with \limits or
+ * \nolimits, which set it apart as a big operator).
+ */
+type NamedWord = { name: string; op: NamedOp; node: any; wrapper: any; inner: NamedWord | null }
+
+function namedWordOf(raw: any): NamedWord | null {
+  let node = peelStyles(raw)
+  let wrapper: any = null
+  if (node?.type === "ordgroup") {
+    const body = node.body.filter(isMeaningfulNode)
+    if (body.length !== 1) return null
+    wrapper = node
+    node = peelStyles(body[0])
+  }
+  if (node?.type === "op" && node.name == null && node.alwaysHandleSupSub !== true && Array.isArray(node.body)) {
+    const inner = namedWordOf({ type: "ordgroup", body: node.body })
+    return inner == null ? null : { name: inner.name, op: inner.op, node, wrapper, inner }
+  }
+  const name =
+    node?.type === "operatorname" && node.alwaysHandleSupSub !== true
+      ? letterWordOf(node.body)
+      : node?.type === "font" && UPRIGHT_FONTS.has(node.font)
+        ? letterWordOf(nodeListOf(node.body))
+        : node?.type === "text" && UPRIGHT_TEXT_FONTS.has(node.font)
+          ? letterWordOf(node.body)
+          : null
+  const op = name != null ? NAMED_OPS.get(name) : undefined
+  return name == null || op == null ? null : { name, op, node, wrapper, inner: null }
+}
+
+/** A named operator's TeX as written: a brace group sliced, anything else rebuilt, since none of the nodes has a span. */
+function namedWordTex(word: NamedWord, ctx: Ctx): string {
+  if (word.wrapper != null && locIsOwn(word.wrapper.loc, ctx.input)) return srcOf(word.wrapper, ctx)
+  if (word.inner != null) {
+    const inner = namedWordTex(word.inner, ctx)
+    return `\\mathop{${inner.startsWith("{") && outerBracesArePartners(inner) ? inner.slice(1, -1) : inner}}`
+  }
+  if (word.node.type === "operatorname") return `\\operatorname{${word.name}}`
+  if (word.node.type === "font") return fontTexOf(word.node, word.name, ctx)
+  return `${word.node.font}{${word.name}}`
+}
+
+/** A named operator standing as a factor's head, with the scripts set on it, if any. */
+function namedHeadOf(raw: any): (NamedWord & { scripted: any | null }) | null {
+  const u = peelStyles(raw)
+  const scripted = u?.type === "supsub" && u.base != null ? u : null
+  const word = namedWordOf(scripted != null ? scripted.base : raw)
+  return word == null ? null : { ...word, scripted }
+}
+
+/**
+ * A named operator and what it acts on, from `nodes[i]`; returns the index of
+ * the first node after it. A power on a function's name (`\operatorname{erf}^{2}`)
+ * is read as `\sin^{2}` is; a script on a linear operator (`\mathrm{Tr}^{2}`,
+ * a partial trace `\operatorname{Tr}_{A}`) is not read.
+ */
+function analyzeNamedOperator(
+  head: NamedWord & { scripted: any | null },
+  nodes: any[],
+  i: number,
+  ctx: Ctx,
+  push: (f: Factor) => void,
+): number {
+  const wordTex = namedWordTex(head, ctx)
+  if (head.op === "linear") {
+    if (head.scripted != null) throw new Unsupported(`a script on the operator “${wordTex}”, which is not supported`)
+    push({ kind: "linop", dim: ZERO, emit: () => wordTex })
+    return i + 1
+  }
+  const headTex = () => {
+    const s = head.scripted
+    if (s == null) return wordTex
+    const sup = s.sup != null ? classifySup(s.sup) : null
+    if (s.sub != null || sup == null || typeof sup !== "object") {
       throw new Unsupported("a decorated function the engine cannot read")
     }
-    headTex += scriptsTex(head, ctx)
+    return wordTex + scriptsTex(s, ctx)
   }
-  return headTex
+  if (head.op === "transcendental") return applyFunction(headTex, nodes, i, ctx, push)
+  let next = i + 1
+  while (next < nodes.length && SKIP_TYPES.has(unwrap(nodes[next])?.type)) next += 1
+  if (next >= nodes.length || delimitedArgumentOf(nodes[next]) == null) {
+    throw new Unsupported(`the sign function “${wordTex}” without a delimited argument, which is not supported`)
+  }
+  const tex = headTex()
+  const spacing = headSpacingTex(nodes.slice(i + 1, next), tex, ctx)
+  // The argument keeps its own anchor: sgn is unchanged by a positive factor,
+  // so the constants go inside, `\operatorname{sgn}(t - \frac{x}{c})`.
+  const arg = analyzeFactor(nodes[next], ctx)
+  push({ kind: "func", dim: ZERO, emit: () => joinTex([tex, spacing, arg.emit()]) })
+  return next + 1
+}
+
+/** Where a function's argument that no delimiter closes ends: at the next function's head. */
+function startsFunction(raw: any): boolean {
+  return isFuncHead(unwrap(raw)) || namedHeadOf(raw) != null
+}
+
+/**
+ * A function head at `nodes[i]` and its argument; returns the index of the
+ * first node after them. A delimited group right after the head is the whole
+ * argument: `\cos(\theta)\,v^{2}` is v² cos θ, and `\sin(t)/M` is sin t over M.
+ * The closing delimiter ends the argument; nothing written after it is read
+ * into the function, and spacing written between the head and the group is
+ * kept (headSpacingTex). Any other argument is the rest of the product, up to
+ * the next function head: `\sin\omega t` is sin(ωt).
+ */
+function applyFunction(headTex: () => string, nodes: any[], i: number, ctx: Ctx, push: (f: Factor) => void): number {
+  let next = i + 1
+  while (next < nodes.length && SKIP_TYPES.has(unwrap(nodes[next])?.type)) next += 1
+  floatingScriptAfterHeadGuard(headTex, next < nodes.length ? nodes[next] : null, ctx)
+  const delimited = next < nodes.length ? delimitedArgumentOf(nodes[next]) : null
+  if (delimited != null) {
+    push(analyzeDelimitedFunction(headTex, nodes.slice(i + 1, next), delimited, ctx))
+    return next + 1
+  }
+  let end = i + 1
+  while (end < nodes.length && !startsFunction(nodes[end])) end += 1
+  const argNodes = nodes.slice(i + 1, end)
+  if (argNodes.length === 0) throw new Unsupported("a function with no argument")
+  push(analyzeFunction(headTex, argNodes, ctx))
+  return end
 }
 
 /**
@@ -2737,8 +2901,8 @@ const TRAILING_CONSTANT = /(?<!\\[a-zA-Z]*)[cG](?:\^\{[^{}]*\})?$/
  * the emission itself, replayed with and without the restoration, because
  * only the emitter decides which slot a constant lands in.
  */
-function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
-  const headTex = functionHeadTex(headNode, ctx)
+function analyzeFunction(head: () => string, argNodes: any[], ctx: Ctx): Factor {
+  const headTex = head()
   const argSum = parseSum(argNodes, ctx, { anchor: "forced", target: ZERO })
   if (!argSum.multiTerm) {
     const live = argSum.emit()
@@ -2771,7 +2935,7 @@ function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
  * through groups (and the base of a script on a group) to the first thing the
  * argument opens on.
  */
-function floatingScriptAfterHeadGuard(headNode: any, next: any, ctx: Ctx): void {
+function floatingScriptAfterHeadGuard(head: () => string, next: any, ctx: Ctx): void {
   const script = argumentOpener(next)
   if (!isFloatingScript(script)) return
   // A prime on nothing (`\sin{}'`) is a floating script the primed-symbol
@@ -2779,7 +2943,7 @@ function floatingScriptAfterHeadGuard(headNode: any, next: any, ctx: Ctx): void 
   // source span to name it by here.
   if (script.sup != null && classifySup(script.sup) === "prime") return
   throw new Unsupported(
-    `the floating script “${supsubTex("{}", script, ctx)}” after “${functionHeadTex(headNode, ctx)}” — the function's power or a script on its argument — which is not supported`,
+    `the floating script “${supsubTex("{}", script, ctx)}” after “${head()}” — the function's power or a script on its argument — which is not supported`,
   )
 }
 
@@ -2895,12 +3059,12 @@ function headSpacingTex(skips: any[], headTex: string, ctx: Ctx): string {
  * same of the content either way: it must be dimensionless.
  */
 function analyzeDelimitedFunction(
-  headNode: any,
+  head: () => string,
   skips: any[],
   arg: { group: any; scripted: any | null },
   ctx: Ctx,
 ): Factor {
-  const headTex = functionHeadTex(headNode, ctx)
+  const headTex = head()
   const spacing = headSpacingTex(skips, headTex, ctx)
   const { group, scripted } = arg
   let scripts = ""
@@ -3149,8 +3313,10 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         return analyzeAccentBody(ctx, () => {
           // The dot's body is its one letter, read as the registry reads it:
           // a c or G there is read as the constant, as it is anywhere else.
+          // The legend row is that letter, whose unit the dictionary gives;
+          // listed as `\dot{r}`, the row gave a rate of change the unit of r.
           if (baseText === "c" || baseText === "G") ctx.constantsRead.push(baseText)
-          const baseDim = resolveSymbol(baseText, display, ctx, {})
+          const baseDim = resolveSymbol(baseText, baseSrc, ctx, {})
           const order = label === "\\ddot" ? 2 : 1
           const d = dimSub(baseDim, dim(0, 0, order))
           return { kind: "sym", dim: d, emit: () => display }
@@ -3176,8 +3342,16 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         `“${name || srcOf(n, ctx)}” — integrals, sums, and limits change dimensions with their measure and are not supported yet`,
       )
     }
-    case "operatorname":
-      throw new Unsupported("an \\operatorname construct, which is not supported")
+    case "operatorname": {
+      // An operator the table reads is read where it heads a factor
+      // (analyzeNamedOperator); any other one is named.
+      const name = n.alwaysHandleSupSub !== true ? letterWordOf(n.body) : null
+      throw new Unsupported(
+        name != null
+          ? `the operator “\\operatorname{${name}}”, which is not supported`
+          : "an \\operatorname construct, which is not supported",
+      )
+    }
     case "text": {
       // Prose, a placeholder, or an upright word or letter says so; any other
       // \text (an italic word, math set inside the text) keeps the general reason.
@@ -3339,6 +3513,11 @@ function scriptSrc(node: any, ctx: Ctx): string {
   // A bare font script (`T_\mathrm{eff}`) has no span of its own; rebuild it.
   const styled = peelStyles(node)
   if (styled?.type === "font") return fontTexOf(styled, scriptSrc(styled.body, ctx), ctx)
+  // Nor has a bare \text script (`u^\text{out}`), only its letters: sliced,
+  // the label came back as `u^{out}`, and the backstop declined the divergence.
+  if (styled?.type === "text" && !locIsOwn(styled.loc, ctx.input)) {
+    return `${styled.font}{${srcOfNodes(styled.body, ctx)}}`
+  }
   const src = srcOf(node, ctx)
   if (src.startsWith("{") && src.endsWith("}")) {
     let depth = 0
@@ -3383,10 +3562,13 @@ function supWrittenFirst(n: any, ctx: Ctx): boolean {
  * is set without a brace pair of its own, as written: KaTeX parses
  * `r_{\mathrm{s}}` to another node (a group around the font), which the
  * dictionary keys by another spelling, so the braced rebuild read back as an
- * unknown symbol instead of the Schwarzschild radius.
+ * unknown symbol instead of the Schwarzschild radius. A \text written as the
+ * whole script (`u^\text{out}`) is set the same way.
  */
 function scriptTex(mark: string, node: any, ctx: Ctx): string {
-  return node.type === "font" ? `${mark}${scriptSrc(node, ctx)}` : `${mark}{${scriptSrc(node, ctx)}}`
+  return node.type === "font" || node.type === "text"
+    ? `${mark}${scriptSrc(node, ctx)}`
+    : `${mark}{${scriptSrc(node, ctx)}}`
 }
 
 /** The scripts of a supsub, in the order they were written; `supTex` replaces a superscript rebuilt elsewhere (primes). */
@@ -3401,16 +3583,79 @@ function supsubTex(baseTex: string, n: any, ctx: Ctx): string {
   return baseTex + scriptsTex(n, ctx)
 }
 
-/** Emission for a supsub base: plain symbols slice their span; font wraps reconstruct. */
-function baseTexOf(rawBase: any, ctx: Ctx): string | null {
-  const peeled = peelStyles(rawBase)
-  if (peeled?.type === "font") {
-    const inner = baseTexOf(peeled.body, ctx)
-    return inner == null ? null : fontTexOf(peeled, inner, ctx)
+/**
+ * The one symbol a script is set on, read through what does not make it
+ * another symbol.
+ *
+ * Braces only group (R2): `{r}_{s}` is r_s and `{\partial}_{\mu}` is ∂_μ —
+ * LaTeXML wraps every symbol it writes in braces — and `\boldsymbol{R}_{s}`
+ * holds its letter in braces of its own. Read as compound bases, their
+ * scripts were set on a group: an identity subscript declined, and an index
+ * subscript was appended to the bare letter's reading (`{T}_{ab}` read T as a
+ * temperature). A font is read through as it always was (`\mathbf{p}_{i}`),
+ * the upright letter guard and the constant guard aside. A digit in braces is
+ * a numeral, not a symbol, and keeps the compound reading.
+ *
+ * An accent over the symbol (R3) is recorded, not read here: KaTeX sets the
+ * scripts on the accent, but they belong to the symbol under it, h̄_{μν} being
+ * "h̄ with indices μν". Read as a compound base, `\bar{h}_{\mu\nu}` looked up the
+ * bare h and appended the indices, and `\bar{T}_{\mu\nu}` read a temperature.
+ *
+ * The TeX is the base as written. A brace group has a span of its own and is
+ * sliced (`{\cal R}`, `{\bar h}`), which neither its font nor its accent has;
+ * a font or an accent standing bare is rebuilt around what it holds.
+ */
+type SymbolBase = {
+  /** The letter the dictionary keys: `h` for `\bar{h}`, `R` for `\boldsymbol{R}`. */
+  text: string
+  tex: string
+  /** The symbol as written without its accents (`r` for `\dot{r}`): what a dotted symbol's legend shows. */
+  underived: string
+  /** Set in an upright font on the way down to the letter. */
+  upright: boolean
+  /** The font nearest the letter, or null. */
+  font: any
+  /** The outermost accent (`\bar`, `\overline`, `\dot`, …), or null. */
+  accent: string | null
+  /** An accent over an accent (`\hat{\bar{h}}`). */
+  stacked: boolean
+  /** Read as a script's base always was: a letter, bare or under fonts and styles, not braced or accented. */
+  plain: boolean
+}
+
+function symbolBaseOf(raw: any, ctx: Ctx, wrapped = false): SymbolBase | null {
+  const peeled = peelStyles(raw)
+  if (peeled == null) return null
+  if (peeled.type === "font") {
+    const inner = symbolBaseOf(peeled.body, ctx, wrapped)
+    if (inner == null) return null
+    return {
+      ...inner,
+      tex: fontTexOf(peeled, inner.tex, ctx),
+      underived: fontTexOf(peeled, inner.underived, ctx),
+      upright: inner.upright || UPRIGHT_FONTS.has(peeled.font),
+      font: inner.font ?? peeled,
+    }
   }
-  const u = unwrap(rawBase)
-  if (u && (u.type === "mathord" || u.type === "textord")) return srcOf(u, ctx)
-  return null
+  if (peeled.type === "ordgroup") {
+    const body = peeled.body.filter(isMeaningfulNode)
+    if (body.length !== 1) return null
+    const inner = symbolBaseOf(body[0], ctx, true)
+    if (inner == null) return null
+    const sliced = locIsOwn(peeled.loc, ctx.input)
+    return { ...inner, tex: sliced ? srcOf(peeled, ctx) : `{${inner.tex}}`, underived: `{${inner.underived}}`, plain: false }
+  }
+  if (peeled.type === "accent" || peeled.type === "overline") {
+    const label = peeled.type === "accent" ? (peeled.label as string) : "\\overline"
+    const inner = symbolBaseOf(peeled.type === "accent" ? peeled.base : peeled.body, ctx, true)
+    if (inner == null) return null
+    const body = inner.tex.startsWith("{") && outerBracesArePartners(inner.tex) ? inner.tex.slice(1, -1) : inner.tex
+    return { ...inner, tex: `${label}{${body}}`, accent: label, stacked: inner.accent != null, plain: false }
+  }
+  if (peeled.type !== "mathord" && peeled.type !== "textord") return null
+  if (wrapped && /^[0-9]$/.test(peeled.text)) return null
+  const tex = srcOf(peeled, ctx)
+  return { text: peeled.text, tex, underived: tex, upright: false, font: null, accent: null, stacked: false, plain: !wrapped }
 }
 
 /**
@@ -3652,32 +3897,175 @@ function analyzeAccentBody(ctx: Ctx, analyze: () => Factor): Factor {
   )
 }
 
-/**
- * The font nearest a letter on the way down to `unwrap(node)`, if any: unwrap
- * discards it, so a supsub base `\mathbf c` is otherwise read as a plain c.
- */
-function innermostFontOf(node: any): any {
-  let cur = node
-  let font: any = null
-  while (cur != null) {
-    if (cur.type === "font") {
-      font = cur
-      cur = cur.body
-    } else if (WRAPPER_TYPES.has(cur.type)) {
-      const body = (Array.isArray(cur.body) ? cur.body : [cur.body]).filter(
-        (x: any) => x && !SKIP_TYPES.has(x.type),
-      )
-      if (body.length !== 1) return font
-      cur = body[0]
-    } else {
-      return font
-    }
-  }
-  return font
-}
-
 const SIGN_LABEL_REASON =
   "a sign standing as a superscript (a light-cone index or a charge label), which is neither a power nor a dictionary index"
+
+/**
+ * Superscript labels (R4). Some superscripts cannot be exponents, as a matter
+ * of notation: upright type is descriptive text, never a variable (ISO
+ * 80000-2: `u^{\text{out}}`, `T^{\mathrm{vac}}`, `h^{\rm TT}`); a parenthesized
+ * superscript that is no index list is an order or a step (`E^{(4)}`,
+ * `C^{(2n)}`); and a lone sign has no operand to be a power of (`X^{+}`, a
+ * light-cone component or a charge state).
+ *
+ * A label is not a statement that X^{label} has X's dimension. Newton's
+ * constant in four dimensions, G_N^{4d}, is not the five-dimensional one; the
+ * mode function u^{out}_j is no four-velocity, and the operator a^{out}_j no
+ * Kerr spin. So the label is part of the symbol's name, and the labelled
+ * symbol is looked up under that name, exactly (with its subscript), then as
+ * an indexed symbol, then bare, like any symbol: never under its letter's
+ * entries. The name is keyed one way for every spelling of the label:
+ * `u^{\mathrm{out}}` for `\text{out}`, `\mathrm{out}` and `{\rm out}` alike (the
+ * label's letters, digits, parentheses and commas, spacing dropped),
+ * `E^{(4)}`, `X^{+}`.
+ *
+ * Upright e, i and d are not labels, whatever surrounds them: ISO sets the
+ * constants and the differential upright too, so `e^{\mathrm{i}kx}` is a
+ * power. Nor is an operator's name (`{\rm Im}`, `\mathrm{Tr}`), which acts on
+ * what follows it.
+ *
+ * Conjugation marks close the superscript. The dagger is the adjoint, which
+ * keeps the dimension, so it adds nothing to the name (`a^{\dagger}_{j}` is read
+ * as a_j). A star does not keep a meaning of its own — complex conjugate,
+ * pullback, Hodge dual, a critical or a rescaled value — so it is part of the
+ * name (`\alpha^{*}`), like a label.
+ */
+const CONJUGATION_MARKS = new Set(["\\dagger", "*", "\\ast", "\\star"])
+
+/** A label's key in a symbol's name, or null for daggers alone, which change no name. */
+type SupLabel = { key: string | null }
+
+/**
+ * The label a superscript's nodes spell, or "mixed" for a label set among
+ * index letters (`h^{ij\mathrm{TT}}`), which is neither a label nor an index
+ * list, or null when the superscript is no label (a power, an index list, an
+ * expression).
+ */
+function supLabelOf(nodes: any[]): SupLabel | "mixed" | null {
+  let end = nodes.length
+  const marks: string[] = []
+  for (; end > 0; end -= 1) {
+    const u = unwrap(nodes[end - 1])
+    if (u?.type !== "atom" || !CONJUGATION_MARKS.has(u.text)) break
+    marks.unshift(u.text)
+  }
+  const core = nodes.slice(0, end)
+  const opaque = marks
+    .filter((m) => m !== "\\dagger")
+    .map((m) => (m === "\\ast" ? "*" : m))
+    .join("")
+  if (core.length === 0) return marks.length === 0 ? null : { key: opaque || null }
+  const key = labelKeyOf(core)
+  if (key != null) return { key: key + opaque }
+  const labels = core.filter((x) => uprightLabelKey(x, false) != null)
+  const indices = core.filter((x) => !labels.includes(x))
+  const isIndexLetter = (x: any) => isIndexToken(x) && !/^[0-9]$/.test(textOf(x) ?? "")
+  if (labels.length > 0 && indices.every(isIndexLetter) && indices.some(isGenuineIndex)) return "mixed"
+  return null
+}
+
+/** The key of a label spelled by a superscript's nodes, conjugation marks set aside, or null. */
+function labelKeyOf(core: any[]): string | null {
+  if (core.length === 1) {
+    if (isSignToken(core[0])) return unwrap(core[0]).text
+    return uprightLabelKey(core[0], false)
+  }
+  const open = unwrap(core[0])
+  const close = unwrap(core[core.length - 1])
+  if (core.length < 3 || open?.type !== "atom" || open.text !== "(" || close?.type !== "atom" || close.text !== ")") {
+    return null
+  }
+  const middle = core.slice(1, -1)
+  if (middle.length === 1) {
+    const upright = uprightLabelKey(middle[0], true)
+    if (upright != null) return upright
+  }
+  // `h^{(2)}` and `\theta^{(\nu)}` hold an index list in parentheses, a frame
+  // component as often as an order, and keep the index reading.
+  let indexList = false
+  try {
+    indexList = allIndexTokens(middle)
+  } catch {
+    // a comma inside: no index list
+  }
+  if (indexList) return null
+  const chars = middle.map((x) => {
+    const u = unwrap(x)
+    if (u?.type === "atom" && (u.text === "*" || u.text === "\\ast")) return "*"
+    const text = isPlain(x) ? textOf(u) : null
+    return text != null && /^[A-Za-z0-9]$/.test(text) ? text : null
+  })
+  return chars.every((c) => c != null) ? `(${chars.join("")})` : null
+}
+
+/** An upright label's key, `\mathrm{out}` or `\mathrm{(vac)}`, or null for anything else. */
+function uprightLabelKey(node: any, parenthesized: boolean): string | null {
+  const content = uprightContentOf(node)
+  if (content == null || !/[A-Za-z]/.test(content)) return null
+  if (UPRIGHT_LETTERS_READ.has(content) || NAMED_OPS.has(content)) return null
+  return parenthesized ? `\\mathrm{(${content})}` : `\\mathrm{${content}}`
+}
+
+/**
+ * What an upright font or an upright \text holds, read through single-child
+ * braces: its letters, digits, parentheses and commas, spacing dropped; null
+ * for anything else inside it, or for any other node.
+ */
+function uprightContentOf(node: any): string | null {
+  let cur = peelStyles(node)
+  while (cur?.type === "ordgroup") {
+    const body = cur.body.filter(isMeaningfulNode)
+    if (body.length !== 1) return null
+    cur = peelStyles(body[0])
+  }
+  let body: any[]
+  if (cur?.type === "font" && UPRIGHT_FONTS.has(cur.font)) body = nodeListOf(cur.body)
+  else if (cur?.type === "text" && UPRIGHT_TEXT_FONTS.has(cur.font)) body = cur.body
+  else return null
+  let content = ""
+  for (const x of body) {
+    if (x == null || SKIP_TYPES.has(x.type)) continue
+    const char =
+      (x.type === "mathord" || x.type === "textord") && /^[A-Za-z0-9,()]$/.test(x.text)
+        ? x.text
+        : x.type === "atom" && ["(", ")", ","].includes(x.text)
+          ? x.text
+          : null
+    if (char == null) return null
+    content += char
+  }
+  return content === "" ? null : content
+}
+
+/**
+ * The marks that keep the dimension of a delimited group they are set on
+ * (R8b): the adjoint, and the transpose (`\intercal`, `\top`, an upright or
+ * sans-serif T). A group has no name to look a label up by, so nothing else
+ * raised on it is read.
+ */
+function preservesGroup(sup: any): boolean {
+  const nodes = nodeListOf(sup).filter(isMeaningfulNode)
+  let end = nodes.length
+  while (end > 0 && unwrap(nodes[end - 1])?.type === "atom" && unwrap(nodes[end - 1]).text === "\\dagger") end -= 1
+  if (end === 0) return nodes.length > 0
+  if (end > 1) return false
+  const u = unwrap(nodes[0])
+  if (u?.text === "\\intercal" || u?.text === "\\top") return true
+  const styled = peelStyles(nodes[0])
+  if (styled?.type === "font" && styled.font === "mathsf") return textOf(styled.body) === "T"
+  return uprightContentOf(nodes[0]) === "T"
+}
+
+/**
+ * A dot over a symbol read with indices. The dot is a time derivative in one
+ * notation and, in the 1+3 covariant one, the derivative along the four-velocity
+ * (`\dot{u}^{a} = u^{b}\nabla_{b}u^{a}`, the acceleration). The two differ by a
+ * velocity, which a constant insertion absorbs without trace: read as d/dt,
+ * that definition shipped with a c restored into it.
+ */
+function dotOnIndexedReason(tex: string): string {
+  return `a dot on the indexed symbol “${tex}” — a time derivative or the derivative along u^{a}, which differ by a velocity`
+}
 
 /**
  * A primed superscript rebuilt as written. Written primes (`^{\prime}`,
@@ -3711,6 +4099,11 @@ function primedSupTex(sup: any, split: PrimeSplit, ctx: Ctx): string {
  * listed as `x'_{\mu}`, and `\alpha^{\prime\,2}` as `\alpha'`. An index list
  * after the primes is shown as written (`x'^{\mu}`), as an indexed symbol's
  * indices are. The emission is the scripts as written, in the order written.
+ *
+ * A label after the primes is part of the name, as on any symbol (supLabelOf):
+ * `u'^{\rm out}` is looked up as `u'^{\mathrm{out}}` and listed as written. The
+ * base may be braced or set in a font (`{\alpha}'`), which does not make it
+ * another symbol; an accent does, and a primed accent is a compound.
  */
 function readPrimed(
   n: any,
@@ -3723,18 +4116,24 @@ function readPrimed(
   if (split == null) throw new Unsupported("a prime mixed into a superscript the engine could not read")
   // A decorated big operator (\sum', \int') names itself, as it does wearing limits.
   if (base.type === "op" && !(base.name && FUNC_OPS.has(base.name))) analyzeFactor(n.base, ctx)
-  const baseText = textOf(base)
-  const baseTex = baseTexOf(n.base, ctx)
-  if (baseText == null || baseTex == null) {
+  const symbol = symbolBaseOf(n.base, ctx)
+  if (symbol == null || symbol.accent != null) {
     throw new Unsupported("a prime on a compound expression, which the engine cannot read as a symbol")
   }
+  const baseText = symbol.text
+  const baseTex = symbol.tex
   if (BAR_FAMILY[baseText]) throw new Unsupported(unpairedBarReason(baseText))
-  uprightLetterGuard(baseText, opts.upright)
+  uprightLetterGuard(baseText, opts.upright || symbol.upright)
   const ticks = "'".repeat(split.count)
-  const key = `${baseText}${ticks}`
   const tex = baseTex + scriptsTex(n, ctx, primedSupTex(n.sup, split, ctx))
-  const rest = split.rest.length > 0 ? classifySupNodes(split.rest) : null
-  const display = rest === "index" ? tex : baseTex + ticks + (n.sub != null ? scriptTex("_", n.sub, ctx) : "")
+  const label = split.rest.length > 0 ? supLabelOf(split.rest) : null
+  if (label === "mixed") throw new Unsupported(`a superscript on “${tex}” that mixes a label with indices`)
+  const key = `${baseText}${ticks}${label?.key != null ? `^{${label.key}}` : ""}`
+  const rest = split.rest.length > 0 && label == null ? classifySupNodes(split.rest) : null
+  const display =
+    rest === "index" || label?.key != null
+      ? tex
+      : baseTex + ticks + (n.sub != null ? scriptTex("_", n.sub, ctx) : "")
   // The guards see the scripts the primed symbol carries, the primes set aside.
   const scripts = { sub: n.sub, sup: rest == null ? null : { type: "ordgroup", body: split.rest } }
   if (n.sub != null) {
@@ -3753,8 +4152,7 @@ function readPrimed(
 }
 
 function analyzePrimed(n: any, ctx: Ctx): Factor {
-  const upright = ctx.font?.upright === true || underUprightFont(n.base)
-  const primed = readPrimed(n, ctx, { upright, differential: false, scalePower: true })
+  const primed = readPrimed(n, ctx, { upright: ctx.font?.upright === true, differential: false, scalePower: true })
   return { kind: "sym", dim: primed.dim, emit: () => primed.tex }
 }
 
@@ -3769,10 +4167,10 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
     analyzeFactor(n.base, ctx)
   }
 
-  if (sup === "signLabel") throw new Unsupported(SIGN_LABEL_REASON)
-
   // {}^{d} / {}_{\mu\nu} index riders (as in R_{abc}{}^{d} or \Gamma^{\rho}{}_{\mu\nu}).
   if (base == null || (base.type === "ordgroup" && base.body.length === 0)) {
+    // A sign on nothing labels no symbol.
+    if (sup === "signLabel") throw new Unsupported(SIGN_LABEL_REASON)
     const supIsIndex = n.sup == null || sup === "index" || allRiderTokens(nodeListOf(n.sup))
     const subIsIndex = n.sub == null || allRiderTokens(nodeListOf(n.sub))
     if ((n.sup != null || n.sub != null) && supIsIndex && subIsIndex) {
@@ -3782,88 +4180,210 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
     throw new Unsupported("a floating super/subscript")
   }
 
-  const baseText = base != null ? textOf(base) : null
-  // A scripted bar is a closing bar pairBars never saw, not a symbol.
-  if (baseText != null && BAR_FAMILY[baseText]) throw new Unsupported(unpairedBarReason(baseText))
-  // A script does not make an upright letter a variable: \mathrm{m}^{2} is a unit.
-  if (baseText != null) {
-    uprightLetterGuard(baseText, ctx.font?.upright === true || underUprightFont(n.base))
+  const label = n.sup != null ? supLabelOf(nodeListOf(n.sup).filter(isMeaningfulNode)) : null
+  // A sign that closes a longer superscript (`X^{n+}`, a charge state) makes
+  // it no label the dictionary keys, and no power either.
+  if (sup === "signLabel" && (label == null || label === "mixed")) throw new Unsupported(SIGN_LABEL_REASON)
+
+  const symbol = scriptedSymbolOf(n, sup, label, ctx)
+  if (symbol == null) return analyzeScriptedCompound(n, sup, label, ctx)
+  // scriptedSymbolOf has declined a mixed superscript on a symbol.
+  return analyzeScriptedSymbol(n, symbol, sup, label === "mixed" ? null : label, ctx)
+}
+
+/**
+ * The accents a scripted symbol is read through (R3). The bar, the vector
+ * arrow, the check and the breve keep the symbol's dimension, as the engine
+ * reads them on a symbol with no scripts, and a dot takes a time off it per
+ * order. The hat and the tilde are read through on a symbol with no scripts,
+ * which is the owner's to rule on (a unit vector, an operator, a Fourier
+ * transform or a rescaling need not keep the dimension), and are not extended
+ * to scripted symbols; a wide accent is not read at all.
+ */
+const SCRIPTED_ACCENTS = new Set(["\\bar", "\\vec", "\\check", "\\breve", "\\overline", "\\dot", "\\ddot"])
+
+/**
+ * The symbol a supsub's scripts are set on (symbolBaseOf), or null for a
+ * compound base. A lone numeric power on a braced, font-wrapped or accented
+ * symbol stays with the compound reading, which reads it as it always has
+ * (`\bar{r}^{2}`, `\dot{r}^{2}`, `{c}^{2}`): the scripts that need the symbol's
+ * name are the subscript, an index list and a label. So does c or G under an
+ * accent, which the compound reading declines as another symbol
+ * (analyzeAccentBody). A label mixed with indices is named before the accent
+ * is judged, as it is on a symbol with none.
+ */
+function scriptedSymbolOf(
+  n: any,
+  sup: ReturnType<typeof classifySup> | null,
+  label: SupLabel | "mixed" | null,
+  ctx: Ctx,
+): SymbolBase | null {
+  const symbol = symbolBaseOf(n.base, ctx)
+  if (symbol == null) return null
+  if (!symbol.plain && n.sub == null && typeof sup === "object" && sup != null) return null
+  const tex = supsubTex(symbol.tex, n, ctx)
+  if (label === "mixed") throw new Unsupported(`a superscript on “${tex}” that mixes a label with indices`)
+  if (symbol.accent == null) return symbol
+  if (symbol.text === "c" || symbol.text === "G") return null
+  if (symbol.stacked) throw new Unsupported(`stacked accents on “${tex}”, which are not supported`)
+  if (SCRIPTED_ACCENTS.has(symbol.accent)) return symbol
+  if (TRANSPARENT_ACCENTS.has(symbol.accent)) {
+    throw new Unsupported(
+      `the accent “${symbol.accent}” over the scripted symbol “${tex}” — a unit vector, an operator or a transform, which need not keep the symbol's dimension — is not supported yet`,
+    )
   }
-  const baseTex = baseTexOf(n.base, ctx)
-  const wholeTex = baseTex != null ? supsubTex(baseTex, n, ctx) : null
+  throw new Unsupported(`the unsupported accent “${symbol.accent}”`)
+}
+
+/**
+ * Whether the scripts read the symbol through an indexed entry the dictionary
+ * has: an index subscript that spells no identity the dictionary has, or an
+ * index superscript alone, on a symbol with an indexed reading. A symbol with
+ * none is looked up, and missed, as any other.
+ */
+function readsIndexed(name: string, n: any, reading: ReturnType<typeof classifySup> | null, ctx: Ctx): boolean {
+  if (!ctx.reg.indexed[name]) return false
+  if (n.sub == null) return reading === "index"
+  if (ctx.reg.exact[`${name}_${subKeyText(n.sub, ctx)}`]) return false
+  return allIndexTokens(nodeListOf(n.sub), true)
+}
+
+/**
+ * A symbol carrying scripts: its identity, indices, a label or a power, read
+ * by lookup under the symbol's name, with a label as part of the name.
+ */
+function analyzeScriptedSymbol(
+  n: any,
+  symbol: SymbolBase,
+  sup: ReturnType<typeof classifySup> | null,
+  label: SupLabel | null,
+  ctx: Ctx,
+): Factor {
+  const baseText = symbol.text
+  const baseTex = symbol.tex
+  // A scripted bar is a closing bar pairBars never saw, not a symbol.
+  if (BAR_FAMILY[baseText]) throw new Unsupported(unpairedBarReason(baseText))
+  // A script does not make an upright letter a variable: \mathrm{m}^{2} is a unit.
+  uprightLetterGuard(baseText, ctx.font?.upright === true || symbol.upright)
+  const wholeTex = supsubTex(baseTex, n, ctx)
+  const font = symbol.font ?? ctx.font?.node ?? null
+  // Read through a dagger, c^{\dagger} would be the constant itself, set to one
+  // on a geometrized target under its mark.
+  if (label != null && label.key == null && n.sub == null && (baseText === "c" || baseText === "G")) {
+    constantFontGuard(baseText, font, ctx)
+    throw new Unsupported(`a label or mark on the constant “${baseText}”`)
+  }
+  const name = label?.key != null ? `${baseText}^{${label.key}}` : baseText
+  // What the superscript says once a label has gone into the name.
+  const reading = label != null ? null : sup
+  const order = symbol.accent === "\\dot" ? 1 : symbol.accent === "\\ddot" ? 2 : 0
+  if (order > 0 && readsIndexed(name, n, reading, ctx)) throw new Unsupported(dotOnIndexedReason(wholeTex))
+  // A dotted symbol's legend row is the symbol under the dot, whose unit the
+  // dictionary gives; the dotted one's is not the dictionary's.
+  const legendTex = order > 0 ? supsubTex(symbol.underived, n, ctx) : wholeTex
+  const derived = (d: Dim) => (order > 0 ? dimSub(d, dim(0, 0, order)) : d)
 
   // Symbol with a subscript: identity, indices, or unknown.
-  if (baseText != null && wholeTex != null && n.sub != null) {
-    angularIndexGuard(baseText, n, wholeTex, ctx)
-    componentDigitGuard(baseText, n, sup, wholeTex, ctx)
-    const d = resolveSymbol(baseText, wholeTex, ctx, { sub: n.sub })
-    const unitConstant = `${baseText}_${subKeyText(n.sub, ctx)}` === "k_B" || undefined
-    if (sup == null) return { kind: "sym", dim: d, emit: () => wholeTex, unitConstant }
-    if (sup === "index") return { kind: "sym", dim: d, emit: () => wholeTex }
-    if (typeof sup === "object") {
-      return { kind: "sym", dim: dimScale(d, sup.p, sup.q), emit: () => wholeTex, unitConstant }
+  if (n.sub != null) {
+    angularIndexGuard(name, n, wholeTex, ctx)
+    componentDigitGuard(name, n, reading, wholeTex, ctx)
+    const d = derived(resolveSymbol(name, legendTex, ctx, { sub: n.sub }))
+    const unitConstant = `${name}_${subKeyText(n.sub, ctx)}` === "k_B" || undefined
+    if (reading == null) return { kind: "sym", dim: d, emit: () => wholeTex, unitConstant }
+    if (reading === "index") return { kind: "sym", dim: d, emit: () => wholeTex }
+    if (typeof reading === "object") {
+      return { kind: "sym", dim: dimScale(d, reading.p, reading.q), emit: () => wholeTex, unitConstant }
     }
     throw new Unsupported(`an exponent on “${wholeTex}” that could not be read`)
   }
 
   // Pure superscript.
-  if (baseText != null && wholeTex != null && sup != null) {
-    if (sup === "index") {
-      const d = resolveSymbol(baseText, wholeTex, ctx, { indices: true })
-      return { kind: "sym", dim: d, emit: () => wholeTex }
-    }
-    // Read bare, the base is the constant itself only in italic type.
-    constantFontGuard(baseText, innermostFontOf(n.base) ?? ctx.font?.node ?? null, ctx)
-    if (typeof sup === "object") {
-      const isConst = baseText === "\\pi" || baseText === "i" || baseText === "e"
-      const d = isConst ? ZERO : resolveSymbol(baseText, baseTex!, ctx, {})
-      const scaled = dimScale(d, sup.p, sup.q)
-      if (baseText === "c" || baseText === "G") {
-        ctx.constantsRead.push(baseText)
-        const e12 = (D12 * sup.p) / sup.q
-        return {
-          kind: "sym",
-          dim: scaled,
-          constant: Number.isInteger(e12) ? { tex: baseText, e12 } : undefined,
-          unitConstant: true,
-          vanishes: () => stripsConstants(ctx),
-          emit: () => {
-            if (!stripsConstants(ctx)) return ctx.net != null ? netOpaque(wholeTex) : wholeTex
-            ctx.mutated = true
-            return ""
-          },
-        }
-      }
-      const unitConstant = baseText === "\\hbar" || undefined
-      return { kind: isConst ? "num" : "sym", dim: scaled, emit: () => wholeTex, unitConstant }
-    }
-    // Expression exponent: legal only on a dimensionless base; the exponent is
-    // itself a geometrized expression restored against a dimensionless target.
-    const baseDim =
-      baseText === "e" || baseText === "\\pi" || baseText === "i"
-        ? ZERO
-        : resolveSymbol(baseText, baseTex!, ctx, {})
-    if (!dimIsZero(baseDim)) {
-      throw new Unsupported(`a symbolic exponent on the dimensional base “${baseTex}”`)
-    }
-    const expSum = parseSum(nodeListOf(n.sup), ctx, { anchor: "forced", target: ZERO })
-    const frozenBase = baseTex!
-    const emit = () => `${frozenBase}^{${expSum.emit()}}`
-    return { kind: "sym", dim: ZERO, emit }
+  if (reading === "index") {
+    const d = derived(resolveSymbol(name, legendTex, ctx, { indices: true }))
+    return { kind: "sym", dim: d, emit: () => wholeTex }
   }
+  // A label, looked up as its own name, or a dagger, which keeps the symbol's.
+  if (reading == null) {
+    const d = derived(resolveSymbol(name, legendTex, ctx, {}))
+    return { kind: "sym", dim: d, emit: () => wholeTex }
+  }
+  // A power on an accented symbol stays with the compound reading
+  // (scriptedSymbolOf); any other exponent is not read on it.
+  if (symbol.accent != null) throw new Unsupported(`an exponent on “${wholeTex}” that could not be read`)
+  // Read bare, the base is the constant itself only in italic type.
+  constantFontGuard(baseText, font, ctx)
+  if (typeof reading === "object") {
+    const isConst = baseText === "\\pi" || baseText === "i" || baseText === "e"
+    const d = isConst ? ZERO : resolveSymbol(baseText, baseTex, ctx, {})
+    const scaled = dimScale(d, reading.p, reading.q)
+    if (baseText === "c" || baseText === "G") {
+      ctx.constantsRead.push(baseText)
+      const e12 = (D12 * reading.p) / reading.q
+      return {
+        kind: "sym",
+        dim: scaled,
+        constant: Number.isInteger(e12) ? { tex: baseText, e12 } : undefined,
+        unitConstant: true,
+        vanishes: () => stripsConstants(ctx),
+        emit: () => {
+          if (!stripsConstants(ctx)) return ctx.net != null ? netOpaque(wholeTex) : wholeTex
+          ctx.mutated = true
+          return ""
+        },
+      }
+    }
+    const unitConstant = baseText === "\\hbar" || undefined
+    return { kind: isConst ? "num" : "sym", dim: scaled, emit: () => wholeTex, unitConstant }
+  }
+  // Expression exponent: legal only on a dimensionless base; the exponent is
+  // itself a geometrized expression restored against a dimensionless target.
+  const baseDim =
+    baseText === "e" || baseText === "\\pi" || baseText === "i" ? ZERO : resolveSymbol(baseText, baseTex, ctx, {})
+  if (!dimIsZero(baseDim)) {
+    throw new Unsupported(`a symbolic exponent on the dimensional base “${baseTex}”`)
+  }
+  const expSum = parseSum(nodeListOf(n.sup), ctx, { anchor: "forced", target: ZERO })
+  const emit = () => `${baseTex}^{${expSum.emit()}}`
+  return { kind: "sym", dim: ZERO, emit }
+}
 
-  // Compound base (group, frac, sqrt, accent) carrying a numeric power and/or
-  // index scripts: emission is rebuilt from the analyzed base so inner
-  // restorations and delimiters survive.
+/** A group in brackets or parentheses, not a bar pair or an evaluation bar. */
+function isBracketGroup(u: any): boolean {
+  if (u?.type === "leftright") return u.left !== "." && !BAR_OPENERS.has(u.left)
+  return u?.type === "__group" && u.bar == null
+}
+
+/**
+ * A compound base (a group, a fraction, a root, an accent over an expression)
+ * carrying a numeric power and/or index scripts: emission is rebuilt from the
+ * analyzed base so inner restorations and delimiters survive. A group keeps
+ * its dimension under a dagger or a transpose (R8b); a label or any other mark
+ * has no symbol's name to go into, and is not read on it.
+ */
+function analyzeScriptedCompound(
+  n: any,
+  sup: ReturnType<typeof classifySup> | null,
+  label: SupLabel | "mixed" | null,
+  ctx: Ctx,
+): Factor {
+  const base = unwrap(n.base)
   if (base != null) {
     bracedDigitGuard(n, base, ctx)
     const subIsIndex = n.sub == null || allIndexTokens(nodeListOf(n.sub), true)
+    const kept = n.sup != null && isBracketGroup(base) && preservesGroup(n.sup)
+    if (!kept && label != null && label !== "mixed") {
+      throw new Unsupported(
+        `the label or mark “${scriptSrc(n.sup, ctx)}” on a compound expression, which the engine cannot read as a symbol`,
+      )
+    }
     const supIsReadable =
-      sup == null || (sup === "index" && !hasDecoratedIndexToken(nodeListOf(n.sup))) || typeof sup === "object"
+      kept ||
+      sup == null ||
+      (sup === "index" && !hasDecoratedIndexToken(nodeListOf(n.sup))) ||
+      typeof sup === "object"
     if (subIsIndex && supIsReadable) {
       const inner = analyzeFactor(n.base, ctx)
-      const scaled =
-        typeof sup === "object" && sup != null ? dimScale(inner.dim, sup.p, sup.q) : inner.dim
+      const scaled = !kept && typeof sup === "object" && sup != null ? dimScale(inner.dim, sup.p, sup.q) : inner.dim
       const scripts = scriptsTex(n, ctx)
       return {
         kind: "group",
@@ -4136,11 +4656,13 @@ function emitTerm(t: TermInfo, ctx: Ctx): string {
  */
 function partsWith(factors: Factor[], gTex: string, cTex: string, ctx: Ctx): string[] {
   const parts = factors.map((f) => factorTex(f, f.isBareSum ? `\\left(${f.emit()}\\right)` : f.emit(), ctx))
+  // A linear operator is passed over like glue: G is set before it
+  // (`2G\operatorname{Re}(h_{ab})`), which linearity makes the same as inside.
   let headPos = 0
   for (let idx = 0; idx < factors.length; idx += 1) {
     const kind = factors[idx].kind
     if (kind === "num") headPos = idx + 1
-    else if (kind === "glue") continue
+    else if (kind === "glue" || kind === "linop") continue
     else break
   }
   let tailPos = factors.length
