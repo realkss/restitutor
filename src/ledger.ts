@@ -51,9 +51,10 @@ const STRUCTURAL: [RegExp, OutcomeClass][] = [
   // by side, or one product.
   [/lists or multiple statements|a row that begins at|a relation with nothing on one side|a trailing .* with nothing after it|an empty expression|signs with nothing to act on|explicit spacing between two factors|^prose \(/, "fragment"],
   [/a proportionality/, "proportional"],
-  // The equation IS a units declaration (c = G = 1), or gives a constant a
-  // value in units it does not name (c = 299792458): nothing to restore.
-  [/a relation between the constants themselves|a numeric value for “.*”, in units the equation does not state/, "declaration"],
+  // The equation IS a units declaration (c = G = 1), gives a constant a value
+  // in units it does not name (c = 299792458), compares one with a number
+  // (c < 1), or only relates the constants (c > G): nothing to restore.
+  [/a relation between the constants themselves|a numeric value for “.*”, in units the equation does not state|a comparison of “.*” with a number, in units the equation does not state/, "declaration"],
   // Constructs the engine's reader does not handle, in its several wordings.
   [
     /not supported|could not be read|could not read|cannot read|floating super\/subscript|symbolic exponent|unsupported (?:relation|accent|differential)|closing delimiter|cannot pair with its partner|in this position|primed symbol|time derivative of a compound|integrals, sums, and limits|an angular coordinate index|the upright (?:word|words|letter) |the multi-letter name |an unspecified constant|a constant to restore inside the font|the arrow “|the exchange “|a colon that is not part of|which the engine does not read|neither a power nor a dictionary index|a sign directly beside/,

@@ -30,6 +30,8 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("c = G = 1").class, "declaration")
     // A constant's numeric value is no declaration, but has as little to restore.
     assert.strictEqual(outcome("c = 299792458").class, "declaration")
+    assert.strictEqual(outcome("c < 1").class, "declaration")
+    assert.strictEqual(outcome("c > G").class, "declaration")
     // A constant term among quantities the registry reads otherwise is a
     // verdict on those readings, as a missing completion is.
     assert.strictEqual(outcome("g_{00} \\approx -c^2 - 2\\Phi").class, "no-completion")

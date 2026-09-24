@@ -372,6 +372,12 @@ type Factor = {
    */
   parts?: Factor[]
   /**
+   * The wrapped sum has more than one term, or a term under a minus or branch
+   * sign, which `parts` flattens away: `(-c) = 1` gives c the value −1, and
+   * read through its parts alone it set c to one.
+   */
+  signedParts?: boolean
+  /**
    * The factor ends in a function argument no delimiter closes (`\tanh\phi`,
    * and `{\tanh\phi}`, whose braces do not print). Whatever is set right after
    * it reads as more of that argument, so a constant never goes there.
@@ -1072,9 +1078,13 @@ function isPureConstant(t: TermInfo): boolean {
   return meaningful.length > 0 && meaningful.every((f) => f.constant != null)
 }
 
-/** Every factor of every term of a sum, for a wrapping factor's `parts`. */
-function partsOf(sum: SumInfo): Factor[] {
-  return sum.terms.flatMap((t) => t.factors)
+/**
+ * Every factor of every term of a sum, for a wrapping factor's `parts`, and
+ * whether flattening them lost a second term or a sign.
+ */
+function partsOf(sum: SumInfo): Pick<Factor, "parts" | "signedParts"> {
+  const signed = sum.multiTerm || sum.terms.some((t) => t.sign !== "" && t.sign !== "+")
+  return { parts: sum.terms.flatMap((t) => t.factors), signedParts: signed || undefined }
 }
 
 /**
@@ -1103,10 +1113,29 @@ function unitLeavesOf(factors: Factor[]): "num" | "unit" | null {
   return found
 }
 
-/** A numeral term reading ±1, whatever its sign: the value a unit system gives a constant. */
-function isOneInMagnitude(t: TermInfo): boolean {
+/** The relations a unit convention is declared with: an equality, an identity, a definition. */
+const DECLARING_RELS = new Set(["=", "\\equiv", ":="])
+
+/** A wrapping factor anywhere in the run lost a second term or a sign when its parts were flattened. */
+function wrapsSignedParts(factors: Factor[]): boolean {
+  return factors.some(
+    (f) =>
+      f.signedParts === true ||
+      (f.frac != null && wrapsSignedParts([...f.frac.num, ...f.frac.den])) ||
+      (f.parts != null && wrapsSignedParts(f.parts)),
+  )
+}
+
+/** No minus or branch sign before the term, and none inside it. */
+function isUnsigned(t: TermInfo): boolean {
+  return (t.sign === "" || t.sign === "+") && !wrapsSignedParts(t.factors)
+}
+
+/** The numeral 1 with no minus sign on it: the value a unit system gives a constant. */
+function isPlainOne(t: TermInfo): boolean {
   const numerals = t.factors.filter((f) => f.kind !== "glue")
   return (
+    isUnsigned(t) &&
     t.slashIdx < 0 &&
     numerals.length > 0 &&
     numerals.every((f) => f.kind === "num" && Number.parseFloat(f.emit()) === 1)
@@ -1122,31 +1151,52 @@ function isOneInMagnitude(t: TermInfo): boolean {
  * groups, fractions and roots), and at least one of the constants is there,
  * the row declines before any insertion, on every target.
  *
- * Two readings are told apart by the numerals standing alone. When each one
- * is a whole side reading ±1, the relation sets constants to one — a
- * declaration of the unit system (`G = c = 1`, `8\pi G = 1`). Otherwise it
+ * The reason names what the row states, and only a notational fact decides
+ * it. A row is a declaration of the unit convention only as a declaration is
+ * written: every relation an equality, every side one unsigned product of the
+ * constants or the numeral 1, and at least one side that 1 (`G = c = 1`,
+ * `8\pi G = 1`, `\frac{c^4}{G} = 1`). Decided from the numerals alone, the
+ * reason called `\hbar \ne 1` (ħ is not one), `c < 1` (the usual bound on a
+ * central charge) and `c = -1` (no unit system sets c to −1) declarations,
+ * while `c = -2` got the numeric-value reason. Any other row with a numeral in it
  * gives a constant a value in units it does not name (`c = 299792458`,
- * `c^2 - 1 = 0`), which is no declaration, and `c = -26` is not even about
- * the speed of light.
+ * `c = -1`, `c^2 - 1 = 0`), or compares one with a number (`c < 1`), and
+ * `c = -26` is not even about the speed of light. A row with no numeral
+ * besides zero (`c > G`, `c - G = 0`) only relates the constants.
  */
-function declarationGuard(sums: (SumInfo | null)[], ctx: Ctx): void {
-  const terms = sums.flatMap((sum) => (sum == null ? [] : sum.terms))
+function declarationGuard(sums: (SumInfo | null)[], rels: string[], ctx: Ctx): void {
+  const sides = sums.filter((sum): sum is SumInfo => sum != null)
+  const terms = sides.flatMap((sum) => sum.terms)
   const kinds = terms.map((t) => unitLeavesOf(t.factors))
   if (!kinds.includes("unit") || kinds.includes(null)) return
-  const setsToOne = sums.every(
-    (sum) =>
-      sum == null ||
-      sum.terms.every((t) => unitLeavesOf(t.factors) === "unit") ||
-      (!sum.multiTerm && isOneInMagnitude(sum.terms[0])),
-  )
-  if (!setsToOne) {
-    const constant = terms[kinds.indexOf("unit")]
+  const equalities = rels.every((rel) => DECLARING_RELS.has(rel))
+  const declares =
+    equalities &&
+    sides.every(
+      (sum) =>
+        !sum.multiTerm &&
+        (isPlainOne(sum.terms[0]) || (isUnsigned(sum.terms[0]) && unitLeavesOf(sum.terms[0].factors) === "unit")),
+    ) &&
+    sides.some((sum) => !sum.multiTerm && isPlainOne(sum.terms[0]))
+  if (declares) {
     throw new Unsupported(
-      `a numeric value for “${termQuote(constant, ctx)}”, in units the equation does not state`,
+      "a relation between the constants themselves — a declaration of the unit convention rather than a physical relation to restore",
     )
   }
+  if (!terms.some((t, idx) => kinds[idx] === "num" && !t.isZero)) {
+    throw new Unsupported("a relation between the constants themselves, with no quantity in it to restore")
+  }
+  // A side made only of constants is quoted whole (`c + G = 1` gives a value
+  // to c + G, not to c); otherwise the first constant term is.
+  const side = sides.find((sum) => sum.terms.some((t) => unitLeavesOf(t.factors) === "unit")) as SumInfo
+  const quote =
+    side.multiTerm && side.terms.every((t) => unitLeavesOf(t.factors) === "unit")
+      ? maskedEmission(ctx, () => emitSum(side.terms, side.ops, side.terms.map(() => null), ctx))
+      : termQuote(terms[kinds.indexOf("unit")], ctx)
   throw new Unsupported(
-    "a relation between the constants themselves — a declaration of the unit convention rather than a physical relation to restore",
+    equalities
+      ? `a numeric value for “${quote}”, in units the equation does not state`
+      : `a comparison of “${quote}” with a number, in units the equation does not state`,
   )
 }
 
@@ -2069,7 +2119,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         const body = inner.emit()
         return q === 2 ? `\\sqrt{${body}}` : `\\sqrt[${q}]{${body}}`
       }
-      return { kind: "sqrt", dim: d, emit, sqrt: { bodyTerm }, parts: partsOf(inner) }
+      return { kind: "sqrt", dim: d, emit, sqrt: { bodyTerm }, ...partsOf(inner) }
     }
     case "leftright":
     case "__group": {
@@ -2081,7 +2131,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       // Control-word delimiters (\langle, \lbrace, \lVert …) would otherwise
       // swallow the following letter: `\langle`+`v` must not become `\langlev`.
       const emit = () => joinTex([open, inner.emit(), close])
-      return { kind: "group", dim: inner.dim, emit, isBareSum: false, parts: partsOf(inner) }
+      return { kind: "group", dim: inner.dim, emit, isBareSum: false, ...partsOf(inner) }
     }
     case "accent": {
       // Accent nodes carry no source location — reconstruct label{base}.
@@ -2145,7 +2195,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const isBareSum = inner.multiTerm || inner.terms[0].factors.some((f) => f.isBareSum === true)
       const live = inner.terms[0].factors.filter((f) => f.kind !== "glue")
       const openArgument = !inner.multiTerm && live[live.length - 1]?.openArgument === true
-      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument, parts: partsOf(inner) }
+      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument, ...partsOf(inner) }
     }
     case "atom":
       throw new Unsupported(`the symbol “${n.text}” in this position`)
@@ -2400,7 +2450,7 @@ function sumAsFactorList(sum: SumInfo): Factor[] {
       dim: sum.dim,
       emit: () => sum.emit(),
       isBareSum: true,
-      parts: partsOf(sum),
+      ...partsOf(sum),
     },
   ]
 }
@@ -2888,7 +2938,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
     }
     target = carriedTarget
   } else {
-    declarationGuard(sums, ctx)
+    declarationGuard(sums, rels, ctx)
     const anchored = sums.map((sum) => (sum == null ? null : sumAnchor(sum.terms))).find((d) => d != null)
     target = anchored ?? carriedTarget ?? ZERO // every term a literal zero: identity
   }

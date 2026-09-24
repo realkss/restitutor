@@ -2084,6 +2084,8 @@ describe("declarations: relations among the constants themselves", () => {
   const DECLARATION =
     "a relation between the constants themselves — a declaration of the unit convention rather than a physical relation to restore"
   const numericValue = (quote: string) => `a numeric value for “${quote}”, in units the equation does not state`
+  const comparison = (quote: string) => `a comparison of “${quote}” with a number, in units the equation does not state`
+  const RELATION_ONLY = "a relation between the constants themselves, with no quantity in it to restore"
   const madeOfConstants = (quote: string) =>
     `a term made only of c and G that the registry's readings of the other terms would require rewriting into another constant (term “${quote}”)`
   const declines = (tex: string, reason: string) => {
@@ -2127,9 +2129,45 @@ describe("declarations: relations among the constants themselves", () => {
       "\\hbar = c = 1",
       "c = \\hbar = k_B = 1",
       "G = c = 1",
+      "c = +1",
+      "c \\equiv 1",
+      "\\hbar := 1",
     ]) {
       declines(tex, DECLARATION)
     }
+  })
+
+  test("only an equality setting unsigned constants to +1 is a declaration", () => {
+    // The numerals alone once decided it: `\hbar \ne 1` (ħ is NOT one), the
+    // central-charge bound `c < 1`, `c = -1` and `c^2 = -1` were all called
+    // unit conventions, while `c = -2` was a numeric value.
+    for (const [tex, quote] of [
+      ["\\hbar \\ne 1", "\\hbar"],
+      ["c < 1", "c"],
+      ["c > 1", "c"],
+      ["c \\leq 1", "c"],
+      ["G \\ll 1", "G"],
+      ["c \\sim 1", "c"],
+      ["c \\approx 1", "c"],
+    ]) {
+      declines(tex, comparison(quote))
+    }
+    declines("c = -1", numericValue("c"))
+    declines("c = -2", numericValue("c"))
+    declines("-c = 1", numericValue("c"))
+    declines("-c = -1", numericValue("c"))
+    declines("c = \\pm 1", numericValue("c"))
+    declines("c^2 = -1", numericValue("c^{2}"))
+    // A sign inside a wrapping is read through it too, not flattened away.
+    declines("(-c) = 1", numericValue("(-c)"))
+    declines("\\frac{-c^4}{G} = 1", numericValue("\\frac{-c^{4}}{G}"))
+    declines("\\sqrt{-G} = 1", numericValue("\\sqrt{-G}"))
+    // A side made only of constants is quoted whole: it is c + G that gets a value.
+    declines("c + G = 1", numericValue("c + G"))
+    // With no numeral but zero, the row only relates the constants.
+    declines("c > G", RELATION_ONLY)
+    declines("c - G = 0", RELATION_ONLY)
+    declines("G = c", RELATION_ONLY)
   })
 
   test("a constant given any other value states it in units the equation does not name", () => {
