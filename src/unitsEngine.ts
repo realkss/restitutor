@@ -358,6 +358,12 @@ type Factor = {
    * folds into this one rather than being set beside it.
    */
   constant?: { tex: "c" | "G"; e12: number }
+  /**
+   * The factor ends in a function argument no delimiter closes (`\tanh\phi`,
+   * and `{\tanh\phi}`, whose braces do not print). Whatever is set right after
+   * it reads as more of that argument, so a constant never goes there.
+   */
+  openArgument?: boolean
   frac?: { cmd: string; num: Factor[]; den: Factor[] }
   sqrt?: { bodyTerm: TermInfo | null }
 }
@@ -982,12 +988,19 @@ function termInsertion(t: TermInfo, target: Dim, ctx: Ctx): { a: number; b: numb
  * emit path, with insertions masked so it reads as the reader wrote it.
  */
 function termQuote(t: TermInfo, ctx: Ctx): string {
+  try {
+    return maskedEmission(ctx, () => emitTerm(t))
+  } catch {
+    return t.src
+  }
+}
+
+/** An emission replayed with every insertion and strip masked: the source as the reader wrote it. */
+function maskedEmission(ctx: Ctx, emit: () => string): string {
   const previous = ctx.mask
   ctx.mask = true
   try {
-    return emitTerm(t)
-  } catch {
-    return t.src
+    return emit()
   } finally {
     ctx.mask = previous
   }
@@ -1243,8 +1256,20 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
       continue
     }
 
-    // Function heads consume the rest of the product up to the next function head.
+    // A delimited group right after a function head is the whole argument:
+    // `\cos(\theta)\,v^{2}` is v² cos θ, and `\sin(t)/M` is sin t over M. The
+    // closing delimiter ends the argument; nothing written after it is read
+    // into the function. Any other argument is the rest of the product, up to
+    // the next function head: `\sin\omega t` is sin(ωt).
     if (isFuncHead(n)) {
+      let next = i + 1
+      while (next < nodes.length && SKIP_TYPES.has(unwrap(nodes[next])?.type)) next += 1
+      const delimited = next < nodes.length ? delimitedArgumentOf(nodes[next]) : null
+      if (delimited != null) {
+        push(analyzeDelimitedFunction(raw, delimited, ctx))
+        i = next + 1
+        continue
+      }
       let end = i + 1
       while (end < nodes.length && !isFuncHead(unwrap(nodes[end]))) end += 1
       const argNodes = nodes.slice(i + 1, end)
@@ -1604,7 +1629,12 @@ function analyzeDifferential(
         differential: prefix === "d",
       })
     } else if (opU?.type === "leftright" || opU?.type === "__group") {
-      operandDim = analyzeFactor(operandNode, ctx).dim
+      // The group is emitted from its own analysis, so what was restored inside
+      // it survives: sliced from the source, `ds = d(r - t)` came back verbatim
+      // while reporting the c it had solved for `t`.
+      const group = analyzeFactor(operandNode, ctx)
+      const prefixTex = wrappedTexOf(prefixNode, ctx)
+      return { kind: "diff", dim: group.dim, emit: () => joinTex([prefixTex, group.emit()]) }
     } else {
       throw new Unsupported(`an unsupported differential “${wholeSrc()}”`)
     }
@@ -1626,7 +1656,7 @@ function isFuncHead(n: any): boolean {
   return false
 }
 
-function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
+function functionHeadTex(headNode: any, ctx: Ctx): string {
   // KaTeX op nodes carry no source location, so the head is reconstructed
   // from the node's own name — never sliced from the source.
   const head = unwrap(headNode)
@@ -1641,12 +1671,89 @@ function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
     }
     headTex += scriptsTex(head, ctx)
   }
+  return headTex
+}
+
+/**
+ * A power of c or G standing at the very end of emitted TeX. The lookbehind
+ * keeps the last letter of a control word (`\sec`) from counting as a c.
+ */
+const TRAILING_CONSTANT = /(?<!\\[a-zA-Z]*)[cG](?:\^\{[^{}]*\})?$/
+
+/**
+ * A function whose argument is the rest of the product (`\sin\omega t`). No
+ * delimiter closes that argument, so a constant restored at its end would sit
+ * where the reader cannot tell it from a factor outside the function:
+ * `\sin 2(\sqrt{\Lambda}t)c` reads as much as c·sin(2√Λt) as sin(2√Λt·c). A
+ * constant restored anywhere else in it (after the numerals, inside a
+ * fraction or a root) is plainly inside and stays. The trailing one is found on
+ * the emission itself, replayed with and without the restoration, because
+ * only the emitter decides which slot a constant lands in.
+ */
+function analyzeFunction(headNode: any, argNodes: any[], ctx: Ctx): Factor {
+  const headTex = functionHeadTex(headNode, ctx)
   const argSum = parseSum(argNodes, ctx, { anchor: "forced", target: ZERO })
+  if (!argSum.multiTerm) {
+    const live = argSum.emit()
+    const written = maskedEmission(ctx, argSum.emit)
+    const tail = TRAILING_CONSTANT.exec(live)?.[0]
+    if (live !== written && tail != null && TRAILING_CONSTANT.exec(written)?.[0] !== tail) {
+      throw new Unsupported(
+        `restoring a constant at the end of the unparenthesized argument of “${headTex}”, where it would read as a factor outside the function, is not supported`,
+      )
+    }
+  }
   const emit = () => {
     const rebuilt = argSum.emit()
     if (argSum.multiTerm) return joinTex([headTex, `\\left(${rebuilt}\\right)`])
     return joinTex([headTex, rebuilt])
   }
+  return { kind: "func", dim: ZERO, emit, openArgument: !argSum.multiTerm }
+}
+
+/**
+ * The delimited group a function's argument is, when one follows the head:
+ * `(…)`, `\left(…\right)`, or either carrying a script (`\ln(Z\alpha)^{-2}`).
+ */
+function delimitedArgumentOf(node: any): { group: any; scripted: any | null } | null {
+  const u = unwrap(node)
+  const delimited = (x: any) => x?.type === "__group" || x?.type === "leftright"
+  if (delimited(u)) return { group: u, scripted: null }
+  if (u?.type === "supsub" && delimited(unwrap(u.base))) return { group: unwrap(u.base), scripted: u }
+  return null
+}
+
+/**
+ * A function applied to a delimited argument. The argument is exactly the
+ * group, so its terms are restored inside the author's delimiters and the
+ * function is emitted as head, opener, restored content, closer:
+ * `\sinh\left(\sqrt{\Lambda/3}\,t\right)` restores to `\sinh\left(\sqrt{…}tc\right)`,
+ * where the constant used to land after `\right)` and multiply the sinh
+ * instead. A power on the group (`\sin(x)^{2}`, sin x² or (sin x)²) asks the
+ * same of the content either way: it must be dimensionless.
+ */
+function analyzeDelimitedFunction(
+  headNode: any,
+  arg: { group: any; scripted: any | null },
+  ctx: Ctx,
+): Factor {
+  const headTex = functionHeadTex(headNode, ctx)
+  const { group, scripted } = arg
+  let scripts = ""
+  if (scripted != null) {
+    const sup = scripted.sup != null ? classifySup(scripted.sup) : null
+    const subIsIndex = scripted.sub == null || allIndexTokens(nodeListOf(scripted.sub), true)
+    const supIsReadable = sup == null || sup === "index" || typeof sup === "object"
+    if (!subIsIndex || !supIsReadable) {
+      throw new Unsupported("a super/subscript construct the engine could not read")
+    }
+    scripts = scriptsTex(scripted, ctx)
+  }
+  if (containsRel(group.body)) throw new Unsupported("a relation nested inside a group")
+  const inner = parseSum(group.body, ctx, { anchor: "forced", target: ZERO })
+  const open = group.type === "leftright" ? `\\left${group.left}` : group.open
+  const close = group.type === "leftright" ? `\\right${group.right}` : group.close
+  const emit = () => joinTex([headTex, open, inner.emit(), close]) + scripts
   return { kind: "func", dim: ZERO, emit }
 }
 
@@ -1722,6 +1829,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       kind: inner.kind,
       dim: inner.dim,
       isBareSum: inner.isBareSum,
+      openArgument: inner.openArgument,
       emit: () => fontTexOf(font, inner.emit(), ctx),
     }
   }
@@ -1870,9 +1978,12 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         if (OLD_STYLE_GROUP.test(body) && outerBracesArePartners(body)) return body
         return `{${body}}`
       }
-      // Braces do not print, so a bare sum anywhere in the group is bare beside it.
+      // Braces do not print, so a bare sum anywhere in the group is bare beside
+      // it, and an unparenthesized argument at its end stays open after it.
       const isBareSum = inner.multiTerm || inner.terms[0].factors.some((f) => f.isBareSum === true)
-      return { kind: "group", dim: inner.dim, emit, isBareSum }
+      const live = inner.terms[0].factors.filter((f) => f.kind !== "glue")
+      const openArgument = !inner.multiTerm && live[live.length - 1]?.openArgument === true
+      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument }
     }
     case "atom":
       throw new Unsupported(`the symbol “${n.text}” in this position`)
@@ -1916,10 +2027,18 @@ function supWrittenFirst(n: any, ctx: Ctx): boolean {
   return sub != null && sup != null && sup[0] < sub[0]
 }
 
-/** The scripts of a supsub, in the order they were written. */
+/**
+ * The scripts of a supsub, in the order they were written. A font written as
+ * the whole script (`r_\mathrm{s}`) is set without a brace pair of its own,
+ * as written: KaTeX parses `r_{\mathrm{s}}` to another node (a group around
+ * the font), which the dictionary keys by another spelling, so the braced
+ * rebuild read back as an unknown symbol instead of the Schwarzschild radius.
+ */
 function scriptsTex(n: any, ctx: Ctx): string {
-  const sub = n.sub != null ? `_{${scriptSrc(n.sub, ctx)}}` : ""
-  const sup = n.sup != null ? `^{${scriptSrc(n.sup, ctx)}}` : ""
+  const script = (mark: string, node: any) =>
+    node.type === "font" ? `${mark}${scriptSrc(node, ctx)}` : `${mark}{${scriptSrc(node, ctx)}}`
+  const sub = n.sub != null ? script("_", n.sub) : ""
+  const sup = n.sup != null ? script("^", n.sup) : ""
   return supWrittenFirst(n, ctx) ? sup + sub : sub + sup
 }
 
@@ -2083,7 +2202,12 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
       const scaled =
         typeof sup === "object" && sup != null ? dimScale(inner.dim, sup.p, sup.q) : inner.dim
       const scripts = scriptsTex(n, ctx)
-      return { kind: "group", dim: scaled, emit: () => `${inner.emit()}${scripts}` }
+      return {
+        kind: "group",
+        dim: scaled,
+        openArgument: inner.openArgument,
+        emit: () => `${inner.emit()}${scripts}`,
+      }
     }
   }
 
@@ -2176,6 +2300,16 @@ function partsWith(factors: Factor[], gTex: string, cTex: string): string[] {
     const kind = factors[idx].kind
     if (kind === "diff" || kind === "glue") tailPos = idx
     else break
+  }
+  // After an unparenthesized function argument, c would read as more of it:
+  // `v = \tanh\phi` restored as `\tanh\phi c` says tanh(φc). It goes before the
+  // function head instead (`c\tanh\phi`), and before every head whose
+  // argument runs on into the next (`\sin\theta\cos\phi`).
+  for (;;) {
+    let prev = tailPos - 1
+    while (prev >= 0 && factors[prev].kind === "glue") prev -= 1
+    if (prev < 0 || factors[prev].openArgument !== true) break
+    tailPos = prev
   }
   if (cTex) parts.splice(tailPos, 0, cTex)
   if (gTex) parts.splice(headPos, 0, gTex)
@@ -2474,7 +2608,12 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Dim | null): RowRes
  * cannot disagree about what a delimiter dot is.
  */
 export function stripTrailingPunctuation(tex: string): string {
+  // Trailing whitespace goes, except the space of a control space: trimmed, it
+  // left a lone backslash (`E = m\ ` became the unparseable `E = m\`), which
+  // is how the engine's own restored `E = m\ ` failed to read back. Kept, the
+  // whole control space is stripped below like any other trailing spacing.
   let t = tex.replace(/\s+$/, "")
+  if ((/\\+$/.exec(t)?.[0].length ?? 0) % 2 === 1) t += " "
   for (;;) {
     let m = t.match(/(\\(?:quad|qquad)|\\[,;:! ]|[.,;:~]|\s)$/)
     if (!m) return t
@@ -2603,6 +2742,21 @@ export function translateTex(
   reg: HubRegistry,
   spec: TargetSpec = DEFAULT_TARGET,
 ): TranslationResult {
+  return translateCore(rawTex, katex, reg, spec, false)
+}
+
+/**
+ * `rereading` is set only when the core reads back an equation it has just
+ * restored (the re-read backstop in checkRebuilt), so that reading is never
+ * checked by a third one.
+ */
+function translateCore(
+  rawTex: string,
+  katex: { __parse: (tex: string, options?: Record<string, unknown>) => any[] },
+  reg: HubRegistry,
+  spec: TargetSpec,
+  rereading: boolean,
+): TranslationResult {
   // Punctuation and style wrappers can nest (“{\displaystyle x = y .}”), so
   // normalize to a fixpoint; both transforms are idempotent and shrinking.
   let tex = rawTex
@@ -2724,6 +2878,25 @@ export function translateTex(
       throw new Unsupported(
         "an internal reassembly fault — the rebuilt equation diverged from the source (nothing was shown rather than something wrong)",
       )
+    }
+    // The masked replay proves the emitters reproduced what the reader wrote; it
+    // cannot see a restoration that analysis solved and emission then dropped or
+    // misplaced. `ds = d(r - t)` came back verbatim while reporting a change,
+    // and `v = \tanh\phi` came back as `\tanh\phi c`, tanh(φc). Read back, a
+    // restored equation must balance as it stands: translated, with nothing
+    // left to restore or strip. It cannot see a misplacement that keeps the
+    // dimensions (a constant set where an operator takes it as its operand);
+    // placement rules guard those. Geometrized, it runs only when a strip
+    // happened, since only then is the equation mutated. With an unknown symbol
+    // the translation declines on that symbol anyway, and a re-read would only
+    // relabel it.
+    if (!rereading && ctx.mutated && ctx.unknown.size === 0) {
+      const again = translateCore(restoredTex, katex, reg, spec, true)
+      if (again.kind !== "translated" || again.changed) {
+        throw new Unsupported(
+          "an internal reassembly fault — the rebuilt equation does not balance when read again (nothing was shown rather than something wrong)",
+        )
+      }
     }
   }
 

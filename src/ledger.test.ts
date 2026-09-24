@@ -46,6 +46,16 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("E = \\text{const.}").class, "unsupported")
     assert.strictEqual(outcome("E = {\\bf p + m}").class, "unsupported")
     assert.strictEqual(outcome("x = r \\quad \\text{for} \\quad r > 2M").class, "fragment")
+    // A constant that would end an unparenthesized function argument is the
+    // reader's construct; a restored equation that does not read back is a
+    // reassembly fault (witnessed through a dictionary that reads c as a
+    // dimensionless central charge).
+    assert.strictEqual(outcome("x = r\\sin 2(\\sqrt{\\Lambda}t)").class, "unsupported")
+    const centralCharge: typeof GR = {
+      ...GR,
+      bare: { ...GR.bare, c: { dim: [0, 0, 0, 0, 0], gloss: "central charge", si: "1" } },
+    }
+    assert.strictEqual(classifyOutcome(translateTex("E = m", katex, centralCharge, SI)).class, "reassembly")
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)

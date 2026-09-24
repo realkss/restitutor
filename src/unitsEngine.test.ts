@@ -3,6 +3,7 @@ import assert from "node:assert"
 import katexDefault from "katex"
 import { dimensionOf } from "./unitsEngine"
 import {
+  HubRegistry,
   TargetSpec,
   TranslationResult,
   findRegistryForSlug,
@@ -1617,8 +1618,10 @@ describe("reassembly fidelity and upright words", () => {
       assert.strictEqual(rawRestored(tex), out, tex)
       assert.strictEqual(rawRestored(tex, GEO), tex, tex)
     }
-    // A bare font script has no span; it is rebuilt rather than sliced to its letter.
-    assert.strictEqual(rawRestored("r_\\mathrm{s} = 2M"), "r_{\\mathrm{s}} = \\frac{2GM}{c^{2}}")
+    // A bare font script has no span; it is rebuilt rather than sliced to its
+    // letter, and without braces it was not written with: the braced
+    // `r_{\mathrm{s}}` is another node, which reads back as an unknown symbol.
+    assert.strictEqual(rawRestored("r_\\mathrm{s} = 2M"), "r_\\mathrm{s} = \\frac{2GM}{c^{2}}")
   })
 
   test("a font under an accent survives", () => {
@@ -1728,5 +1731,127 @@ describe("reassembly fidelity and upright words", () => {
       `the multi-letter name “${word}” under “${font}” — one name or a product of symbols, which the notation does not say`
     declinesWith("E = \\mathit{eff}", NAME("eff", "\\mathit"))
     declinesWith("E = \\mathbf{AB}", NAME("AB", "\\mathbf"))
+  })
+})
+
+describe("function tail: argument extent and the re-read backstop", () => {
+  const rawRestored = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = (result as Extract<TranslationResult, { kind: "translated" }>).restoredTex
+    rendersInKatex(out)
+    return out
+  }
+  const declines = (tex: string, reason: string, targets: TargetSpec[] = [SI, GEO]) => {
+    for (const target of targets) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [reason], tex)
+        assert.deepStrictEqual(result.unknown, [], tex)
+      }
+    }
+  }
+  const NO_COMPLETION = (term: string) =>
+    `a term admitting no c–G completion under the registry's readings of its symbols (term “${term}”)`
+  const OPEN_TAIL = (head: string) =>
+    `restoring a constant at the end of the unparenthesized argument of “${head}”, where it would read as a factor outside the function, is not supported`
+  const REREAD =
+    "an internal reassembly fault — the rebuilt equation does not balance when read again (nothing was shown rather than something wrong)"
+
+  test("a constant never follows an unparenthesized argument; it goes before the head", () => {
+    // Live, these came back as `\tanh\phi c` and `t\cos\theta c`: tanh(φc) and cos(θc).
+    assert.strictEqual(rawRestored("v = \\tanh\\phi"), "v = c\\tanh\\phi")
+    assert.strictEqual(rawRestored("v = \\tanh\\phi", GEO), "v = \\tanh\\phi")
+    assert.strictEqual(rawRestored("x = t\\cos\\theta"), "x = tc\\cos\\theta")
+    // Before every head whose argument runs on into the next one.
+    assert.strictEqual(rawRestored("v = \\sin\\theta\\cos\\phi"), "v = c\\sin\\theta\\cos\\phi")
+    // Braces do not print, so `{\tanh\phi}c` reads as tanh(φc) as well.
+    assert.strictEqual(rawRestored("v = {\\tanh\\phi}"), "v = c{\\tanh\\phi}")
+    assert.strictEqual(rawRestored("v = \\frac{\\tanh\\phi}{2}"), "v = \\frac{c\\tanh\\phi}{2}")
+    // Ledger #21 (gr-qc/9712019).
+    assert.strictEqual(
+      rawRestored("v={\\frac{x}{t}}={\\frac{{\\sinh\\phi}}{{\\cosh\\phi}}}=\\tanh\\phi"),
+      "v = {\\frac{x}{t}} = {\\frac{{\\sinh\\phi}}{{\\cosh\\phi}}}c = c\\tanh\\phi",
+    )
+    // Nothing to restore, nothing moves.
+    assert.strictEqual(rawRestored("x = r\\sin\\theta\\cos\\phi"), "x = r\\sin\\theta\\cos\\phi")
+    assert.strictEqual(rawRestored("z = \\sin\\omega t"), "z = \\sin\\omega t")
+  })
+
+  test("a delimited group after the head is the whole argument, restored inside its delimiters", () => {
+    // What follows the closing delimiter is an outer factor: v² cos θ, never
+    // cos(θv²). Live, this one came back as `\cos\frac{(\theta)v^{2}}{c^{2}}c^{2}`.
+    for (const tex of ["\\Phi = \\cos(\\theta)v^2", "\\Phi = \\cos(\\theta)\\,v^{2}"]) {
+      assert.strictEqual(rawRestored(tex), "\\Phi = \\cos(\\theta)v^{2}", tex)
+      assert.strictEqual((run(tex) as { changed?: boolean }).changed, false, tex)
+    }
+    // The argument's own constants stay inside the author's delimiters.
+    assert.strictEqual(rawRestored("x = \\cos(\\omega r)\\,r"), "x = \\cos(\\frac{\\omega r}{c})r")
+    assert.strictEqual(rawRestored("x = r\\ln(M/t)"), "x = r\\ln(GM/tc^{3})")
+    assert.strictEqual(rawRestored("x = r\\sin(M/t)"), "x = r\\sin(GM/tc^{3})")
+    assert.strictEqual(rawRestored("x = r\\ln(M/t)^{2}"), "x = r\\ln(GM/tc^{3})^{2}")
+    // Ledger #1033 (gr-qc/9712019): the c used to land after `\right)` and
+    // multiply the sinh instead of the time inside it.
+    assert.strictEqual(
+      rawRestored("a=\\sqrt{\\frac{{3}}{\\Lambda}}\\sinh\\left(\\sqrt{\\frac{{\\Lambda}}{3}}\\,t\\right)"),
+      "a = \\sqrt{\\frac{{3}}{\\Lambda}}\\sinh\\left(\\sqrt{\\frac{{\\Lambda}}{3}}tc\\right)",
+    )
+    // sin(t/M)·(t/M): the second group is an outer factor and takes the outer constants.
+    assert.strictEqual(rawRestored("x = r\\sin(t/M)(t/M)"), "x = \\frac{r\\sin(tc^{3}/GM)(t/M)c^{3}}{G}")
+    assert.strictEqual(rawRestored("x = r\\sin(t/M)(t/M)", GEO), "x = r\\sin(t/M)(t/M)")
+  })
+
+  test("factors after the closing delimiter are not read into the argument", () => {
+    // Live, each read the later factors into the argument: `\sin(t)/M` was
+    // restored as sin(t/M), `r\sin(t)c^{3}/GM`.
+    declines("x = r\\sin(t)/M", NO_COMPLETION("t"))
+    declines("x = r\\sin(t)\\frac{1}{M}", NO_COMPLETION("t"))
+    declines("x = r\\sin(\\sqrt{\\Lambda})\\,t", NO_COMPLETION("\\sqrt{\\Lambda}"))
+  })
+
+  test("a constant restored at the end of an unparenthesized argument declines", () => {
+    // `\sin 2(\sqrt{\Lambda}t)c` reads as much as c·sin(2√Λt) as sin(2√Λt·c).
+    declines("x = r\\sin 2(\\sqrt{\\Lambda}t)", OPEN_TAIL("\\sin"), [SI])
+    declines("x = r\\ln M/t", OPEN_TAIL("\\ln"), [SI])
+    // Nothing is restored in a geometrized target, so nothing lands there.
+    assert.strictEqual(rawRestored("x = r\\sin 2(\\sqrt{\\Lambda}t)", GEO), "x = r\\sin2(\\sqrt{\\Lambda}t)")
+    // Inside a fraction the constants are plainly inside the argument.
+    assert.strictEqual(rawRestored("x = r\\sin\\frac{t}{M}"), "x = r\\sin\\frac{tc^{3}}{GM}")
+  })
+
+  test("a differential's group operand keeps what was restored inside it", () => {
+    // Live, `ds = d(r - t)` came back verbatim while reporting a change.
+    assert.strictEqual(rawRestored("ds = d(r - t)"), "ds = d(r - tc)")
+    assert.strictEqual(rawRestored("ds = d\\left(r - t\\right)"), "ds = d\\left(r - tc\\right)")
+    assert.strictEqual(rawRestored("ds = d(r - t)", GEO), "ds = d(r - t)")
+  })
+
+  test("a restored equation must balance when read again", () => {
+    // No emission left drops or misplaces a constant, so the witness is a
+    // dictionary that reads c as something other than the speed of light (a
+    // dimensionless central charge): the c the restoration inserts does not
+    // read back as the constant it was inserted as.
+    const centralCharge: HubRegistry = {
+      ...reg,
+      bare: { ...reg.bare, c: { dim: [0, 0, 0, 0, 0], gloss: "central charge", si: "1" } },
+    }
+    const result = translateTex("E = m", katex, centralCharge, SI)
+    assert.strictEqual(result.kind, "declined", JSON.stringify(result))
+    if (result.kind === "declined") assert.deepStrictEqual(result.reasons, [REREAD])
+    // With an unknown symbol it does not run: the decline names the symbol.
+    const unknown = run("v = \\Xi\\tanh\\phi")
+    assert.strictEqual(unknown.kind, "declined", JSON.stringify(unknown))
+    if (unknown.kind === "declined") {
+      assert.deepStrictEqual(unknown.reasons, [])
+      assert.deepStrictEqual(unknown.unknown, ["\\Xi"])
+    }
+    // Geometrized, the stripped equation reads back with nothing left to strip.
+    assert.strictEqual(rawRestored("v = c\\tanh\\phi", GEO), "v = \\tanh\\phi")
+    // A trailing control space is stripped whole, so an output ending in one
+    // reads back; trimmed to a lone backslash, it did not parse.
+    assert.strictEqual(stripTrailingPunctuation("E = m\\ "), "E = m")
+    assert.strictEqual(stripTrailingPunctuation("E = m \\\\ "), "E = m \\\\")
+    assert.strictEqual(rawRestored("E = mc^2\\ "), "E = mc^{2}")
   })
 })
