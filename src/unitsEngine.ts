@@ -1736,17 +1736,58 @@ function innerNodesOf(node: any): any[] {
 }
 
 /**
- * A node as a reason quotes it. A bracket group is rebuilt from its
- * delimiters around its sliced contents: KaTeX's span for `\left( … \right)`
- * begins inside the delimiter, and sliced, `\left(T^{\ \ c}\right)_{ab;c}` was
- * quoted as `T^{\ \ c}\right)_{ab;c}`.
+ * A node as a reason quotes it, rebuilt from the AST wherever it has no span
+ * of its own. KaTeX locates only tokens and brace groups; an accent, a font, a
+ * \sqrt, a fraction and a supsub are located through the tokens inside them,
+ * so a slice that begins or ends on one begins or ends inside it:
+ * `\left(\bar{h}^{\ \ \alpha}\right)_{\mu\nu,\alpha}` was quoted as
+ * `\left(h}^{\ \ \alpha}\right)_{\mu\nu,\alpha}`, and
+ * `\left(\sqrt{-g}\,T^{\ \ c}\right)_{ab;c}` as `\left({-g}\,T^{\ \ c}…`. A
+ * node with a span of its own slices faithfully, braces included; every other
+ * node is rebuilt from its parts, and a construct with no rebuild here is
+ * elided as “…” rather than sliced into unbalanced TeX. A bracket group is
+ * always rebuilt from its delimiters: `\left( … \right)` has no span, and a
+ * group of paired atoms spans only its opener when its closer is sized
+ * (`( … \bigr)`).
  */
-function quotedTexOf(node: any, ctx: Ctx): string {
-  const u = unwrap(node)
-  if (u?.type !== "leftright" && u?.type !== "__group") return wrappedTexOf(node, ctx)
-  const open = u.type === "leftright" ? `\\left${u.left}` : u.open
-  const close = u.type === "leftright" ? `\\right${u.right}` : (u.close ?? "")
-  return joinTex([open, srcOfNodes(u.body, ctx), close])
+function quotedTexOf(raw: any, ctx: Ctx): string {
+  const n = peelStyles(raw)
+  if (n == null) return ""
+  if (SKIP_TYPES.has(n.type)) return separatorSpacingTex(n, ctx)
+  if (n.type === "leftright" || n.type === "__group") {
+    const open = n.type === "leftright" ? `\\left${n.left}` : n.open
+    const close = n.type === "leftright" ? `\\right${n.right}` : (n.close ?? "")
+    return joinTex([open, quotedListTex(n.body, ctx), close])
+  }
+  if (locIsOwn(n.loc, ctx.input)) return srcOf(n, ctx)
+  // An argument's braces are rebuilt around its contents, so a located brace
+  // group there is not sliced a second pair (`\overline{{x}}`).
+  const arg = (x: any) => (x?.type === "ordgroup" ? quotedListTex(x.body, ctx) : quotedTexOf(x, ctx))
+  switch (n.type) {
+    case "ordgroup":
+      return `{${quotedListTex(n.body, ctx)}}`
+    case "font":
+      return fontTexOf(n, quotedTexOf(n.body, ctx), ctx)
+    case "accent":
+      return `${n.label}{${arg(n.base)}}`
+    case "overline":
+      return `\\overline{${arg(n.body)}}`
+    case "sqrt":
+      return `\\sqrt${n.index != null ? `[${arg(n.index)}]` : ""}{${arg(n.body)}}`
+    case "genfrac":
+      // A fraction only: a binomial (`\binom`, no bar, in delimiters) is not one.
+      if (!n.hasBarLine || n.leftDelim != null || n.rightDelim != null) return "…"
+      return `${fracCmdOf(raw, n, ctx)}{${arg(n.numer)}}{${arg(n.denom)}}`
+    case "supsub":
+      return (n.base != null ? quotedTexOf(n.base, ctx) : "") + scriptsTex(n, ctx)
+    default:
+      return "…"
+  }
+}
+
+/** A list of nodes as a reason quotes it, each rebuilt by quotedTexOf. */
+function quotedListTex(nodes: any[], ctx: Ctx): string {
+  return joinTex(nodes.map((x) => quotedTexOf(x, ctx)))
 }
 
 /** Whether a script opens on spacing, which staggers it past slots of the index list beside it. */

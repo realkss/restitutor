@@ -5715,6 +5715,26 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
       ["\\Gamma^{\\ i}{}_{00,i} = 0", "\\ i", "\\Gamma^{\\ i}{}_{00,i}"],
     ]
     for (const [tex, sup, quoted] of beside) declines(tex, NEITHER(sup, quoted))
+    // The construct is quoted rebuilt from the AST, never sliced: an accent, a
+    // font, a \sqrt or a fraction at an edge of a bracket group's contents has
+    // no span of its own, and a slice began inside it (`\left(h}^{\ \ \alpha}…`).
+    const rebuilt: [string, string, string][] = [
+      ["\\left(\\bar{h}^{\\ \\ \\alpha}\\right)_{\\mu\\nu,\\alpha} = 0", "\\ \\ \\alpha", "\\left(\\bar{h}^{\\ \\ \\alpha}\\right)_{\\mu\\nu,\\alpha}"],
+      ["(\\bar{h}^{\\ \\ \\alpha})_{\\mu\\nu,\\alpha} = 0", "\\ \\ \\alpha", "(\\bar{h}^{\\ \\ \\alpha})_{\\mu\\nu,\\alpha}"],
+      ["\\left(\\bar{h}^{\\ \\ \\alpha}\\right){}_{\\mu\\nu,\\alpha} = 0", "\\ \\ \\alpha", "\\left(\\bar{h}^{\\ \\ \\alpha}\\right){}_{\\mu\\nu,\\alpha}"],
+      ["\\left(\\mathbf{T}^{\\ \\ c}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(\\mathbf{T}^{\\ \\ c}\\right)_{ab;c}"],
+      ["\\left(\\mathcal{T}^{\\ \\ c}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(\\mathcal{T}^{\\ \\ c}\\right)_{ab;c}"],
+      ["\\left(\\hat{T}^{\\ \\ c}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(\\hat{T}^{\\ \\ c}\\right)_{ab;c}"],
+      ["\\left(\\sqrt{-g}\\,T^{\\ \\ c}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(\\sqrt{-g}\\,T^{\\ \\ c}\\right)_{ab;c}"],
+      ["\\left(\\bar{\\rho}\\,u^{\\ b}\\right)_{a;b} = 0", "\\ b", "\\left(\\bar{\\rho}\\,u^{\\ b}\\right)_{a;b}"],
+      ["\\left(\\frac{1}{2}T^{\\ \\ c}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(\\frac{1}{2}T^{\\ \\ c}\\right)_{ab;c}"],
+      ["\\left(T^{\\ \\ c}\\overline{u}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(T^{\\ \\ c}\\overline{u}\\right)_{ab;c}"],
+      ["\\bigl(\\bar{T}^{\\ \\ c}\\bigr)_{ab;c} = 0", "\\ \\ c", "\\bigl(\\bar{T}^{\\ \\ c}\\bigr)_{ab;c}"],
+      ["\\sqrt{g}^{\\ \\ c}{}_{ab;c} = 0", "\\ \\ c", "\\sqrt{g}^{\\ \\ c}{}_{ab;c}"],
+      // A construct with no rebuild is elided, not sliced.
+      ["\\left(\\binom{n}{k}T^{\\ \\ c}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(…T^{\\ \\ c}\\right)_{ab;c}"],
+    ]
+    for (const [tex, sup, quoted] of rebuilt) declines(tex, NEITHER(sup, quoted))
     declines(
       `-\\Box h_{\\mu\\nu} + h_{\\nu\\alpha,\\mu}^{${SIX}} + h_{\\mu\\alpha,\\nu}^{${SIX}} - h_{,\\mu\\nu} = 16\\pi T_{\\mu\\nu}`,
       NEITHER(SIX, `h_{\\nu\\alpha,\\mu}^{${SIX}}`),
