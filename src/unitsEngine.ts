@@ -1677,6 +1677,30 @@ function superscriptMarksGuard(sup: any, ctx: Ctx): void {
   throw new Unsupported(RAISED_MARKS_REASON)
 }
 
+/**
+ * An index superscript written after a subscript that holds derivative
+ * indices (`h_{\mu\nu,\alpha}^{\ \ \ \ \ \ \alpha}`, `T_{ab;c}^{c}`, a rider's
+ * `{}_{;b}^{c}`). Written first (`T^{ab}_{;b}`, `\Gamma^{i}_{00,i}`), it is the
+ * head's index, as the order of the scripts says. Written after, it is the
+ * rider `{}^{\alpha}` set in place, and a rider after derivative indices
+ * continues them (derivativeRiderGuard): read as the head's index, which has
+ * no dimension, the term lost a derivative (`h_{\mu\nu,\alpha}^{\ \ \ \ \ \ \alpha} = 0`
+ * shipped under m⁻¹ where ∂^α∂_α h is m⁻², and the Lorenz-gauge wave equation
+ * declined on a completion its reason blamed on the registry's readings).
+ * Spacing that opens the superscript staggers it past the subscript, and it
+ * declines as the raised derivative index it is. Set flush, it is that index
+ * or the head's own (`\Gamma_{00,i}^{i}` is ∂_i Γ^i_{00}; for a rank-2 h the
+ * same shape is a derivative), which the notation does not settle, and says
+ * so. Either way the superscript is never read as a dimensionless index.
+ */
+function raisedAfterMarksGuard(n: any, tex: string, ctx: Ctx): void {
+  if (n.sup == null || supWrittenFirst(n, ctx)) return
+  if (SKIP_TYPES.has(unwrap(nodeListOf(n.sup)[0])?.type)) throw new Unsupported(RAISED_MARKS_REASON)
+  throw new Unsupported(
+    `the superscript “${scriptSrc(n.sup, ctx)}” after the derivative indices in “${tex}” — an index of the symbol or a raised derivative index, which the notation does not settle`,
+  )
+}
+
 /** The dimension a split's derivative indices add: each mark's operator, looked up as an indexed symbol. */
 function derivativeDim(split: MarkSplit, ctx: Ctx): Dim {
   let d = ZERO
@@ -5953,7 +5977,8 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   // {}^{d} / {}_{\mu\nu} index riders (as in R_{abc}{}^{d} or \Gamma^{\rho}{}_{\mu\nu}).
   // A rider's derivative indices (`T^{ab}{}_{;b}`) differentiate the symbol it
   // continues, and the rider carries their dimension: the constants a term
-  // takes then go around the whole run, never between it and its rider.
+  // takes then go around the whole run, never between it and its rider. A
+  // superscript written after them continues them too (raisedAfterMarksGuard).
   if (base == null || (base.type === "ordgroup" && base.body.length === 0)) {
     // A sign on nothing labels no symbol.
     if (sup === "signLabel") throw new Unsupported(SIGN_LABEL_REASON)
@@ -5964,6 +5989,7 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
     if ((n.sup != null || n.sub != null) && supIsIndex && subIsIndex) {
       const tex = supsubTex("{}", n, ctx)
       if (split == null) return { kind: "rider", dim: ZERO, emit: () => tex }
+      raisedAfterMarksGuard(n, tex, ctx)
       return { kind: "rider", dim: derivativeDim(split, ctx), emit: () => tex, derivativeIndices: true }
     }
     throw new Unsupported("a floating super/subscript")
@@ -6154,7 +6180,8 @@ function analyzeScriptedSymbol(
  * (readIndexMarks): `T_{ab;c}`, `\Phi_{,ii}`, `\Gamma^{\mu}_{\alpha\gamma,\beta}`.
  * The symbol is read as it would be written without the derivative: with its
  * head as an identity and then as indices, bare when there is no head, and
- * its superscript an index list, a label or a power as on any symbol. Each
+ * its superscript a label or a power as on any symbol, or an index list when
+ * written before the subscript (raisedAfterMarksGuard declines one after). Each
  * derivative index then adds its operator's dimension. The guards on an
  * indexed reading judge the head's: the angular guard, the component digit,
  * and a dot over an indexed symbol. A numeric power raises the derivative, as
@@ -6178,6 +6205,7 @@ function analyzeDifferentiatedSymbol(
   ctx: Ctx,
 ): Factor {
   summationFramesIn(n.sub, ctx)
+  if (reading === "index") raisedAfterMarksGuard(n, wholeTex, ctx)
   const headSub = headSubscriptOf(split, ctx)
   if (headSub == null && (name === "c" || name === "G")) throw new Unsupported(`a label or mark on the constant “${name}”`)
   const head = { base: n.base, sub: headSub, sup: n.sup }

@@ -5664,4 +5664,46 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
     // Under undeclared marks nothing is a derivative, and the words are the old ones.
     declines("h_{\\nu\\alpha,\\mu}{}^{\\alpha} = 0", UNDECLARED, reg)
   })
+
+  test("a superscript written after derivative indices is never read as the head's index", () => {
+    // Staggered by spacing, it is the rider {}^{α} set in place: read as h's
+    // own index, ∂^α∂_α h lost a derivative (m⁻¹ for m⁻²), and the Lorenz-gauge
+    // wave equation declined on a completion it blamed on the registry's readings.
+    const staggered = [
+      "h_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\ \\alpha} = 0",
+      "\\bar{h}_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\ \\alpha} = 0",
+      "\\bar{h}_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\ \\alpha} = -16\\pi T_{\\mu\\nu}",
+      "\\bar{h}_{\\mu\\nu,\\alpha}^{\\quad\\ \\alpha} = -16\\pi T_{\\mu\\nu}",
+      "-\\Box h_{\\mu\\nu} + h_{\\nu\\alpha,\\mu}^{\\ \\ \\ \\ \\ \\ \\alpha} + h_{\\mu\\alpha,\\nu}^{\\ \\ \\ \\ \\ \\ \\alpha} - h_{,\\mu\\nu} = 16\\pi T_{\\mu\\nu}",
+      "T_{ab;c}^{\\ \\ \\ \\ c} = 0",
+      "u_{a;b}^{\\ \\ \\ \\ b} = 0",
+      "k_{\\mu;\\nu}^{\\ \\ \\ \\ \\nu} = 0",
+      "g_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\alpha} = 0",
+      "\\phi_{,\\mu}^{\\ \\ \\mu} = 0",
+      "h_{\\mu\\nu,\\alpha}^{~\\alpha} = 0",
+      "T^{ab}{}_{;b}^{\\ \\ c} = 0",
+    ]
+    for (const tex of staggered) declines(tex, RAISED)
+    declines("T_{ab;c}^{\\ \\ \\ \\ c} = 0", RAISED, semicolon)
+    declines("h_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\ \\alpha} = 0", RAISED, comma)
+    // Set flush, it is a raised derivative index for a rank-2 h and the head's
+    // own for Γ^{i}_{00}: the notation does not settle which, and says so.
+    const FLUSH = (sup: string, tex: string) =>
+      `the superscript “${sup}” after the derivative indices in “${tex}” — an index of the symbol or a raised derivative index, which the notation does not settle`
+    declines("h_{\\mu\\nu,\\alpha}^{\\alpha} = 0", FLUSH("\\alpha", "h_{\\mu\\nu,\\alpha}^{\\alpha}"))
+    declines("T_{ab;c}^{c} = 0", FLUSH("c", "T_{ab;c}^{c}"))
+    declines("\\Gamma_{00,i}^{i} = 4\\pi\\rho", FLUSH("i", "\\Gamma_{00,i}^{i}"))
+    declines("\\Gamma_{00,i}^{i} = 4\\pi\\rho", FLUSH("i", "\\Gamma_{00,i}^{i}"), comma)
+    declines("T^{ab}{}_{;b}^{c} = 0", FLUSH("c", "{}_{;b}^{c}"))
+    // Written first, the superscript is the head's, as the order of the scripts says.
+    assert.strictEqual(translated("\\Gamma^{i}_{00,i} = 0", both).targetUnitTex, "\\mathrm{m}^{-2}")
+    for (const tex of ["T^{\\mu\\nu}_{\\ \\ ;\\nu} = 0", "T^{ab}_{;b} = 0", "T^{ab}{}^{c}_{;b} = 0"]) {
+      assert.strictEqual(translated(tex, both).targetUnitTex, "\\mathrm{kg}\\,\\mathrm{m}^{-2}\\,\\mathrm{s}^{-2}", tex)
+    }
+    // A power written after is no index: it still raises the derivative.
+    assert.strictEqual(translated("\\Phi_{,i}^{2} = 0", both).targetUnitTex, "\\mathrm{m}^{2}\\,\\mathrm{s}^{-4}")
+    // Under undeclared marks nothing is a derivative, and the words are the old ones.
+    declines("h_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\ \\alpha} = 0", UNDECLARED, reg)
+    declines("\\Gamma_{00,i}^{i} = 4\\pi\\rho", UNDECLARED, reg)
+  })
 })
