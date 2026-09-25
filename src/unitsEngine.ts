@@ -1781,7 +1781,11 @@ function resolveSymbol(
     entry = reg.exact[exactKey]
     key = exactKey
     // Under a sum over s, r_s is the s-th r, not the dictionary's fixed r_s.
-    const index = entry != null ? ctx.dummies.find((f) => containsLeaf(opts.sub, f.tok)) : undefined
+    // After that sum's term, whether the sum reaches it is not written.
+    const frames = ctx.dummies.filter((f) => dummyFrameOf(f.tok, ctx) === f && containsLeaf(opts.sub, f.tok))
+    const retired = frames.find((f) => !f.live)
+    if (retired != null) throw new Unsupported(usedAfterReason(retired))
+    const index = entry != null ? frames[0] : undefined
     if (index != null) {
       throw new Unsupported(
         `“${displayTex}” under a sum over ${index.tok} — the dictionary's ${exactKey} is a fixed symbol, not a term of the sum`,
@@ -3382,14 +3386,30 @@ function dummyFrameOf(tok: string, ctx: Ctx): DummyFrame | null {
 /**
  * Whether a node holds, at any depth, the letter `tok` as a symbol. A word set
  * in \text or an upright font is a label, whose letters are none: the i of
- * `a^{\text{in}}_{i}` is in its subscript only.
+ * `a^{\text{in}}_{i}` is in its subscript only. An operator's scripts are
+ * searched like any other: the range of Σ_{m=1}^{n} holds n. With `rebound`
+ * set, a sum that binds `tok` again ends the search in its node list: the
+ * index its range names and what follows it there, its operand, are where the
+ * letter is that sum's index (rebindsIndex). Its bounds are still searched:
+ * the values the range sets the index to (the upper n of Σ_{n=1}^{n}) are
+ * read before the sum binds, where the letter is the one it had before.
  */
-function containsLeaf(node: any, tok: string): boolean {
+function containsLeaf(node: any, tok: string, rebound = false): boolean {
   if (node == null || typeof node !== "object") return false
-  if (Array.isArray(node)) return node.some((x) => containsLeaf(x, tok))
+  if (Array.isArray(node)) {
+    for (const x of node) {
+      if (rebound && rebindsIndex(x, tok)) {
+        const sum = peelStyles(x)
+        const { nodes, rel } = rangeHead(sum.sub)
+        return containsLeaf([...(rel < 0 ? [] : nodes.slice(rel + 1)), sum.sup], tok, rebound)
+      }
+      if (containsLeaf(x, tok, rebound)) return true
+    }
+    return false
+  }
   if (node.type === "text" || (node.type === "font" && UPRIGHT_FONTS.has(node.font))) return false
   if ((node.type === "mathord" || node.type === "textord") && node.text === tok) return true
-  return ["body", "numer", "denom", "base", "sup", "sub", "index"].some((key) => containsLeaf(node[key], tok))
+  return ["body", "numer", "denom", "base", "sup", "sub", "index"].some((key) => containsLeaf(node[key], tok, rebound))
 }
 
 /** A retired index, met in a term after its sum's own. */
@@ -3458,12 +3478,18 @@ function isIntegerValue(nodes: any[], ctx: Ctx): boolean {
  * The first symbol in a sum's range, at any depth (a root, a fraction, a
  * bracket, a power), that the dictionary reads as dimensional, bare or by its
  * subscript (`r_s`), or null. The sum's own indices and the live indices of
- * enclosing sums are index values; an index retired with its sum's term is
- * not, and is read as the dictionary reads its name. A word set upright or in
- * \text (`N_{\rm max}`) is a label, not a product of symbols. The lookup is
- * silent: it adds no legend row and no unknown.
+ * enclosing sums are index values. An index retired with its sum's term,
+ * anywhere in the range (Σ_{m=1}^{n} after a Σ_n term), declines: whether that
+ * sum reaches this one is not written, and reading the letter as the
+ * dictionary reads its name would settle it. A word set upright or in \text
+ * (`N_{\rm max}`) is a label, not a product of symbols. The lookup is silent:
+ * it adds no legend row and no unknown.
  */
 function dimensionalLeafOf(nodes: any[], toks: string[], ctx: Ctx): string | null {
+  const retired = ctx.dummies.find(
+    (f) => !f.live && !toks.includes(f.tok) && dummyFrameOf(f.tok, ctx) === f && containsLeaf(nodes, f.tok),
+  )
+  if (retired != null) throw new Unsupported(usedAfterReason(retired))
   const visit = (n: any): string | null => {
     if (n == null || typeof n !== "object") return null
     if (Array.isArray(n)) {
@@ -3482,7 +3508,7 @@ function dimensionalLeafOf(nodes: any[], toks: string[], ctx: Ctx): string | nul
       const entry = ctx.reg.exact[key]
       if (entry != null && !dimIsZero(entry.dim)) return key
     }
-    if ((n.type === "mathord" || n.type === "textord") && !toks.includes(n.text) && dummyFrameOf(n.text, ctx)?.live !== true) {
+    if ((n.type === "mathord" || n.type === "textord") && !toks.includes(n.text) && dummyFrameOf(n.text, ctx) == null) {
       const entry = ctx.reg.bare[n.text]
       if (entry != null && !dimIsZero(entry.dim)) return n.text
     }
@@ -3568,21 +3594,16 @@ function summationRange(name: string, scripted: any | null, ctx: Ctx): Summation
 }
 
 /**
- * The superscripts in `nodes`, at any depth, that hold the letter `tok`. An
- * operator's scripts are its range or its bounds, read by their own rules, and
- * are not looked into. With `rebound` set, a sum that binds `tok` again ends
- * the search in its node list: what follows it there is that sum's operand,
- * where the letter is its index (rebindsIndex).
+ * The superscripts in a sum's operand, at any depth, that hold the letter
+ * `tok`. An operator's scripts are its range or its bounds, read by their own
+ * rules, and are not looked into.
  */
-function superscriptsHolding(nodes: any[], tok: string, rebound: boolean): any[] {
+function superscriptsHolding(nodes: any[], tok: string): any[] {
   const found: any[] = []
   const visit = (n: any): void => {
     if (n == null || typeof n !== "object") return
     if (Array.isArray(n)) {
-      for (const x of n) {
-        if (rebound && rebindsIndex(x, tok)) return
-        visit(x)
-      }
+      for (const x of n) visit(x)
       return
     }
     if (n.type === "supsub" && opOf(n) != null) return
@@ -3619,23 +3640,31 @@ function isContraction(s: any, operand: any[], tok: string, ctx: Ctx): boolean {
 }
 
 /**
- * A summation index in a superscript. In the sum's operand it is a power or a
- * component index there, and the notation does not say which: Σ_k x^{k} is a
- * power series and Σ_μ x^{μ} a sum of components, and a Latin a–k or Greek
- * letter reads as an index either way, so the series came back as a first
- * power. Every superscript at any depth of the operand declines, whatever the
- * range declares, except an explicit contraction (isContraction). In a term
- * after the sum's own term, whether the sum reaches the index is not written,
- * unless a sum binds the letter again: from there on it is the new sum's
- * index, as resolveSymbol reads it (`-\sum_{\mu} p_{\mu}p^{\mu} - \sum_{\mu}
- * p_{\mu}p^{\mu}` reuses one dummy letter, as Lagrangians do). The new sum
- * is either one of this term's, after which superscriptsHolding stops
- * looking, or one enclosing this term, whose operand the term lies in
- * (`\sum_{\mu}\frac{p_{\mu}p^{\mu}}{M}` after a Σ_μ term). An enclosing frame of the
- * same letter shadows the retired one, as it does for resolveSymbol, and that
- * sum's own operand check reads the superscript. A frame this term's own sums
- * push shadows nothing before those sums: in `p^{\mu}\sum_{\mu}` after a Σ_μ
- * term, the first μ is still the retired one.
+ * A summation index in a superscript of its sum's operand, and a retired one
+ * anywhere. In the operand a superscript index is a power or a component
+ * index, and the notation does not say which: Σ_k x^{k} is a power series and
+ * Σ_μ x^{μ} a sum of components, and a Latin a–k or Greek letter reads as an
+ * index either way, so the series came back as a first power. Every
+ * superscript at any depth of the operand declines, whatever the range
+ * declares, except an explicit contraction (isContraction).
+ *
+ * In a term after the sum's own term, whether the sum reaches the index is not
+ * written, wherever the letter stands: bare, in a script, or in a later sum's
+ * range. Authors write Σ_n a_n + b_n for Σ_n (a_n + b_n), and reading the
+ * b_n as the dictionary reads its name would settle the reach the other way.
+ * An index bare or in a symbol's subscript declines where resolveSymbol looks
+ * the symbol up, and one in a range where dimensionalLeafOf reads it; this
+ * guard is the one that sees every place. The exception is a sum that binds the letter again: from there on it
+ * is the new sum's index, as resolveSymbol reads it (`-\sum_{\mu}
+ * p_{\mu}p^{\mu} - \sum_{\mu} p_{\mu}p^{\mu}` reuses one dummy letter, as
+ * Lagrangians do). The new sum is either one of this term's, where
+ * containsLeaf stops looking (rebound), or one enclosing this term, whose
+ * operand the term lies in (`\sum_{\mu}\frac{p_{\mu}p^{\mu}}{M}` after a Σ_μ
+ * term). An enclosing frame of the same letter shadows the retired one, as it
+ * does for resolveSymbol, and that sum's own operand check reads the
+ * superscript. A frame this term's own sums push shadows nothing before those
+ * sums: in `p^{\mu}\sum_{\mu}` after a Σ_μ term, the first μ is still the
+ * retired one.
  *
  * `bindings` are the indices this term's sums bound, each with the operand
  * after its operator; `dummyStart` is where the term's own frames begin, and
@@ -3650,7 +3679,7 @@ function summationSuperscriptGuard(
 ): void {
   for (const { toks, operand } of bindings) {
     for (const tok of toks) {
-      if (superscriptsHolding(operand, tok, false).some((s) => !isContraction(s, operand, tok, ctx))) {
+      if (superscriptsHolding(operand, tok).some((s) => !isContraction(s, operand, tok, ctx))) {
         throw new Unsupported(
           `the summation index “${tok}” in a superscript, where it is a power or a component index and the notation does not say which`,
         )
@@ -3660,7 +3689,7 @@ function summationSuperscriptGuard(
   const enclosing = ctx.dummies.slice(0, dummyStart)
   enclosing.forEach((frame, k) => {
     if (frame.live || enclosing.slice(k + 1).some((later) => later.tok === frame.tok)) return
-    if (superscriptsHolding(nodes, frame.tok, true).length > 0) throw new Unsupported(usedAfterReason(frame))
+    if (containsLeaf(nodes, frame.tok, true)) throw new Unsupported(usedAfterReason(frame))
   })
 }
 

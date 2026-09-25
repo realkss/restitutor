@@ -5191,6 +5191,7 @@ describe("integrals, limits and determinants (step 16)", () => {
 })
 
 describe("sums (step 17)", () => {
+  const HL: TargetSpec = { system: "hl", geometrized: false }
   const translated = (tex: string, target: TargetSpec = SI, registry: HubRegistry = reg) => {
     const result = translateTex(tex, katex, registry, target)
     assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
@@ -5287,6 +5288,40 @@ describe("sums (step 17)", () => {
     assert.deepStrictEqual([closed.reasons, closed.unknown], [[], ["n"]])
   })
 
+  test("a retired index declines wherever it stands in a later term: a script, a range, a bound", () => {
+    // The reviewer's counterexamples: Σ_i x_i + M u_i is written for Σ_i (x_i + M u_i),
+    // and reading u_i by its name put the fraction bar around the sum alone.
+    for (const [tex, i] of [
+      ["t = \\sum_{i=1}^{3} x_{i} + M u_{i}", "i"],
+      ["r = \\sum_{i=1}^{3} M u_{i} + x_{i}", "i"],
+      ["r = \\sum_{\\mu=0}^{3} M u_{\\mu} + x_{\\mu}", "\\mu"],
+      // A later sum's range, at its end or its start.
+      ["r = \\sum_{n=1}^{3} M + \\sum_{m=1}^{n} r", "n"],
+      ["r = \\sum_{n=1}^{3} M + \\sum_{m=n}^{3} r", "n"],
+      ["r = \\sum_{n=1}^{3} r + \\sum_{m=0}^{N_{n}} r", "n"],
+      // A fixed symbol's subscript: the sum is not this term's, whatever the dictionary holds.
+      ["r = \\sum_{s} r + r_{s}", "s"],
+      // Where a later sum binds the letter again, its bounds are still read before it binds.
+      ["r = \\sum_{n=1}^{3} r + \\sum_{n=1}^{n} r", "n"],
+      // Past the new sum's reach, in its term's denominator.
+      ["r = \\sum_{i=1}^{3} x_{i} + \\frac{\\sum_{i=1}^{3} x_{i}}{x_{i}}", "i"],
+    ]) {
+      for (const target of [SI, HL, GEO]) {
+        const result = translateTex(tex, katex, reg, target)
+        assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+        if (result.kind === "declined") assert.deepStrictEqual([result.reasons, result.unknown], [[AFTER(i)], []], tex)
+      }
+    }
+    // A later sum that binds the letter again reads it as its own, as before.
+    const rebound = "t = \\sum_{i=1}^{3} x_{i} + \\sum_{i=1}^{3} M u_{i}"
+    const restored = "t = \\frac{\\sum_{i=1}^{3}x_{i}}{c} + \\frac{G\\sum_{i=1}^{3}Mu_{i}}{c^{3}}"
+    restoresTo(rebound, restored)
+    assert.strictEqual(translated(rebound, HL).restoredTex, restored)
+    unchanged("r = \\sum_{i} x_{i} + \\sum_{i} x_{i}", "r = \\sum_{i}x_{i} + \\sum_{i}x_{i}")
+    unchanged("r = \\sum_{i=1}^{3} x_{i} + \\frac{\\sum_{i=1}^{3} x_{i}}{2}")
+    assert.strictEqual(translated("r = \\sum_{i} x_{i} + \\sum_{i} x_{i}", HL).changed, false)
+  })
+
   test("a later sum that binds the letter again owns it from there on", () => {
     // One dummy letter reused across terms reads as two letters do.
     restoresTo(
@@ -5357,9 +5392,10 @@ describe("sums (step 17)", () => {
     declines("r = \\sum_{r<2M} r", NAMING("M"))
     declines("r = \\sum_{n=0}^{r_s} r", NAMING("r_s"))
     declines("r = \\sum_{n=0}^{c} r", NAMING("c"))
-    // A live enclosing index is an index value; one retired with its sum's term is the dictionary's name.
+    // A live enclosing index is an index value; one retired with its sum's term is out of reach,
+    // not the dictionary's name.
     unchanged("r = \\sum_{m=0}^{3} \\sum_{k=0}^{m} r")
-    declines("r = \\sum_{m} r + \\sum_{k=0}^{m} r", NAMING("m"))
+    declines("r = \\sum_{m} r + \\sum_{k=0}^{m} r", AFTER("m"))
     // A subscript names; a word set upright is a label.
     restoresTo("E = \\sum_{n=0}^{N_{max}} M", "E = \\sum_{n=0}^{N_{max}}Mc^{2}")
     restoresTo("E = \\sum_{n=0}^{N_{\\rm max}} M", "E = \\sum_{n=0}^{N_{\\rm max}}Mc^{2}")
