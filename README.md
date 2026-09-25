@@ -90,7 +90,7 @@ The domain specification is the [unit-systems census](docs/unit-systems-census.m
 
 ## Layout
 
-- `src/unitsEngine.ts` — the DOM-free engine plus the GR registry. KaTeX is dependency-injected by the caller; this file imports nothing. Frozen: [the site it was extracted from](https://hypomnemata-b8t.pages.dev/en/Topics/Physics/Relativity-and-Gravitation/00.-Conventions-and-Notation), where it runs as the units-translation floater, vendors it byte-identical.
+- `src/unitsEngine.ts` — the DOM-free engine plus the GR registry. KaTeX is dependency-injected by the caller; this file imports nothing. Vendored: [the site it was extracted from](https://hypomnemata-b8t.pages.dev/en/Topics/Physics/Relativity-and-Gravitation/00.-Conventions-and-Notation), where it runs as the units-translation floater, carries it byte-identical (`npm run sync-check`); changes land here in verified batches and are re-synced there.
 - `src/convention.ts`, `src/rendering.ts` — the generator-parameterized convention layer (census §2): 36 conventions as data over exact rational dimension vectors, validation with named implied groups, the restoration solve, and the rider tables under the span rule.
 - `src/signs.ts`, `src/identity.ts` — the sign-convention axis (signature translation, Levi-Civita typing) and the open identity-metadata tag vector with its combinability lint.
 - `src/converter.ts`, `src/contract.ts` — the numeric equivalence graph (SI-2019 exact constants, one reciprocal edge with a mandatory medium tag) and the unit-contract prefactor detector.
