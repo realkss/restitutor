@@ -5307,6 +5307,11 @@ describe("sums (step 17)", () => {
     declines("M^{2} = \\sum_{\\mu} p_{\\mu}p^{\\mu} - \\sum_{\\nu} p_{\\nu}p^{\\nu} x^{\\mu}", AFTER("\\mu"))
     // After the new sum's own term, its letter is retired in turn.
     declines("M^{2} = \\sum_{\\mu} p_{\\mu}p^{\\mu} - \\left(\\sum_{\\mu} p_{\\mu}p^{\\mu} + x^{\\mu}\\right)", AFTER("\\mu"))
+    // A new sum whose operand is a bracket or a fraction reaches the letter in it:
+    // the superscript is that sum's, and declines as its operand's own does.
+    declines("M^{2} = -\\sum_{\\mu} p_{\\mu}p^{\\mu} - \\sum_{\\mu}\\left(p_{\\mu}p^{\\mu}\\right)", SUPERSCRIPT("\\mu"))
+    declines("M = \\sum_{\\mu} p_{\\mu}p^{\\mu}/M + \\sum_{\\mu}\\frac{p_{\\mu}p^{\\mu}}{M}", SUPERSCRIPT("\\mu"))
+    declines("M = \\sum_{\\mu}\\frac{p_{\\mu}p^{\\mu}}{M}", SUPERSCRIPT("\\mu"))
   })
 
   test("c and G name no index: they are read only as the constants", () => {

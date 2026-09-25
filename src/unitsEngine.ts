@@ -3626,13 +3626,21 @@ function isContraction(s: any, operand: any[], tok: string, ctx: Ctx): boolean {
  * power. Every superscript at any depth of the operand declines, whatever the
  * range declares, except an explicit contraction (isContraction). In a term
  * after the sum's own term, whether the sum reaches the index is not written,
- * unless a sum of that term binds the letter again: from there on it is the
- * new sum's index, as resolveSymbol reads it (`-\sum_{\mu} p_{\mu}p^{\mu} -
- * \sum_{\mu} p_{\mu}p^{\mu}` reuses one dummy letter, as Lagrangians do).
+ * unless a sum binds the letter again: from there on it is the new sum's
+ * index, as resolveSymbol reads it (`-\sum_{\mu} p_{\mu}p^{\mu} - \sum_{\mu}
+ * p_{\mu}p^{\mu}` reuses one dummy letter, as Lagrangians do). The new sum
+ * is either one of this term's, after which superscriptsHolding stops
+ * looking, or one enclosing this term, whose operand the term lies in
+ * (`\sum_{\mu}\frac{p_{\mu}p^{\mu}}{M}` after a Σ_μ term). An enclosing frame of the
+ * same letter shadows the retired one, as it does for resolveSymbol, and that
+ * sum's own operand check reads the superscript. A frame this term's own sums
+ * push shadows nothing before those sums: in `p^{\mu}\sum_{\mu}` after a Σ_μ
+ * term, the first μ is still the retired one.
  *
  * `bindings` are the indices this term's sums bound, each with the operand
  * after its operator; `dummyStart` is where the term's own frames begin, and
- * the retired frames before it are those of the terms before this one.
+ * the frames before it are those of the terms before this one and of the sums
+ * enclosing it.
  */
 function summationSuperscriptGuard(
   nodes: any[],
@@ -3649,9 +3657,11 @@ function summationSuperscriptGuard(
       }
     }
   }
-  for (const frame of ctx.dummies.slice(0, dummyStart)) {
-    if (!frame.live && superscriptsHolding(nodes, frame.tok, true).length > 0) throw new Unsupported(usedAfterReason(frame))
-  }
+  const enclosing = ctx.dummies.slice(0, dummyStart)
+  enclosing.forEach((frame, k) => {
+    if (frame.live || enclosing.slice(k + 1).some((later) => later.tok === frame.tok)) return
+    if (superscriptsHolding(nodes, frame.tok, true).length > 0) throw new Unsupported(usedAfterReason(frame))
+  })
 }
 
 /**
