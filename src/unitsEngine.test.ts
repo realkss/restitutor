@@ -5112,6 +5112,26 @@ describe("integrals, limits and determinants (step 16)", () => {
     declines("x = \\int da", REGISTRY_CHOICE("a"))
   })
 
+  test("a group measure is held to the readings of every symbol it reads", () => {
+    // Read through the group, these escaped both guards: `\tau = \int d(\lambda)`
+    // came back as a proper time over c, and d(a^{3}) read the cosmological
+    // scale factor as the Kerr spin.
+    declines("\\tau = \\int d(\\lambda)", REGISTRY_CHOICE("\\lambda"))
+    declines("x = \\int d\\left(\\lambda\\right)", REGISTRY_CHOICE("\\lambda"))
+    declines("x = \\int d[\\lambda]", REGISTRY_CHOICE("\\lambda"))
+    declines("A = \\int d(\\lambda^{2})", REGISTRY_CHOICE("\\lambda"))
+    declines("E = \\int P\\, d(a^{3})", REGISTRY_CHOICE("a"))
+    declines("x = \\int d(a)", REGISTRY_CHOICE("a"))
+    declines("M = \\int d(\\rho V)", REGISTRY_CHOICE("\\rho"))
+    // The group reads z bare, a redshift; which z is meant is no more written than under dz.
+    declines("x = \\int d(z)\\, r", TWO_READINGS("z"))
+    declines("t = \\int\\frac{d(1+z)}{(1+z)H}", TWO_READINGS("z"))
+    // A group of symbols read one way only is a measure as before.
+    unchanged("A = \\int d(r^{2})")
+    // Nested: the inner group's readings are the outer group's too.
+    declines("x = \\int d(r + d(\\lambda))", REGISTRY_CHOICE("\\lambda"))
+  })
+
   test("a limit is transparent; its value is restored against its variable", () => {
     restoresTo("\\Phi = \\lim_{r\\to 2M}\\frac{M}{r}", "\\Phi = \\lim_{r \\to \\frac{2GM}{c^{2}}}\\frac{GM}{r}")
     restoresTo("E = \\lim_{r\\to\\infty} M", "E = \\lim_{r \\to \\infty}Mc^{2}")

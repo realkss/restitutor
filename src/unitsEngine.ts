@@ -385,6 +385,13 @@ type Ctx = {
    */
   constantsRead: ("c" | "G")[]
   /**
+   * Every symbol the analysis has looked up by its own name, in `differential`
+   * or `bare` (resolveSymbol), in reading order. A group differential asks what
+   * its operand read here (analyzeDifferential): as an integration measure,
+   * each of those readings fixes the integral's dimension (claimMeasure).
+   */
+  keysRead: string[]
+  /**
    * Set during the pair of replays the numeral-fusion net reads
    * (numeralFusionNet), live and masked, and null otherwise. It holds the
    * identity each factor and each signed term is given there (netId), the
@@ -1772,6 +1779,7 @@ function resolveSymbol(
     entry = reg.indexed[baseText]
     key = `${baseText} (indexed)`
   } else {
+    ctx.keysRead.push(baseText)
     if (opts.differential) {
       entry = reg.differential[baseText]
       key = `d${baseText}`
@@ -2919,12 +2927,12 @@ function analyzeDifferential(
   // What a d-differential is as a measure, should an integral own it; the
   // operand's lookups are the ones made from here on.
   const hitsBefore = ctx.unknownHits
-  const measure = (varDim: Dim, key: string | null, powered: boolean, group = false): DiffInfo | undefined =>
+  const measure = (varDim: Dim, keys: string[], powered: boolean, group = false): DiffInfo | undefined =>
     differential
       ? {
           order: prefix.order,
           varDim,
-          key,
+          keys,
           powered,
           group,
           bold: isBoldOperand(operandNode),
@@ -2943,7 +2951,7 @@ function analyzeDifferential(
       kind: "diff",
       dim: primed.dim,
       emit: () => joinTex([prefixTex, primed.tex]),
-      diff: measure(primed.varDim, primed.key, primed.powered),
+      diff: measure(primed.varDim, primed.key != null ? [primed.key] : [], primed.powered),
     }
   }
 
@@ -2997,14 +3005,19 @@ function analyzeDifferential(
     } else if (opU?.type === "leftright" || opU?.type === "__group") {
       // The group is emitted from its own analysis, so what was restored inside
       // it survives: sliced from the source, `ds = d(r - t)` came back verbatim
-      // while reporting the c it had solved for `t`.
+      // while reporting the c it had solved for `t`. As a measure it keeps
+      // every symbol the group read by its own name: each of their readings
+      // fixes the integral's dimension as a lone variable's would, and read
+      // through the group, `\int d(\lambda)` escaped the guards `\int d\lambda`
+      // declines on.
+      const readFrom = ctx.keysRead.length
       const group = analyzeFactor(operandNode, ctx)
       const prefixTex = wrappedTexOf(prefixNode, ctx)
       return {
         kind: "diff",
         dim: group.dim,
         emit: () => joinTex([prefixTex, group.emit()]),
-        diff: measure(group.dim, null, false, true),
+        diff: measure(group.dim, ctx.keysRead.slice(readFrom), false, true),
       }
     } else {
       throw new Unsupported(`an unsupported differential “${wholeSrc()}”`)
@@ -3012,7 +3025,7 @@ function analyzeDifferential(
   }
 
   const text = wholeSrc()
-  return { kind: "diff", dim: operandDim, emit: () => text, diff: measure(varDim, key, powered) }
+  return { kind: "diff", dim: operandDim, emit: () => text, diff: measure(varDim, key != null ? [key] : [], powered) }
 }
 
 /** One positive term built from differentials alone: dt, dx\,dy, d\tau^{2}, {d\lambda}. */
@@ -3062,11 +3075,12 @@ type DiffInfo = {
   /** The variable's own dimension, before any power on it. */
   varDim: Dim
   /**
-   * The key the variable was looked up by in `differential` and then `bare`,
-   * or null where a subscript, an index list or a group took the lookup
+   * The keys the measure was looked up by in `differential` or `bare`: the
+   * variable's own, or every symbol a group operand read by its own name
+   * (Ctx.keysRead); none where a subscript or an index list took the lookup
    * elsewhere.
    */
-  key: string | null
+  keys: string[]
   /** A numeric power stands on the variable (`dt^{2}`). */
   powered: boolean
   /** The operand is a group (`d(r^{2})`), no single variable. */
@@ -3458,13 +3472,19 @@ function holdsMeasure(f: Factor): boolean {
  * variable at order one (`d\mathbf{x}`) reads as a line element or as a
  * volume element, which differ.
  *
- * The variable's dictionary reading fixes the integral's dimension, so the
- * reading must be one. The dictionary reads z one way under d (a length) and
- * another bare (a redshift), and which one an integral over z runs over is
- * not written, whether or not bare z appears in it. A page's declaration
- * reaches `bare` and never `differential` (src/bridge.ts), so a declared
- * reading that contradicts the table declines here too. A reading marked as
- * the dictionary's choice (REGISTRY_CHOICE) declines, the owner's call.
+ * The measure's dictionary readings fix the integral's dimension, so each
+ * must be one: the variable's, or, for a group operand (`d(1+z)`, `d(a^{3})`),
+ * that of every symbol the group read by its own name, which it read bare. Two
+ * checks apply to each such key (DiffInfo.keys), whichever table the lookup
+ * reached. Where the dictionary reads the key one way under d and another bare
+ * it declines: z is a length under d and a redshift bare, and which one an
+ * integral over z runs over is not written, whether as dz or inside d(1+z),
+ * and whether or not bare z appears in it. A page's declaration reaches
+ * `bare` and never `differential` (src/bridge.ts), so a declared reading that
+ * contradicts the table declines here too. Where either table marks its
+ * reading as the dictionary's choice (REGISTRY_CHOICE) it declines too, the
+ * owner's call. A key looked up under a subscript or an index list
+ * (`d\lambda_{0}`) reaches `exact` or `indexed` and is checked by neither.
  */
 function claimMeasure(f: Factor, info: DiffInfo, ctx: Ctx): void {
   const quote = () => maskedEmission(ctx, f.emit)
@@ -3476,17 +3496,17 @@ function claimMeasure(f: Factor, info: DiffInfo, ctx: Ctx): void {
   if (info.bold && order === 1) {
     throw new Unsupported(`the vector measure “${quote()}”, which reads differently as a line element and as a volume element`)
   }
-  if (info.key != null) {
-    const under = ctx.reg.differential[info.key]
-    const bare = ctx.reg.bare[info.key]
+  for (const key of info.keys) {
+    const under = ctx.reg.differential[key]
+    const bare = ctx.reg.bare[key]
     if (under != null && bare != null && !dimIsZero(dimSub(under.dim, bare.dim))) {
       throw new Unsupported(
-        `an integral over “${info.key}”, which the dictionary reads one way under d and another bare — which one the integral runs over is not written`,
+        `an integral over “${key}”, which the dictionary reads one way under d and another bare — which one the integral runs over is not written`,
       )
     }
     if ([under, bare].some((entry) => entry != null && REGISTRY_CHOICE.test(entry.gloss))) {
       throw new Unsupported(
-        `an integral over “${info.key}”, whose dictionary reading is a registry choice another reading would contradict — as the measure, that choice alone fixes the integral's dimension`,
+        `an integral over “${key}”, whose dictionary reading is a registry choice another reading would contradict — as the measure, that choice alone fixes the integral's dimension`,
       )
     }
   }
@@ -7173,6 +7193,7 @@ export function dimensionOf(
     mask: false,
     font: null,
     constantsRead: [],
+    keysRead: [],
     net: null,
   }
   const legendOut = () =>
@@ -7716,6 +7737,7 @@ function translateCore(
     mask: false,
     font: null,
     constantsRead: [],
+    keysRead: [],
     net: null,
   }
 
