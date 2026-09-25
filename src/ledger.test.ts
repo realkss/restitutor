@@ -180,6 +180,10 @@ describe("the decline ledger", () => {
     // symbolic order are the reader's; a d that is the symbol d is looked up.
     for (const tex of ["x = ({\\rm d})", "V = d^{n}x", "\\epsilon_{abcd} = \\sqrt{-r}\\;[abcd]"])
       assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    // Step 15: a numeral on nothing that the notation does not attach, after a
+    // factor without indices, after a derivative, or before a factor it may prescript.
+    for (const tex of ["x = r{}^{2}", "\\partial_t{}^{2}\\phi = 0", "E = \\vec{p}{}^{2}c"])
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
     assert.deepStrictEqual(outcome("v = H_0\\,d").unknown, ["d"])
   })
   test("nothing the engine says on these pages lands outside the classes", () => {

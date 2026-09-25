@@ -2246,10 +2246,7 @@ function spacedBetweenFactors(nodes: any[], spacing: FactorSpacing): boolean {
     }
     run = 0
     afterHead = false
-    const glue =
-      (n.type === "atom" && n.family === "bin" && (n.text === "\\cdot" || n.text === "\\times")) ||
-      (n.type === "textord" && n.text === "/")
-    if (glue) continue
+    if (isProductGlue(n)) continue
     if (wide || (spacing === "any" && spaced)) return true
     seenFactor = true
     spaced = false
@@ -2257,6 +2254,14 @@ function spacedBetweenFactors(nodes: any[], spacing: FactorSpacing): boolean {
     afterHead = isFuncHead(n) || namedHeadOf(raw) != null
   }
   return false
+}
+
+/** A product sign or the division slash: glue between a term's factors, which analyzeTerm reads as no factor. */
+function isProductGlue(n: any): boolean {
+  return (
+    (n?.type === "atom" && n.family === "bin" && (n.text === "\\cdot" || n.text === "\\times")) ||
+    (n?.type === "textord" && n.text === "/")
+  )
 }
 
 /**
@@ -2408,6 +2413,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
       continue
     }
 
+    detachedRiderGuard(nodes, i, factors, ctx)
     riderDigitGuard(nodes, i, ctx)
     push(analyzeFactor(raw, ctx))
     i += 1
@@ -4072,6 +4078,94 @@ function riderDigitGuard(nodes: any[], at: number, ctx: Ctx): void {
   if (!powerThenIndex && !indexThenPower) return
   const displayTex = `${wrappedTexOf(nodes[at], ctx)}${supsubTex("{}", rider, ctx)}`
   throw new Unsupported(`a digit superscript on “${displayTex}” — a component index or a power`)
+}
+
+/**
+ * A numeral set on nothing (`{}^{2}`) has two readings where it follows a
+ * factor, and the notation settles between them only by what that factor is.
+ * After a factor that already carries indices, or after another rider
+ * (`T_{a}{}^{0}`, `\Lambda^{\mu'}{}_{\nu}{}^{0}`), it continues the staggered
+ * index list, which is how the rider path reads it. After a factor without
+ * indices (`\vec{v}{}^{2}`, `r{}^{2}`, `(r + M){}^{2}`) it is a power set
+ * apart as often as a component index, and read as the rider it dropped the
+ * power: `d\tau^2 = (1 - \vec{v}{}^{2})\,dt^2` shipped as
+ * `(1 - \frac{\vec{v}{}^{2}}{c})dt^2`, with c for the speed squared, and
+ * `x = r{}^{2}` passed through under metres. That declines. Spacing does not
+ * detach the rider from its factor, so the look-back steps over it
+ * (`T_{a}\,{}^{0}` continues T's indices as `T_{a}{}^{0}` does). A product
+ * sign or a slash does: no power or index reaches across one, so a rider
+ * after it leads its factor, as a rider at the head of a term does. A
+ * subscript the registry spells out as an identity (`H_{0}`) is part
+ * of the symbol's name and no index, as resolveSymbol reads it. A derivative
+ * (∂, ∇, □) never continues an index list here: a numeral after it is its
+ * order as often as an index, and the two differ by the derivative's
+ * dimension. On a dimensionless factor (`\pi{}^{2}`, `2{}^{2}`) every reading
+ * gives the same dimension, so the rider is read as it always was; an unknown
+ * symbol's placeholder counts as one too, and its equation declines on the
+ * symbol. A rider with no factor before it (`{}^{12}C`) is a prescript on
+ * what follows, the only reading it has. A rider set tight against a factor
+ * after it (`r\,{}^{4}\mathrm{He}`) may be that factor's prescript as well,
+ * and the reason says so.
+ */
+function detachedRiderGuard(nodes: any[], at: number, factors: Factor[], ctx: Ctx): void {
+  const rider = numeralRiderOf(nodes[at])
+  if (rider == null) return
+  let back = at - 1
+  while (back >= 0 && SKIP_TYPES.has(unwrap(nodes[back])?.type)) back -= 1
+  if (back < 0 || isProductGlue(unwrap(nodes[back]))) return
+  let prev: Factor | undefined
+  for (let k = factors.length - 1; k >= 0 && prev == null; k -= 1) if (factors[k].kind !== "glue") prev = factors[k]
+  if (prev == null) return
+  if (continuesIndices(nodes[back], prev, ctx) || dimIsZero(prev.dim)) return
+  const tex = supsubTex("{}", rider, ctx)
+  if (prev.derivative === true) {
+    throw new Unsupported(
+      `a detached superscript “${tex}” after the derivative “${wrappedTexOf(nodes[back], ctx)}” — a derivative order or a component index, which the notation does not settle`,
+    )
+  }
+  const next = unwrap(nodes[at + 1])
+  if (next != null && !SKIP_TYPES.has(next.type) && !isProductGlue(next)) {
+    throw new Unsupported(
+      `a detached superscript “${tex}” between two factors — a power or a component index on the one before, or a prescript on the one after, which the notation does not settle`,
+    )
+  }
+  throw new Unsupported(
+    `a detached superscript “${tex}” after a factor without indices — a power or a component index, which the notation does not settle`,
+  )
+}
+
+/** A superscript of digits alone on nothing, bare or in braces (`{}^{2}`, `{{}^{0}}`), or null. */
+function numeralRiderOf(node: any): any {
+  let n = unwrap(node)
+  while (n?.type === "ordgroup") {
+    const body = n.body.filter(isMeaningfulNode)
+    if (body.length !== 1) return null
+    n = unwrap(body[0])
+  }
+  if (n?.type !== "supsub" || n.sub != null || n.sup == null || !isBlankNode(n.base)) return null
+  return digitsOf(openGroups(nodeListOf(n.sup).filter(isMeaningfulNode))) != null ? n : null
+}
+
+/**
+ * Whether a factor carries an index list a rider after it continues: it is a
+ * rider itself, or a scripted symbol (braced or not) whose subscript is an
+ * index list and no identity the registry spells out, or whose superscript
+ * reads as indices. A derivative's scripts are left to detachedRiderGuard.
+ */
+function continuesIndices(prevNode: any, prev: Factor, ctx: Ctx): boolean {
+  if (prev.kind === "rider") return true
+  if (prev.derivative === true) return false
+  const scripted = bracedSupsub(unwrap(prevNode))
+  if (scripted == null) return false
+  if (scripted.sup != null && classifySup(scripted.sup) === "index") return true
+  if (scripted.sub == null) return false
+  const baseText = textOf(unwrap(scripted.base))
+  try {
+    if (baseText != null && ctx.reg.exact[`${baseText}_${subKeyText(scripted.sub, ctx)}`]) return false
+    return allIndexTokens(nodeListOf(scripted.sub), true)
+  } catch {
+    return false
+  }
 }
 
 /**

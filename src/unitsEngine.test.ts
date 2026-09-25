@@ -2661,7 +2661,12 @@ describe("batch-1 review fixes", () => {
     declines("x = \\hat{G{}} M", ACCENTED("\\hat{G}", "G"))
     declines("x = \\overline{c{}} M", ACCENTED("\\overline{c}", "c"))
     declines("x = \\bar{{c}{}} M", ACCENTED("\\bar{{c}}", "c"))
-    declines("x = \\bar{c{}^{2}} M", ACCENTED("\\bar{c{}^{2}}", "c"))
+    // Since step 15 the numeral on nothing after c declines first, as it does
+    // anywhere after a factor without indices.
+    declines(
+      "x = \\bar{c{}^{2}} M",
+      "a detached superscript “{}^{2}” after a factor without indices — a power or a component index, which the notation does not settle",
+    )
     declines("x = \\bar{(c)} M", ACCENTED("\\bar{(c)}", "c"))
     declines("x = \\bar{\\left(c\\right)} M", ACCENTED("\\bar{\\left(c\\right)}", "c"))
     // An accent over any other letter is read.
@@ -4772,5 +4777,97 @@ describe("differentials (step 14)", () => {
     assert.deepStrictEqual(declined("E = \\dot{\\vec{c}}").reasons, [
       "the accented “\\dot{\\vec{c}}” — another symbol (a vector, a mean, an operator or a label), not the constant c",
     ])
+  })
+})
+
+describe("detached numeral riders (step 15)", () => {
+  const translated = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = result as Extract<TranslationResult, { kind: "translated" }>
+    rendersInKatex(out.restoredTex)
+    return out
+  }
+  const unchanged = (tex: string) => {
+    for (const target of [SI, GEO]) assert.strictEqual(translated(tex, target).changed, false, tex)
+  }
+  const declines = (tex: string, reason: string) => {
+    for (const target of [SI, GEO]) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [reason], tex)
+        assert.deepStrictEqual(result.unknown, [], tex)
+      }
+    }
+  }
+  const AFTER = (script: string) =>
+    `a detached superscript “${script}” after a factor without indices — a power or a component index, which the notation does not settle`
+  const BETWEEN = (script: string) =>
+    `a detached superscript “${script}” between two factors — a power or a component index on the one before, or a prescript on the one after, which the notation does not settle`
+  const DERIVATIVE = (script: string, head: string) =>
+    `a detached superscript “${script}” after the derivative “${head}” — a derivative order or a component index, which the notation does not settle`
+
+  test("a numeral on nothing after a factor without indices declines", () => {
+    // Live, read as an index, the power was dropped: `(1 - \frac{\vec{v}{}^{2}}{c})dt^2`,
+    // c for the speed squared, and `x = r{}^{2}` passed through under metres.
+    declines("d\\tau^2 = (1 - \\vec{v}{}^{2})\\,dt^2", AFTER("{}^{2}"))
+    declines("E^2 = m^2 + \\vec{p}{}^{2}", AFTER("{}^{2}"))
+    declines("x = r{}^{2}", AFTER("{}^{2}"))
+    declines("x = r\\;{}^{2}", AFTER("{}^{2}"))
+    declines("E = m~{}^{0}", AFTER("{}^{0}"))
+    declines("E = \\vec{v}{{}^{2}}", AFTER("{}^{2}"))
+    // Live, `(r + \frac{GM}{c^{2}}){}^{2}` under metres.
+    declines("x = (r + M){}^{2}", AFTER("{}^{2}"))
+    // Live, `m{}^{2}c^{2}`: the written c folded into the restored ones and left the rider on m.
+    declines("E = mc{}^{2}", AFTER("{}^{2}"))
+    // A subscript the registry spells out is the symbol's name, not an index.
+    declines("x = r_{s}{}^{2}", AFTER("{}^{2}"))
+    declines("H_0{}^{2} = \\frac{8\\pi G\\rho}{3}", AFTER("{}^{2}"))
+    // The written power is still read.
+    assert.strictEqual(
+      translated("d\\tau^2 = (1 - \\vec{v}^{2})\\,dt^2").restoredTex,
+      "d\\tau^2 = (1 - \\frac{\\vec{v}^{2}}{c^{2}})dt^2",
+    )
+  })
+
+  test("set tight against a factor after it, the numeral may be its prescript, and the reason says so", () => {
+    declines("x = r\\,{}^{4}\\mathrm{He}", BETWEEN("{}^{4}"))
+    // Live, `\vec{p}{}^{2}c` passed through as an energy.
+    declines("E = \\vec{p}{}^{2}c", BETWEEN("{}^{2}"))
+    declines("x = H_0{}^{2} t", BETWEEN("{}^{2}"))
+  })
+
+  test("after a derivative the numeral is its order or an index, and declines", () => {
+    // Read as an index, ∂_t{}^{2} kept the dimension of one derivative.
+    declines("\\partial_t{}^{2}\\phi = \\partial_r{}^{2}\\phi", DERIVATIVE("{}^{2}", "\\partial_t"))
+    declines("E = \\nabla_{a}{}^{2}\\phi", DERIVATIVE("{}^{2}", "\\nabla_{a}"))
+    declines("E = \\Box{}^{2}\\phi", DERIVATIVE("{}^{2}", "\\Box"))
+  })
+
+  test("after indices or another rider the numeral continues the index list, spaced or not", () => {
+    assert.strictEqual(translated("T_{a}{}^{0} = \\rho").restoredTex, "T_{a}{}^{0} = \\rho c^{2}")
+    assert.strictEqual(translated("T_{a}\\,{}^{0} = \\rho").restoredTex, "T_{a}{}^{0} = \\rho c^{2}")
+    assert.strictEqual(translated("T_{a}\\!{}^{0} = \\rho").restoredTex, "T_{a}{}^{0} = \\rho c^{2}")
+    assert.strictEqual(translated("T_{a}~{}^{0} = \\rho").restoredTex, "T_{a}~{}^{0} = \\rho c^{2}")
+    assert.strictEqual(translated("T^{\\mu'}{}^{0} = \\rho").restoredTex, "T^{\\mu'}{}^{0} = \\rho c^{2}")
+    assert.strictEqual(translated("{T_{a}}{}^{0} = \\rho").restoredTex, "{T_{a}}{}^{0} = \\rho c^{2}")
+    assert.strictEqual(translated("T_{a}\\,{}^{0} = \\rho", GEO).changed, false)
+    unchanged("R_{abc}{}^{d} = R_{abc}{}^{d}")
+    unchanged("x^{\\mu'} = \\Lambda^{\\mu'}{}_{\\nu}{}^{0}x^{\\nu}")
+  })
+
+  test("on a dimensionless factor, or leading its factor, the numeral is read as before", () => {
+    // Power and index give the same dimension on π; the corpus writes `\pi{}^{2}`.
+    unchanged("\\pi{}^{2} = 10")
+    unchanged("x = \\pi{}^{2} r")
+    assert.strictEqual(translated("E = 2{}^{2}m").restoredTex, "E = 2{}^{2}mc^{2}")
+    // A rider at the head of a term, or after a product sign, is a prescript on what follows.
+    const leading = run("x = {}^{12}C")
+    assert.ok(leading.kind === "declined", JSON.stringify(leading))
+    assert.deepStrictEqual(leading.reasons, [])
+    assert.deepStrictEqual(leading.unknown, ["C"])
+    const dotted = run("x = r\\cdot{}^{2}M")
+    assert.ok(dotted.kind === "declined" && !/detached/.test(dotted.reasons.join()), JSON.stringify(dotted))
   })
 })
