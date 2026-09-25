@@ -559,6 +559,14 @@ type Factor = {
    * goes before it as before a bare differential.
    */
   isDifferential?: boolean
+  /**
+   * A derivative operator the registry reads as a symbol: ∂, ∇ or □, bare or
+   * scripted (`\partial_{\mu}`, `\nabla^{2}`, `{\partial}_{\mu}`), or under a
+   * font or an arrow. Its dimension is the registry's, but it is an operator
+   * all the same, and a constant set after it is what it acts on
+   * (holdsOperator).
+   */
+  derivative?: boolean
   frac?: { cmd: string; num: Factor[]; den: Factor[] }
   sqrt?: { bodyTerm: TermInfo | null }
 }
@@ -2876,14 +2884,23 @@ function isPureDifferential(sum: SumInfo): boolean {
 }
 
 /**
- * Whether a factor is a Leibniz operator or holds one anywhere inside it: in
- * a group, a font, a root, a powered compound or a fraction. A constant set
+ * Whether a factor is a derivative operator or holds one anywhere inside it:
+ * in a group, a font, a root, a powered compound or a fraction. A constant set
  * after an operator reads as what it acts on, and where nothing else follows
  * `\frac{d}{dx}c` is the derivative of c, zero. That output has the right
  * dimension, so no backstop can see it; only placement guards it (partsWith).
+ *
+ * The operators are the Leibniz operator and the ∂, ∇ and □ the registry reads
+ * as symbols (Factor.derivative). Those read as lengths inverted, and an
+ * equation between two of them rarely needed a constant, until the Leibniz
+ * operator put a time on one side: `\frac{d}{d\tau} = u^{\mu}\nabla_{\mu}`
+ * came back as `u^{\mu}\nabla_{\mu}c`, and the material derivative
+ * `\frac{d}{dt} = \partial_{t} + \vec{v}\cdot\nabla` as `\partial_{t}c + …`.
  */
+const DERIVATIVE_SYMBOLS = new Set(["\\partial", "\\nabla", "\\Box"])
+
 function holdsOperator(f: Factor): boolean {
-  if (f.kind === "dop") return true
+  if (f.kind === "dop" || f.derivative === true) return true
   if (f.parts?.some(holdsOperator) === true) return true
   return f.frac != null && [...f.frac.num, ...f.frac.den].some(holdsOperator)
 }
@@ -3309,9 +3326,11 @@ function analyzeDelimitedFunction(
  * without the ordgroup emitter's own braces — going through analyzeFactor
  * doubled them, so `\overline{r}` came back as `\overline{{r}}`.
  */
-function bracedArg(node: any, ctx: Ctx): { dim: Dim; emit: () => string } {
+function bracedArg(node: any, ctx: Ctx): { dim: Dim; emit: () => string; derivative?: boolean } {
   const inner = parseSum(nodeListOf(node), ctx, { anchor: "internal" })
-  return { dim: inner.dim, emit: () => inner.emit() }
+  // An accent over an operator (`\vec{\nabla}`) is the operator still.
+  const derivative = inner.terms.some((t) => t.factors.some(holdsOperator)) || undefined
+  return { dim: inner.dim, emit: () => inner.emit(), derivative }
 }
 
 /** Peel style wrappers only (not font) — font must survive into the emission. */
@@ -3422,7 +3441,13 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
           },
         }
       }
-      return { kind: "sym", dim: d, emit: () => src, unitConstant: text === "\\hbar" || undefined }
+      return {
+        kind: "sym",
+        dim: d,
+        emit: () => src,
+        unitConstant: text === "\\hbar" || undefined,
+        derivative: DERIVATIVE_SYMBOLS.has(text) || undefined,
+      }
     }
     case "supsub":
       return analyzeSupsub(n, ctx)
@@ -3570,7 +3595,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       if (TRANSPARENT_ACCENTS.has(label)) {
         return analyzeAccentBody(ctx, () => {
           const inner = bracedArg(n.base, ctx)
-          return { kind: "sym", dim: inner.dim, emit: () => `${label}{${inner.emit()}}` }
+          return { kind: "sym", dim: inner.dim, emit: () => `${label}{${inner.emit()}}`, derivative: inner.derivative }
         })
       }
       throw new Unsupported(`the unsupported accent “${label}”`)
@@ -3578,7 +3603,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     case "overline":
       return analyzeAccentBody(ctx, () => {
         const inner = bracedArg(n.body, ctx)
-        return { kind: "sym", dim: inner.dim, emit: () => `\\overline{${inner.emit()}}` }
+        return { kind: "sym", dim: inner.dim, emit: () => `\\overline{${inner.emit()}}`, derivative: inner.derivative }
       })
     case "op": {
       const name = n.name ?? ""
@@ -4444,7 +4469,9 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   const symbol = scriptedSymbolOf(n, sup, label, ctx)
   if (symbol == null) return analyzeScriptedCompound(n, sup, label, ctx)
   // scriptedSymbolOf has declined a mixed superscript on a symbol.
-  return analyzeScriptedSymbol(n, symbol, sup, label === "mixed" ? null : label, ctx)
+  const f = analyzeScriptedSymbol(n, symbol, sup, label === "mixed" ? null : label, ctx)
+  if (DERIVATIVE_SYMBOLS.has(symbol.text)) f.derivative = true
+  return f
 }
 
 /**

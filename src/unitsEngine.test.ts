@@ -4682,6 +4682,33 @@ describe("differentials (step 14)", () => {
     restoresTo("\\frac{1}{\\sqrt{t}} = \\frac{d}{dx}\\sqrt{r}", "\\frac{1}{\\sqrt{t}} = c^{1/2}\\frac{d}{dx}\\sqrt{r}")
   })
 
+  test("the registry's ∂, ∇ and □ are operators too, and a constant goes before them", () => {
+    // The review's blocker: with a time on the Leibniz side, an identity
+    // between operators needs a c, and set after the registry's ∇ or □ it read
+    // as their operand, `u^{\mu}\nabla_{\mu}c` and `\Box c^{2}`: zero.
+    restoresTo("\\frac{d}{d\\tau} = u^{\\mu}\\nabla_{\\mu}", "\\frac{d}{d\\tau} = u^{\\mu}c\\nabla_{\\mu}")
+    restoresTo("\\frac{d}{d\\tau} = u^{a}\\nabla_{a}", "\\frac{d}{d\\tau} = u^{a}c\\nabla_{a}")
+    restoresTo("\\frac{d}{d\\tau} = u^{\\mu}\\partial_{\\mu}", "\\frac{d}{d\\tau} = u^{\\mu}c\\partial_{\\mu}")
+    restoresTo("\\frac{d^{2}}{d\\tau^{2}} = \\Box", "\\frac{d^{2}}{d\\tau^{2}} = c^{2}\\Box")
+    // The material derivative. ∂_t is the t component of ∂_μ, a coordinate
+    // label read as an index (COORDINATE_LABELS), so it is ∂/∂(ct).
+    restoresTo(
+      "\\frac{d}{dt} = \\partial_{t} + \\vec{v}\\cdot\\nabla",
+      "\\frac{d}{dt} = c\\partial_{t} + \\vec{v}\\cdot\\nabla",
+    )
+    restoresTo("\\frac{d}{dt} = \\nabla", "\\frac{d}{dt} = c\\nabla")
+    // Braced, powered, in a group, under a font or an arrow.
+    restoresTo("\\frac{d}{d\\tau} = {\\partial}_{\\mu}u^{\\mu}", "\\frac{d}{d\\tau} = c{\\partial}_{\\mu}u^{\\mu}")
+    restoresTo("\\frac{d^{2}}{dt^{2}} = \\nabla^{2}", "\\frac{d^{2}}{dt^{2}} = c^{2}\\nabla^{2}")
+    restoresTo("\\frac{d^{2}}{dt^{2}} = (\\partial_{\\mu})^{2}", "\\frac{d^{2}}{dt^{2}} = c^{2}(\\partial_{\\mu})^{2}")
+    restoresTo("\\frac{1}{t} = \\boldsymbol{\\nabla}", "\\frac{1}{t} = c\\boldsymbol{\\nabla}")
+    restoresTo("\\frac{1}{t} = \\vec{\\nabla}", "\\frac{1}{t} = c\\vec{\\nabla}")
+    // Without a Leibniz operator the same placement holds, and a fraction after
+    // the operator takes no constant: `\frac{c}{2}` there is still its operand.
+    restoresTo("\\frac{1}{t} = \\nabla_{a}u^{a}", "\\frac{1}{t} = c\\nabla_{a}u^{a}")
+    restoresTo("\\frac{1}{t} = \\partial_{\\mu}\\frac{u^{\\mu}}{2}", "\\frac{1}{t} = c\\partial_{\\mu}\\frac{u^{\\mu}}{2}")
+  })
+
   test("a bold or calligraphic d is no differential, through a power too", () => {
     // Read as d², `\frac{\mathbf{d}^{2}}{dt^{2}}` was an operator and
     // `\mathbf{d}^{2}x` a differential.
