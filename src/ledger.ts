@@ -79,7 +79,9 @@ const DIMENSIONAL: [RegExp, OutcomeClass][] = [
 export function classifyOutcome(r: TranslationResult): Outcome {
   if (r.kind === "translated") return { class: r.changed ? "translated" : "unchanged", reason: "", unknown: [] }
   if (r.kind === "no-anchor") return { class: "no-anchor", reason: "", unknown: [] }
-  const reason = r.reasons[0] ?? ""
+  // A reassembly fault the engine withheld from the reader, because unknown
+  // symbols decline the equation too, still stands here as it always has.
+  const reason = r.reasons[0] ?? r.fault ?? ""
   for (const [re, cls] of STRUCTURAL) if (re.test(reason)) return { class: cls, reason, unknown: r.unknown }
   // A symbol the registry cannot vouch for comes first: no completion can
   // be judged around it, and the engine returns no reason at all when the

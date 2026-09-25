@@ -54,6 +54,13 @@ class Unsupported extends Error {
   }
 }
 
+/**
+ * A decline the engine owes to its own re-emission (checkRebuilt), not to the
+ * notation. Where an unknown symbol declines the equation as well, the reader
+ * is told about the symbol and the fault goes to `fault` (TranslationResult).
+ */
+class ReassemblyFault extends Unsupported {}
+
 // ---------------------------------------------------------------------------
 // Hub registry
 // ---------------------------------------------------------------------------
@@ -318,7 +325,20 @@ export type TranslationResult =
       legend: LegendEntry[]
     }
   | { kind: "no-anchor"; legend: LegendEntry[] }
-  | { kind: "declined"; reasons: string[]; unknown: string[]; legend: LegendEntry[] }
+  | {
+      kind: "declined"
+      reasons: string[]
+      unknown: string[]
+      legend: LegendEntry[]
+      /**
+       * An internal reassembly fault the equation also met, present only when
+       * `reasons` is empty and `unknown` is not. The equation declines on its
+       * unknown symbols whatever else it carries, so the reader is told what the
+       * dictionary lacks rather than that the engine could not re-emit it; the
+       * decline ledger still counts the fault (src/ledger.ts).
+       */
+      fault?: string
+    }
 
 type LegendRecord = { tex: string; gloss: string; si: string; dim: Dim }
 
@@ -327,6 +347,13 @@ type Ctx = {
   reg: HubRegistry
   legend: Map<string, LegendRecord>
   unknown: Map<string, string>
+  /**
+   * How many lookups the registry has missed so far (resolveSymbol), counted
+   * the same way `unknown` is filled. A term notes the count before it is read
+   * and after (analyzeTerm): if it grew, the term holds a placeholder rather
+   * than a reading, and it is tainted.
+   */
+  unknownHits: number
   /** Set whenever the emitted equation differs from the source (insertion or strip). */
   mutated: boolean
   /** Geometrized target: verify consistency but strip c/G factors instead of inserting. */
@@ -553,6 +580,14 @@ type TermInfo = {
    * dimensionless term and still pins the sum to dimensionless.
    */
   isUnitLiteral: boolean
+  /**
+   * The term, or something read inside it (a group, a fraction, an exponent,
+   * a function's argument), holds a symbol the registry does not know. Its
+   * `dim` then counts that symbol as a pure number, which is a placeholder and
+   * not a reading, so no c–G verdict on the term says anything about the
+   * notation (termInsertion).
+   */
+  tainted: boolean
   src: string
 }
 
@@ -1546,7 +1581,7 @@ function symbolicExponentOf(power: any, ctx: Ctx): SumInfo | null {
   if (frac?.type === "genfrac" && intOf(nodeListOf(frac.numer)) != null && intOf(nodeListOf(frac.denom)) != null) {
     return null
   }
-  return parseSum(nodeListOf(power.sup), ctx, { anchor: "forced", target: ZERO })
+  return parseSum(nodeListOf(power.sup), ctx, { anchor: "forced", target: DIMENSIONLESS })
 }
 
 /** The value of a numeral factor written as a plain decimal, or null (a powered numeral, `10^{8}`, is not one). */
@@ -1697,7 +1732,14 @@ function resolveSymbol(
       key = opts.differential ? `d${baseText}` : baseText
     }
   }
+  // A miss is no reading. ZERO stands in for the dimension only so the rest of
+  // the equation can be read (its legend, its other unknowns, its constructs);
+  // a term that holds it is tainted (unknownHits), and the solver judges no
+  // term against it. This is the only place a miss is recorded, and every miss
+  // lands in `unknown`, so a tainted term always belongs to an equation that
+  // declines on its unknown symbols.
   if (!entry) {
+    ctx.unknownHits += 1
     ctx.unknown.set(key, displayTex)
     return ZERO
   }
@@ -1721,7 +1763,23 @@ function isPlusMinus(node: any): "+" | "-" | null {
   return null
 }
 
-type SumMode = { anchor: "internal" } | { anchor: "forced"; target: Dim } | { anchor: "none" }
+/**
+ * The dimension a sum's terms are restored to, and whether it is tainted: set
+ * by a term that holds a symbol the registry does not know, whose dimension
+ * stands in as a pure number's. Every term is judged against a tainted anchor
+ * as it is against a tainted term: not at all (termInsertion). In `\xi = r +
+ * \theta` the clash between r and θ therefore goes unreported until ξ has a
+ * reading; the equation declines on ξ either way. A forced anchor that states
+ * where the sum stands (an exponent, a function's argument: a pure number) is
+ * a fact and untainted; one taken from a symbol's reading carries that
+ * symbol's taint, so a missing reading never becomes a verdict on the sum.
+ */
+type Anchor = { dim: Dim; tainted: boolean }
+
+/** A sum that must be a pure number wherever it stands, whatever it holds. */
+const DIMENSIONLESS: Anchor = { dim: ZERO, tainted: false }
+
+type SumMode = { anchor: "internal" } | { anchor: "forced"; target: Anchor } | { anchor: "none" }
 
 type SumInfo = {
   terms: TermInfo[]
@@ -1762,18 +1820,23 @@ function foldedOp(op: string, sign: string): string {
 /**
  * The dimension a sum's terms must share, chosen from its own content: a
  * non-zero pure numeral pins it to dimensionless; otherwise the first
- * non-zero term anchors. Literal zeros carry any dimension and never anchor.
+ * non-zero term anchors, taint and all. Literal zeros carry any dimension and
+ * never anchor.
  */
-function sumAnchor(terms: TermInfo[]): Dim | null {
+function sumAnchor(terms: TermInfo[]): Anchor | null {
   const live = terms.filter((t) => !t.isZero)
   if (live.length === 0) return null
-  return live.some((t) => t.pureNumeral) ? ZERO : live[0].dim
+  return live.some((t) => t.pureNumeral) ? DIMENSIONLESS : { dim: live[0].dim, tainted: live[0].tainted }
 }
 
-function termInsertion(t: TermInfo, target: Dim, ctx: Ctx): { a: number; b: number } | null {
+function termInsertion(t: TermInfo, target: Anchor, ctx: Ctx): { a: number; b: number } | null {
   if (t.isZero) return null
-  const need = dimSub(target, t.dim)
+  const need = dimSub(target.dim, t.dim)
   if (dimIsZero(need)) return null
+  // A placeholder on either side leaves nothing to judge: no reason blames a
+  // term the registry could not read, or one set against it, and nothing is
+  // restored. The equation declines on the unknown symbol instead.
+  if (t.tainted || target.tainted) return null
   // A term that is nothing but powers of c and G is a constant, not a quantity.
   // Restoring it would rewrite one constant into another — `G = c = 1` came out
   // as `G = G = 1`, which states something false about c. A relation made only
@@ -2069,8 +2132,9 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing 
   let insertions: ({ a: number; b: number } | null)[] = terms.map(() => null)
   let target: Dim
   if (mode.anchor === "forced" || (multiTerm && mode.anchor === "internal")) {
-    target = mode.anchor === "forced" ? mode.target : (sumAnchor(terms) ?? ZERO)
-    insertions = terms.map((t) => termInsertion(t, target, ctx))
+    const anchor = mode.anchor === "forced" ? mode.target : (sumAnchor(terms) ?? DIMENSIONLESS)
+    target = anchor.dim
+    insertions = terms.map((t) => termInsertion(t, anchor, ctx))
   } else {
     target = terms[0].dim
   }
@@ -2207,6 +2271,8 @@ function spacedBeforeSign(termNodes: any[], spacing: FactorSpacing): boolean {
 }
 
 function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacing | null): TermInfo {
+  // Every lookup the term makes, nested sums included, happens before it returns.
+  const hitsBefore = ctx.unknownHits
   const factors: Factor[] = []
   let slashIdx = -1
   let i = 0
@@ -2354,6 +2420,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     isZero: numeralsAre(0),
     // `v = \pm 1` states a value, not a convention: it is restored like `v = -1`.
     isUnitLiteral: sign !== "-" && !BRANCH_OPS.has(sign) && numeralsAre(1),
+    tainted: ctx.unknownHits > hitsBefore,
     src: srcOfNodes(nodes, ctx),
   }
 }
@@ -2934,7 +3001,7 @@ const TRAILING_CONSTANT = /(?<!\\[a-zA-Z]*)[cG](?:\^\{[^{}]*\})?$/
  */
 function analyzeFunction(head: () => string, argNodes: any[], ctx: Ctx): Factor {
   const headTex = head()
-  const argSum = parseSum(argNodes, ctx, { anchor: "forced", target: ZERO })
+  const argSum = parseSum(argNodes, ctx, { anchor: "forced", target: DIMENSIONLESS })
   if (!argSum.multiTerm) {
     const live = argSum.emit()
     const written = maskedEmission(ctx, argSum.emit)
@@ -3111,7 +3178,7 @@ function analyzeDelimitedFunction(
     scripts = scriptsTex(scripted, ctx)
   }
   bracketBodyGuard(group.body)
-  const inner = parseSum(group.body, ctx, { anchor: "forced", target: ZERO })
+  const inner = parseSum(group.body, ctx, { anchor: "forced", target: DIMENSIONLESS })
   const open = group.type === "leftright" ? `\\left${group.left}` : group.open
   const close = group.type === "leftright" ? `\\right${group.right}` : group.close
   const emit = () => joinTex([headTex, spacing, open, inner.emit(), close]) + scripts
@@ -4377,7 +4444,7 @@ function analyzeScriptedSymbol(
   // exponent at all, so the superscript is not read: `h = h^{s}` blamed a
   // missing completion on the term “s”, where the unknown h is the whole story.
   if (!pureNumber && ctx.reg.bare[baseText] == null) return { kind: "sym", dim: ZERO, emit: () => wholeTex }
-  const expSum = parseSum(nodeListOf(n.sup), ctx, { anchor: "forced", target: ZERO })
+  const expSum = parseSum(nodeListOf(n.sup), ctx, { anchor: "forced", target: DIMENSIONLESS })
   const emit = () => `${baseTex}^{${expSum.emit()}}`
   return { kind: "sym", dim: ZERO, emit }
 }
@@ -4708,7 +4775,7 @@ function analyzeScriptedCompound(
       if (!isDimensionlessGroup(inner.dim, ctx)) {
         throw new Unsupported(unreadExponentReason(n.sup, maskedEmission(ctx, inner.emit), ctx))
       }
-      const exponent = parseSum(nodeListOf(n.sup), ctx, { anchor: "forced", target: ZERO })
+      const exponent = parseSum(nodeListOf(n.sup), ctx, { anchor: "forced", target: DIMENSIONLESS })
       return scripted(inner, ZERO, () => `^{${exponent.emit()}}`)
     }
   }
@@ -5289,6 +5356,8 @@ type RowResult = {
   /** Whether an alignment tab stood immediately before rels[i] in the source. */
   tabAtRel: boolean[]
   target: Dim
+  /** The target is a placeholder: the row anchored on, or continued, a symbol the registry does not know. */
+  targetTainted: boolean
   hadRel: boolean
   /** The row opens at a relation and continues the chain above it, whose statement it is. */
   continued: boolean
@@ -5396,9 +5465,10 @@ function unsupportedRelReason(text: string): string {
  * The target a row may continue: the dimension of the chain above it, null
  * when nothing is above it, or "ambiguous" when the row above held a
  * separator (translateLine) and a continuation could belong to the statement
- * on either side of it.
+ * on either side of it. A chain anchored on an unknown symbol carries its
+ * taint to the rows that continue it.
  */
-type Carried = Dim | null | "ambiguous"
+type Carried = Anchor | null | "ambiguous"
 
 function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Carried): RowResult {
   const grouped = groupDelims(nodes)
@@ -5471,6 +5541,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Carried): RowResult
       rels: [],
       tabAtRel: [],
       target: ZERO,
+      targetTainted: false,
       hadRel: false,
       continued: false,
       unitLiteralSide: false,
@@ -5508,7 +5579,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Carried): RowResult
   // After a row that held several statements (`r &= 2M, \quad t = M`, or
   // `&\Rightarrow t = M` after the chain above) a continuation could continue
   // any of them, and nothing written says which.
-  let target: Dim
+  let target: Anchor
   if (sums[0] == null) {
     if (carriedTarget === "ambiguous") {
       throw new Unsupported(
@@ -5523,7 +5594,7 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Carried): RowResult
     declarationGuard(sums, relKinds, ctx)
     const anchored = sums.map((sum) => (sum == null ? null : sumAnchor(sum.terms))).find((d) => d != null)
     // Every term a literal zero: identity.
-    target = anchored ?? (carriedTarget === "ambiguous" ? null : carriedTarget) ?? ZERO
+    target = anchored ?? (carriedTarget === "ambiguous" ? null : carriedTarget) ?? DIMENSIONLESS
   }
 
   // Insertions are solved once, during analysis; emission can then be replayed.
@@ -5547,7 +5618,8 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Carried): RowResult
     emitSides,
     rels,
     tabAtRel,
-    target: resolvedTarget,
+    target: resolvedTarget.dim,
+    targetTainted: resolvedTarget.tainted,
     hadRel: true,
     continued: sums[0] == null,
     unitLiteralSide: sums.some(isUnitLiteralSide),
@@ -6042,6 +6114,7 @@ export function dimensionOf(
     reg,
     legend: new Map(),
     unknown: new Map(),
+    unknownHits: 0,
     mutated: false,
     strip: false,
     rereading: false,
@@ -6065,7 +6138,7 @@ export function dimensionOf(
     if (ctx.unknown.size > 0) {
       return { kind: "declined", reasons: [], unknown: Array.from(ctx.unknown.values()) }
     }
-    const target = sumAnchor(sum.terms) ?? ZERO
+    const target = sumAnchor(sum.terms)?.dim ?? ZERO
     for (const t of sum.terms) {
       if (t.isZero || t.pureNumeral) continue
       if (!dimIsZero(dimSub(t.dim, target))) {
@@ -6584,6 +6657,7 @@ function translateCore(
     reg,
     legend: new Map(),
     unknown: new Map(),
+    unknownHits: 0,
     mutated: false,
     strip: spec.geometrized,
     rereading,
@@ -6635,6 +6709,24 @@ function translateCore(
       }
     } catch (error) {
       const reason = error instanceof Unsupported ? error.reason : "TeX that KaTeX could not parse"
+      // Which reason the reader sees when an unknown symbol and a reassembly
+      // fault both decline the equation is the owner's ruling (integration
+      // §4.2 item 7); this is its recommended default. The symbol is what the
+      // reader can act on, and it declines the equation whatever else does;
+      // the fault is the engine's own. A term the registry cannot read is not
+      // judged (termInsertion), so such an equation is read on to its
+      // re-emission, where it can meet a fault that a verdict on the term
+      // would have stopped short of. Every other reason names the notation
+      // and is reported beside the unknowns.
+      if (error instanceof ReassemblyFault && ctx.unknown.size > 0) {
+        return {
+          kind: "declined",
+          reasons: [],
+          unknown: Array.from(ctx.unknown.values()),
+          legend: legendOut(),
+          fault: reason,
+        }
+      }
       return {
         kind: "declined",
         reasons: [reason],
@@ -6682,7 +6774,7 @@ function translateCore(
     try {
       parse(restoredTex)
     } catch {
-      throw new Unsupported(
+      throw new ReassemblyFault(
         "an internal reassembly fault — the rebuilt equation did not parse (nothing was shown rather than something wrong)",
       )
     }
@@ -6695,7 +6787,7 @@ function translateCore(
     }
     if (cmpNorm(masked) !== cmpNorm(tex)) {
       unwrittenSpacingGuard(masked, tex, cmpNorm)
-      throw new Unsupported(
+      throw new ReassemblyFault(
         "an internal reassembly fault — the rebuilt equation diverged from the source (nothing was shown rather than something wrong)",
       )
     }
@@ -6735,7 +6827,7 @@ function translateCore(
     if (!rereading && ctx.mutated && ctx.unknown.size === 0) {
       const again = translateCore(restoredTex, katex, reg, spec, true)
       if (again.kind !== "translated" || again.changed) {
-        throw new Unsupported(
+        throw new ReassemblyFault(
           "an internal reassembly fault — the rebuilt equation does not balance when read again (nothing was shown rather than something wrong)",
         )
       }
@@ -6803,7 +6895,8 @@ function translateCore(
         const line = translateLine(row, ctx, carried)
         const stated = line.rows.filter((res) => res.hadRel)
         if (stated.length > 0) {
-          carried = line.items.length > 1 ? "ambiguous" : stated[0].target
+          carried =
+            line.items.length > 1 ? "ambiguous" : { dim: stated[0].target, tainted: stated[0].targetTainted }
           for (const res of stated) if (!res.continued) statementUnits.push(unitTexOf(res.target, spec))
           anyRel = true
         } else if (anyRel) {

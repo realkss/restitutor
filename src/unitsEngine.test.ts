@@ -3758,8 +3758,8 @@ describe("index tokens, primes and the canonical symbol key", () => {
   })
 
   test("a primed symbol is looked up under its own name and borrows nothing from its letter", () => {
-    // Unknown only is asserted: an unknown reads as dimensionless, so the
-    // decline may also name a term with no completion.
+    // Only the unknowns are asserted here; that they are the whole reason (no
+    // term is judged against them) is asserted with the taint (step 13).
     const unknown = (tex: string, registry: HubRegistry = reg) => declined(tex, registry).unknown
     assert.deepStrictEqual(unknown("x' = x"), ["x'"])
     // α′, the Regge slope, is not the lapse α.
@@ -4486,5 +4486,121 @@ describe("exponents and groups (step 12)", () => {
     }
     // A known dimensionless base still reads its exponent.
     unchanged("E = mc^2e^{\\mathrm{i}kx}")
+  })
+})
+
+describe("taint: no verdict on a symbol the registry does not know (step 13)", () => {
+  const HL: TargetSpec = { system: "hl", geometrized: false }
+  const TARGETS = [SI, HL, GEO]
+  const declined = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+    return result as Extract<TranslationResult, { kind: "declined" }>
+  }
+  // Declines on its unknown symbols alone, on every target, with no fault held back.
+  const unknownOnly = (tex: string, unknown: string[]) => {
+    for (const target of TARGETS) {
+      const result = declined(tex, target)
+      assert.deepStrictEqual(result.reasons, [], `${tex} at ${JSON.stringify(target)}`)
+      assert.deepStrictEqual(result.unknown, unknown, tex)
+      assert.strictEqual(result.fault, undefined, tex)
+    }
+  }
+  const NO_COMPLETION = (term: string) =>
+    `a term admitting no c–G completion under the registry's readings of its symbols (term “${term}”)`
+  const TEMPERATURE = (term: string) =>
+    `temperature dimensions that do not balance — this hub keeps k_B explicit and only reinserts c and G (term “${term}”)`
+  const DIVERGED =
+    "an internal reassembly fault — the rebuilt equation diverged from the source (nothing was shown rather than something wrong)"
+
+  test("a term holding an unknown symbol is not judged, nested or not", () => {
+    // Each of these blamed a term the registry had read, against a pure number
+    // standing in for the unknown: “t”, “i\sigma t”, “t”, “\xi t”.
+    unknownOnly("u = t - \\frac{r_{*}}{c}", ["u", "r_{*}"])
+    unknownOnly("\\psi = e^{-i\\sigma t}", ["\\psi", "\\sigma"])
+    unknownOnly("r = (\\xi + t)", ["\\xi"])
+    unknownOnly("r = e^{\\xi t}", ["\\xi"])
+    unknownOnly("r = \\sqrt{\\xi + t}", ["\\xi"])
+    unknownOnly("r = \\frac{\\xi + t}{M}", ["\\xi"])
+    unknownOnly("\\xi^{2} = r^{2}", ["\\xi"])
+    unknownOnly("\\xi = \\frac{A}{4}", ["\\xi"])
+    // A primed symbol is its own name (step 10); read against x it blamed “x”.
+    unknownOnly("x' = x", ["x'"])
+    unknownOnly("\\psi_4 = \\chi \\, \\Xi^{ab} \\, T_{ab}", ["\\psi_{4}", "\\chi", "\\Xi^{ab}"])
+  })
+
+  test("a constant set against an unknown symbol is not a constant rewritten", () => {
+    // “a term made only of c and G …” said the registry would rewrite c; there is no reading to rewrite it into.
+    unknownOnly("\\xi = c", ["\\xi"])
+    unknownOnly("r_s = 2M, \\qquad \\xi = c", ["\\xi"])
+    unknownOnly("\\xi = c, \\qquad r_s = 2M", ["\\xi"])
+  })
+
+  test("a chain anchored on an unknown symbol carries the taint to its continuation rows", () => {
+    // The first row is consistent whatever ξ is; the second set t against ξ's placeholder.
+    unknownOnly("\\begin{aligned} \\xi &= 2\\xi \\\\ &= t \\end{aligned}", ["\\xi"])
+    unknownOnly("\\begin{aligned} \\xi &= r \\\\ &= t \\end{aligned}", ["\\xi"])
+  })
+
+  test("the accepted limitation: a clash among known terms under an unknown anchor waits for the anchor", () => {
+    // r and θ cannot share a dimension, but the anchor is ξ; the clash surfaces once ξ has a reading.
+    unknownOnly("\\xi = r + \\theta", ["\\xi"])
+  })
+
+  test("a verdict among terms the registry reads, under an anchor it reads, still stands", () => {
+    for (const target of TARGETS) {
+      const clash = declined("r = \\theta + \\xi", target)
+      assert.deepStrictEqual(clash.reasons, [NO_COMPLETION("\\theta")])
+      assert.deepStrictEqual(clash.unknown, ["\\xi"])
+    }
+    assert.deepStrictEqual(declined("S = \\frac{A}{4} + \\xi").reasons, [TEMPERATURE("\\frac{A}{4}")])
+    // The unknown sits outside the group whose terms clash.
+    assert.deepStrictEqual(declined("r = \\xi(t+T)").reasons, [TEMPERATURE("T")])
+    // A continuation row takes a known chain's anchor, whatever an earlier side held.
+    assert.deepStrictEqual(declined("\\begin{aligned} r &= \\xi \\\\ &= \\theta \\end{aligned}").reasons, [
+      NO_COMPLETION("\\theta"),
+    ])
+    assert.deepStrictEqual(declined("\\begin{aligned} r &= 2r \\\\ &= \\theta + \\xi \\end{aligned}").reasons, [
+      NO_COMPLETION("\\theta"),
+    ])
+    // A function's argument is a pure number whatever it holds: that anchor is a fact, not a reading.
+    assert.deepStrictEqual(declined("x = r\\sin(\\xi + t)").reasons, [NO_COMPLETION("t")])
+    // With the unknown σ no longer blamed, the next term the registry does read is (m read as a mass).
+    const teukolsky = declined("\\psi = e^{-i\\sigma t}\\,e^{i m\\phi}")
+    assert.deepStrictEqual(teukolsky.reasons, [NO_COMPLETION("im\\phi")])
+    assert.deepStrictEqual(teukolsky.unknown, ["\\psi", "\\sigma"])
+  })
+
+  test("a construct decline is reported beside the unknown symbols", () => {
+    const wedge = declined("\\xi = r \\wedge t")
+    assert.deepStrictEqual(wedge.reasons, ["the symbol “\\wedge” in this position"])
+    assert.deepStrictEqual(wedge.unknown, ["\\xi"])
+    assert.strictEqual(wedge.fault, undefined)
+  })
+
+  test("a reassembly fault gives way to the unknown symbols, and is kept in `fault`", () => {
+    // Recommended default of the owner's ruling (integration §4.2 item 7).
+    for (const target of TARGETS) {
+      for (const tex of ["\\chi = {8\\pi G \\over c^{4}} T_{ab}", "\\chi\\,T_{ab} = {8\\pi G \\over c^{4}} T_{ab}"]) {
+        const result = declined(tex, target)
+        assert.deepStrictEqual(result.reasons, [], tex)
+        assert.deepStrictEqual(result.unknown, ["\\chi"], tex)
+        assert.strictEqual(result.fault, DIVERGED, tex)
+      }
+    }
+    // With every symbol known, the fault is the reason, as before.
+    const known = declined("G_{ab} = {8\\pi G \\over c^{4}} T_{ab}")
+    assert.deepStrictEqual(known.reasons, [DIVERGED])
+    assert.deepStrictEqual(known.unknown, [])
+    assert.strictEqual(known.fault, undefined)
+  })
+
+  test("dimensionOf judges no term against an unknown symbol either", () => {
+    assert.deepStrictEqual(dimensionOf("(\\xi + r)", katex, reg), { kind: "declined", reasons: [], unknown: ["\\xi"] })
+    assert.deepStrictEqual(dimensionOf("\\frac{\\xi + t}{r}", katex, reg), {
+      kind: "declined",
+      reasons: [],
+      unknown: ["\\xi"],
+    })
   })
 })

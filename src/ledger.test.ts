@@ -184,10 +184,23 @@ describe("the decline ledger", () => {
       assert.notStrictEqual(outcome(tex).class, "other", tex)
   })
   test("a no-completion decline that also names unknown symbols is an unknown-symbol case", () => {
-    // The completion cannot be judged around symbols the registry cannot read.
+    // The completion cannot be judged around symbols the registry cannot read,
+    // and the engine no longer tries: the unknowns are the whole reason.
     const o = outcome("\\psi_4 = \\chi \\, \\Xi^{ab} \\, T_{ab}")
     assert.strictEqual(o.class, "unknown-symbol")
-    assert.ok(/no c–G completion/.test(o.reason))
+    assert.strictEqual(o.reason, "")
+    // A clash among terms the registry reads still names its term beside the unknowns.
+    const clash = outcome("r = \\theta + \\xi")
+    assert.strictEqual(clash.class, "unknown-symbol")
+    assert.ok(/no c–G completion/.test(clash.reason))
+  })
+  test("a reassembly fault withheld from the reader for unknown symbols still stands in the ledger", () => {
+    const result = translateTex("\\chi = {8\\pi G \\over c^{4}} T_{ab}", katex, GR, SI)
+    assert.ok(result.kind === "declined" && result.reasons.length === 0 && result.fault != null)
+    const o = classifyOutcome(result)
+    assert.strictEqual(o.class, "reassembly")
+    assert.ok(/reassembly fault/.test(o.reason))
+    assert.deepStrictEqual(o.unknown, ["\\chi"])
   })
   test("the ledger counts classes and the symbols that blocked equations", () => {
     const L = emptyLedger()
