@@ -224,8 +224,10 @@ describe("the decline ledger", () => {
     assert.deepStrictEqual(outcome("v = H_0\\,d").unknown, ["d"])
     // Step 17: a summation index the range does not declare, read where the
     // sum may not reach it, or in a superscript; a range that is not index
-    // values; and a fixed symbol whose subscript the sum runs over.
+    // values; a fixed symbol whose subscript the sum runs over; and an index
+    // named as a constant.
     for (const tex of [
+      "x = \\sum_{c=1}^{3} c\\,r",
       "r = \\sum_{m} \\frac{M}{m^2}",
       "r = \\sum_{n} M + n",
       "M = \\sum_{k=0}^{\\infty}x^{k}",

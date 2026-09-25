@@ -3362,7 +3362,9 @@ function limitScripts(scripted: any | null, ctx: Ctx): () => string {
  * An index a sum binds while the sum is read (Ctx.dummies). In the sum's own
  * term the index is the sum's dummy, never the dictionary symbol of its name:
  * m under Σ_m is no mass, nor k under Σ_k a wavenumber. It stands for a pure
- * number only where the range declares it an integer (summationRange).
+ * number only where the range declares it an integer (summationRange). No
+ * frame binds c or G: those letters are read only as the constants, and the
+ * range declines them.
  */
 type DummyFrame = { tok: string; integer: boolean; live: boolean }
 
@@ -3494,6 +3496,21 @@ function dimensionalLeafOf(nodes: any[], toks: string[], ctx: Ctx): string | nul
   return visit(nodes)
 }
 
+/** A sum's subscript as written: its nodes, and where its relation stands (-1 where none does). */
+function rangeHead(sub: any): { nodes: any[]; rel: number } {
+  const nodes = nodeListOf(sub).filter(isMeaningfulNode)
+  return { nodes, rel: nodes.findIndex((x) => relTextOf(x) != null) }
+}
+
+/** Whether `node` is a sum whose range names `tok` among its indices, binding it again. */
+function rebindsIndex(node: any, tok: string): boolean {
+  const op = opOf(node)
+  const n = peelStyles(node)
+  if (op?.name !== "\\sum" || n.type !== "supsub" || n.sub == null) return false
+  const { nodes, rel } = rangeHead(n.sub)
+  return (rel < 0 ? nodes : nodes.slice(0, rel)).some((x) => indexLetterOf(x) === tok)
+}
+
 /**
  * The indices a sum binds, read off its subscript, and whether they are
  * integers. Σ_{n=a}^{b} steps n by one from a, so an integer start value
@@ -3507,23 +3524,30 @@ function dimensionalLeafOf(nodes: any[], toks: string[], ctx: Ctx): string | nul
  * written, never read. So a range naming a symbol the dictionary reads as
  * dimensional anywhere in it (Σ_{n=0}^{M}, Σ_{n=0}^{\sqrt{M}}, Σ_{r<2M})
  * cannot be told from a value that would need restoring, and declines.
+ *
+ * An index named c or G declines as well. Every bare c or G is read as the
+ * constant (analyzeFactor, analyzeScriptedSymbol), which a translation
+ * restores or sets to 1: under Σ_{c=1}^{3} the term c r came back geometrized
+ * as r, a sum of 3r where the author's is 6r.
  */
 function summationRange(name: string, scripted: any | null, ctx: Ctx): SummationRange {
   const toks: string[] = []
   let integer = false
   const values: any[] = []
   if (scripted?.sub != null) {
-    const nodes = nodeListOf(scripted.sub).filter(isMeaningfulNode)
+    const { nodes, rel } = rangeHead(scripted.sub)
     if (nodes.some((x) => unwrap(x)?.type === "genfrac" && unwrap(x).hasBarLine === false)) {
       throw new Unsupported(`a stacked range under “${name}”, which is not supported yet`)
     }
-    const rel = nodes.findIndex((x) => relTextOf(x) != null)
     const isolate = () =>
       new Unsupported(`the range “${scriptSrc(scripted.sub, ctx)}” under “${name}”, whose index the engine cannot isolate`)
     for (const x of rel < 0 ? nodes : nodes.slice(0, rel)) {
       if (x.type === "atom" && x.family === "punct") continue
       const tok = indexLetterOf(x)
       if (tok == null) throw isolate()
+      if (tok === "c" || tok === "G") {
+        throw new Unsupported(`the summation index “${tok}”, the letter of the constant a translation restores or sets to 1`)
+      }
       toks.push(tok)
     }
     if (toks.length === 0) throw isolate()
@@ -3546,14 +3570,19 @@ function summationRange(name: string, scripted: any | null, ctx: Ctx): Summation
 /**
  * The superscripts in `nodes`, at any depth, that hold the letter `tok`. An
  * operator's scripts are its range or its bounds, read by their own rules, and
- * are not looked into.
+ * are not looked into. With `rebound` set, a sum that binds `tok` again ends
+ * the search in its node list: what follows it there is that sum's operand,
+ * where the letter is its index (rebindsIndex).
  */
-function superscriptsHolding(nodes: any[], tok: string): any[] {
+function superscriptsHolding(nodes: any[], tok: string, rebound: boolean): any[] {
   const found: any[] = []
   const visit = (n: any): void => {
     if (n == null || typeof n !== "object") return
     if (Array.isArray(n)) {
-      n.forEach(visit)
+      for (const x of n) {
+        if (rebound && rebindsIndex(x, tok)) return
+        visit(x)
+      }
       return
     }
     if (n.type === "supsub" && opOf(n) != null) return
@@ -3596,7 +3625,10 @@ function isContraction(s: any, operand: any[], tok: string, ctx: Ctx): boolean {
  * letter reads as an index either way, so the series came back as a first
  * power. Every superscript at any depth of the operand declines, whatever the
  * range declares, except an explicit contraction (isContraction). In a term
- * after the sum's own term, whether the sum reaches the index is not written.
+ * after the sum's own term, whether the sum reaches the index is not written,
+ * unless a sum of that term binds the letter again: from there on it is the
+ * new sum's index, as resolveSymbol reads it (`-\sum_{\mu} p_{\mu}p^{\mu} -
+ * \sum_{\mu} p_{\mu}p^{\mu}` reuses one dummy letter, as Lagrangians do).
  *
  * `bindings` are the indices this term's sums bound, each with the operand
  * after its operator; `dummyStart` is where the term's own frames begin, and
@@ -3610,7 +3642,7 @@ function summationSuperscriptGuard(
 ): void {
   for (const { toks, operand } of bindings) {
     for (const tok of toks) {
-      if (superscriptsHolding(operand, tok).some((s) => !isContraction(s, operand, tok, ctx))) {
+      if (superscriptsHolding(operand, tok, false).some((s) => !isContraction(s, operand, tok, ctx))) {
         throw new Unsupported(
           `the summation index “${tok}” in a superscript, where it is a power or a component index and the notation does not say which`,
         )
@@ -3618,7 +3650,7 @@ function summationSuperscriptGuard(
     }
   }
   for (const frame of ctx.dummies.slice(0, dummyStart)) {
-    if (!frame.live && superscriptsHolding(nodes, frame.tok).length > 0) throw new Unsupported(usedAfterReason(frame))
+    if (!frame.live && superscriptsHolding(nodes, frame.tok, true).length > 0) throw new Unsupported(usedAfterReason(frame))
   }
 }
 

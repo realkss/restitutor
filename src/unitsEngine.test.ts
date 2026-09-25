@@ -5287,6 +5287,41 @@ describe("sums (step 17)", () => {
     assert.deepStrictEqual([closed.reasons, closed.unknown], [[], ["n"]])
   })
 
+  test("a later sum that binds the letter again owns it from there on", () => {
+    // One dummy letter reused across terms reads as two letters do.
+    restoresTo(
+      "M^{2} = -\\sum_{\\mu} p_{\\mu}p^{\\mu} - \\sum_{\\nu} p_{\\nu}p^{\\nu}",
+      "M^{2} = -\\frac{\\sum_{\\mu}p_{\\mu}p^{\\mu}}{c^{2}} - \\frac{\\sum_{\\nu}p_{\\nu}p^{\\nu}}{c^{2}}",
+    )
+    restoresTo(
+      "M^{2} = -\\sum_{\\mu} p_{\\mu}p^{\\mu} - \\sum_{\\mu} p_{\\mu}p^{\\mu}",
+      "M^{2} = -\\frac{\\sum_{\\mu}p_{\\mu}p^{\\mu}}{c^{2}} - \\frac{\\sum_{\\mu}p_{\\mu}p^{\\mu}}{c^{2}}",
+    )
+    restoresTo(
+      "M^{2} = \\sum_{\\mu} p_{\\mu}p^{\\mu} - \\frac{\\sum_{\\mu} p_{\\mu}p^{\\mu}}{2}",
+      "M^{2} = \\frac{\\sum_{\\mu}p_{\\mu}p^{\\mu}}{c^{2}} - \\frac{\\sum_{\\mu}p_{\\mu}p^{\\mu}}{2c^{2}}",
+    )
+    // Before the new sum, or where it binds another letter, the letter is still the retired one.
+    declines("M^{2} = \\sum_{\\mu} p_{\\mu}p^{\\mu} - p^{\\mu}\\sum_{\\mu} p_{\\mu}p^{\\mu}", AFTER("\\mu"))
+    declines("M^{2} = \\sum_{\\mu} p_{\\mu}p^{\\mu} - \\frac{x^{\\mu}\\sum_{\\mu} p_{\\mu}p^{\\mu}}{2}", AFTER("\\mu"))
+    declines("M^{2} = \\sum_{\\mu} p_{\\mu}p^{\\mu} - \\sum_{\\nu} p_{\\nu}p^{\\nu} x^{\\mu}", AFTER("\\mu"))
+    // After the new sum's own term, its letter is retired in turn.
+    declines("M^{2} = \\sum_{\\mu} p_{\\mu}p^{\\mu} - \\left(\\sum_{\\mu} p_{\\mu}p^{\\mu} + x^{\\mu}\\right)", AFTER("\\mu"))
+  })
+
+  test("c and G name no index: they are read only as the constants", () => {
+    // Read as the constant, the index was stripped geometrized: Σ c·r (6r) came back as Σ r (3r).
+    const CONSTANT = (i: string) => `the summation index “${i}”, the letter of the constant a translation restores or sets to 1`
+    declines("x = \\sum_{c=1}^{3} c\\,r", CONSTANT("c"))
+    declines("r = \\sum_{c=1}^{3} c^{2} r", CONSTANT("c"))
+    declines("r = \\sum_{G=1}^{3}\\frac{M}{G}", CONSTANT("G"))
+    declines("r = \\sum_{a,b,c} r", CONSTANT("c"))
+    for (const tex of ["x = \\sum_{c=1}^{3} c\\,r", "r = \\sum_{G=1}^{3}\\frac{M}{G}"]) {
+      const result = translateTex(tex, katex, reg, { system: "si", geometrized: true })
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+    }
+  })
+
   test("an index in a superscript is a power or a component; only an explicit contraction is read", () => {
     // The reviewer's power series: read as first powers, they came back wrong.
     declines("M = \\sum_{k=0}^{\\infty}x^{k}", SUPERSCRIPT("k"))
