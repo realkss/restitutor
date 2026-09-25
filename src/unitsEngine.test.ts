@@ -4870,4 +4870,45 @@ describe("detached numeral riders (step 15)", () => {
     const dotted = run("x = r\\cdot{}^{2}M")
     assert.ok(dotted.kind === "declined" && !/detached/.test(dotted.reasons.join()), JSON.stringify(dotted))
   })
+
+  test("a group dimensionless before c and G are stripped stays exempt when the translation is read again", () => {
+    // The re-read sees `(v){}^{2}`, whose group has the stripped c's dimension; by
+    // the zero rule it declined these as a reassembly fault on every geometrized target.
+    for (const target of [GEO, { system: "si", geometrized: true } as TargetSpec]) {
+      assert.strictEqual(
+        translated("d\\tau = dt\\sqrt{1 - (v/c){}^{2}}", target).restoredTex,
+        "d\\tau = dt\\sqrt{1 - (v){}^{2}}",
+      )
+      assert.strictEqual(
+        translated("x = r\\left(\\frac{GM}{rc^{2}}\\right){}^{2}", target).restoredTex,
+        "x = r\\left(\\frac{M}{r}\\right){}^{2}",
+      )
+      assert.strictEqual(translated("E = (v/c){}^{2}mc^{2}", target).restoredTex, "E = (v){}^{2}m")
+    }
+    assert.strictEqual(translated("d\\tau = dt\\sqrt{1 - (v/c){}^{2}}").changed, false)
+  })
+
+  test("followed by an index subscript on nothing, the numeral opens the staggered index list", () => {
+    // Read as the scripted `R^{0}{}_{101}` is, under the component-digit rule.
+    assert.strictEqual(
+      translated("R{}^{0}{}_{101} = \\frac{2M}{r^{3}}").restoredTex,
+      "R{}^{0}{}_{101} = \\frac{2GM}{r^{3}c^{2}}",
+    )
+    assert.strictEqual(
+      translated("R^{0}{}_{101} = \\frac{2M}{r^{3}}").restoredTex,
+      "R^{0}{}_{101} = \\frac{2GM}{r^{3}c^{2}}",
+    )
+    assert.strictEqual(
+      translated("R{}^{1}{}_{010} = \\frac{2M}{r^{3}}").restoredTex,
+      "R{}^{1}{}_{010} = \\frac{2GM}{r^{3}c^{2}}",
+    )
+    assert.strictEqual(translated("p{}^{0}{}_{0} = E").restoredTex, "p{}^{0}{}_{0} = \\frac{E}{c}")
+    declines("R{}^{2}{}_{101} = \\frac{2M}{r^{3}}", "a digit superscript on “R{}^{2}{}_{101}” — a component index or a power")
+    // Bare, Λ, T and G are other quantities than the components the indices name.
+    // Live, `G{}^{0}{}_{0} = 0` stripped the Einstein tensor at GEO as Newton's constant.
+    declines("\\Lambda{}^{0}{}_{0} = 1", AFTER("{}^{0}"))
+    declines("G{}^{0}{}_{0} = 0", AFTER("{}^{0}"))
+    // A rider after it is set on nothing and takes no prescript.
+    declines("r{}^{2}{}_{0} = x", AFTER("{}^{2}"))
+  })
 })

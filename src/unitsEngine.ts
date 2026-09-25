@@ -4102,10 +4102,26 @@ function riderDigitGuard(nodes: any[], at: number, ctx: Ctx): void {
  * dimension. On a dimensionless factor (`\pi{}^{2}`, `2{}^{2}`) every reading
  * gives the same dimension, so the rider is read as it always was; an unknown
  * symbol's placeholder counts as one too, and its equation declines on the
- * symbol. A rider with no factor before it (`{}^{12}C`) is a prescript on
- * what follows, the only reading it has. A rider set tight against a factor
- * after it (`r\,{}^{4}\mathrm{He}`) may be that factor's prescript as well,
- * and the reason says so.
+ * symbol. Dimensionless is isDimensionlessGroup's test, not the zero rule: the
+ * re-read of a geometrized translation reads `(v/c){}^{2}` as `(v){}^{2}`,
+ * whose group has the dimension of the stripped c, and by the zero rule the
+ * re-read declined `d\tau = dt\sqrt{1 - (v/c){}^{2}}` as a reassembly fault.
+ * A rider with no factor before it (`{}^{12}C`) is a prescript on what
+ * follows, the only reading it has.
+ *
+ * A rider followed by another (`R{}^{0}{}_{101}`) is no prescript on it, which
+ * is set on nothing. Where that rider is an index subscript on a symbol the
+ * registry indexes, the numeral opens the staggered index list as a script on
+ * the symbol does (`R^{0}{}_{101}`), under riderDigitGuard's rule: a digit 2–9
+ * declines with the component-digit reason, and 0 and 1 are indices. The index
+ * reading is taken only where the symbol's bare reading, which is the one the
+ * rider path reads beside its riders, has the component's dimension: bare, Λ
+ * is the cosmological constant, T a temperature and G Newton's constant, none
+ * of them the Lorentz transformation, the stress–energy tensor or the Einstein
+ * tensor the indices name, and there the numeral declines as after any factor
+ * without indices. A rider set tight against a factor after it
+ * (`r\,{}^{4}\mathrm{He}`) may be that factor's prescript as well, and the
+ * reason says so.
  */
 function detachedRiderGuard(nodes: any[], at: number, factors: Factor[], ctx: Ctx): void {
   const rider = numeralRiderOf(nodes[at])
@@ -4116,15 +4132,26 @@ function detachedRiderGuard(nodes: any[], at: number, factors: Factor[], ctx: Ct
   let prev: Factor | undefined
   for (let k = factors.length - 1; k >= 0 && prev == null; k -= 1) if (factors[k].kind !== "glue") prev = factors[k]
   if (prev == null) return
-  if (continuesIndices(nodes[back], prev, ctx) || dimIsZero(prev.dim)) return
+  if (continuesIndices(nodes[back], prev, ctx) || isDimensionlessGroup(prev.dim, ctx)) return
   const tex = supsubTex("{}", rider, ctx)
   if (prev.derivative === true) {
     throw new Unsupported(
       `a detached superscript “${tex}” after the derivative “${wrappedTexOf(nodes[back], ctx)}” — a derivative order or a component index, which the notation does not settle`,
     )
   }
+  let ahead = at + 1
+  while (ahead < nodes.length && SKIP_TYPES.has(unwrap(nodes[ahead])?.type)) ahead += 1
+  const following = ahead < nodes.length ? unwrap(nodes[ahead]) : null
+  const baseText = textOf(nodes[back])
+  if (isFloatingScript(following) && following.sub != null && baseText != null && componentLookup(baseText, following.sub, ctx)) {
+    if (isDigitPower(rider.sup, classifySup(rider.sup))) {
+      const displayTex = `${wrappedTexOf(nodes[back], ctx)}${tex}${supsubTex("{}", following, ctx)}`
+      throw new Unsupported(`a digit superscript on “${displayTex}” — a component index or a power`)
+    }
+    if (dimIsZero(dimSub(prev.dim, ctx.reg.indexed[baseText].dim))) return
+  }
   const next = unwrap(nodes[at + 1])
-  if (next != null && !SKIP_TYPES.has(next.type) && !isProductGlue(next)) {
+  if (next != null && !SKIP_TYPES.has(next.type) && !isProductGlue(next) && !isFloatingScript(next)) {
     throw new Unsupported(
       `a detached superscript “${tex}” between two factors — a power or a component index on the one before, or a prescript on the one after, which the notation does not settle`,
     )
