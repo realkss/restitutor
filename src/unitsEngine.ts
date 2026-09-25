@@ -1714,25 +1714,41 @@ function raisedAfterMarksGuard(n: any, tex: string, ctx: Ctx): void {
 /**
  * The same rule where the superscript stands on a symbol inside what the
  * derivative subscript is set on (`{T^{\ \ c}}_{ab;c}`,
- * `\left(T^{\ \ c}\right)_{ab;c}`), or on the symbol before a rider that holds
- * it (`h^{\ \ \ \ \ \ \alpha}{}_{\mu\nu,\alpha}`): typed first, as always there,
+ * `\left(T^{\ \ c}\right)_{ab;c}`, `\bar{h^{\ \ \alpha}}_{\mu\nu,\alpha}`), or
+ * inside the factor before a rider that holds it
+ * (`h^{\ \ \ \ \ \ \alpha}{}_{\mu\nu,\alpha}`): typed first, as always there,
  * it is the head's index only when set flush (`{T^{ab}}_{;b}`,
- * `T^{ab}{}_{;b}`). A superscript beside a subscript of its own
- * (`T^{\ \ c}_{ab}{}_{;c}`) is staggered past that subscript's slots, and
- * the derivative indices after it do not reach it.
+ * `T^{ab}{}_{;b}`, `\bar{h^{\alpha}}_{\mu\nu,\alpha}`).
+ *
+ * The whole operand is searched, however deep the superscript is set: under
+ * an accent or a font, in a fraction's numerator or denominator, under a
+ * \sqrt, in a nested brace or bracket group. A wrapper changes nothing the
+ * stagger says, and searched one level deep the rule held for
+ * `\left(\bar{h}^{\ \ \alpha}\right)_{\mu\nu,\alpha}` but not for
+ * `\left(\frac{h^{\ \ \alpha}}{2}\right)_{\mu\nu,\alpha}` or
+ * `\bar{h^{\ \ \alpha}}_{\mu\nu,\alpha}`, which shipped under m⁻¹ where
+ * ∂^α∂_α h̄ is m⁻², and the Lorenz-gauge wave equation spelled so declined on a
+ * completion its reason blamed on the registry's readings. The search stops at
+ * a superscript beside a subscript of its own (`T^{\ \ c}_{ab}{}_{;c}`),
+ * staggered past that subscript's slots, which the derivative indices after
+ * it do not reach; and it does not enter a script, whose own scripts are set
+ * against it rather than beside the derivative indices (`e^{x^{\ b}}`). A
+ * \sqrt's degree is a script in this sense.
  */
-function staggeredIntoMarksGuard(nodes: any[], tex: string, ctx: Ctx): void {
-  for (const node of nodes) {
-    const u = unwrap(node)
-    if (u?.type !== "supsub" || u.sub != null || u.sup == null) continue
-    if (classifySup(u.sup) === "index" && opensOnSpacing(u.sup)) throw new Unsupported(besideMarksReason(u.sup, tex, ctx))
+function staggeredIntoMarksGuard(node: any, tex: string, ctx: Ctx): void {
+  if (node == null || typeof node !== "object") return
+  if (node.type === "supsub") {
+    if (node.sub != null) return
+    if (node.sup != null && classifySup(node.sup) === "index" && opensOnSpacing(node.sup)) {
+      throw new Unsupported(besideMarksReason(node.sup, tex, ctx))
+    }
+    staggeredIntoMarksGuard(node.base, tex, ctx)
+    return
   }
-}
-
-/** The nodes a script on this node is set beside: a bracket group's contents, braces' contents, or the node itself. */
-function innerNodesOf(node: any): any[] {
-  const u = unwrap(node)
-  return u?.type === "leftright" || u?.type === "__group" ? u.body : nodeListOf(u)
+  for (const key of ["body", "base", "numer", "denom"]) {
+    const child = node[key]
+    for (const x of Array.isArray(child) ? child.flat(2) : [child]) staggeredIntoMarksGuard(x, tex, ctx)
+  }
 }
 
 /**
@@ -5578,8 +5594,9 @@ function derivativeRiderGuard(nodes: any[], at: number, factors: Factor[], ctx: 
  * A rider whose subscript holds derivative indices, read (`{}_{\mu\nu,\alpha}`),
  * after a factor whose superscript it may continue: the superscript of
  * `h^{\ \ \ \ \ \ \alpha}{}_{\mu\nu,\alpha}` is judged as that of
- * `h^{\ \ \ \ \ \ \alpha}_{\mu\nu,\alpha}` (staggeredIntoMarksGuard). The
- * look-back is derivativeRiderGuard's: spacing does not detach the rider, and
+ * `h^{\ \ \ \ \ \ \alpha}_{\mu\nu,\alpha}` (staggeredIntoMarksGuard), and one
+ * set deeper in that factor (`\bar{h^{\ \ \alpha}}{}_{\mu\nu,\alpha}`) as one
+ * set there under the subscript itself. The look-back is derivativeRiderGuard's: spacing does not detach the rider, and
  * a product sign or a slash does.
  */
 function riderMarksStaggerGuard(nodes: any[], at: number, ctx: Ctx): void {
@@ -5587,7 +5604,7 @@ function riderMarksStaggerGuard(nodes: any[], at: number, ctx: Ctx): void {
   while (back >= 0 && SKIP_TYPES.has(unwrap(nodes[back])?.type)) back -= 1
   const rider = floatingScriptOf(nodes[at])
   if (back < 0 || rider == null || isProductGlue(unwrap(nodes[back]))) return
-  staggeredIntoMarksGuard(innerNodesOf(nodes[back]), quotedTexOf(nodes[back], ctx) + supsubTex("{}", rider, ctx), ctx)
+  staggeredIntoMarksGuard(nodes[back], quotedTexOf(nodes[back], ctx) + supsubTex("{}", rider, ctx), ctx)
 }
 
 /**
@@ -6299,7 +6316,9 @@ function analyzeScriptedSymbol(
  * The symbol is read as it would be written without the derivative: with its
  * head as an identity and then as indices, bare when there is no head, and
  * its superscript a label or a power as on any symbol, or an index list when
- * typed first and set flush (raisedAfterMarksGuard declines every other). Each
+ * typed first and set flush (raisedAfterMarksGuard declines every other, and
+ * staggeredIntoMarksGuard one set inside the symbol, as in
+ * `\bar{h^{\ \ \alpha}}_{\mu\nu,\alpha}`, whose own superscript is empty). Each
  * derivative index then adds its operator's dimension. The guards on an
  * indexed reading judge the head's: the angular guard, the component digit,
  * and a dot over an indexed symbol. A numeric power raises the derivative, as
@@ -6324,6 +6343,7 @@ function analyzeDifferentiatedSymbol(
 ): Factor {
   summationFramesIn(n.sub, ctx)
   if (reading === "index") raisedAfterMarksGuard(n, wholeTex, ctx)
+  staggeredIntoMarksGuard(n.base, wholeTex, ctx)
   const headSub = headSubscriptOf(split, ctx)
   if (headSub == null && (name === "c" || name === "G")) throw new Unsupported(`a label or mark on the constant “${name}”`)
   const head = { base: n.base, sub: headSub, sup: n.sup }
@@ -6640,7 +6660,7 @@ function analyzeScriptedCompound(
     const marks = n.sub != null ? readIndexMarks(nodeListOf(n.sub), ctx, { rider: false, commaSeparates: false }) : null
     const split = marks != null && marks !== "labels" ? marks : null
     if (split != null && n.sup != null) throw new Unsupported("a super/subscript construct the engine could not read")
-    if (split != null) staggeredIntoMarksGuard(innerNodesOf(base), quotedTexOf(n.base, ctx) + scriptsTex(n, ctx), ctx)
+    if (split != null) staggeredIntoMarksGuard(n.base, quotedTexOf(n.base, ctx) + scriptsTex(n, ctx), ctx)
     const subIsIndex = n.sub == null || split != null || allIndexTokens(nodeListOf(n.sub), true)
     const bracket = isBracketGroup(base)
     const kept = n.sup != null && bracket && preservesGroup(n.sup)

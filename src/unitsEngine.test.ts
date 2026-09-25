@@ -5735,6 +5735,48 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
       ["\\left(\\binom{n}{k}T^{\\ \\ c}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(…T^{\\ \\ c}\\right)_{ab;c}"],
     ]
     for (const [tex, sup, quoted] of rebuilt) declines(tex, NEITHER(sup, quoted))
+    // The whole operand is searched, however deep the superscript is set: under
+    // an accent or a font, in a fraction, under a \sqrt, in a nested group.
+    // Searched one level deep, these shipped under m⁻¹ (∂^α∂_α h̄ is m⁻²), or the
+    // wave equation declined on a completion blamed on the registry's readings.
+    const deep: [string, string, string][] = [
+      [`\\bar{h^{${SIX}}}_{\\mu\\nu,\\alpha} = -16\\pi T_{\\mu\\nu}`, SIX, `\\bar{h^{${SIX}}}_{\\mu\\nu,\\alpha}`],
+      [`\\bar{h^{${SIX}}}_{\\mu\\nu,\\alpha} = 0`, SIX, `\\bar{h^{${SIX}}}_{\\mu\\nu,\\alpha}`],
+      ["\\overline{h^{\\ \\ \\alpha}}_{\\mu\\nu,\\alpha} = 0", "\\ \\ \\alpha", "\\overline{h^{\\ \\ \\alpha}}_{\\mu\\nu,\\alpha}"],
+      ["{\\bar{h^{\\ \\ \\alpha}}}_{\\mu\\nu,\\alpha} = 0", "\\ \\ \\alpha", "{\\bar{h^{\\ \\ \\alpha}}}_{\\mu\\nu,\\alpha}"],
+      ["\\bar{h^{\\ \\ \\alpha}}{}_{\\mu\\nu,\\alpha} = 0", "\\ \\ \\alpha", "\\bar{h^{\\ \\ \\alpha}}{}_{\\mu\\nu,\\alpha}"],
+      ["\\hat{\\mathbf{T^{\\ \\ c}}}_{ab;c} = 0", "\\ \\ c", "\\hat{\\mathbf{T^{\\ \\ c}}}_{ab;c}"],
+      [
+        `\\left(\\frac{h^{${SIX}}}{2}\\right)_{\\mu\\nu,\\alpha} = -8\\pi T_{\\mu\\nu}`,
+        SIX,
+        `\\left(\\frac{h^{${SIX}}}{2}\\right)_{\\mu\\nu,\\alpha}`,
+      ],
+      [
+        "\\left(\\frac{h^{\\ \\ \\alpha}}{2}\\right)_{\\mu\\nu,\\alpha} = 0",
+        "\\ \\ \\alpha",
+        "\\left(\\frac{h^{\\ \\ \\alpha}}{2}\\right)_{\\mu\\nu,\\alpha}",
+      ],
+      [
+        "\\left(\\frac{\\bar{h}^{\\ \\ \\alpha}}{2}\\right)_{\\mu\\nu,\\alpha} = 0",
+        "\\ \\ \\alpha",
+        "\\left(\\frac{\\bar{h}^{\\ \\ \\alpha}}{2}\\right)_{\\mu\\nu,\\alpha}",
+      ],
+      [
+        "\\left(\\sqrt{-g}\\,\\bar{h^{\\ \\ \\alpha}}\\right)_{\\mu\\nu,\\alpha} = 0",
+        "\\ \\ \\alpha",
+        "\\left(\\sqrt{-g}\\,\\bar{h^{\\ \\ \\alpha}}\\right)_{\\mu\\nu,\\alpha}",
+      ],
+      ["\\left(\\frac{T^{\\ \\ c}}{2}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(\\frac{T^{\\ \\ c}}{2}\\right)_{ab;c}"],
+      ["\\left(\\frac{1}{T^{\\ \\ c}}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(\\frac{1}{T^{\\ \\ c}}\\right)_{ab;c}"],
+      ["\\left(\\sqrt{T^{\\ \\ c}}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(\\sqrt{T^{\\ \\ c}}\\right)_{ab;c}"],
+      ["\\left(\\left(T^{\\ \\ c}\\right)\\right)_{ab;c} = 0", "\\ \\ c", "\\left(\\left(T^{\\ \\ c}\\right)\\right)_{ab;c}"],
+      ["\\left(\\rho\\left(u^{\\ b}\\right)\\right)_{a;b} = 0", "\\ b", "\\left(\\rho\\left(u^{\\ b}\\right)\\right)_{a;b}"],
+    ]
+    for (const [tex, sup, quoted] of deep) {
+      declines(tex, NEITHER(sup, quoted))
+      const gaussian = translateTex(tex, katex, both, { system: "gaussian", geometrized: true })
+      assert.strictEqual(gaussian.kind, "declined", tex)
+    }
     declines(
       `-\\Box h_{\\mu\\nu} + h_{\\nu\\alpha,\\mu}^{${SIX}} + h_{\\mu\\alpha,\\nu}^{${SIX}} - h_{,\\mu\\nu} = 16\\pi T_{\\mu\\nu}`,
       NEITHER(SIX, `h_{\\nu\\alpha,\\mu}^{${SIX}}`),
@@ -5745,6 +5787,10 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
     declines("\\Gamma_{00,i}^{i} = 4\\pi\\rho", NEITHER("i", "\\Gamma_{00,i}^{i}"), comma)
     // Typed first and set flush, the superscript is the head's, as the order of
     // the scripts and the absence of a stagger both say.
+    for (const tex of ["\\bar{h^{\\alpha}}_{\\mu\\nu,\\alpha} = 0", "\\bar{h^{\\alpha}}{}_{\\mu\\nu,\\alpha} = 0"]) {
+      assert.strictEqual(translated(tex, both).targetUnitTex, "\\mathrm{m}^{-1}", tex)
+      assert.strictEqual(translated(tex, both, GEO).changed, false, tex)
+    }
     for (const tex of ["\\Gamma^{i}_{00,i} = 0", "\\Gamma^{i}{}_{00,i} = 0"]) {
       assert.strictEqual(translated(tex, both).targetUnitTex, "\\mathrm{m}^{-2}", tex)
       assert.strictEqual(translated(tex, both, GEO).changed, false, tex)
@@ -5762,6 +5808,11 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
       "T^{\\ \\ c}_{ab}{}_{;c} = 0",
       "{T^{\\ \\ c}_{ab}}_{;c} = 0",
       "\\left(T^{\\ \\ c}_{ab}\\right)_{;c} = 0",
+      "\\left(\\frac{T^{\\ \\ c}_{ab}}{2}\\right)_{;c} = 0",
+      // Flush, it is the head's index however deep it is set.
+      "\\mathbf{T^{ab}}_{;b} = 0",
+      "\\left(\\frac{T^{ab}}{2}\\right)_{;b} = 0",
+      "\\left(\\left(T^{ab}\\right)\\right)_{;b} = 0",
     ]) {
       assert.strictEqual(translated(tex, both).targetUnitTex, "\\mathrm{kg}\\,\\mathrm{m}^{-2}\\,\\mathrm{s}^{-2}", tex)
       assert.strictEqual(translated(tex, both, GEO).changed, false, tex)
