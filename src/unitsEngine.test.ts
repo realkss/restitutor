@@ -5628,4 +5628,40 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
     // A label goes into the name the head is read under.
     restoresTo("T^{\\mathrm{vac}}_{ab;c} = \\Lambda g_{ab;c}", "T^{\\mathrm{vac}}_{ab;c} = \\frac{\\Lambda g_{ab;c}c^{4}}{G}", flagged)
   })
+
+  test("a rider after derivative indices continues them, and never as a dimensionless index", () => {
+    // Every index after a mark is a derivative index, staggered or not: read
+    // as a rider, ∂^α∂_μ h_{να} lost a derivative (m⁻¹ for m⁻²), and the
+    // linearized Einstein equation declined on a completion it blamed on the
+    // registry's readings.
+    const CONTINUED = (x: string) => `a derivative index list continued in the staggered subscript “${x}”, which is not supported yet`
+    for (const tex of [
+      "h_{\\nu\\alpha,\\mu}{}^{\\alpha} = 0",
+      "\\bar{h}_{\\mu\\nu,\\alpha}{}^{\\alpha} = 0",
+      "\\Phi_{;a}{}^{a} = 0",
+      "T^{ab}{}_{;b}{}^{c} = 0",
+      "{u^{a}}_{;b}{}^{b} = 0",
+      "\\left(T^{ab}\\right)_{;b}{}^{c} = 0",
+      "{\\Phi_{,i}}{}^{i} = 0",
+      "\\Phi_{,i}\\,{}^{i} = 0",
+      "R_{ab[cd;e]}{}^{f} = 0",
+      "-\\Box h_{\\mu\\nu} + h_{\\nu\\alpha,\\mu}{}^{\\alpha} + h_{\\mu\\alpha,\\nu}{}^{\\alpha} - h_{,\\mu\\nu} = 16\\pi T_{\\mu\\nu}",
+      "\\Box\\bar{h}_{\\mu\\nu} = \\bar{h}_{\\mu\\nu,\\alpha}{}^{\\alpha}",
+    ])
+      declines(tex, RAISED)
+    declines("\\Phi_{,i}{}_{i} = 0", CONTINUED("{}_{i}"))
+    declines("T_{ab;c}{}_{d;e} = 0", CONTINUED("{}_{d;e}"))
+    declines("\\Phi_{;a}{{}_{a}} = 0", CONTINUED("{}_{a}"))
+    declines(
+      "\\Phi_{,i}{}^{2} = 0",
+      "a detached superscript “{}^{2}” after the derivative indices of “\\Phi_{,i}” — a power or a raised derivative index, which the notation does not settle",
+    )
+    // A continuation that opens on a mark of its own counts each index.
+    assert.strictEqual(translated("T_{ab;c}{}_{;d} = 0", both).targetUnitTex, "\\mathrm{kg}\\,\\mathrm{m}^{-3}\\,\\mathrm{s}^{-2}")
+    // Riders after an index list that holds no derivative read as before.
+    unchanged("T^{ab}{}_{;b} = 0")
+    unchanged("R_{abc}{}^{d} = 0")
+    // Under undeclared marks nothing is a derivative, and the words are the old ones.
+    declines("h_{\\nu\\alpha,\\mu}{}^{\\alpha} = 0", UNDECLARED, reg)
+  })
 })

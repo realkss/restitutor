@@ -614,6 +614,14 @@ type Factor = {
    * (holdsOperator).
    */
   derivative?: boolean
+  /**
+   * The factor's index list holds derivative indices (R7): a symbol a mark
+   * differentiates (`T_{ab;c}`), a rider carrying a split (`{}_{;b}`), or a
+   * braced tensor or group with one (`{u^{a}}_{;b}`). Every index after a mark
+   * is a derivative index, so a rider set after the factor continues that
+   * list (derivativeRiderGuard).
+   */
+  derivativeIndices?: boolean
   /** On a d-differential: what it is as an integration measure (readBigOps). */
   diff?: DiffInfo
   /**
@@ -1653,6 +1661,8 @@ function readIndexMarks(
   return "labels"
 }
 
+const RAISED_MARKS_REASON = "derivative indices in a superscript, which are not supported yet"
+
 /**
  * Derivative indices in a superscript (`\Phi^{,i}`, a rider's `{}^{;a}`): an
  * index list the hub's marks read as a derivative, raised. Its dimension is
@@ -1664,7 +1674,7 @@ function superscriptMarksGuard(sup: any, ctx: Ctx): void {
   const read = markGrammarOf(nodeListOf(sup), (n) => isIndexToken(n))
   const declared = ctx.reg.derivativeMarks ?? {}
   if (read == null || !read.grammar || !read.headOk || !read.punct.every((p) => declared[p] != null)) return
-  throw new Unsupported("derivative indices in a superscript, which are not supported yet")
+  throw new Unsupported(RAISED_MARKS_REASON)
 }
 
 /** The dimension a split's derivative indices add: each mark's operator, looked up as an indexed symbol. */
@@ -2719,6 +2729,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
       continue
     }
 
+    derivativeRiderGuard(nodes, i, factors, ctx)
     detachedRiderGuard(nodes, i, factors, ctx)
     riderDigitGuard(nodes, i, ctx)
     push(analyzeFactor(raw, ctx))
@@ -5398,6 +5409,47 @@ function riderDigitGuard(nodes: any[], at: number, ctx: Ctx): void {
 }
 
 /**
+ * A rider after derivative indices continues them. Under the grammar the
+ * hub's marks declare (readIndexMarks), every index after a mark is a
+ * derivative index, and a staggered script carries the list on:
+ * `h_{\nu\alpha,\mu}{}^{\alpha}` is ∂^α∂_μ h_{να}, and `T^{ab}{}_{;b}{}^{c}` is
+ * ∇^c∇_b T^{ab}. Read as a rider, whose indices have no dimension, the term
+ * lost a derivative: the first shipped under m⁻¹ where ∂∂h is m⁻², and the
+ * linearized Einstein equation that holds it declined on a completion its
+ * reason blamed on the registry's readings. A raised continuation is a
+ * derivative index in a superscript and declines as one; a numeral there is
+ * as often a power (`\Phi_{,i}{}^{2}`, (∂_iΦ)²), and the reason says so. A
+ * lowered continuation reads only when it opens on a mark of its own
+ * (`T_{ab;c}{}_{;d}`), whose split counts each index it holds. One that opens
+ * on an index (`\Phi_{,i}{}_{i}`, `T_{ab;c}{}_{d;e}`) has derivative indices
+ * the rider path would read as labels without dimension, and declines. A
+ * prime on nothing is the primed-symbol reading's to decline. Braces print
+ * nothing, so a braced factor (`{\Phi_{,i}}{}^{i}`) is continued as the bare
+ * one is; spacing does not detach a rider, and a product sign or a slash
+ * does, as in detachedRiderGuard.
+ */
+function derivativeRiderGuard(nodes: any[], at: number, factors: Factor[], ctx: Ctx): void {
+  const rider = floatingScriptOf(nodes[at])
+  if (rider == null || (rider.sup != null && classifySup(rider.sup) === "prime")) return
+  let back = at - 1
+  while (back >= 0 && SKIP_TYPES.has(unwrap(nodes[back])?.type)) back -= 1
+  if (back < 0 || isProductGlue(unwrap(nodes[back]))) return
+  let prev: Factor | undefined
+  for (let k = factors.length - 1; k >= 0 && prev == null; k -= 1) if (factors[k].kind !== "glue") prev = factors[k]
+  if (prev == null || (prev.derivativeIndices !== true && prev.braced?.derivativeIndices !== true)) return
+  const tex = supsubTex("{}", rider, ctx)
+  if (numeralRiderOf(rider) != null) {
+    throw new Unsupported(
+      `a detached superscript “${tex}” after the derivative indices of “${wrappedTexOf(nodes[back], ctx)}” — a power or a raised derivative index, which the notation does not settle`,
+    )
+  }
+  if (rider.sup != null) throw new Unsupported(RAISED_MARKS_REASON)
+  const marks = readIndexMarks(nodeListOf(rider.sub), ctx, { rider: true, commaSeparates: false })
+  if (marks != null && marks !== "labels" && marks.head.length === 0) return
+  throw new Unsupported(`a derivative index list continued in the staggered subscript “${tex}”, which is not supported yet`)
+}
+
+/**
  * A numeral set on nothing (`{}^{2}`) has two readings where it follows a
  * factor, and the notation settles between them only by what that factor is.
  * After a factor that already carries indices, or after another rider
@@ -5480,14 +5532,20 @@ function detachedRiderGuard(nodes: any[], at: number, factors: Factor[], ctx: Ct
 
 /** A superscript of digits alone on nothing, bare or in braces (`{}^{2}`, `{{}^{0}}`), or null. */
 function numeralRiderOf(node: any): any {
+  const n = floatingScriptOf(node)
+  if (n == null || n.sub != null || n.sup == null) return null
+  return digitsOf(openGroups(nodeListOf(n.sup).filter(isMeaningfulNode))) != null ? n : null
+}
+
+/** A script on nothing, bare or alone inside braces (`{}^{a}`, `{{}_{0}}`), or null. */
+function floatingScriptOf(node: any): any {
   let n = unwrap(node)
   while (n?.type === "ordgroup") {
     const body = n.body.filter(isMeaningfulNode)
     if (body.length !== 1) return null
     n = unwrap(body[0])
   }
-  if (n?.type !== "supsub" || n.sub != null || n.sup == null || !isBlankNode(n.base)) return null
-  return digitsOf(openGroups(nodeListOf(n.sup).filter(isMeaningfulNode))) != null ? n : null
+  return isFloatingScript(n) ? n : null
 }
 
 /**
@@ -5905,8 +5963,8 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
     const subIsIndex = n.sub == null || split != null || (marks == null && allRiderTokens(nodeListOf(n.sub)))
     if ((n.sup != null || n.sub != null) && supIsIndex && subIsIndex) {
       const tex = supsubTex("{}", n, ctx)
-      const d = split != null ? derivativeDim(split, ctx) : ZERO
-      return { kind: "rider", dim: d, emit: () => tex }
+      if (split == null) return { kind: "rider", dim: ZERO, emit: () => tex }
+      return { kind: "rider", dim: derivativeDim(split, ctx), emit: () => tex, derivativeIndices: true }
     }
     throw new Unsupported("a floating super/subscript")
   }
@@ -6139,8 +6197,10 @@ function analyzeDifferentiatedSymbol(
   }
   if (order > 0) d = dimSub(d, dim(0, 0, order))
   d = dimAdd(d, derivativeDim(split, ctx))
-  if (reading == null || reading === "index") return { kind: "sym", dim: d, emit: () => wholeTex }
-  if (typeof reading === "object") return { kind: "sym", dim: dimScale(d, reading.p, reading.q), emit: () => wholeTex }
+  if (reading == null || reading === "index") return { kind: "sym", dim: d, emit: () => wholeTex, derivativeIndices: true }
+  if (typeof reading === "object") {
+    return { kind: "sym", dim: dimScale(d, reading.p, reading.q), emit: () => wholeTex, derivativeIndices: true }
+  }
   throw new Unsupported(`an exponent on “${wholeTex}” that could not be read`)
 }
 
@@ -6475,7 +6535,8 @@ function analyzeScriptedCompound(
             ? ZERO
             : inner.dim
       const scripts = scriptsTex(n, ctx)
-      return scripted(inner, split != null ? dimAdd(scaled, derivativeDim(split, ctx)) : scaled, () => scripts)
+      if (split == null) return scripted(inner, scaled, () => scripts)
+      return { ...scripted(inner, dimAdd(scaled, derivativeDim(split, ctx)), () => scripts), derivativeIndices: true }
     }
     if (bracket && n.sup == null) {
       if (containsDeep(n.sub, (x) => relTextOf(x) != null)) {
