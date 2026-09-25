@@ -1678,27 +1678,85 @@ function superscriptMarksGuard(sup: any, ctx: Ctx): void {
 }
 
 /**
- * An index superscript written after a subscript that holds derivative
- * indices (`h_{\mu\nu,\alpha}^{\ \ \ \ \ \ \alpha}`, `T_{ab;c}^{c}`, a rider's
- * `{}_{;b}^{c}`). Written first (`T^{ab}_{;b}`, `\Gamma^{i}_{00,i}`), it is the
- * head's index, as the order of the scripts says. Written after, it is the
- * rider `{}^{\alpha}` set in place, and a rider after derivative indices
- * continues them (derivativeRiderGuard): read as the head's index, which has
- * no dimension, the term lost a derivative (`h_{\mu\nu,\alpha}^{\ \ \ \ \ \ \alpha} = 0`
- * shipped under m⁻¹ where ∂^α∂_α h is m⁻², and the Lorenz-gauge wave equation
- * declined on a completion its reason blamed on the registry's readings).
- * Spacing that opens the superscript staggers it past the subscript, and it
- * declines as the raised derivative index it is. Set flush, it is that index
- * or the head's own (`\Gamma_{00,i}^{i}` is ∂_i Γ^i_{00}; for a rank-2 h the
- * same shape is a derivative), which the notation does not settle, and says
- * so. Either way the superscript is never read as a dimensionless index.
+ * An index superscript beside a subscript that holds derivative indices
+ * (`h_{\mu\nu,\alpha}^{\alpha}`, `h^{\ \ \ \ \ \ \alpha}_{\mu\nu,\alpha}`, a
+ * rider's `{}_{;b}^{c}`). One rule reads it: a superscript typed first and set
+ * flush (`T^{ab}_{;b}`, `\Gamma^{i}_{00,i}`, `T^{ab}{}^{c}_{;b}`) is the head's
+ * index, as the order of the scripts and the absence of a stagger both say.
+ * Every other one may be the head's index or a raised derivative index, and
+ * nothing written settles which, so it declines in those words.
+ *
+ * Neither the order of the scripts nor the spacing settles it alone. Spacing
+ * that opens a superscript staggers it past slots of the subscript, and the
+ * engine does not count slots: `h^{\ \ \ \ \ \ \alpha}_{\mu\nu,\alpha}` is
+ * ∂^α∂_α h (m⁻²), yet read as h's index it shipped under m⁻¹, and the
+ * Lorenz-gauge wave equation declined on a completion its reason blamed on
+ * the registry's readings; but `R^{\ \ \ d}_{abc;e}` is Wald's ∇_e R_{abc}{}^d,
+ * with d in R's own slot, so a staggered superscript typed first is no
+ * derivative index by rule either, and that reading is given up. Written after
+ * the subscript, the superscript may be the rider `{}^{\alpha}` set in place,
+ * which continues the derivative indices (derivativeRiderGuard), or the head's
+ * own: set flush, `\Gamma_{00,i}^{i}` is ∂_i Γ^i_{00}, while for a rank-2 h the
+ * same shape is a derivative; staggered, the subscript's own spacing can hold
+ * a slot open for it before the mark, as in the Lorenz gauge
+ * `\bar{h}_{\mu\ ,\nu}^{\ \nu}` (∂_ν h̄_μ{}^ν), so "derivative indices in a
+ * superscript" would be false there. That reason stays where the notation
+ * does settle it: a superscript that carries a mark of its own (`^{;c}`,
+ * superscriptMarksGuard) and a rider set apart after derivative indices
+ * (`h_{\nu\alpha,\mu}{}^{\alpha}`, derivativeRiderGuard).
  */
 function raisedAfterMarksGuard(n: any, tex: string, ctx: Ctx): void {
-  if (n.sup == null || supWrittenFirst(n, ctx)) return
-  if (SKIP_TYPES.has(unwrap(nodeListOf(n.sup)[0])?.type)) throw new Unsupported(RAISED_MARKS_REASON)
-  throw new Unsupported(
-    `the superscript “${scriptSrc(n.sup, ctx)}” after the derivative indices in “${tex}” — an index of the symbol or a raised derivative index, which the notation does not settle`,
-  )
+  if (n.sup == null) return
+  if (supWrittenFirst(n, ctx) && !opensOnSpacing(n.sup)) return
+  throw new Unsupported(besideMarksReason(n.sup, tex, ctx))
+}
+
+/**
+ * The same rule where the superscript stands on a symbol inside what the
+ * derivative subscript is set on (`{T^{\ \ c}}_{ab;c}`,
+ * `\left(T^{\ \ c}\right)_{ab;c}`), or on the symbol before a rider that holds
+ * it (`h^{\ \ \ \ \ \ \alpha}{}_{\mu\nu,\alpha}`): typed first, as always there,
+ * it is the head's index only when set flush (`{T^{ab}}_{;b}`,
+ * `T^{ab}{}_{;b}`). A superscript beside a subscript of its own
+ * (`T^{\ \ c}_{ab}{}_{;c}`) is staggered past that subscript's slots, and
+ * the derivative indices after it do not reach it.
+ */
+function staggeredIntoMarksGuard(nodes: any[], tex: string, ctx: Ctx): void {
+  for (const node of nodes) {
+    const u = unwrap(node)
+    if (u?.type !== "supsub" || u.sub != null || u.sup == null) continue
+    if (classifySup(u.sup) === "index" && opensOnSpacing(u.sup)) throw new Unsupported(besideMarksReason(u.sup, tex, ctx))
+  }
+}
+
+/** The nodes a script on this node is set beside: a bracket group's contents, braces' contents, or the node itself. */
+function innerNodesOf(node: any): any[] {
+  const u = unwrap(node)
+  return u?.type === "leftright" || u?.type === "__group" ? u.body : nodeListOf(u)
+}
+
+/**
+ * A node as a reason quotes it. A bracket group is rebuilt from its
+ * delimiters around its sliced contents: KaTeX's span for `\left( … \right)`
+ * begins inside the delimiter, and sliced, `\left(T^{\ \ c}\right)_{ab;c}` was
+ * quoted as `T^{\ \ c}\right)_{ab;c}`.
+ */
+function quotedTexOf(node: any, ctx: Ctx): string {
+  const u = unwrap(node)
+  if (u?.type !== "leftright" && u?.type !== "__group") return wrappedTexOf(node, ctx)
+  const open = u.type === "leftright" ? `\\left${u.left}` : u.open
+  const close = u.type === "leftright" ? `\\right${u.right}` : (u.close ?? "")
+  return joinTex([open, srcOfNodes(u.body, ctx), close])
+}
+
+/** Whether a script opens on spacing, which staggers it past slots of the index list beside it. */
+function opensOnSpacing(script: any): boolean {
+  return SKIP_TYPES.has(unwrap(nodeListOf(script)[0])?.type)
+}
+
+/** The decline raisedAfterMarksGuard's rule gives, quoting the superscript and the construct whose derivative indices it stands beside. */
+function besideMarksReason(sup: any, tex: string, ctx: Ctx): string {
+  return `the superscript “${scriptSrc(sup, ctx)}” after the derivative indices in “${tex}” — an index of the symbol or a raised derivative index, which the notation does not settle`
 }
 
 /** The dimension a split's derivative indices add: each mark's operator, looked up as an indexed symbol. */
@@ -2756,7 +2814,9 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     derivativeRiderGuard(nodes, i, factors, ctx)
     detachedRiderGuard(nodes, i, factors, ctx)
     riderDigitGuard(nodes, i, ctx)
-    push(analyzeFactor(raw, ctx))
+    const factor = analyzeFactor(raw, ctx)
+    if (factor.kind === "rider" && factor.derivativeIndices === true) riderMarksStaggerGuard(nodes, i, ctx)
+    push(factor)
     i += 1
   }
 
@@ -5474,6 +5534,22 @@ function derivativeRiderGuard(nodes: any[], at: number, factors: Factor[], ctx: 
 }
 
 /**
+ * A rider whose subscript holds derivative indices, read (`{}_{\mu\nu,\alpha}`),
+ * after a factor whose superscript it may continue: the superscript of
+ * `h^{\ \ \ \ \ \ \alpha}{}_{\mu\nu,\alpha}` is judged as that of
+ * `h^{\ \ \ \ \ \ \alpha}_{\mu\nu,\alpha}` (staggeredIntoMarksGuard). The
+ * look-back is derivativeRiderGuard's: spacing does not detach the rider, and
+ * a product sign or a slash does.
+ */
+function riderMarksStaggerGuard(nodes: any[], at: number, ctx: Ctx): void {
+  let back = at - 1
+  while (back >= 0 && SKIP_TYPES.has(unwrap(nodes[back])?.type)) back -= 1
+  const rider = floatingScriptOf(nodes[at])
+  if (back < 0 || rider == null || isProductGlue(unwrap(nodes[back]))) return
+  staggeredIntoMarksGuard(innerNodesOf(nodes[back]), quotedTexOf(nodes[back], ctx) + supsubTex("{}", rider, ctx), ctx)
+}
+
+/**
  * A numeral set on nothing (`{}^{2}`) has two readings where it follows a
  * factor, and the notation settles between them only by what that factor is.
  * After a factor that already carries indices, or after another rider
@@ -5977,8 +6053,9 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
   // {}^{d} / {}_{\mu\nu} index riders (as in R_{abc}{}^{d} or \Gamma^{\rho}{}_{\mu\nu}).
   // A rider's derivative indices (`T^{ab}{}_{;b}`) differentiate the symbol it
   // continues, and the rider carries their dimension: the constants a term
-  // takes then go around the whole run, never between it and its rider. A
-  // superscript written after them continues them too (raisedAfterMarksGuard).
+  // takes then go around the whole run, never between it and its rider. The
+  // rider's own superscript is read under the rule for one beside derivative
+  // indices (raisedAfterMarksGuard): an index only when typed first and flush.
   if (base == null || (base.type === "ordgroup" && base.body.length === 0)) {
     // A sign on nothing labels no symbol.
     if (sup === "signLabel") throw new Unsupported(SIGN_LABEL_REASON)
@@ -6181,7 +6258,7 @@ function analyzeScriptedSymbol(
  * The symbol is read as it would be written without the derivative: with its
  * head as an identity and then as indices, bare when there is no head, and
  * its superscript a label or a power as on any symbol, or an index list when
- * written before the subscript (raisedAfterMarksGuard declines one after). Each
+ * typed first and set flush (raisedAfterMarksGuard declines every other). Each
  * derivative index then adds its operator's dimension. The guards on an
  * indexed reading judge the head's: the angular guard, the component digit,
  * and a dot over an indexed symbol. A numeric power raises the derivative, as
@@ -6517,10 +6594,12 @@ function analyzeScriptedCompound(
     // Derivative indices on a braced tensor or a group differentiate the whole
     // (`{T^{ab}}_{;b}`, `\left(T^{ab} - \rho u^{a}u^{b}\right)_{;b}`), whose inner
     // terms restore against its own anchor. A power beside them is read on
-    // neither side: (X^{2})_{;b} and (X_{;b})^{2} differ by X.
+    // neither side: (X^{2})_{;b} and (X_{;b})^{2} differ by X. A staggered
+    // superscript inside is read by staggeredIntoMarksGuard's rule.
     const marks = n.sub != null ? readIndexMarks(nodeListOf(n.sub), ctx, { rider: false, commaSeparates: false }) : null
     const split = marks != null && marks !== "labels" ? marks : null
     if (split != null && n.sup != null) throw new Unsupported("a super/subscript construct the engine could not read")
+    if (split != null) staggeredIntoMarksGuard(innerNodesOf(base), quotedTexOf(n.base, ctx) + scriptsTex(n, ctx), ctx)
     const subIsIndex = n.sub == null || split != null || allIndexTokens(nodeListOf(n.sub), true)
     const bracket = isBracketGroup(base)
     const kept = n.sup != null && bracket && preservesGroup(n.sup)

@@ -255,6 +255,8 @@ describe("the decline ledger", () => {
       "\\Phi_{,i}{}^{2} = 0",
       "h_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\ \\alpha} = 0",
       "\\Gamma_{00,i}^{i} = 0",
+      "h^{\\ \\ \\ \\ \\ \\ \\alpha}_{\\mu\\nu,\\alpha} = 0",
+      "{T^{\\ \\ c}}_{ab;c} = 0",
     ])
       assert.strictEqual(classifyOutcome(translateTex(tex, katex, marks, SI)).class, "unsupported", tex)
     for (const tex of ["\\Phi_{,ii} = 4\\pi\\rho", "T^{ab}{}_{;b} = 0"]) assert.strictEqual(outcome(tex).class, "unsupported", tex)

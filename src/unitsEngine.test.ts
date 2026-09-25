@@ -5665,45 +5665,97 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
     declines("h_{\\nu\\alpha,\\mu}{}^{\\alpha} = 0", UNDECLARED, reg)
   })
 
-  test("a superscript written after derivative indices is never read as the head's index", () => {
-    // Staggered by spacing, it is the rider {}^{α} set in place: read as h's
-    // own index, ∂^α∂_α h lost a derivative (m⁻¹ for m⁻²), and the Lorenz-gauge
-    // wave equation declined on a completion it blamed on the registry's readings.
-    const staggered = [
-      "h_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\ \\alpha} = 0",
-      "\\bar{h}_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\ \\alpha} = 0",
-      "\\bar{h}_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\ \\alpha} = -16\\pi T_{\\mu\\nu}",
-      "\\bar{h}_{\\mu\\nu,\\alpha}^{\\quad\\ \\alpha} = -16\\pi T_{\\mu\\nu}",
-      "-\\Box h_{\\mu\\nu} + h_{\\nu\\alpha,\\mu}^{\\ \\ \\ \\ \\ \\ \\alpha} + h_{\\mu\\alpha,\\nu}^{\\ \\ \\ \\ \\ \\ \\alpha} - h_{,\\mu\\nu} = 16\\pi T_{\\mu\\nu}",
-      "T_{ab;c}^{\\ \\ \\ \\ c} = 0",
-      "u_{a;b}^{\\ \\ \\ \\ b} = 0",
-      "k_{\\mu;\\nu}^{\\ \\ \\ \\ \\nu} = 0",
-      "g_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\alpha} = 0",
-      "\\phi_{,\\mu}^{\\ \\ \\mu} = 0",
-      "h_{\\mu\\nu,\\alpha}^{~\\alpha} = 0",
-      "T^{ab}{}_{;b}^{\\ \\ c} = 0",
-    ]
-    for (const tex of staggered) declines(tex, RAISED)
-    declines("T_{ab;c}^{\\ \\ \\ \\ c} = 0", RAISED, semicolon)
-    declines("h_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\ \\alpha} = 0", RAISED, comma)
-    // Set flush, it is a raised derivative index for a rank-2 h and the head's
-    // own for Γ^{i}_{00}: the notation does not settle which, and says so.
-    const FLUSH = (sup: string, tex: string) =>
+  test("a superscript beside derivative indices is the head's index only when typed first and set flush", () => {
+    // Every other one is the head's index or a raised derivative index, and
+    // the notation does not settle which. Spacing staggers it past slots the
+    // engine does not count: read as h's own index, ∂^α∂_α h lost a derivative
+    // (m⁻¹ for m⁻²), and the Lorenz-gauge wave equation declined on a
+    // completion it blamed on the registry's readings; yet Wald's
+    // R^{\ \ \ d}_{abc;e} is ∇_e R_{abc}{}^{d}, with d R's own. Written after,
+    // it may be the rider {}^{α} set in place or the head's own index: Γ_{00,i}^{i}
+    // is ∂_i Γ^{i}_{00}, and in the Lorenz gauge h̄_{μ\ ,ν}^{\ ν} the subscript's
+    // spacing holds its slot open, so "derivative indices in a superscript"
+    // would be false there.
+    const NEITHER = (sup: string, tex: string) =>
       `the superscript “${sup}” after the derivative indices in “${tex}” — an index of the symbol or a raised derivative index, which the notation does not settle`
-    declines("h_{\\mu\\nu,\\alpha}^{\\alpha} = 0", FLUSH("\\alpha", "h_{\\mu\\nu,\\alpha}^{\\alpha}"))
-    declines("T_{ab;c}^{c} = 0", FLUSH("c", "T_{ab;c}^{c}"))
-    declines("\\Gamma_{00,i}^{i} = 4\\pi\\rho", FLUSH("i", "\\Gamma_{00,i}^{i}"))
-    declines("\\Gamma_{00,i}^{i} = 4\\pi\\rho", FLUSH("i", "\\Gamma_{00,i}^{i}"), comma)
-    declines("T^{ab}{}_{;b}^{c} = 0", FLUSH("c", "{}_{;b}^{c}"))
-    // Written first, the superscript is the head's, as the order of the scripts says.
-    assert.strictEqual(translated("\\Gamma^{i}_{00,i} = 0", both).targetUnitTex, "\\mathrm{m}^{-2}")
-    for (const tex of ["T^{\\mu\\nu}_{\\ \\ ;\\nu} = 0", "T^{ab}_{;b} = 0", "T^{ab}{}^{c}_{;b} = 0"]) {
-      assert.strictEqual(translated(tex, both).targetUnitTex, "\\mathrm{kg}\\,\\mathrm{m}^{-2}\\,\\mathrm{s}^{-2}", tex)
+    const SIX = "\\ \\ \\ \\ \\ \\ \\alpha"
+    const beside: [string, string, string][] = [
+      // Typed first, staggered.
+      [`h^{${SIX}}_{\\mu\\nu,\\alpha} = 0`, SIX, `h^{${SIX}}_{\\mu\\nu,\\alpha}`],
+      ["u^{\\ \\ \\ \\ b}_{a;b} = 0", "\\ \\ \\ \\ b", "u^{\\ \\ \\ \\ b}_{a;b}"],
+      ["T^{\\ \\ \\ \\ c}_{ab;c} = 0", "\\ \\ \\ \\ c", "T^{\\ \\ \\ \\ c}_{ab;c}"],
+      [`\\bar{h}^{${SIX}}_{\\mu\\nu,\\alpha} = -16\\pi T_{\\mu\\nu}`, SIX, `\\bar{h}^{${SIX}}_{\\mu\\nu,\\alpha}`],
+      ["\\bar{h}^{\\quad\\ \\alpha}_{\\mu\\nu,\\alpha} = 0", "\\quad\\ \\alpha", "\\bar{h}^{\\quad\\ \\alpha}_{\\mu\\nu,\\alpha}"],
+      ["h^{~\\alpha}_{\\mu\\nu,\\alpha} = 0", "~\\alpha", "h^{~\\alpha}_{\\mu\\nu,\\alpha}"],
+      ["T^{ab}{}^{\\ \\ c}_{;b} = 0", "\\ \\ c", "{}^{\\ \\ c}_{;b}"],
+      ["R^{\\ \\ \\ d}_{abc;e} = 0", "\\ \\ \\ d", "R^{\\ \\ \\ d}_{abc;e}"],
+      // Written after, staggered.
+      ["\\bar{h}_{\\mu\\ ,\\nu}^{\\ \\nu} = 0", "\\ \\nu", "\\bar{h}_{\\mu\\ ,\\nu}^{\\ \\nu}"],
+      ["h_{\\mu\\ ,\\alpha}^{\\ \\alpha} = 0", "\\ \\alpha", "h_{\\mu\\ ,\\alpha}^{\\ \\alpha}"],
+      [`h_{\\mu\\nu,\\alpha}^{${SIX}} = 0`, SIX, `h_{\\mu\\nu,\\alpha}^{${SIX}}`],
+      [`\\bar{h}_{\\mu\\nu,\\alpha}^{${SIX}} = -16\\pi T_{\\mu\\nu}`, SIX, `\\bar{h}_{\\mu\\nu,\\alpha}^{${SIX}}`],
+      ["\\bar{h}_{\\mu\\nu,\\alpha}^{\\quad\\ \\alpha} = -16\\pi T_{\\mu\\nu}", "\\quad\\ \\alpha", "\\bar{h}_{\\mu\\nu,\\alpha}^{\\quad\\ \\alpha}"],
+      ["T_{ab;c}^{\\ \\ \\ \\ c} = 0", "\\ \\ \\ \\ c", "T_{ab;c}^{\\ \\ \\ \\ c}"],
+      ["u_{a;b}^{\\ \\ \\ \\ b} = 0", "\\ \\ \\ \\ b", "u_{a;b}^{\\ \\ \\ \\ b}"],
+      ["\\phi_{,\\mu}^{\\ \\ \\mu} = 0", "\\ \\ \\mu", "\\phi_{,\\mu}^{\\ \\ \\mu}"],
+      ["h_{\\mu\\nu,\\alpha}^{~\\alpha} = 0", "~\\alpha", "h_{\\mu\\nu,\\alpha}^{~\\alpha}"],
+      ["T^{ab}{}_{;b}^{\\ \\ c} = 0", "\\ \\ c", "{}_{;b}^{\\ \\ c}"],
+      // Written after, flush.
+      ["h_{\\mu\\nu,\\alpha}^{\\alpha} = 0", "\\alpha", "h_{\\mu\\nu,\\alpha}^{\\alpha}"],
+      ["T_{ab;c}^{c} = 0", "c", "T_{ab;c}^{c}"],
+      ["\\Gamma_{00,i}^{i} = 4\\pi\\rho", "i", "\\Gamma_{00,i}^{i}"],
+      ["T^{ab}{}_{;b}^{c} = 0", "c", "{}_{;b}^{c}"],
+      // Inside what the derivative subscript is set on, or before a rider that holds it.
+      [`{h^{${SIX}}}_{\\mu\\nu,\\alpha} = 0`, SIX, `{h^{${SIX}}}_{\\mu\\nu,\\alpha}`],
+      ["\\left(T^{\\ \\ c}\\right)_{ab;c} = 0", "\\ \\ c", "\\left(T^{\\ \\ c}\\right)_{ab;c}"],
+      ["(T^{\\ \\ c})_{ab;c} = 0", "\\ \\ c", "(T^{\\ \\ c})_{ab;c}"],
+      [`h^{${SIX}}{}_{\\mu\\nu,\\alpha} = 0`, SIX, `h^{${SIX}}{}_{\\mu\\nu,\\alpha}`],
+      ["T^{\\ \\ c}\\,{}_{ab;c} = 0", "\\ \\ c", "T^{\\ \\ c}{}_{ab;c}"],
+      ["\\left(T^{\\ \\ c}\\right){}_{ab;c} = 0", "\\ \\ c", "\\left(T^{\\ \\ c}\\right){}_{ab;c}"],
+      ["\\Gamma^{\\ i}{}_{00,i} = 0", "\\ i", "\\Gamma^{\\ i}{}_{00,i}"],
+    ]
+    for (const [tex, sup, quoted] of beside) declines(tex, NEITHER(sup, quoted))
+    declines(
+      `-\\Box h_{\\mu\\nu} + h_{\\nu\\alpha,\\mu}^{${SIX}} + h_{\\mu\\alpha,\\nu}^{${SIX}} - h_{,\\mu\\nu} = 16\\pi T_{\\mu\\nu}`,
+      NEITHER(SIX, `h_{\\nu\\alpha,\\mu}^{${SIX}}`),
+    )
+    declines("T^{\\ \\ \\ \\ c}_{ab;c} = 0", NEITHER("\\ \\ \\ \\ c", "T^{\\ \\ \\ \\ c}_{ab;c}"), semicolon)
+    declines(`h^{${SIX}}_{\\mu\\nu,\\alpha} = 0`, NEITHER(SIX, `h^{${SIX}}_{\\mu\\nu,\\alpha}`), comma)
+    declines("\\bar{h}_{\\mu\\ ,\\nu}^{\\ \\nu} = 0", NEITHER("\\ \\nu", "\\bar{h}_{\\mu\\ ,\\nu}^{\\ \\nu}"), comma)
+    declines("\\Gamma_{00,i}^{i} = 4\\pi\\rho", NEITHER("i", "\\Gamma_{00,i}^{i}"), comma)
+    // Typed first and set flush, the superscript is the head's, as the order of
+    // the scripts and the absence of a stagger both say.
+    for (const tex of ["\\Gamma^{i}_{00,i} = 0", "\\Gamma^{i}{}_{00,i} = 0"]) {
+      assert.strictEqual(translated(tex, both).targetUnitTex, "\\mathrm{m}^{-2}", tex)
+      assert.strictEqual(translated(tex, both, GEO).changed, false, tex)
     }
+    for (const tex of [
+      "T^{\\mu\\nu}_{\\ \\ ;\\nu} = 0",
+      "T^{\\mu\\ \\nu}_{\\ \\ ;\\nu} = 0",
+      "T^{ab}_{;b} = 0",
+      "T^{ab}{}^{c}_{;b} = 0",
+      "T^{ab}{}_{;b} = 0",
+      "{T^{ab}}_{;b} = 0",
+      "\\left(T^{ab}\\right)_{;b} = 0",
+      // A stagger against a subscript of its own is settled there, and the
+      // derivative indices after it do not reach it.
+      "T^{\\ \\ c}_{ab}{}_{;c} = 0",
+      "{T^{\\ \\ c}_{ab}}_{;c} = 0",
+      "\\left(T^{\\ \\ c}_{ab}\\right)_{;c} = 0",
+    ]) {
+      assert.strictEqual(translated(tex, both).targetUnitTex, "\\mathrm{kg}\\,\\mathrm{m}^{-2}\\,\\mathrm{s}^{-2}", tex)
+      assert.strictEqual(translated(tex, both, GEO).changed, false, tex)
+    }
+    // The Lorenz gauge with its stagger in a rider: h_μ^α is dimensionless, ∂_α adds m⁻¹.
+    assert.strictEqual(translated("h_{\\mu}^{\\ \\alpha}{}_{,\\alpha} = 0", both).targetUnitTex, "\\mathrm{m}^{-1}")
     // A power written after is no index: it still raises the derivative.
     assert.strictEqual(translated("\\Phi_{,i}^{2} = 0", both).targetUnitTex, "\\mathrm{m}^{2}\\,\\mathrm{s}^{-4}")
+    // A mark of its own still makes the superscript derivative indices.
+    declines("T^{ab;c} = 0", RAISED)
     // Under undeclared marks nothing is a derivative, and the words are the old ones.
-    declines("h_{\\mu\\nu,\\alpha}^{\\ \\ \\ \\ \\ \\ \\alpha} = 0", UNDECLARED, reg)
+    declines(`h_{\\mu\\nu,\\alpha}^{${SIX}} = 0`, UNDECLARED, reg)
+    declines(`h^{${SIX}}_{\\mu\\nu,\\alpha} = 0`, UNDECLARED, reg)
+    declines("{T^{\\ \\ c}}_{ab;c} = 0", UNDECLARED, reg)
     declines("\\Gamma_{00,i}^{i} = 4\\pi\\rho", UNDECLARED, reg)
   })
 })
