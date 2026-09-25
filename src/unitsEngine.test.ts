@@ -997,9 +997,12 @@ describe("declining honestly", () => {
     assert.strictEqual(result.kind, "declined")
   })
 
-  test("integrals decline", () => {
+  test("an integral is read, and an action read as an entropy still declines", () => {
+    // The integral is transparent; the registry reads bare S as an entropy,
+    // which the action ∫L dt is not.
     const result = run("S = \\int L \\, dt")
     assert.strictEqual(result.kind, "declined")
+    if (result.kind === "declined") assert.ok(result.reasons[0].includes("temperature"), JSON.stringify(result))
   })
 
   test("dimensionally inconsistent readings decline instead of guessing", () => {
@@ -1042,7 +1045,7 @@ describe("declining honestly", () => {
     assert.strictEqual(summed.kind, "declined", JSON.stringify(summed))
     if (summed.kind === "declined") {
       assert.ok(
-        summed.reasons.some((r) => r.includes("sums")),
+        summed.reasons.some((r) => r.includes("a sum over an index set")),
         JSON.stringify(summed.reasons),
       )
       assert.ok(
@@ -1063,12 +1066,13 @@ describe("declining honestly", () => {
         JSON.stringify(indexList.reasons),
       )
     }
-    // A big operator wearing limits is still a big operator.
+    // A big operator wearing limits is still a big operator, and an integral
+    // with no measure says so.
     const integral = run("x = \\int_0^\\infty r")
     assert.strictEqual(integral.kind, "declined", JSON.stringify(integral))
     if (integral.kind === "declined") {
       assert.ok(
-        integral.reasons.some((r) => r.includes("integrals, sums, and limits")),
+        integral.reasons.some((r) => r.includes("with no measure (d…)")),
         JSON.stringify(integral.reasons),
       )
     }
@@ -3858,7 +3862,10 @@ describe("index tokens, primes and the canonical symbol key", () => {
       assert.deepStrictEqual(result.unknown, [], tex)
     }
     // A primed big operator names itself.
-    assert.ok(declined("E = \\sum' p").reasons[0].includes("integrals, sums, and limits"))
+    assert.deepStrictEqual(declined("E = \\sum' p").reasons, ["“\\sum” — a sum over an index set, which is not supported yet"])
+    assert.deepStrictEqual(declined("E = \\int' dr").reasons, [
+      "the operator “\\int” in a position where the engine cannot read what it acts on",
+    ])
   })
 
   test("symbolKey: the name the engine looks a symbol up by", () => {
@@ -4110,7 +4117,7 @@ describe("bases, accents, labels and named operators (step 11)", () => {
     // An italic superscript beside a subscript is still a power or a label, unread.
     assert.deepStrictEqual(reasons("g_i^{n} = 0"), ["an exponent on “g_{i}^{n}” that could not be read"])
     // A big operator names itself before any label is read.
-    assert.ok(reasons("\\sum^{\\rm N}_{i}x_i = r")[0].includes("integrals, sums, and limits"))
+    assert.deepStrictEqual(reasons("\\sum^{\\rm N}_{i}x_i = r"), ["“\\sum” — a sum over an index set, which is not supported yet"])
     // A parenthesized index list is still an index list (a frame component).
     assert.strictEqual(rawRestored("E = p^{(\\mu)}"), "E = p^{(\\mu)}c")
   })
@@ -4146,7 +4153,7 @@ describe("bases, accents, labels and named operators (step 11)", () => {
     assert.strictEqual(rawRestored("\\rho = {\\mathop{\\rm Tr}\\nolimits}T_{ab}"), "\\rho = \\frac{{\\mathop{\\rm Tr}\\nolimits}T_{ab}}{c^{2}}")
     // \limits sets it apart as a big operator, and a script on it is not read.
     assert.deepStrictEqual(reasons("\\rho = \\mathop{\\rm Tr}\\limits T_{ab}"), [
-      "“Tr” — integrals, sums, and limits change dimensions with their measure and are not supported yet",
+      "the operator “Tr” set with \\limits as a big operator, which is not supported yet",
     ])
     assert.deepStrictEqual(reasons("\\rho = \\mathop{\\rm Tr}\\nolimits_{A}T_{ab}"), [
       "a script on the operator “\\mathop{\\rm Tr}\\nolimits”, which is not supported",
@@ -4910,5 +4917,254 @@ describe("detached numeral riders (step 15)", () => {
     declines("G{}^{0}{}_{0} = 0", AFTER("{}^{0}"))
     // A rider after it is set on nothing and takes no prescript.
     declines("r{}^{2}{}_{0} = x", AFTER("{}^{2}"))
+  })
+})
+
+describe("integrals, limits and determinants (step 16)", () => {
+  const translated = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = result as Extract<TranslationResult, { kind: "translated" }>
+    rendersInKatex(out.restoredTex)
+    return out
+  }
+  // The SI restoration exactly as emitted, and a geometrized target that leaves the source as written.
+  const restoresTo = (tex: string, si: string) => {
+    const out = translated(tex)
+    assert.strictEqual(out.restoredTex, si, tex)
+    assert.strictEqual(out.changed, true, tex)
+    assert.strictEqual(translated(tex, GEO).changed, false, tex)
+  }
+  const unchanged = (tex: string, emitted?: string) => {
+    for (const target of [SI, GEO]) {
+      const out = translated(tex, target)
+      assert.strictEqual(out.changed, false, tex)
+      if (emitted != null) assert.strictEqual(out.restoredTex, emitted, tex)
+    }
+  }
+  const declines = (tex: string, reason: string, unknown: string[] = []) => {
+    for (const target of [SI, GEO]) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [reason], tex)
+        assert.deepStrictEqual(result.unknown, unknown, tex)
+      }
+    }
+  }
+  const unknownOnly = (tex: string, unknown: string[]) => {
+    for (const target of [SI, GEO]) {
+      const result = run(tex, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [], tex)
+        assert.deepStrictEqual(result.unknown, unknown, tex)
+      }
+    }
+  }
+  const NO_MEASURE = (op: string) =>
+    `“${op}” with no measure (d…) of its own written after it in its term — the engine cannot tell what it integrates over`
+  const NOTHING = (op: string) => `the operator “${op}” with nothing to act on`
+  const REGISTRY_CHOICE = (v: string) =>
+    `an integral over “${v}”, whose dictionary reading is a registry choice another reading would contradict — as the measure, that choice alone fixes the integral's dimension`
+  const TWO_READINGS = (v: string) =>
+    `an integral over “${v}”, which the dictionary reads one way under d and another bare — which one the integral runs over is not written`
+  const LONE = (sub: string) =>
+    `a lone subscript “${sub}” on “\\int”, which the engine cannot read as the name of a set — a lower bound alone, or a domain it does not read`
+  const NONLINEAR = "a term with “\\det” that needs constants — a constant does not pass through \\det unchanged"
+  const PRODUCT = "“\\prod” — a product over an index set, which is not supported yet"
+  const LIMIT_SHAPE = "a limit whose subscript is not written “variable \\to value”, which is not supported"
+
+  test("a nameless operator carries alwaysHandleSupSub though no \\limits was written", () => {
+    // \stackrel and \overset build one around the relation they label; the
+    // flag is set at construction, so it never says \limits was written, and
+    // the engine names these ops by their body, never by a rebuilt head.
+    for (const tex of ["x \\stackrel{(1)}{=} r", "x \\overset{!}{=} r"]) {
+      const [, mclass] = katex.__parse(tex)
+      assert.strictEqual(mclass.type, "mclass", tex)
+      const op = mclass.body[0].base
+      assert.deepStrictEqual([op.type, op.name, op.alwaysHandleSupSub, op.limits], ["op", undefined, true, true], tex)
+    }
+  })
+
+  test("an integral is a factor of no dimension; its measure carries the variable's", () => {
+    unchanged("M = \\int \\rho\\, dV", "M = \\int\\rho dV")
+    unchanged("M = 4\\pi\\int_0^{r} \\rho\\, r^2\\, dr", "M = 4\\pi\\int_{0}^{r}\\rho r^{2}dr")
+    restoresTo("\\tau = \\int \\sqrt{1 - v^2}\\, dt", "\\tau = \\int\\sqrt{1 - \\frac{v^{2}}{c^{2}}}dt")
+    restoresTo("\\tau = \\int \\sqrt{1 - \\frac{2M}{r}}\\, dt", "\\tau = \\int\\sqrt{1 - \\frac{2GM}{rc^{2}}}dt")
+    restoresTo("x = \\int \\frac{dr}{1 - 2M/r}", "x = \\int\\frac{dr}{1 - 2GM/rc^{2}}")
+    unchanged("x = \\int_{-\\infty}^{\\infty} v\\, dt", "x = \\int_{-\\infty}^{\\infty}vdt")
+    unchanged("x = \\oint r\\, d\\phi")
+    restoresTo("v = \\int_{0}^{t} \\frac{M}{r^2}\\, dt", "v = \\int_{0}^{t}\\frac{GM}{r^{2}}dt")
+    restoresTo("r = \\int_0^{\\infty} e^{-t/M}\\, dt", "r = \\int_{0}^{\\infty}e^{-tc^{3}/GM}cdt")
+    // A negative total power wraps the term, integral and all.
+    restoresTo("M = \\int T_{00}\\, d^{3}x", "M = \\frac{\\int T_{00}d^{3}x}{c^{2}}")
+    restoresTo("E = \\int d^{3}x\\, \\rho", "E = \\int d^{3}x\\rho c^{2}")
+    // The control space is kept as written.
+    restoresTo("x = \\int dr\\ \\sqrt{1 - \\frac{2M}{r}}", "x = \\int dr\\ \\sqrt{1 - \\frac{2GM}{rc^{2}}}")
+    const r = dimensionOf("\\int \\rho\\, dV", katexDefault, reg)
+    assert.ok(r.kind === "dim", JSON.stringify(r))
+    assert.deepStrictEqual(r.dim, [12, 0, 0, 0, 0])
+  })
+
+  test("d^{n}x in measure position is an n-volume element; a derivative quotient is none", () => {
+    unchanged("A = \\int d^{2}x \\sqrt{g}")
+    unchanged("E = \\int T_{00}\\, d^{3}x")
+    unchanged("r = \\int \\frac{d^{3}x}{r^2}")
+    unchanged("M = \\int\\rho\\,d^3\\mathbf{x}")
+    // d²x over (dt)² is an acceleration, whatever encloses the dt.
+    unchanged("v = \\int\\frac{d^{2}x}{(dt)^{2}}\\,dt")
+    declines("x = \\int d^{-1}x", "an integration measure “d^{-1}x” whose order is not a positive whole number, which is not supported")
+    declines(
+      "x = \\int d^{\\frac{1}{2}}x",
+      "an integration measure “d^{\\frac{1}{2}}x” whose order is not a positive whole number, which is not supported",
+    )
+    declines("x = \\int dt^{2}", "the powered differential “dt^{2}” as an integration measure, which is not supported")
+    declines("x = \\int d\\mathbf{x}", "the vector measure “d\\mathbf{x}”, which reads differently as a line element and as a volume element")
+    declines("x = \\int r / dr", "an integration measure “dr” written in a denominator, which is not supported")
+    declines("V = \\int d^{n}x", "a differential of symbolic order “d^{n}x”, whose dimension the engine cannot count")
+  })
+
+  test("bounds are values of the one variable they pair with, restored against it", () => {
+    restoresTo("x = \\int_{2M}^{r} dr", "x = \\int_{\\frac{2GM}{c^{2}}}^{r}dr")
+    // The order written and a written \limits or \nolimits are kept.
+    restoresTo("x = \\int^{r}_{2M} dr", "x = \\int^{r}_{\\frac{2GM}{c^{2}}}dr")
+    restoresTo("x = \\int\\limits_{2M}^{r} dr", "x = \\int\\limits_{\\frac{2GM}{c^{2}}}^{r}dr")
+    unchanged("x = \\int\\nolimits_0^r dr", "x = \\int\\nolimits_{0}^{r}dr")
+    restoresTo("x = \\int_{0}^{M} v\\, dt", "x = \\int_{0}^{\\frac{GM}{c^{3}}}vdt")
+    restoresTo("t = \\int_{2M}^{r} \\frac{dr}{1 - 2M/r}", "t = \\int_{\\frac{2GM}{c^{2}}}^{r}\\frac{dr}{\\left(1 - 2GM/rc^{2}\\right)c}")
+    restoresTo("x = \\int_{2M}^{r} dr\\int_{0}^{\\pi} d\\theta", "x = \\int_{\\frac{2GM}{c^{2}}}^{r}dr\\int_{0}^{\\pi}d\\theta")
+    // Braces only group: LaTeXML's braced measure fraction is one.
+    restoresTo("t = \\int_{2M}^{r}{\\frac{{dr}}{{1-2M/r}}}", "t = \\frac{\\int_{\\frac{2GM}{c^{2}}}^{r}{\\frac{{dr}}{{1 - 2GM/rc^{2}}}}}{c}")
+    unchanged("x = \\int {d r}")
+    // The registry's readings of generic endpoint letters are read as anywhere else.
+    restoresTo("x = \\int_{a}^{b} v\\,dt", "x = \\int_{\\frac{a}{c}}^{\\frac{b}{c}}vdt")
+    declines("x = \\int_{2M}^{r}\\int_{0}^{\\pi} dr\\, d\\theta", "integration bounds on “\\int” that cannot be paired with one variable of integration")
+    declines("x = \\int_0^M d(r^2)", "integration bounds on “\\int” that cannot be paired with one variable of integration")
+    declines("x = \\int_{0}^{r} {\\frac{{d^3r}}{{r^2}}}", "integration bounds on “\\int” that cannot be paired with one variable of integration")
+    declines("x = \\int_{x=0}^{r} dr", "an integration bound written as “x=0”, which is not supported yet")
+    declines(
+      "x = \\int_0^1 dt\\, v",
+      "a term admitting no c–G completion under the registry's readings of its symbols (term “1”)",
+    )
+    // A bound on a variable the dictionary does not know is judged against nothing.
+    unknownOnly("x = \\int_0^M dt'\\,v", ["t'"])
+  })
+
+  test("a lone subscript names a set, carried as written; anything else declines", () => {
+    unchanged("x = \\int_{\\Sigma} dr", "x = \\int_{\\Sigma}dr")
+    unchanged("x = \\int_\\mathcal{M} dr", "x = \\int_\\mathcal{M}dr")
+    unchanged("V = \\int_{\\partial V} dA\\, r")
+    unchanged("A = \\int_{S^2} d\\Omega\\, r^2")
+    declines("x = \\int_{2M} dr", LONE("2M"))
+    declines("x = \\int_{\\sqrt{M}} dr", LONE("\\sqrt{M}"))
+    declines("x = \\int_{0} dr", LONE("0"))
+    declines("x = \\int_{r>2M} dr", "an integration domain written as a condition “r>2M”, which the engine does not restore")
+  })
+
+  test("every integral owns a measure written after it, and says why when it does not", () => {
+    declines("x = \\int_0^\\infty r", NO_MEASURE("\\int"))
+    declines("x = \\int\\sqrt{g}\\,R", NO_MEASURE("\\int"))
+    declines("x = \\int\\int dr", NO_MEASURE("\\int"))
+    // A measure in another term is not this integral's, and a derivative quotient's d's are no measure.
+    declines("x = \\int v + v\\,dt", NO_MEASURE("\\int"))
+    declines("v = \\int\\frac{dv}{dt}", NO_MEASURE("\\int"))
+    declines(
+      "x = \\oint\\frac{(r\\,d\\phi - r\\,d\\theta)}{r}",
+      "“\\oint” whose measure (d…) is not a factor of its integrand — the engine cannot pair it",
+    )
+    const functional = run("\\Delta = \\int{\\cal D}\\phi\\, r")
+    assert.ok(functional.kind === "declined", JSON.stringify(functional))
+    assert.deepStrictEqual(functional.reasons, [
+      "a functional integral “\\int\\mathcal{D}…”, whose measure has no dimension the dictionary can give",
+    ])
+    declines("x = \\int", NOTHING("\\int"))
+  })
+
+  test("a measure written first leaves the integrand open, and a term after it undecided", () => {
+    declines(
+      "x = \\int dt\\, v + r",
+      "“\\int” with its measure first and more terms after it — whether they lie inside the integral is not written",
+    )
+    // Closed by its measure, or over a dimensionless measure, the scope changes nothing.
+    unchanged("x = \\int v\\, dt + r")
+    unchanged("x = \\int d\\theta\\, r + r")
+    declines(
+      "S = \\int -2r\\,dt",
+      "the sign “-” right after “\\int”, a sign on its operand rather than between terms, which is not supported",
+    )
+  })
+
+  test("a function's argument ends at the measure, and never runs into an operator", () => {
+    unchanged("\\Omega = 2\\pi\\int_0^{\\pi}\\sin\\theta\\,d\\theta", "\\Omega = 2\\pi\\int_{0}^{\\pi}\\sin\\theta d\\theta")
+    restoresTo("x = \\int\\cos(\\omega t)\\,dt", "x = \\int\\cos(\\omega t)cdt")
+    restoresTo("x = \\int \\sin\\omega t\\, dt", "x = \\int c\\sin\\omega tdt")
+    declines("x = \\sin\\theta\\int dr", "a function whose argument runs into “\\int” — where the argument ends is not written")
+  })
+
+  test("the variable's dictionary reading must be one: z and the registry's choices decline", () => {
+    declines("x = \\int z\\, dz", TWO_READINGS("z"))
+    // Whether or not bare z appears: which z the integral runs over is not written.
+    declines("x = \\int dz", TWO_READINGS("z"))
+    // λ is the registry's wavelength, marked as its choice; the owner rules on it.
+    declines("\\tau = \\int d\\lambda", REGISTRY_CHOICE("\\lambda"))
+    declines("x = \\int\\left(\\frac{dx}{d\\lambda}\\right)d\\lambda", REGISTRY_CHOICE("\\lambda"))
+    declines("x = \\int da", REGISTRY_CHOICE("a"))
+  })
+
+  test("a limit is transparent; its value is restored against its variable", () => {
+    restoresTo("\\Phi = \\lim_{r\\to 2M}\\frac{M}{r}", "\\Phi = \\lim_{r \\to \\frac{2GM}{c^{2}}}\\frac{GM}{r}")
+    restoresTo("E = \\lim_{r\\to\\infty} M", "E = \\lim_{r \\to \\infty}Mc^{2}")
+    restoresTo("E = \\lim\\limits_{r\\to\\infty} M", "E = \\lim\\limits_{r \\to \\infty}Mc^{2}")
+    // Approached from one side, by the arrow or by a sign on the value.
+    restoresTo("E = \\lim_{r\\to 0^{+}} M", "E = \\lim_{r \\to 0^{+}}Mc^{2}")
+    restoresTo("E = \\lim_{r\\searrow 2M} M", "E = \\lim_{r \\searrow \\frac{2GM}{c^{2}}}Mc^{2}")
+    restoresTo("E = \\lim_{r\\to 2M^{+}} M", "E = \\lim_{r \\to {\\frac{2GM}{c^{2}}}^{+}}Mc^{2}")
+    // The variable is looked up in the dictionary.
+    unknownOnly("E = \\lim_{n\\to\\infty} M", ["n"])
+    declines("E = \\lim_{r} M", LIMIT_SHAPE)
+    declines("E = \\lim_{r\\to\\infty}^{2} M", LIMIT_SHAPE)
+    declines("\\theta = \\lim_{r\\to 2M}", NOTHING("\\lim"))
+  })
+
+  test("det of a dimensionless argument; no constant passes through it", () => {
+    unchanged("g = \\det(g_{ab})", "g = \\det(g_{ab})")
+    // The delimited group after it is its argument.
+    unchanged("A = \\det(g_{ab})\\,r^{2}", "A = \\det(g_{ab})r^{2}")
+    unchanged("x = \\sqrt{r^2\\det(g_{ab})}")
+    declines("g = \\det(T_{ab})", "“\\det” of a dimensional argument — its dimension depends on the matrix size")
+    declines("E = \\det M", "“\\det” of a dimensional argument — its dimension depends on the matrix size")
+    declines(
+      "E = \\det g\\, M",
+      "“\\det” whose undelimited argument runs past a factor with a dimension — where it ends, and so its dimension, is not written",
+    )
+    declines("g = \\det", NOTHING("\\det"))
+    declines("g = \\det_{3}(g_{ab})", "a decorated “\\det”, which is not supported yet")
+    // Constants placed in a fraction or a root around it would be raised to the matrix size.
+    declines("\\Phi = \\sqrt{\\frac{M\\det(g_{ab})}{r}}", NONLINEAR)
+    declines("E = \\frac{M\\det(g_{ab})}{2}", NONLINEAR)
+  })
+
+  test("products, sums and the operators not read decline by name", () => {
+    declines("M = \\prod_{i} M", PRODUCT)
+    declines("E = \\frac{M\\prod_{n=1}^{\\infty}(1 - e^{-n})}{2}", PRODUCT)
+    declines("\\Phi = \\sqrt{\\frac{M\\prod_{n=1}^{\\infty}(1-e^{-n})}{r}}", PRODUCT)
+    declines("x = \\sum_i r", "“\\sum” — a sum over an index set, which is not supported yet")
+    declines("x = \\max_{t} r", "“\\max” — an extremum over a set, which is not supported yet")
+    declines("x = \\coprod_i r", "the operator “\\coprod”, which is not supported yet")
+    declines("x = \\mathop{\\rm lim}_{t} r", "the operator “lim” built with \\mathop, which is not supported yet")
+    declines("x \\stackrel{(1)}{=} r", "a relation carrying a label (\\stackrel, \\overset), which is not supported yet")
+    // The relation in braces, as all ten corpus rows write it.
+    declines(
+      "x \\stackrel{{\\scriptstyle(5.1)}}{{=}} r",
+      "a relation carrying a label (\\stackrel, \\overset), which is not supported yet",
+    )
+    declines("x \\overset{!}{=} r", "a relation carrying a label (\\stackrel, \\overset), which is not supported yet")
+    declines(
+      "x = \\displaystyle\\int_{0}^{r} dr",
+      "the style command “\\displaystyle” written before “\\int”, which the engine does not re-emit",
+    )
+    // Inside its own braces the style is rebuilt.
+    unchanged("x = {\\displaystyle\\int_0^r dr}", "x = {\\displaystyle \\int_{0}^{r}dr}")
   })
 })

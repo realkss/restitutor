@@ -490,7 +490,19 @@ function stripsConstants(ctx: Ctx): boolean {
   return ctx.strip && emitsConstants(ctx)
 }
 
-type FactorKind = "num" | "glue" | "sym" | "diff" | "dop" | "frac" | "sqrt" | "group" | "func" | "rider" | "linop"
+type FactorKind =
+  | "num"
+  | "glue"
+  | "sym"
+  | "diff"
+  | "dop"
+  | "frac"
+  | "sqrt"
+  | "group"
+  | "func"
+  | "rider"
+  | "linop"
+  | "bigop"
 
 type Factor = {
   kind: FactorKind
@@ -567,6 +579,22 @@ type Factor = {
    * (holdsOperator).
    */
   derivative?: boolean
+  /** On a d-differential: what it is as an integration measure (readBigOps). */
+  diff?: DiffInfo
+  /**
+   * On a brace group holding one factor and nothing else but spacing (LaTeXML
+   * braces every symbol it writes: `{\frac{{dt}}{{a(t)}}}`): that factor.
+   * Braces only group, so a measure is read through them.
+   */
+  braced?: Factor
+  /** On a big operator (∫, lim, det): which one, and how its scripts are emitted. */
+  bigop?: BigOp
+  /**
+   * A determinant, named as written. No constant passes through one unchanged
+   * (det(c·A) = cⁿ det A for an n×n matrix), so a term that holds one anywhere
+   * takes no constant (termInsertion).
+   */
+  nonlinear?: string
   frac?: { cmd: string; num: Factor[]; den: Factor[] }
   sqrt?: { bodyTerm: TermInfo | null }
 }
@@ -602,6 +630,13 @@ type TermInfo = {
    * notation (termInsertion).
    */
   tainted: boolean
+  /**
+   * An integral in the term whose measure is written first and closes
+   * nothing (`\int dt\, v`), with a measure of some dimension: a term after
+   * this one may lie inside the integral or not (parseSum). The operator as
+   * named, or undefined.
+   */
+  openIntegral?: string
   src: string
 }
 
@@ -1863,6 +1898,17 @@ function termInsertion(t: TermInfo, target: Anchor, ctx: Ctx): { a: number; b: n
       `a term made only of c and G that the registry's readings of the other terms would require rewriting into another constant (term “${termQuote(t, ctx)}”)`,
     )
   }
+  // A constant restored into a term lands wherever the emitters put it, which
+  // may be inside a determinant's argument, a fraction or a root around one
+  // (`\sqrt{\frac{GM\det(g_{ab})c^{2}}{r}}`), and there it is raised to the
+  // matrix size. So a term that needs one declines if it holds a determinant
+  // anywhere, on every target.
+  const nonlinear = nonlinearIn(t.factors)
+  if (nonlinear != null) {
+    throw new Unsupported(
+      `a term with “${nonlinear}” that needs constants — a constant does not pass through ${nonlinear} unchanged`,
+    )
+  }
   const solved = solveCG(need)
   if (typeof solved === "string") {
     throw new Unsupported(`${solved} (term “${termQuote(t, ctx)}”)`)
@@ -2072,6 +2118,14 @@ function productSignBeforeSignGuard(termNodes: any[], sign: string): void {
   for (let idx = termNodes.length - 1; idx >= 0; idx -= 1) {
     const n = unwrap(termNodes[idx])
     if (n == null || isEmptyOrdgroup(n) || SKIP_TYPES.has(n.type)) continue
+    // So is a sign right after an operator that acts on what follows it:
+    // `S = \int -2f` split there left the integral with no operand.
+    const op = opOf(termNodes[idx])
+    if (op?.name != null && familyOf(op.name) != null) {
+      throw new Unsupported(
+        `the sign “${sign}” right after “${op.name}”, a sign on its operand rather than between terms, which is not supported`,
+      )
+    }
     const product = n.type === "atom" && n.family === "bin" && (n.text === "\\cdot" || n.text === "\\times")
     if (product || (n.type === "textord" && n.text === "/")) {
       throw new Unsupported(
@@ -2139,6 +2193,15 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing 
   signs.push(pendingSign)
 
   const terms = termNodeLists.map((list, idx) => analyzeTerm(list, signs[idx], ctx, spacing))
+  // `\int dt\, v + r` is ∫(v + r) dt or (∫v dt) + r, and the two differ by the
+  // measure's dimension. With the measure written last (`\int v\,dt + r`) the
+  // integrand is closed, and a dimensionless measure leaves both readings alike.
+  const open = terms.slice(0, -1).find((t) => t.openIntegral != null)
+  if (open != null) {
+    throw new Unsupported(
+      `“${open.openIntegral}” with its measure first and more terms after it — whether they lie inside the integral is not written`,
+    )
+  }
   // Like the guard between factors, thrown once every term has been read.
   if (spacedSign) throw new Unsupported(SPACING_REASON)
 
@@ -2403,13 +2466,22 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
       continue
     }
 
+    // Inside an integral, a function's unparenthesized argument ends at the
+    // measure (`\int\sin\theta\,d\theta`): sin(θ dθ) is no integrand.
+    const measureEnds = factors.some((f) => f.bigop?.family === "integral")
     const named = namedHeadOf(raw)
     if (named != null) {
-      i = analyzeNamedOperator(named, nodes, i, ctx, push)
+      i = analyzeNamedOperator(named, nodes, i, ctx, push, measureEnds)
+      continue
+    }
+    const big = bigOperatorAt(nodes, i, ctx)
+    if (big != null) {
+      push(big.factor)
+      i = big.next
       continue
     }
     if (isFuncHead(n)) {
-      i = applyFunction(() => functionHeadTex(raw, ctx), nodes, i, ctx, push)
+      i = applyFunction(() => functionHeadTex(raw, ctx), nodes, i, ctx, push, measureEnds)
       continue
     }
 
@@ -2428,8 +2500,11 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     }
   })
   // Thrown only once every factor has been read, so a truer reason (\text
-  // content, an unsupported construct) is the one the reader sees.
+  // content, an unsupported construct) is the one the reader sees. Before the
+  // big operators are read, though: which measures and bounds an integral
+  // owns depends on the term being one product.
   if (spacedFactors) throw new Unsupported(SPACING_REASON)
+  const openIntegral = readBigOps(factors, slashIdx, ctx)
   keepNumeralsApart(factors, ctx)
 
   const numDim = factors.slice(0, slashIdx < 0 ? factors.length : slashIdx)
@@ -2459,6 +2534,7 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     // `v = \pm 1` states a value, not a convention: it is restored like `v = -1`.
     isUnitLiteral: sign !== "-" && !BRANCH_OPS.has(sign) && numeralsAre(1),
     tainted: ctx.unknownHits > hitsBefore,
+    openIntegral: openIntegral ?? undefined,
     src: srcOfNodes(nodes, ctx),
   }
 }
@@ -2728,6 +2804,8 @@ type DifferentialPrefix = {
   ordered: boolean
   /** An order that is no number (d^{n}x). */
   symbolic: boolean
+  /** The numeric order as written (`d^{3}x`, `d^{-1}x`, `d^{1/2}x`), or null. */
+  order: { p: number; q: number } | null
 }
 
 /**
@@ -2765,7 +2843,7 @@ function differentialPrefixOf(raw: any, ctx: Ctx): DifferentialPrefix | null {
         : null
   if (prefix == null || fonts.some((f) => !DIFFERENTIAL_FONTS.has(f))) return null
   const upright = fonts.includes("mathrm")
-  if (!ordered) return { prefix, upright, ordered: false, symbolic: false }
+  if (!ordered) return { prefix, upright, ordered: false, symbolic: false, order: null }
   // d²x / ∂²φ — the power is derivative-order bookkeeping, not a dimension. An
   // expression there (d^{n}x, d^{p+1}\xi) is an order no number gives. An index
   // letter is not read as one: `d^{c}q` is the conjugate down-quark field
@@ -2773,10 +2851,10 @@ function differentialPrefixOf(raw: any, ctx: Ctx): DifferentialPrefix | null {
   // (d^{\dagger}, d^{\rm out}), a braced numeral (d^{{2}}), a component digit
   // (d^{0}), a prime or a sign; the d is then the letter it is.
   const order = classifySup(core.sup)
-  if (typeof order === "object") return { prefix, upright, ordered: true, symbolic: false }
+  if (typeof order === "object") return { prefix, upright, ordered: true, symbolic: false, order }
   const supNodes = nodeListOf(core.sup).filter(isMeaningfulNode)
   if (order === "expr" && supLabelOf(supNodes) == null && digitsOf(openGroups(supNodes)) == null) {
-    return { prefix, upright, ordered: true, symbolic: true }
+    return { prefix, upright, ordered: true, symbolic: true, order: null }
   }
   return null
 }
@@ -2801,6 +2879,29 @@ function barredLetterOf(node: any): any {
   return letter != null && !RESTORED_CONSTANTS.has(letter) ? cur : null
 }
 
+/** The bold fonts, as KaTeX names them (`\bf` is mathbf, `\bm` is boldsymbol). */
+const BOLD_FONTS = new Set(["mathbf", "boldsymbol"])
+
+/** Whether a differential's operand is set in bold, through braces, styles, fonts and the base of its scripts: a vector. */
+function isBoldOperand(node: any): boolean {
+  let cur = node
+  for (;;) {
+    const p = peelStyles(cur)
+    if (p?.type === "font") {
+      if (BOLD_FONTS.has(p.font)) return true
+      cur = p.body
+    } else if (p?.type === "supsub") {
+      cur = p.base
+    } else if (p?.type === "ordgroup") {
+      const inner = p.body.filter(isMeaningfulNode)
+      if (inner.length !== 1) return false
+      cur = inner[0]
+    } else {
+      return false
+    }
+  }
+}
+
 function analyzeDifferential(
   prefix: DifferentialPrefix,
   prefixNode: any,
@@ -2815,6 +2916,21 @@ function analyzeDifferential(
   const wholeSrc = () => joinTex([wrappedTexOf(prefixNode, ctx), wrappedTexOf(operandNode, ctx)])
   const prefixHasOrder = prefix.ordered
   const differential = prefix.prefix === "d"
+  // What a d-differential is as a measure, should an integral own it; the
+  // operand's lookups are the ones made from here on.
+  const hitsBefore = ctx.unknownHits
+  const measure = (varDim: Dim, key: string | null, powered: boolean, group = false): DiffInfo | undefined =>
+    differential
+      ? {
+          order: prefix.order,
+          varDim,
+          key,
+          powered,
+          group,
+          bold: isBoldOperand(operandNode),
+          tainted: ctx.unknownHits > hitsBefore,
+        }
+      : undefined
 
   // A primed operand is the primed symbol, looked up under its own name. Read
   // as any other scripted operand, it was looked up as the unprimed symbol and
@@ -2823,10 +2939,18 @@ function analyzeDifferential(
   if (opU?.type === "supsub" && opU.sup != null && classifySup(opU.sup) === "prime") {
     const primed = readPrimed(opU, ctx, { upright, differential, scalePower: !prefixHasOrder })
     const prefixTex = wrappedTexOf(prefixNode, ctx)
-    return { kind: "diff", dim: primed.dim, emit: () => joinTex([prefixTex, primed.tex]) }
+    return {
+      kind: "diff",
+      dim: primed.dim,
+      emit: () => joinTex([prefixTex, primed.tex]),
+      diff: measure(primed.varDim, primed.key, primed.powered),
+    }
   }
 
   let operandDim: Dim
+  let varDim: Dim
+  let key: string | null = null
+  let powered = false
   if (opU?.type === "supsub") {
     const barred = barredLetterOf(opU.base)
     const base = barred != null ? unwrap(barred.base) : unwrap(opU.base)
@@ -2840,20 +2964,24 @@ function analyzeDifferential(
     if (barred != null && (opU.sub != null || typeof sup !== "object" || sup == null)) {
       throw new Unsupported(`an unsupported differential “${wholeSrc()}”`)
     }
+    powered = typeof sup === "object" && sup != null
     if (opU.sub != null) {
       const display = srcOf(opU, ctx)
       angularIndexGuard(baseText, opU, display, ctx)
-      operandDim = resolveSymbol(baseText, display, ctx, { sub: opU.sub, differential })
+      varDim = resolveSymbol(baseText, display, ctx, { sub: opU.sub, differential })
+      operandDim = varDim
       // dx_1^2 = (dx_1)² — the numeric power scales the differential too.
       if (typeof sup === "object" && sup != null && !prefixHasOrder) {
         operandDim = dimScale(operandDim, sup.p, sup.q)
       }
     } else if (sup === "index") {
-      operandDim = resolveSymbol(baseText, srcOf(opU, ctx), ctx, { indices: true, differential })
+      varDim = resolveSymbol(baseText, srcOf(opU, ctx), ctx, { indices: true, differential })
+      operandDim = varDim
     } else if (typeof sup === "object" && sup != null) {
       // dt² = (dt)²; but under an ordered prefix (d²x) the power stays bookkeeping.
-      const baseDim = resolveSymbol(baseText, srcOf(base, ctx), ctx, { differential })
-      operandDim = prefixHasOrder ? baseDim : dimScale(baseDim, sup.p, sup.q)
+      varDim = resolveSymbol(baseText, srcOf(base, ctx), ctx, { differential })
+      key = baseText
+      operandDim = prefixHasOrder ? varDim : dimScale(varDim, sup.p, sup.q)
     } else {
       throw new Unsupported(`an unsupported differential “${wholeSrc()}”`)
     }
@@ -2863,21 +2991,28 @@ function analyzeDifferential(
     const baseText = textOf(letter)
     if (baseText != null) {
       uprightLetterGuard(baseText, upright || (barred != null && underUprightFont(barred.base)))
-      operandDim = resolveSymbol(baseText, srcOf(letter, ctx), ctx, { differential })
+      varDim = resolveSymbol(baseText, srcOf(letter, ctx), ctx, { differential })
+      key = baseText
+      operandDim = varDim
     } else if (opU?.type === "leftright" || opU?.type === "__group") {
       // The group is emitted from its own analysis, so what was restored inside
       // it survives: sliced from the source, `ds = d(r - t)` came back verbatim
       // while reporting the c it had solved for `t`.
       const group = analyzeFactor(operandNode, ctx)
       const prefixTex = wrappedTexOf(prefixNode, ctx)
-      return { kind: "diff", dim: group.dim, emit: () => joinTex([prefixTex, group.emit()]) }
+      return {
+        kind: "diff",
+        dim: group.dim,
+        emit: () => joinTex([prefixTex, group.emit()]),
+        diff: measure(group.dim, null, false, true),
+      }
     } else {
       throw new Unsupported(`an unsupported differential “${wholeSrc()}”`)
     }
   }
 
   const text = wholeSrc()
-  return { kind: "diff", dim: operandDim, emit: () => text }
+  return { kind: "diff", dim: operandDim, emit: () => text, diff: measure(varDim, key, powered) }
 }
 
 /** One positive term built from differentials alone: dt, dx\,dy, d\tau^{2}, {d\lambda}. */
@@ -2909,6 +3044,577 @@ function holdsOperator(f: Factor): boolean {
   if (f.kind === "dop" || f.derivative === true) return true
   if (f.parts?.some(holdsOperator) === true) return true
   return f.frac != null && [...f.frac.num, ...f.frac.den].some(holdsOperator)
+}
+
+// ---------------------------------------------------------------------------
+// Big operators: integrals, limits, determinants
+// ---------------------------------------------------------------------------
+
+/**
+ * What a d-differential is as an integration measure. readBigOps asks this of
+ * a differential only where an integral owns it, and only there does the
+ * factor's dimension change from what analyzeDifferential gives it
+ * (claimMeasure).
+ */
+type DiffInfo = {
+  /** The order written on the d (`d^{3}x`, `d^{-1}x`), or null. */
+  order: { p: number; q: number } | null
+  /** The variable's own dimension, before any power on it. */
+  varDim: Dim
+  /**
+   * The key the variable was looked up by in `differential` and then `bare`,
+   * or null where a subscript, an index list or a group took the lookup
+   * elsewhere.
+   */
+  key: string | null
+  /** A numeric power stands on the variable (`dt^{2}`). */
+  powered: boolean
+  /** The operand is a group (`d(r^{2})`), no single variable. */
+  group: boolean
+  /** The variable is set in a bold font (`d\mathbf{x}`). */
+  bold: boolean
+  /** The variable's lookup missed: its dimension is a placeholder. */
+  tainted: boolean
+}
+
+type BigOpFamily = "integral" | "limit" | "det"
+
+type BigOp = {
+  family: BigOpFamily
+  /** The operator's name as KaTeX records it (`\int`, `\lim`, `\det`). */
+  name: string
+  /** The supsub the operator's scripts are set on, or null. */
+  scripted: any | null
+  /** The next thing written is a calligraphic D: a functional measure. */
+  functional: boolean
+  /** A determinant that took the delimited group after it as its argument. */
+  delimited: boolean
+  /**
+   * What the head is followed by in the operator's own emission: its scripts,
+   * or a determinant's delimited argument. An integral's bounds are set once
+   * its measure is known (readBigOps).
+   */
+  scripts: () => string
+}
+
+/**
+ * The operators read, each by a fact of its notation:
+ *
+ * - An integral in Leibniz notation adds no dimension of its own: its measure
+ *   dx is written as a factor, and a factor of x's dimension, so ∫ f dx has
+ *   the dimension of f·x by the product rule. The operator is a factor of no
+ *   dimension, and nothing is looked up that the integrand and the measure do
+ *   not already look up.
+ * - lim f has the dimension of f.
+ * - det of a dimensionless matrix is dimensionless; of any other, its
+ *   dimension counts the rows, which the notation does not write.
+ *
+ * ∫ and lim are linear, so a constant restored inside them or beside them says
+ * the same; none passes through det unchanged (Factor.nonlinear).
+ */
+const INTEGRAL_OPS = new Set(["\\int", "\\iint", "\\iiint", "\\oint", "\\oiint", "\\oiiint"])
+
+function familyOf(name: string): BigOpFamily | null {
+  if (INTEGRAL_OPS.has(name)) return "integral"
+  if (name === "\\lim") return "limit"
+  if (name === "\\det") return "det"
+  return null
+}
+
+/** Extrema, taken over a set the notation names: not read. */
+const EXTREMUM_OPS = new Set(["\\max", "\\min", "\\sup", "\\inf"])
+
+/**
+ * The arrows a limit's subscript approaches its value with. The one-sided
+ * ones (↘, ↗, ↓, ↑) approach it from one side, which changes nothing of its
+ * dimension, as a side marked on the value (`0^{+}`) does not.
+ */
+const LIMIT_ARROWS = new Set(["\\to", "\\rightarrow", "\\longrightarrow", "\\searrow", "\\nearrow", "\\uparrow", "\\downarrow"])
+
+/**
+ * A reading the dictionary marks as its own choice over a named alternative
+ * (λ a wavelength where an affine parameter would differ, a the Kerr spin
+ * where a scale factor would). As an integration variable that reading alone
+ * fixes the integral's dimension, so an integral over it declines until the
+ * owner rules on it; everywhere else it is read as the dictionary reads it.
+ */
+const REGISTRY_CHOICE = /\bregistry choice\b/
+
+/** The operator node a term node is, bare or wearing scripts, through styles; a function head (\sin) is none. */
+function opOf(node: any): any {
+  const n = peelStyles(node)
+  const op = n?.type === "supsub" ? peelStyles(n.base) : n
+  return op?.type === "op" && !(op.name != null && FUNC_OPS.has(op.name)) ? op : null
+}
+
+/**
+ * The operator's head as written: its name, and a \limits or \nolimits when
+ * one was written. KaTeX marks both with alwaysHandleSupSub on a named
+ * operator and tells them apart by `limits` alone, and an op node carries no
+ * span to slice.
+ */
+function opHeadTex(op: any): string {
+  if (op.alwaysHandleSupSub !== true) return op.name
+  return `${op.name}${op.limits === true ? "\\limits" : "\\nolimits"}`
+}
+
+/** The letters of an operator built with \mathop, through braces, fonts and \text (`\mathop{\rm lim}`), or null. */
+function mathopWordOf(body: any[]): string | null {
+  const leaves: any[] = []
+  const visit = (x: any): void => {
+    const p = peelStyles(x)
+    if (!isMeaningfulNode(p)) return
+    if (p.type === "ordgroup" || p.type === "text") p.body.forEach(visit)
+    else if (p.type === "font") visit(p.body)
+    else leaves.push(p)
+  }
+  body.forEach(visit)
+  return letterWordOf(leaves)
+}
+
+/**
+ * Why an operator the engine does not read declines, named by what it is.
+ * `\stackrel` and `\overset` build a nameless operator around the relation
+ * they label, `\stackrel{{\scriptstyle(5.1)}}{{=}}` with its relation in
+ * braces, so the relation is looked for at any depth.
+ */
+function opDeclineReason(op: any): string {
+  const name: string | undefined = op.name
+  if (name == null) {
+    const body: any[] = Array.isArray(op.body) ? op.body : []
+    if (body.some((x) => containsDeep(x, (n) => relTextOf(n) != null))) {
+      return "a relation carrying a label (\\stackrel, \\overset), which is not supported yet"
+    }
+    const word = mathopWordOf(body)
+    if (word == null) return "an operator built with \\mathop, which the engine cannot name"
+    // \limits sets a named operator apart as a big operator (namedWordOf).
+    if (NAMED_OPS.has(word) && op.limits === true) {
+      return `the operator “${word}” set with \\limits as a big operator, which is not supported yet`
+    }
+    return `the operator “${word}” built with \\mathop, which is not supported yet`
+  }
+  if (name === "\\sum") return "“\\sum” — a sum over an index set, which is not supported yet"
+  if (name === "\\prod") return "“\\prod” — a product over an index set, which is not supported yet"
+  if (EXTREMUM_OPS.has(name)) return `“${name}” — an extremum over a set, which is not supported yet`
+  if (familyOf(name) != null) return `the operator “${name}” in a position where the engine cannot read what it acts on`
+  return `the operator “${name}”, which is not supported yet`
+}
+
+/** A lone sign as a superscript: the side a limit approaches from (`0^{+}`). */
+function isSideMarker(sup: any): boolean {
+  const nodes = nodeListOf(sup).filter(isMeaningfulNode)
+  return nodes.length === 1 && isPlusMinus(unwrap(nodes[0])) != null
+}
+
+/** A value any variable takes whatever its dimension: 0, or ∞ with or without a sign. */
+function isTransparentValue(nodes: any[]): boolean {
+  const live = nodes.filter(isMeaningfulNode)
+  const signed = live.length > 0 && isPlusMinus(unwrap(live[0])) != null
+  const rest = signed ? live.slice(1) : live
+  if (rest.length !== 1) return false
+  const text = textOf(rest[0])
+  return text === "\\infty" || (!signed && text === "0")
+}
+
+/**
+ * Whether a lone subscript on an integral names the set it runs over: one
+ * letter, Greek or Latin, in any font, optionally after a ∂ and optionally
+ * carrying an index list or a numeral (`\int_\Sigma`, `\oint_{\partial V}`,
+ * `\int_{\mathbb{R}^3}`, `\int_{\Sigma_t}`). A set is not a value and is
+ * carried as written. Anything else there (`\int_{2M}`, `\int_{\sqrt{M}}`)
+ * may be a lower bound standing alone, which would need restoring.
+ */
+function isSetName(nodes: any[]): boolean {
+  const rest = nodes.length === 2 && textOf(nodes[0]) === "\\partial" ? nodes.slice(1) : nodes
+  if (rest.length !== 1) return false
+  let cur = peelStyles(rest[0])
+  if (cur?.type === "supsub") {
+    const listed = (script: any) => {
+      if (script == null) return true
+      const list = nodeListOf(script)
+      if (digitsOf(list.filter(isMeaningfulNode)) != null) return true
+      try {
+        return allIndexTokens(list, true)
+      } catch {
+        return false
+      }
+    }
+    if (!listed(cur.sub) || !listed(cur.sup)) return false
+    cur = cur.base
+  }
+  for (;;) {
+    const u = unwrap(cur)
+    if (u?.type !== "ordgroup") break
+    const inner = u.body.filter(isMeaningfulNode)
+    if (inner.length !== 1) return false
+    cur = inner[0]
+  }
+  const text = textOf(cur)
+  return text != null && text !== "\\infty" && text !== "\\pi" && /^(?:[A-Za-z]|\\[A-Za-z]+)$/.test(text)
+}
+
+/** A calligraphic D, bare, braced or scripted (`\mathcal{D}`, `{\cal D}`): the functional measure of a path integral. */
+function isFunctionalMeasure(node: any): boolean {
+  let cur = peelStyles(node)
+  if (cur?.type === "supsub") cur = peelStyles(cur.base)
+  while (cur?.type === "ordgroup") {
+    const inner = cur.body.filter(isMeaningfulNode)
+    if (inner.length !== 1) return false
+    cur = peelStyles(inner[0])
+  }
+  if (cur?.type !== "font" || cur.font !== "mathcal") return false
+  const letter = nodeListOf(cur.body).filter(isMeaningfulNode)
+  return letter.length === 1 && textOf(letter[0]) === "D"
+}
+
+/** A delimited group written right after `\det`, with no script on it: its argument, as a function's is. */
+function isDelimitedOperand(node: any): boolean {
+  const u = unwrap(node)
+  if (u?.type === "__group") return u.bar == null
+  return u?.type === "leftright" && u.left !== "." && !BAR_OPENERS.has(u.left)
+}
+
+/**
+ * The limit's subscript, `variable \to value`, as emitted. The value is a
+ * value of the variable, restored against the variable's dimension as the
+ * dictionary gives it, and tainted with it when the dictionary has none; 0
+ * and ±∞ are values of any variable and are carried as written. A side
+ * marked on the value (`2M^{+}`) is kept on the restored value.
+ */
+function limitScripts(scripted: any | null, ctx: Ctx): () => string {
+  const shape = "a limit whose subscript is not written “variable \\to value”, which is not supported"
+  if (scripted?.sub == null || scripted.sup != null) throw new Unsupported(shape)
+  const nodes = nodeListOf(scripted.sub).filter(isMeaningfulNode)
+  if (nodes.length < 3 || !LIMIT_ARROWS.has(relTextOf(nodes[1]) ?? "")) throw new Unsupported(shape)
+  const hits = ctx.unknownHits
+  const variable = analyzeFactor(nodes[0], ctx)
+  if (variable.kind !== "sym") throw new Unsupported(shape)
+  const target: Anchor = { dim: variable.dim, tainted: ctx.unknownHits > hits }
+  const arrowTex = srcOf(nodes[1], ctx)
+  const valueNodes = nodes.slice(2)
+  const last = peelStyles(valueNodes[valueNodes.length - 1])
+  const side = last?.type === "supsub" && last.sup != null && isSideMarker(last.sup) ? last : null
+  const core = side == null ? valueNodes : [...valueNodes.slice(0, -1), side.sub != null ? { ...side, sup: null } : side.base]
+  let valueTex: () => string
+  if (isTransparentValue(core)) {
+    const tex = srcOfNodes(valueNodes, ctx)
+    valueTex = () => tex
+  } else {
+    const value = parseSum(core, ctx, { anchor: "forced", target })
+    const sideTex = side == null ? "" : scriptTex("^", side.sup, ctx)
+    valueTex = () => (side == null ? value.emit() : `{${value.emit()}}${sideTex}`)
+  }
+  return () => `_{${joinTex([variable.emit(), ` ${arrowTex} `, valueTex()])}}`
+}
+
+/**
+ * The big operator at `nodes[i]`, as one factor of its term, with the index of
+ * the next node; null for anything else. An operator the engine does not read
+ * declines here, named (opDeclineReason). A primed operator (`\int'`) is left
+ * to the primed reading, which declines it by the same reason.
+ */
+function bigOperatorAt(nodes: any[], i: number, ctx: Ctx): { factor: Factor; next: number } | null {
+  const raw = nodes[i]
+  // A style command written right before an operator (`x = \displaystyle\int`)
+  // wraps it, and whatever follows it, in a node with no span; the operator's
+  // head is rebuilt from its name, and the command would be lost.
+  if (raw?.type === "styling") {
+    const inner = opOf((Array.isArray(raw.body) ? raw.body : [raw.body]).find(isMeaningfulNode))
+    if (inner != null) {
+      if (inner.name == null || familyOf(inner.name) == null) throw new Unsupported(opDeclineReason(inner))
+      throw new Unsupported(
+        `the style command “\\${raw.style}style” written before “${inner.name}”, which the engine does not re-emit`,
+      )
+    }
+  }
+  const op = opOf(raw)
+  if (op == null) return null
+  const n = peelStyles(raw)
+  const scripted = n.type === "supsub" ? n : null
+  if (scripted?.sup != null && classifySup(scripted.sup) === "prime") return null
+  const family = op.name != null ? familyOf(op.name) : null
+  if (family == null) throw new Unsupported(opDeclineReason(op))
+  const head = opHeadTex(op)
+  const following = nodes.slice(i + 1).find(isMeaningfulNode)
+  const bigop: BigOp = {
+    family,
+    name: op.name,
+    scripted,
+    functional: family === "integral" && following != null && isFunctionalMeasure(following),
+    delimited: false,
+    scripts: () => "",
+  }
+  const factor: Factor = {
+    kind: "bigop",
+    dim: ZERO,
+    emit: () => joinTex([head, bigop.scripts()]),
+    bigop,
+  }
+  if (family === "integral") {
+    // A lone subscript names the set integrated over; bounds wait for the
+    // measure (readBigOps).
+    if (scripted?.sub != null && scripted.sup == null) {
+      const sub = nodeListOf(scripted.sub).filter(isMeaningfulNode)
+      if (sub.some((x) => relTextOf(x) != null || (x.type === "atom" && x.family === "bin"))) {
+        throw new Unsupported(
+          `an integration domain written as a condition “${scriptSrc(scripted.sub, ctx)}”, which the engine does not restore`,
+        )
+      }
+      if (!isSetName(sub)) {
+        throw new Unsupported(
+          `a lone subscript “${scriptSrc(scripted.sub, ctx)}” on “${op.name}”, which the engine cannot read as the name of a set — a lower bound alone, or a domain it does not read`,
+        )
+      }
+      const domain = scriptTex("_", scripted.sub, ctx)
+      bigop.scripts = () => domain
+    }
+    return { factor, next: i + 1 }
+  }
+  if (family === "limit") {
+    bigop.scripts = limitScripts(scripted, ctx)
+    return { factor, next: i + 1 }
+  }
+  factor.nonlinear = op.name
+  if (scripted != null) throw new Unsupported("a decorated “\\det”, which is not supported yet")
+  // The delimited group right after it is its argument, as a function's is:
+  // `\det(g_{ab})\,r^{2}` is det(g)·r².
+  if (i + 1 < nodes.length && isDelimitedOperand(nodes[i + 1])) {
+    const argument = analyzeFactor(nodes[i + 1], ctx)
+    if (!dimIsZero(argument.dim)) {
+      throw new Unsupported("“\\det” of a dimensional argument — its dimension depends on the matrix size")
+    }
+    bigop.delimited = true
+    bigop.scripts = () => argument.emit()
+    return { factor, next: i + 2 }
+  }
+  return { factor, next: i + 1 }
+}
+
+/** The determinant a factor list holds anywhere, through groups, fonts, roots and fractions, named; null when none. */
+function nonlinearIn(factors: Factor[]): string | null {
+  for (const f of factors) {
+    const found =
+      f.nonlinear ?? nonlinearIn(f.parts ?? []) ?? (f.frac != null ? nonlinearIn([...f.frac.num, ...f.frac.den]) : null)
+    if (found != null) return found
+  }
+  return null
+}
+
+/** Whether a factor is or holds a differential, d or ∂, anywhere: a Leibniz operator, a quotient, a braced dt. */
+function holdsDifferential(f: Factor): boolean {
+  if (f.kind === "diff" || f.kind === "dop" || f.isDifferential === true) return true
+  if (f.parts?.some(holdsDifferential) === true) return true
+  return f.frac != null && [...f.frac.num, ...f.frac.den].some(holdsDifferential)
+}
+
+/** The factor inside any brace groups that hold only it (Factor.braced). */
+function coreOf(f: Factor): Factor {
+  let core = f
+  while (core.braced != null) core = core.braced
+  return core
+}
+
+/** Give a factor a new dimension, and the brace groups around it with it. */
+function setDim(f: Factor, d: Dim): void {
+  for (let g: Factor | undefined = f; g != null; g = g.braced) g.dim = d
+}
+
+/** The d-differential a factor is, bare or in braces (`{d\lambda}`), as a measure; null otherwise. */
+function measureOf(f: Factor): DiffInfo | null {
+  const core = coreOf(f)
+  return core.kind === "diff" ? (core.diff ?? null) : null
+}
+
+/**
+ * A fraction, bare or in braces, whose numerator holds a measure and whose
+ * denominator holds no differential at any depth: `\frac{dr}{1 - 2M/r}`,
+ * `\frac{d^{3}k}{(2\pi)^{3}}`. A differential in the denominator makes it a
+ * derivative quotient (`\frac{d^{2}x}{(dt)^{2}}`), whose d²x is no volume
+ * element.
+ */
+function isMeasureFraction(f: Factor): boolean {
+  const frac = coreOf(f).frac
+  return frac != null && frac.num.some((g) => measureOf(g) != null) && !frac.den.some(holdsDifferential)
+}
+
+/** The measures a measure position holds: the factor itself, or a measure fraction's. */
+function measuresIn(f: Factor): Factor[] {
+  return measureOf(f) != null ? [f] : (coreOf(f).frac?.num ?? []).filter((g) => measureOf(g) != null)
+}
+
+/** A measure written inside another factor, not as one of the term's own (a derivative quotient's d's are none). */
+function holdsMeasure(f: Factor): boolean {
+  if (measureOf(f) != null) return true
+  if (f.parts?.some(holdsMeasure) === true) return true
+  return f.frac != null && !f.frac.den.some(holdsDifferential) && [...f.frac.num, ...f.frac.den].some(holdsMeasure)
+}
+
+/**
+ * A differential an integral owns, checked as a measure and given the
+ * measure's dimension, in place. `d^{n}x` there is the n-volume element, of
+ * dimension n·[x], a fact only in measure position (elsewhere the order is
+ * derivative bookkeeping, `\frac{d^{2}x}{dt^{2}}`), and only for a positive
+ * whole n. A power on the variable (`dt^{2}`) makes no measure, and a bold
+ * variable at order one (`d\mathbf{x}`) reads as a line element or as a
+ * volume element, which differ.
+ *
+ * The variable's dictionary reading fixes the integral's dimension, so the
+ * reading must be one. The dictionary reads z one way under d (a length) and
+ * another bare (a redshift), and which one an integral over z runs over is
+ * not written, whether or not bare z appears in it. A page's declaration
+ * reaches `bare` and never `differential` (src/bridge.ts), so a declared
+ * reading that contradicts the table declines here too. A reading marked as
+ * the dictionary's choice (REGISTRY_CHOICE) declines, the owner's call.
+ */
+function claimMeasure(f: Factor, info: DiffInfo, ctx: Ctx): void {
+  const quote = () => maskedEmission(ctx, f.emit)
+  if (info.order != null && (info.order.q !== 1 || info.order.p < 1)) {
+    throw new Unsupported(`an integration measure “${quote()}” whose order is not a positive whole number, which is not supported`)
+  }
+  if (info.powered) throw new Unsupported(`the powered differential “${quote()}” as an integration measure, which is not supported`)
+  const order = info.order?.p ?? 1
+  if (info.bold && order === 1) {
+    throw new Unsupported(`the vector measure “${quote()}”, which reads differently as a line element and as a volume element`)
+  }
+  if (info.key != null) {
+    const under = ctx.reg.differential[info.key]
+    const bare = ctx.reg.bare[info.key]
+    if (under != null && bare != null && !dimIsZero(dimSub(under.dim, bare.dim))) {
+      throw new Unsupported(
+        `an integral over “${info.key}”, which the dictionary reads one way under d and another bare — which one the integral runs over is not written`,
+      )
+    }
+    if ([under, bare].some((entry) => entry != null && REGISTRY_CHOICE.test(entry.gloss))) {
+      throw new Unsupported(
+        `an integral over “${info.key}”, whose dictionary reading is a registry choice another reading would contradict — as the measure, that choice alone fixes the integral's dimension`,
+      )
+    }
+  }
+  if (order > 1) setDim(f, dimScale(info.varDim, order, 1))
+}
+
+/**
+ * The pass that reads a term's big operators once all its factors are known;
+ * returns the integral the term leaves open (TermInfo.openIntegral), or null.
+ *
+ * Every operator acts on something after it in its term. A determinant with
+ * no delimited argument takes the rest of the term, which must then be
+ * dimensionless all through, since where the argument ends is not written.
+ *
+ * Every integral owns a measure: a d-differential after it written as a
+ * factor of the term, or as the numerator of a measure fraction, with at
+ * least one more after it than there are integral signs after it. Its bounds
+ * are values of its variable, restored against the variable's dimension, and
+ * read only where the notation pairs them with one variable: the measure
+ * right after the sign, or the term's only measure under its only sign. 0
+ * and ±∞ are values of any variable and are carried as written. Constants
+ * never enter the scripts: the operator emits itself, scripts and all.
+ */
+function readBigOps(factors: Factor[], slashIdx: number, ctx: Ctx): string | null {
+  const ops = factors.flatMap((f, k) => (f.bigop != null ? [k] : []))
+  if (ops.length === 0) return null
+  const live = (from: number, to: number) => factors.slice(from, to).filter((g) => g.kind !== "glue")
+  for (const k of ops) {
+    const b = factors[k].bigop!
+    if (!b.delimited && live(k + 1, slashIdx > k ? slashIdx : factors.length).length === 0) {
+      throw new Unsupported(`the operator “${b.name}” with nothing to act on`)
+    }
+    if (b.family === "det" && !b.delimited) {
+      const argument = live(k + 1, factors.length)
+      if (!argument.every((g) => dimIsZero(g.dim))) {
+        throw new Unsupported(
+          argument.length === 1 && !(slashIdx > k)
+            ? "“\\det” of a dimensional argument — its dimension depends on the matrix size"
+            : "“\\det” whose undelimited argument runs past a factor with a dimension — where it ends, and so its dimension, is not written",
+        )
+      }
+    }
+  }
+
+  const integrals = ops.filter((k) => factors[k].bigop!.family === "integral")
+  if (integrals.length === 0) return null
+  const measures: number[] = []
+  for (let j = integrals[0] + 1; j < factors.length; j += 1) {
+    const f = factors[j]
+    const own = measureOf(f)
+    if (own == null && !isMeasureFraction(f)) continue
+    if (slashIdx >= 0 && j > slashIdx) {
+      throw new Unsupported(`an integration measure “${maskedEmission(ctx, f.emit)}” written in a denominator, which is not supported`)
+    }
+    if (own != null) {
+      claimMeasure(f, own, ctx)
+    } else {
+      const frac = coreOf(f).frac!
+      for (const g of frac.num) {
+        const info = measureOf(g)
+        if (info != null) claimMeasure(g, info, ctx)
+      }
+      let d = ZERO
+      for (const g of frac.num) d = dimAdd(d, g.dim)
+      for (const g of frac.den) d = dimSub(d, g.dim)
+      setDim(f, d)
+    }
+    measures.push(j)
+  }
+
+  for (const k of integrals) {
+    const owned = measures.filter((j) => j > k).length
+    if (owned > integrals.filter((x) => x > k).length) continue
+    const b = factors[k].bigop!
+    if (b.functional) {
+      throw new Unsupported(`a functional integral “${b.name}\\mathcal{D}…”, whose measure has no dimension the dictionary can give`)
+    }
+    const nested = factors.slice(k + 1).some((g, idx) => !measures.includes(k + 1 + idx) && holdsMeasure(g))
+    throw new Unsupported(
+      nested
+        ? `“${b.name}” whose measure (d…) is not a factor of its integrand — the engine cannot pair it`
+        : `“${b.name}” with no measure (d…) of its own written after it in its term — the engine cannot tell what it integrates over`,
+    )
+  }
+
+  for (const k of integrals) {
+    const b = factors[k].bigop!
+    const s = b.scripted
+    if (s?.sup == null) continue
+    let next = k + 1
+    while (next < factors.length && factors[next].kind === "glue") next += 1
+    let variable = measures.includes(next) ? measureOf(factors[next]) : null
+    if (variable == null && integrals.length === 1) {
+      const all = measures.flatMap((j) => measuresIn(factors[j]))
+      if (all.length === 1) variable = measureOf(all[0])
+    }
+    if (variable != null && ((variable.order?.p ?? 1) !== 1 || variable.group)) variable = null
+    const paired = variable
+    const bound = (script: any): (() => string) => {
+      const nodes = nodeListOf(script)
+      if (isTransparentValue(nodes)) {
+        const tex = scriptSrc(script, ctx)
+        return () => tex
+      }
+      if (paired == null) {
+        throw new Unsupported(`integration bounds on “${b.name}” that cannot be paired with one variable of integration`)
+      }
+      if (containsRel(nodes)) {
+        throw new Unsupported(`an integration bound written as “${scriptSrc(script, ctx)}”, which is not supported yet`)
+      }
+      const sum = parseSum(nodes, ctx, { anchor: "forced", target: { dim: paired.varDim, tainted: paired.tainted } })
+      return () => sum.emit()
+    }
+    const lo = s.sub != null ? bound(s.sub) : null
+    const hi = bound(s.sup)
+    b.scripts = () => {
+      const sub = lo != null ? `_{${lo()}}` : ""
+      const sup = `^{${hi()}}`
+      return supWrittenFirst(s, ctx) ? sup + sub : sub + sup
+    }
+  }
+
+  let last = factors.length - 1
+  while (last >= 0 && factors[last].kind === "glue") last -= 1
+  if (measures.includes(last)) return null
+  let measureDim = ZERO
+  for (const j of measures) for (const m of measuresIn(factors[j])) measureDim = dimAdd(measureDim, m.dim)
+  return dimIsZero(measureDim) ? null : factors[integrals[0]].bigop!.name
 }
 
 function isFuncHead(n: any): boolean {
@@ -3063,6 +3769,7 @@ function analyzeNamedOperator(
   i: number,
   ctx: Ctx,
   push: (f: Factor) => void,
+  measureEnds: boolean,
 ): number {
   const wordTex = namedWordTex(head, ctx)
   if (head.op === "linear") {
@@ -3079,7 +3786,7 @@ function analyzeNamedOperator(
     }
     return wordTex + scriptsTex(s, ctx)
   }
-  if (head.op === "transcendental") return applyFunction(headTex, nodes, i, ctx, push)
+  if (head.op === "transcendental") return applyFunction(headTex, nodes, i, ctx, push, measureEnds)
   let next = i + 1
   while (next < nodes.length && SKIP_TYPES.has(unwrap(nodes[next])?.type)) next += 1
   if (next >= nodes.length || delimitedArgumentOf(nodes[next]) == null) {
@@ -3106,9 +3813,20 @@ function startsFunction(raw: any): boolean {
  * The closing delimiter ends the argument; nothing written after it is read
  * into the function, and spacing written between the head and the group is
  * kept (headSpacingTex). Any other argument is the rest of the product, up to
- * the next function head: `\sin\omega t` is sin(ωt).
+ * the next function head: `\sin\omega t` is sin(ωt). Inside an integral
+ * (`measureEnds`) it ends at the measure as well: the measure closes the
+ * integrand, and sin(θ dθ) integrates nothing. An argument that runs on into
+ * a big operator (`\sin\theta\int dr`) is sin θ·∫ or sin(θ∫), and the notation
+ * does not say which.
  */
-function applyFunction(headTex: () => string, nodes: any[], i: number, ctx: Ctx, push: (f: Factor) => void): number {
+function applyFunction(
+  headTex: () => string,
+  nodes: any[],
+  i: number,
+  ctx: Ctx,
+  push: (f: Factor) => void,
+  measureEnds: boolean,
+): number {
   let next = i + 1
   while (next < nodes.length && SKIP_TYPES.has(unwrap(nodes[next])?.type)) next += 1
   floatingScriptAfterHeadGuard(headTex, next < nodes.length ? nodes[next] : null, ctx)
@@ -3117,10 +3835,16 @@ function applyFunction(headTex: () => string, nodes: any[], i: number, ctx: Ctx,
     push(analyzeDelimitedFunction(headTex, nodes.slice(i + 1, next), delimited, ctx))
     return next + 1
   }
+  const startsMeasure = (at: number) =>
+    measureEnds && at + 1 < nodes.length && differentialPrefixOf(nodes[at], ctx)?.prefix === "d"
   let end = i + 1
-  while (end < nodes.length && !startsFunction(nodes[end])) end += 1
+  while (end < nodes.length && !startsFunction(nodes[end]) && !startsMeasure(end)) end += 1
   const argNodes = nodes.slice(i + 1, end)
   if (argNodes.length === 0) throw new Unsupported("a function with no argument")
+  const runsInto = argNodes.map((x) => opOf(x)?.name).find((name) => name != null)
+  if (runsInto != null) {
+    throw new Unsupported(`a function whose argument runs into “${runsInto}” — where the argument ends is not written`)
+  }
   push(analyzeFunction(headTex, argNodes, ctx))
   return end
 }
@@ -3611,13 +4335,11 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         const inner = bracedArg(n.body, ctx)
         return { kind: "sym", dim: inner.dim, emit: () => `\\overline{${inner.emit()}}`, derivative: inner.derivative }
       })
-    case "op": {
-      const name = n.name ?? ""
-      if (FUNC_OPS.has(name)) throw new Unsupported("a function with no argument")
-      throw new Unsupported(
-        `“${name || srcOf(n, ctx)}” — integrals, sums, and limits change dimensions with their measure and are not supported yet`,
-      )
-    }
+    case "op":
+      // A big operator is read where it heads a factor of a term (bigOperatorAt);
+      // anywhere else (primed, `\int'`, or the base of a script) it is named.
+      if (n.name != null && FUNC_OPS.has(n.name)) throw new Unsupported("a function with no argument")
+      throw new Unsupported(opDeclineReason(n))
     case "operatorname": {
       // An operator the table reads is read where it heads a factor
       // (analyzeNamedOperator); any other one is named.
@@ -3658,6 +4380,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const vanishes = () => sumVanishes(inner)
       const numeralEdge = (side: "first" | "last") => sumNumeralEdge(inner, side)
       const isDifferential = isPureDifferential(inner) || undefined
+      const lone = !inner.multiTerm && inner.terms[0].sign === "" && inner.terms[0].slashIdx < 0 && live.length === 1
       return {
         kind: "group",
         dim: inner.dim,
@@ -3665,6 +4388,7 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
         isBareSum,
         openArgument,
         isDifferential,
+        braced: styled == null && lone ? live[0] : undefined,
         vanishes,
         numeralEdge,
         ...partsOf(inner),
@@ -4511,7 +5235,16 @@ function readPrimed(
   n: any,
   ctx: Ctx,
   opts: { upright: boolean; differential: boolean; scalePower: boolean },
-): { dim: Dim; tex: string } {
+): {
+  dim: Dim
+  tex: string
+  /** The primed symbol's own dimension, before any power on it. */
+  varDim: Dim
+  /** The key looked up in `differential` and `bare`, or null when a subscript or an index list took the lookup elsewhere. */
+  key: string | null
+  /** A numeric power stands on the primed symbol. */
+  powered: boolean
+} {
   const base = unwrap(n.base)
   if (base == null || isEmptyOrdgroup(base)) throw new Unsupported("a floating super/subscript")
   const split = splitPrimes(n.sup)
@@ -4543,14 +5276,15 @@ function readPrimed(
     componentDigitGuard(key, scripts, rest, tex, ctx)
   }
   if (rest === "signLabel") throw new Unsupported(SIGN_LABEL_REASON)
-  let d = resolveSymbol(key, display, ctx, {
+  const varDim = resolveSymbol(key, display, ctx, {
     sub: n.sub,
     indices: n.sub == null && rest === "index",
     differential: opts.differential,
   })
   if (rest === "expr") throw new Unsupported(`an exponent on “${tex}” that could not be read`)
-  if (typeof rest === "object" && rest != null && opts.scalePower) d = dimScale(d, rest.p, rest.q)
-  return { dim: d, tex }
+  const powered = typeof rest === "object" && rest != null
+  const d = powered && opts.scalePower ? dimScale(varDim, rest.p, rest.q) : varDim
+  return { dim: d, tex, varDim, key: n.sub == null && rest !== "index" ? key : null, powered }
 }
 
 function analyzePrimed(n: any, ctx: Ctx): Factor {

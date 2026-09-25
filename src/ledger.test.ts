@@ -27,7 +27,8 @@ describe("the decline ledger", () => {
     // A list item that is no statement; a list of statements is now read.
     assert.strictEqual(outcome("\\theta = 0, \\quad \\pi").class, "fragment")
     assert.strictEqual(outcome("E \\propto M").class, "proportional")
-    assert.strictEqual(outcome("\\int \\rho \\, dV = M").class, "unsupported")
+    assert.strictEqual(outcome("\\int \\sqrt{g}\\,R = M").class, "unsupported")
+    assert.strictEqual(outcome("\\int \\rho \\, dV = M").class, "unchanged")
     assert.strictEqual(outcome("c = G = 1").class, "declaration")
     // A constant's numeric value is no declaration, but has as little to restore.
     assert.strictEqual(outcome("c = 299792458").class, "declaration")
@@ -183,6 +184,43 @@ describe("the decline ledger", () => {
     // Step 15: a numeral on nothing that the notation does not attach, after a
     // factor without indices, after a derivative, or before a factor it may prescript.
     for (const tex of ["x = r{}^{2}", "\\partial_t{}^{2}\\phi = 0", "E = \\vec{p}{}^{2}c"])
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    // Step 16: an integral, a limit or a determinant written in a way the
+    // notation does not settle, and the operators the engine names but does not read.
+    for (const tex of [
+      "x = \\int_0^\\infty r",
+      "x = \\oint\\frac{(r\\,d\\phi - r\\,d\\theta)}{r}",
+      "\\Delta = \\int{\\cal D}\\phi\\, r",
+      "x = \\int dt\\, v + r",
+      "x = \\int_{r>2M} dr",
+      "x = \\int_{2M} dr",
+      "x = \\int_{x=0}^{r} dr",
+      "x = \\int_{2M}^{r}\\int_{0}^{\\pi} dr\\, d\\theta",
+      "x = \\int dz",
+      "\\tau = \\int d\\lambda",
+      "x = \\int d^{-1}x",
+      "x = \\int d\\mathbf{x}",
+      "x = \\int dt^{2}",
+      "x = \\int r / dr",
+      "x = \\sin\\theta\\int dr",
+      "S = \\int -2r\\,dt",
+      "E = \\int' dr",
+      "E = \\lim_{r} M",
+      "\\theta = \\lim_{r\\to 2M}",
+      "g = \\det(T_{ab})",
+      "E = \\det g\\, M",
+      "g = \\det_{3}(g_{ab})",
+      "\\Phi = \\sqrt{\\frac{M\\det(g_{ab})}{r}}",
+      "M = \\prod_{i} M",
+      "x = \\sum_i r",
+      "x = \\max_{t} r",
+      "x = \\coprod_i r",
+      "x = \\mathop{\\rm lim}_{t} r",
+      "x = \\mathop{\\sum_{i}}_{j} r",
+      "\\rho = \\mathop{\\rm Tr}\\limits T_{ab}",
+      "x \\stackrel{(1)}{=} r",
+      "x = \\displaystyle\\int_{0}^{r} dr",
+    ])
       assert.strictEqual(outcome(tex).class, "unsupported", tex)
     assert.deepStrictEqual(outcome("v = H_0\\,d").unknown, ["d"])
   })
