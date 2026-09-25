@@ -3981,10 +3981,12 @@ describe("bases, accents, labels and named operators (step 11)", () => {
     assert.deepStrictEqual(reasons("{\\rm r}_{s} = 2M"), [
       "the upright letter “r” — a unit, a label or an operator, not a variable",
     ])
-    // A lone power on a braced symbol keeps its compound reading; the
-    // reviewer's `{\rm d}^{4}x` declines on its d by name, not as a fault.
+    // A lone power on a braced symbol keeps its compound reading. The
+    // reviewer's `{\rm d}^{4}x` is no fault: braces only group, so it reads as
+    // `\mathrm{d}^{4}x` does (step 14).
     assert.strictEqual(rawRestored("E = {c}^{2}m"), "E = {c}^{2}m")
-    assert.ok(!reasons("{\\rm d}^{4}x = 0")[0].includes("reassembly"))
+    const braced = "{\\rm d}^{4}x = 0"
+    assert.deepStrictEqual(run(braced), { ...run("\\mathrm{d}^{4}x = 0"), originalTex: braced, restoredTex: braced })
     // A braced primed symbol is the primed symbol; a primed accent is a compound.
     assert.deepStrictEqual(declined("{\\alpha}' = x").unknown, ["{\\alpha}'"])
     assert.deepStrictEqual(reasons("\\vec{k}' = k"), ["a prime on a compound expression, which the engine cannot read as a symbol"])
@@ -4602,5 +4604,146 @@ describe("taint: no verdict on a symbol the registry does not know (step 13)", (
       reasons: [],
       unknown: ["\\xi"],
     })
+  })
+})
+
+describe("differentials (step 14)", () => {
+  const translated = (tex: string, target: TargetSpec = SI) => {
+    const result = run(tex, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = result as Extract<TranslationResult, { kind: "translated" }>
+    rendersInKatex(out.restoredTex)
+    return out
+  }
+  // The SI restoration exactly as emitted, and a geometrized target that leaves the source as written.
+  const restoresTo = (tex: string, si: string) => {
+    assert.strictEqual(translated(tex).restoredTex, si, tex)
+    const geo = translated(tex, GEO)
+    assert.strictEqual(geo.changed, false, tex)
+  }
+  const unchanged = (tex: string) => {
+    for (const target of [SI, GEO]) assert.strictEqual(translated(tex, target).changed, false, tex)
+  }
+  const declined = (tex: string) => {
+    const result = run(tex)
+    assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+    return result as Extract<TranslationResult, { kind: "declined" }>
+  }
+  const UPRIGHT_D = "an upright “d” with nothing after it — an operator with nothing to act on, or a label"
+  const SYMBOLIC = (tex: string) => `a differential of symbolic order “${tex}”, whose dimension the engine cannot count`
+  const UNSUPPORTED = (tex: string) => `an unsupported differential “${tex}”`
+
+  test("braces only group: {\\rm d}x is \\mathrm{d}x, and {d^2} keeps its order", () => {
+    // Carroll's LaTeXML metrics: the braces cut d off from its operand, and
+    // every one declined as a trailing d.
+    restoresTo("ds^2 = -{\\rm d}t^2 + {\\rm d}x^2", "ds^2 = -c^{2}{\\rm d}t^2 + {\\rm d}x^2")
+    restoresTo(
+      "ds^2 = -\\left(1 - \\frac{2M}{r}\\right){\\rm d}t^2 + {\\rm d}r^2",
+      "ds^2 = -\\left(1 - \\frac{2GM}{rc^{2}}\\right)c^{2}{\\rm d}t^2 + {\\rm d}r^2",
+    )
+    unchanged("v = \\frac{{\\rm d}x}{{\\rm d}t}")
+    unchanged("x = {d^2}x")
+    unchanged("x = {\\rm d}({\\rm d}x)")
+  })
+
+  test("the Leibniz operator d/dx has its denominator's dimension, inverted", () => {
+    restoresTo("\\frac{d}{dx}t = v", "\\frac{d}{dx}t = \\frac{v}{c^{2}}")
+    restoresTo("\\frac{d^2}{dt^2}x = \\frac{M}{r^2}", "\\frac{d^2}{dt^2}x = \\frac{GM}{r^{2}}")
+    restoresTo("E = \\frac{d}{dt}(M r)", "E = c\\frac{d}{dt}(Mr)")
+    unchanged("{\\frac{d}{{d\\tau}}}x = v")
+    unchanged("\\frac{\\mathrm{d}}{\\mathrm{d}t}x = v")
+    unchanged("v = \\frac{{\\rm d}}{{\\rm d}t}x")
+    const velocity = dimensionOf("\\frac{d}{dt}x", katex, reg)
+    assert.ok(velocity.kind === "dim", JSON.stringify(velocity))
+    assert.deepStrictEqual(velocity.dim, [0, 12, -12, 0, 0])
+  })
+
+  test("a constant goes before the operator, wherever the operator sits", () => {
+    // After an operator with nothing else to act on, c reads as its operand:
+    // `\frac{d}{dx}c` is the derivative of c, zero, with the right dimension.
+    restoresTo("\\frac{1}{t} = \\frac{d}{dx}", "\\frac{1}{t} = c\\frac{d}{dx}")
+    restoresTo("\\frac{1}{t} = 2\\frac{d}{dx}", "\\frac{1}{t} = 2c\\frac{d}{dx}")
+    // The reviewer's blocker: an operator in parentheses, braces, a power or a sum.
+    restoresTo("\\frac{1}{t} = \\left(\\frac{d}{dx}\\right)", "\\frac{1}{t} = c\\left(\\frac{d}{dx}\\right)")
+    restoresTo("\\frac{1}{t} = (\\frac{d}{dx})", "\\frac{1}{t} = c(\\frac{d}{dx})")
+    restoresTo(
+      "\\frac{1}{t^{2}} = \\left(\\frac{d}{dx}\\right)^{2}",
+      "\\frac{1}{t^{2}} = c^{2}\\left(\\frac{d}{dx}\\right)^{2}",
+    )
+    restoresTo("\\frac{1}{t^{2}} = (\\frac{d}{dx})^{2}", "\\frac{1}{t^{2}} = c^{2}(\\frac{d}{dx})^{2}")
+    restoresTo("\\frac{1}{t} = {\\frac{d}{dx}}", "\\frac{1}{t} = c{\\frac{d}{dx}}")
+    restoresTo(
+      "\\frac{1}{t} = \\left(\\frac{d}{dx} + \\frac{d}{dy}\\right)",
+      "\\frac{1}{t} = c\\left(\\frac{d}{dx} + \\frac{d}{dy}\\right)",
+    )
+    restoresTo("\\frac{1}{t} = \\frac{\\frac{d}{dx}}{2}", "\\frac{1}{t} = \\frac{c\\frac{d}{dx}}{2}")
+    // Nor does a fraction or a root after the operator take it.
+    restoresTo("\\frac{1}{t} = \\frac{d}{dx}\\frac{1}{2}", "\\frac{1}{t} = c\\frac{d}{dx}\\frac{1}{2}")
+    restoresTo("\\frac{1}{\\sqrt{t}} = \\frac{d}{dx}\\sqrt{r}", "\\frac{1}{\\sqrt{t}} = c^{1/2}\\frac{d}{dx}\\sqrt{r}")
+  })
+
+  test("a bold or calligraphic d is no differential, through a power too", () => {
+    // Read as d², `\frac{\mathbf{d}^{2}}{dt^{2}}` was an operator and
+    // `\mathbf{d}^{2}x` a differential.
+    assert.deepStrictEqual(declined("v = \\frac{\\mathbf{d}^{2}}{dt^{2}}x\\,t").unknown, ["\\mathbf{d}"])
+    assert.deepStrictEqual(declined("x = \\mathbf{d}^{2}x").unknown, ["\\mathbf{d}"])
+    assert.deepStrictEqual(declined("x = {\\bf d}^2 x").unknown, ["d"])
+    assert.deepStrictEqual(declined("x = \\mathcal{d}x").unknown, ["d"])
+    assert.deepStrictEqual(declined("E = \\mathbf{d}\\,x").unknown, ["d"])
+    assert.deepStrictEqual(declined("\\frac{1}{t} = \\mathbf{\\frac{d}{dx}}").unknown, ["d"])
+    unchanged("x = \\mathit{d}x")
+  })
+
+  test("a d with nothing after it: the symbol d, an upright label, or an index letter", () => {
+    for (const tex of ["v = H_0\\,d", "v = \\frac{d}{t}", "x = d"]) {
+      const result = declined(tex)
+      assert.deepStrictEqual([result.reasons, result.unknown], [[], ["d"]], tex)
+    }
+    for (const tex of ["x = ({\\rm d})", "x = \\mathrm{d}", "x = \\frac{\\mathrm{d}}{t}"]) {
+      assert.deepStrictEqual(declined(tex).reasons, [UPRIGHT_D], tex)
+    }
+    assert.deepStrictEqual(declined("\\epsilon_{abcd} = \\sqrt{-r}\\;[abcd]").reasons, [
+      "a trailing “d” with nothing after it, which the engine reads as a derivative rather than as an index letter",
+    ])
+  })
+
+  test("an order no number gives is not counted; a label or an index letter is no order", () => {
+    assert.deepStrictEqual(declined("V = d^{n}x").reasons, [SYMBOLIC("d^{n}x")])
+    assert.deepStrictEqual(declined("x = d^{p+1}x").reasons, [SYMBOLIC("d^{p+1}x")])
+    // The conjugate down-quark field and an adjoint are no differentials.
+    assert.deepStrictEqual(declined("x = d^{c}q").unknown, ["d^{c}", "q"])
+    assert.deepStrictEqual(declined("x = d^{\\dagger}x").unknown, ["d^{\\dagger}"])
+    // Outside an integral's measure, a numeric order keeps its bookkeeping reading.
+    unchanged("x = d^{1/2}x")
+    unchanged("x = d^{2}x")
+  })
+
+  test("a barred letter under d is the letter's differential; other accents are not", () => {
+    unchanged("ds^{2} = dz\\,d\\bar{z}")
+    unchanged("ds^2 = dz\\,d{\\bar z}")
+    unchanged("d\\bar{s}^{2} = ds^{2}")
+    assert.strictEqual(translated("ds^{2} = dz\\,d\\bar{z}").restoredTex, "ds^{2} = dzd\\bar{z}")
+    // Quoted rebuilt: sliced, the accent had no span and `d\bar{z}_{1}` read `dz}_{1}`.
+    assert.deepStrictEqual(declined("x = d\\bar{z}_{1}").reasons, [UNSUPPORTED("d\\bar{z}_{1}")])
+    assert.deepStrictEqual(declined("x = d\\bar{x}^{\\mu}").reasons, [UNSUPPORTED("d\\bar{x}^{\\mu}")])
+    assert.deepStrictEqual(declined("q = \\vec{E}\\cdot d\\vec{S}").reasons, [UNSUPPORTED("d\\vec{S}")])
+    assert.deepStrictEqual(declined("ds^{2} = -d\\sigma^{+}d\\sigma^{-}").reasons, [UNSUPPORTED("d\\sigma^{+}")])
+    assert.deepStrictEqual(declined("x = d\\bar{c}").reasons, [UNSUPPORTED("d\\bar{c}")])
+    assert.deepStrictEqual(declined("x = d\\bar{\\mathrm{m}}").reasons, [
+      "the upright letter “m” — a unit, a label or an operator, not a variable",
+    ])
+  })
+
+  test("a dot reads through a vector arrow and a bar, never a hat", () => {
+    restoresTo(
+      "\\vec{p} = \\frac{m\\dot{\\vec{x}}}{\\sqrt{1 - \\dot{\\vec{x}}\\cdot\\dot{\\vec{x}}}}",
+      "\\vec{p} = \\frac{m\\dot{\\vec{x}}}{\\sqrt{1 - \\frac{\\dot{\\vec{x}}\\cdot\\dot{\\vec{x}}}{c^{2}}}}",
+    )
+    unchanged("v = \\dot{\\bar{\\vec x}}")
+    unchanged("E = \\dot{\\vec{p}}\\,r")
+    assert.deepStrictEqual(declined("\\dot{\\hat{x}} = 0").reasons, ["a time derivative of a compound expression"])
+    assert.deepStrictEqual(declined("E = \\dot{\\vec{c}}").reasons, [
+      "the accented “\\dot{\\vec{c}}” — another symbol (a vector, a mean, an operator or a label), not the constant c",
+    ])
   })
 })

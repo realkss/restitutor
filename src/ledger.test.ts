@@ -176,6 +176,11 @@ describe("the decline ledger", () => {
       "x = (r)_{r=0}",
     ])
       assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    // Step 14: an upright d with nothing to act on and a differential of
+    // symbolic order are the reader's; a d that is the symbol d is looked up.
+    for (const tex of ["x = ({\\rm d})", "V = d^{n}x", "\\epsilon_{abcd} = \\sqrt{-r}\\;[abcd]"])
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    assert.deepStrictEqual(outcome("v = H_0\\,d").unknown, ["d"])
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)

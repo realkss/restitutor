@@ -490,7 +490,7 @@ function stripsConstants(ctx: Ctx): boolean {
   return ctx.strip && emitsConstants(ctx)
 }
 
-type FactorKind = "num" | "glue" | "sym" | "diff" | "frac" | "sqrt" | "group" | "func" | "rider" | "linop"
+type FactorKind = "num" | "glue" | "sym" | "diff" | "dop" | "frac" | "sqrt" | "group" | "func" | "rider" | "linop"
 
 type Factor = {
   kind: FactorKind
@@ -553,6 +553,12 @@ type Factor = {
    * numerals apart.
    */
   kern?: string | null
+  /**
+   * A brace group holding differentials and nothing else (`{d\lambda}`), which
+   * is itself one: it can be a Leibniz operator's denominator, and a constant
+   * goes before it as before a bare differential.
+   */
+  isDifferential?: boolean
   frac?: { cmd: string; num: Factor[]; den: Factor[] }
   sqrt?: { bodyTerm: TermInfo | null }
 }
@@ -2347,21 +2353,39 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     }
 
     // d / ∂ prefixes.
-    const prefix = derivativePrefix(n)
+    const prefix = differentialPrefixOf(raw, ctx)
     if (prefix) {
       const operand = i + 1 < nodes.length ? nodes[i + 1] : null
       if (operand == null) {
-        // Not always an operator-form derivative: a trailing `d` in an index
-        // list (\epsilon_{abcd} = \sqrt{-g}\;[abcd]) lands here too, and telling
-        // that reader to "select the applied form" explains nothing.
-        throw new Unsupported(
-          prefix === "d"
-            ? "a trailing “d” with nothing after it, which the engine reads as a derivative rather than as an index letter"
-            : "an operator-form derivative (a bare ∂) — select the applied form instead",
-        )
+        if (prefix.prefix === "partial") {
+          throw new Unsupported("an operator-form derivative (a bare ∂) — select the applied form instead")
+        }
+        // A trailing `d` in an index list (\epsilon_{abcd} = \sqrt{-g}\;[abcd])
+        // is an index letter, and nothing written says which of those it is.
+        const run = nodes.filter(isMeaningfulNode)
+        if (run.length >= 2 && run.every((x) => LATIN_INDICES.has(textOf(x) ?? ""))) {
+          throw new Unsupported(
+            "a trailing “d” with nothing after it, which the engine reads as a derivative rather than as an index letter",
+          )
+        }
+        // A d that differentiates nothing is no differential. Upright, it is
+        // the operator standing alone or a label (the deuteron's {\rm d});
+        // italic, it is the symbol d (a distance, a separation), looked up like
+        // any other letter, as a bold d always is.
+        if (prefix.upright) {
+          throw new Unsupported("an upright “d” with nothing after it — an operator with nothing to act on, or a label")
+        }
+        push(analyzeFactor(raw, ctx))
+        i += 1
+        continue
       }
-      const merged = analyzeDifferential(prefix, raw, operand, ctx)
-      push(merged)
+      // `d^{n}x`, `d^{D}p`: how many differentials the product holds is
+      // exactly what the order says, and a letter there does not count them.
+      if (prefix.symbolic) {
+        const quote = joinTex([wrappedTexOf(raw, ctx), wrappedTexOf(operand, ctx)])
+        throw new Unsupported(`a differential of symbolic order “${quote}”, whose dimension the engine cannot count`)
+      }
+      push(analyzeDifferential(prefix, raw, operand, ctx))
       i += 2
       continue
     }
@@ -2463,12 +2487,17 @@ function spacingTexOf(raw: any, ctx: Ctx): string {
 function wrappedTexOf(raw: any, ctx: Ctx): string {
   const peeled = peelStyles(raw)
   if (peeled?.type === "font") return fontTexOf(peeled, wrappedTexOf(peeled.body, ctx), ctx)
+  // An accent or an overline has no span of its own either: sliced, `d\bar{s}^{2}`
+  // was quoted as `ds}^{2}`.
+  if (peeled?.type === "accent" || peeled?.type === "overline") return decoratedTexOf(peeled, ctx)
   // A supsub slices faithfully, order and spelling kept, unless a part of it is
-  // a font, which has no span to slice: then it is rebuilt from its parts.
+  // a font or its base an accent, which have no span to slice: then it is
+  // rebuilt from its parts.
   if (
     peeled?.type === "supsub" &&
     peeled.base != null &&
-    [peeled.base, peeled.sub, peeled.sup].some((x) => x != null && peelStyles(x)?.type === "font")
+    ([peeled.base, peeled.sub, peeled.sup].some((x) => x != null && peelStyles(x)?.type === "font") ||
+      ["accent", "overline"].includes(peelStyles(peeled.base)?.type))
   ) {
     return `${wrappedTexOf(peeled.base, ctx)}${scriptsTex(peeled, ctx)}`
   }
@@ -2670,24 +2699,96 @@ function underUprightFont(node: any): boolean {
   return false
 }
 
-function derivativePrefix(n: any): "d" | "partial" | null {
-  if (n?.type === "mathord" && n.text === "d") return "d"
-  if (n?.type === "mathord" && n.text === "\\partial") return "partial"
-  if (n?.type === "supsub") {
-    const base = unwrap(n.base)
-    // d²x / ∂²φ — the power is derivative-order bookkeeping, not a dimension.
-    if (base?.type === "mathord" && (base.text === "d" || base.text === "\\partial")) {
-      const sup = classifySup(n.sup)
-      if (n.sub == null && typeof sup === "object") {
-        return base.text === "d" ? "d" : "partial"
+/**
+ * Fonts in which a d is still the differential: italic or upright (ISO
+ * 80000-2). A bold or calligraphic d is another symbol, a vector or a dipole,
+ * and never a differential: `\mathbf{d}^{2}x` was read as d²x.
+ */
+const DIFFERENTIAL_FONTS = new Set(["mathrm", "mathit", "mathnormal"])
+
+type DifferentialPrefix = {
+  prefix: "d" | "partial"
+  /** Set in an upright font: the operator d, which standing alone is no symbol. */
+  upright: boolean
+  /** A numeric order on the prefix (d²x), which is derivative bookkeeping, not a power. */
+  ordered: boolean
+  /** An order that is no number (d^{n}x). */
+  symbolic: boolean
+}
+
+/**
+ * The d or ∂ a node is, seen through styles, fonts and braces: braces only
+ * group, so `{\rm d}x` is `\mathrm{d}x` and `{d^2}x` is `d^2x`, and a brace
+ * pair cut the d off from its operand, which made it the whole of its list.
+ * The fonts are collected on the way down, through the base of an ordered
+ * prefix too, and any font other than italic or upright makes the letter no
+ * differential (DIFFERENTIAL_FONTS). So does a font the whole expression sits in.
+ */
+function differentialPrefixOf(raw: any, ctx: Ctx): DifferentialPrefix | null {
+  const fonts: string[] = ctx.font != null ? [ctx.font.node.font] : []
+  const peel = (node: any): any => {
+    let cur = node
+    for (;;) {
+      const p = peelStyles(cur)
+      if (p?.type === "font") {
+        fonts.push(p.font)
+        cur = p.body
+        continue
       }
+      const inner = p?.type === "ordgroup" ? p.body.filter(isMeaningfulNode) : null
+      if (inner?.length !== 1) return p
+      cur = inner[0]
     }
+  }
+  const core = peel(raw)
+  const ordered = core?.type === "supsub" && core.sub == null && core.sup != null
+  const letter = ordered ? peel(core.base) : core
+  const prefix =
+    letter?.type === "mathord" && letter.text === "d"
+      ? "d"
+      : letter?.type === "mathord" && letter.text === "\\partial"
+        ? "partial"
+        : null
+  if (prefix == null || fonts.some((f) => !DIFFERENTIAL_FONTS.has(f))) return null
+  const upright = fonts.includes("mathrm")
+  if (!ordered) return { prefix, upright, ordered: false, symbolic: false }
+  // d²x / ∂²φ — the power is derivative-order bookkeeping, not a dimension. An
+  // expression there (d^{n}x, d^{p+1}\xi) is an order no number gives. An index
+  // letter is not read as one: `d^{c}q` is the conjugate down-quark field
+  // beside a quark, no differential. Neither is a label or a conjugation mark
+  // (d^{\dagger}, d^{\rm out}), a braced numeral (d^{{2}}), a component digit
+  // (d^{0}), a prime or a sign; the d is then the letter it is.
+  const order = classifySup(core.sup)
+  if (typeof order === "object") return { prefix, upright, ordered: true, symbolic: false }
+  const supNodes = nodeListOf(core.sup).filter(isMeaningfulNode)
+  if (order === "expr" && supLabelOf(supNodes) == null && digitsOf(openGroups(supNodes)) == null) {
+    return { prefix, upright, ordered: true, symbolic: true }
   }
   return null
 }
 
+/**
+ * The bar a differential's operand is, or null: `d\bar{z}` and `d{\bar z}` are
+ * the differential of z̄, which has z's dimension, as a bar keeps it
+ * everywhere else. Only a bar, the accent the corpus sets under d, and only
+ * over a letter: `d\vec{S}` is an oriented element, another object than dS.
+ * A barred c or G is another symbol than the constant (analyzeAccentBody),
+ * one the dictionary does not have.
+ */
+function barredLetterOf(node: any): any {
+  let cur = peelStyles(node)
+  while (cur?.type === "ordgroup") {
+    const inner = cur.body.filter(isMeaningfulNode)
+    if (inner.length !== 1) return null
+    cur = peelStyles(inner[0])
+  }
+  if (cur?.type !== "accent" || cur.label !== "\\bar") return null
+  const letter = textOf(cur.base)
+  return letter != null && !RESTORED_CONSTANTS.has(letter) ? cur : null
+}
+
 function analyzeDifferential(
-  prefix: "d" | "partial",
+  prefix: DifferentialPrefix,
   prefixNode: any,
   operandNode: any,
   ctx: Ctx,
@@ -2698,61 +2799,57 @@ function analyzeDifferential(
   // slicing `\mathrm{d}` yields the bare `d` inside it and the upright head is
   // silently deleted — `-c^2\mathrm{d}t^2` shipped as `-c^{2}dt^2`.
   const wholeSrc = () => joinTex([wrappedTexOf(prefixNode, ctx), wrappedTexOf(operandNode, ctx)])
-  const prefixHasOrder = unwrap(prefixNode)?.type === "supsub"
+  const prefixHasOrder = prefix.ordered
+  const differential = prefix.prefix === "d"
 
   // A primed operand is the primed symbol, looked up under its own name. Read
   // as any other scripted operand, it was looked up as the unprimed symbol and
   // sliced without the shorthand primes it has no span for: `dx'_{\mu}` read
   // as dx_μ.
   if (opU?.type === "supsub" && opU.sup != null && classifySup(opU.sup) === "prime") {
-    const primed = readPrimed(opU, ctx, {
-      upright,
-      differential: prefix === "d",
-      scalePower: !prefixHasOrder,
-    })
+    const primed = readPrimed(opU, ctx, { upright, differential, scalePower: !prefixHasOrder })
     const prefixTex = wrappedTexOf(prefixNode, ctx)
     return { kind: "diff", dim: primed.dim, emit: () => joinTex([prefixTex, primed.tex]) }
   }
 
   let operandDim: Dim
   if (opU?.type === "supsub") {
-    const base = unwrap(opU.base)
+    const barred = barredLetterOf(opU.base)
+    const base = barred != null ? unwrap(barred.base) : unwrap(opU.base)
     const baseText = textOf(base)
     if (baseText == null) throw new Unsupported(`an unsupported differential “${wholeSrc()}”`)
-    uprightLetterGuard(baseText, upright || underUprightFont(opU.base))
+    uprightLetterGuard(baseText, upright || underUprightFont(barred != null ? barred.base : opU.base))
     const sup = opU.sup != null ? classifySup(opU.sup) : null
+    // A barred letter is read under d as the letter with its power (d\bar{s}^{2});
+    // a bar over an indexed or subscripted symbol is R3's scripted reading, which
+    // a differential does not make.
+    if (barred != null && (opU.sub != null || typeof sup !== "object" || sup == null)) {
+      throw new Unsupported(`an unsupported differential “${wholeSrc()}”`)
+    }
     if (opU.sub != null) {
       const display = srcOf(opU, ctx)
       angularIndexGuard(baseText, opU, display, ctx)
-      operandDim = resolveSymbol(baseText, display, ctx, {
-        sub: opU.sub,
-        differential: prefix === "d",
-      })
+      operandDim = resolveSymbol(baseText, display, ctx, { sub: opU.sub, differential })
       // dx_1^2 = (dx_1)² — the numeric power scales the differential too.
       if (typeof sup === "object" && sup != null && !prefixHasOrder) {
         operandDim = dimScale(operandDim, sup.p, sup.q)
       }
     } else if (sup === "index") {
-      operandDim = resolveSymbol(baseText, srcOf(opU, ctx), ctx, {
-        indices: true,
-        differential: prefix === "d",
-      })
+      operandDim = resolveSymbol(baseText, srcOf(opU, ctx), ctx, { indices: true, differential })
     } else if (typeof sup === "object" && sup != null) {
       // dt² = (dt)²; but under an ordered prefix (d²x) the power stays bookkeeping.
-      const baseDim = resolveSymbol(baseText, srcOf(base, ctx), ctx, {
-        differential: prefix === "d",
-      })
+      const baseDim = resolveSymbol(baseText, srcOf(base, ctx), ctx, { differential })
       operandDim = prefixHasOrder ? baseDim : dimScale(baseDim, sup.p, sup.q)
     } else {
       throw new Unsupported(`an unsupported differential “${wholeSrc()}”`)
     }
   } else {
-    const baseText = textOf(opU)
+    const barred = barredLetterOf(operandNode)
+    const letter = barred != null ? unwrap(barred.base) : opU
+    const baseText = textOf(letter)
     if (baseText != null) {
-      uprightLetterGuard(baseText, upright)
-      operandDim = resolveSymbol(baseText, srcOf(opU, ctx), ctx, {
-        differential: prefix === "d",
-      })
+      uprightLetterGuard(baseText, upright || (barred != null && underUprightFont(barred.base)))
+      operandDim = resolveSymbol(baseText, srcOf(letter, ctx), ctx, { differential })
     } else if (opU?.type === "leftright" || opU?.type === "__group") {
       // The group is emitted from its own analysis, so what was restored inside
       // it survives: sliced from the source, `ds = d(r - t)` came back verbatim
@@ -2767,6 +2864,28 @@ function analyzeDifferential(
 
   const text = wholeSrc()
   return { kind: "diff", dim: operandDim, emit: () => text }
+}
+
+/** One positive term built from differentials alone: dt, dx\,dy, d\tau^{2}, {d\lambda}. */
+function isPureDifferential(sum: SumInfo): boolean {
+  if (sum.multiTerm) return false
+  const t = sum.terms[0]
+  if (t.sign !== "" || t.slashIdx >= 0) return false
+  const live = t.factors.filter((f) => f.kind !== "glue")
+  return live.length > 0 && live.every((f) => f.kind === "diff" || f.isDifferential === true)
+}
+
+/**
+ * Whether a factor is a Leibniz operator or holds one anywhere inside it: in
+ * a group, a font, a root, a powered compound or a fraction. A constant set
+ * after an operator reads as what it acts on, and where nothing else follows
+ * `\frac{d}{dx}c` is the derivative of c, zero. That output has the right
+ * dimension, so no backstop can see it; only placement guards it (partsWith).
+ */
+function holdsOperator(f: Factor): boolean {
+  if (f.kind === "dop") return true
+  if (f.parts?.some(holdsOperator) === true) return true
+  return f.frac != null && [...f.frac.num, ...f.frac.den].some(holdsOperator)
 }
 
 function isFuncHead(n: any): boolean {
@@ -3310,8 +3429,24 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
     case "genfrac": {
       if (n.hasBarLine === false) throw new Unsupported("a binomial-style construct")
       const cmd = fracCmdOf(rawNode, n, ctx)
+      // The Leibniz operator d/dx, d²/dτ²: a lone d over nothing but
+      // differentials is an operator whose dimension is its denominator's,
+      // inverted, whatever it is applied to. Its denominator is read first, to
+      // tell it from a d over anything else, which is the symbol d.
+      const numerNodes = nodeListOf(n.numer).filter(isMeaningfulNode)
+      const lone = numerNodes.length === 1 ? differentialPrefixOf(numerNodes[0], ctx) : null
+      const leibnizDen =
+        lone != null && !lone.symbolic ? parseSum(nodeListOf(n.denom), ctx, { anchor: "internal" }) : null
+      if (leibnizDen != null && isPureDifferential(leibnizDen)) {
+        const numTex = wrappedTexOf(numerNodes[0], ctx)
+        const den = sumAsFactorList(leibnizDen)
+        // No `frac` field: a constant absorbed into the operator's numerator,
+        // `\frac{c\,d}{dt}`, would read as the derivative of c.
+        const emit = () => `${cmd}{${numTex}}{${joinFactors(den, ctx)}}`
+        return { kind: "dop", dim: dimSub(ZERO, leibnizDen.dim), emit }
+      }
       const numSum = parseSum(nodeListOf(n.numer), ctx, { anchor: "internal" })
-      const denSum = parseSum(nodeListOf(n.denom), ctx, { anchor: "internal" })
+      const denSum = leibnizDen ?? parseSum(nodeListOf(n.denom), ctx, { anchor: "internal" })
       const numFactors = sumAsFactorList(numSum)
       const denFactors = sumAsFactorList(denSum)
       const d = dimSub(numSum.dim, denSum.dim)
@@ -3404,12 +3539,22 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const label = n.label as string
       const base = unwrap(n.base)
       if (label === "\\dot" || label === "\\ddot") {
-        const baseText = textOf(base)
+        // The dot reads through a vector arrow and a bar, which keep the
+        // letter's dimension, down to one letter: \dot{\vec{x}} is a velocity.
+        // Not through a hat: \hat{x} is a unit vector, dimensionless, and read
+        // through it the dot would claim the dimension of x per time.
+        let letter = base
+        const chain: string[] = []
+        while (letter?.type === "accent" && (letter.label === "\\vec" || letter.label === "\\bar")) {
+          chain.push(letter.label)
+          letter = unwrap(letter.base)
+        }
+        const baseText = textOf(letter)
         if (baseText == null) {
           throw new Unsupported("a time derivative of a compound expression")
         }
-        const baseSrc = srcOf(base, ctx)
-        const display = `${label}{${baseSrc}}`
+        const baseSrc = srcOf(letter, ctx)
+        const display = `${label}{${chain.reduceRight((body, accent) => `${accent}{${body}}`, baseSrc)}}`
         return analyzeAccentBody(ctx, () => {
           // The dot's body is its one letter, read as the registry reads it:
           // a c or G there is read as the constant, as it is anywhere else.
@@ -3481,7 +3626,18 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       const openArgument = !inner.multiTerm && live[live.length - 1]?.openArgument === true
       const vanishes = () => sumVanishes(inner)
       const numeralEdge = (side: "first" | "last") => sumNumeralEdge(inner, side)
-      return { kind: "group", dim: inner.dim, emit, isBareSum, openArgument, vanishes, numeralEdge, ...partsOf(inner) }
+      const isDifferential = isPureDifferential(inner) || undefined
+      return {
+        kind: "group",
+        dim: inner.dim,
+        emit,
+        isBareSum,
+        openArgument,
+        isDifferential,
+        vanishes,
+        numeralEdge,
+        ...partsOf(inner),
+      }
     }
     case "atom":
       throw new Unsupported(`the symbol “${n.text}” in this position`)
@@ -5122,9 +5278,14 @@ function partsWith(factors: Factor[], gTex: string, cTex: string, ctx: Ctx): str
   let tailPos = factors.length
   for (let idx = factors.length - 1; idx >= 0; idx -= 1) {
     const kind = factors[idx].kind
-    if (kind === "diff" || kind === "glue") tailPos = idx
+    if (kind === "diff" || kind === "glue" || factors[idx].isDifferential === true) tailPos = idx
     else break
   }
+  // c goes before the first Leibniz operator, which it commutes with: after
+  // one it reads as the operand, and `\frac{1}{t} = \frac{d}{dx}` restored as
+  // `\frac{d}{dx}c` says the derivative of c (holdsOperator).
+  const firstOperator = factors.findIndex(holdsOperator)
+  if (firstOperator >= 0 && firstOperator < tailPos) tailPos = firstOperator
   // After an unparenthesized function argument, c would read as more of it:
   // `v = \tanh\phi` restored as `\tanh\phi c` says tanh(φc). It goes before the
   // function head instead (`c\tanh\phi`), and before every head whose
@@ -5144,10 +5305,15 @@ function partsWith(factors: Factor[], gTex: string, cTex: string, ctx: Ctx): str
 function emitTermWith(t: TermInfo, a12: number, b12: number, ctx: Ctx): string {
   if (a12 === 0 && b12 === 0) return emitTerm(t, ctx)
 
+  // Constants never go into a factor a Leibniz operator acts on (holdsOperator):
+  // a root or a fraction after one takes none, and the product rule sets them
+  // before the operator instead.
+  const afterOperator = (idx: number) => t.factors.slice(0, idx).some(holdsOperator)
+
   // Half-integer powers read best inside a square root when there is one.
   if ((a12 % D12 !== 0 || b12 % D12 !== 0) && t.slashIdx < 0) {
     const sqrtIdx = t.factors.findIndex((f) => f.kind === "sqrt" && f.sqrt?.bodyTerm)
-    if (sqrtIdx >= 0 && t.factors.filter((f) => f.kind === "sqrt").length === 1) {
+    if (sqrtIdx >= 0 && t.factors.filter((f) => f.kind === "sqrt").length === 1 && !afterOperator(sqrtIdx)) {
       const bodyTerm = t.factors[sqrtIdx].sqrt!.bodyTerm!
       // The body's sign is the sum's to emit, and rebuilt from the term alone it
       // went missing: `x = \sqrt{-Mr}` came back as `\sqrt{\frac{GMr}{c^{2}}}`.
@@ -5181,7 +5347,7 @@ function emitTermWith(t: TermInfo, a12: number, b12: number, ctx: Ctx): string {
 
   // A term led by a fraction absorbs the constants into that fraction.
   const fracIdx = t.factors.findIndex((f) => f.kind === "frac")
-  if (fracIdx >= 0 && t.factors[fracIdx].frac) {
+  if (fracIdx >= 0 && t.factors[fracIdx].frac && !afterOperator(fracIdx)) {
     const frac = t.factors[fracIdx].frac!
     // Drop a now-redundant bare 1 numerator: \frac{1·c⁴}{…} → \frac{c⁴}{…}.
     const bareOne =
@@ -5236,8 +5402,12 @@ function mergeConstants(
   let a = a12
   let b = b12
   const rest: Factor[] = []
+  // A constant written after a Leibniz operator is what it acts on, and folded
+  // into the power set before the operator it would stop being so.
+  const firstOperator = factors.findIndex(holdsOperator)
   factors.forEach((f, k) => {
-    if (f.constant == null || separatesNumerals(rest, factors.slice(k + 1))) {
+    const acted = firstOperator >= 0 && k > firstOperator
+    if (f.constant == null || acted || separatesNumerals(rest, factors.slice(k + 1))) {
       rest.push(f)
       return
     }
