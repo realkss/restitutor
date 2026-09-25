@@ -241,6 +241,20 @@ describe("the decline ledger", () => {
       assert.strictEqual(outcome(tex).class, "unsupported", tex)
     assert.strictEqual(outcome("x = \\sum_i r").class, "unchanged")
   })
+  test("derivative marks: every reason the split gives is a construct the reader does not handle", () => {
+    // Step 18, under a hub that declares both marks (GR declares none).
+    const marks = { ...GR, derivativeMarks: { ";": "\\nabla", ",": "\\partial" } }
+    for (const tex of [
+      "g_{ab,r} = 0",
+      "T_{ab;} = 0",
+      "T_{ab;2} = 0",
+      "T^{ab;c} = 0",
+      "x = x'_{,i}",
+    ])
+      assert.strictEqual(classifyOutcome(translateTex(tex, katex, marks, SI)).class, "unsupported", tex)
+    for (const tex of ["\\Phi_{,ii} = 4\\pi\\rho", "T^{ab}{}_{;b} = 0"]) assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    assert.strictEqual(outcome("V_{m,n} = 0").class, "unknown-symbol")
+  })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)
     // maps to a class; a reworded reason would surface as "other" here.

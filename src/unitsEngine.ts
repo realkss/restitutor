@@ -65,7 +65,19 @@ class ReassemblyFault extends Unsupported {}
 // Hub registry
 // ---------------------------------------------------------------------------
 
-export type RegEntry = { dim: Dim; gloss: string; si: string }
+export type RegEntry = {
+  dim: Dim
+  gloss: string
+  si: string
+  /**
+   * On an `indexed` entry: a comma in the symbol's index list separates labels
+   * and is never a derivative mark (derivativeMarks). It is the reading of a
+   * tensor whose derivative vanishes, which no author writes: δ_{i,j} is the
+   * Kronecker delta's i, j entry, since ∂δ ≡ 0. The flag is the dictionary's to
+   * set, never inferred from a symbol's name.
+   */
+  commaSeparates?: boolean
+}
 
 export type HubRegistry = {
   id: string
@@ -83,6 +95,15 @@ export type HubRegistry = {
   indexed: Record<string, RegEntry>
   /** Coordinate readings that override `bare` under a `d` prefix (dz is a length even though bare z is a redshift). */
   differential: Record<string, RegEntry>
+  /**
+   * Index-list punctuation the hub reads as a derivative, each mark mapped to
+   * the `indexed` entry whose dimension one index after it adds: with
+   * `{";": "\\nabla"}`, T_{ab;c} is ∇_c T_{ab}. A semicolon in an index list
+   * has no other reading in physics notation; a comma does (V_{m,n}, the
+   * matrix entry A_{i,j}), so which marks a hub reads is its conventions
+   * page's call, stated here. Absent, no mark is read as a derivative.
+   */
+  derivativeMarks?: Record<string, string>
 }
 
 const NUM: RegEntry = { dim: ZERO, gloss: "pure number", si: "1" }
@@ -1394,7 +1415,7 @@ function isIndexToken(node: any, coordinates = false): boolean {
   const u = unwrap(node)
   if (!u) return false
   if (u.type === "atom" && (u.family === "open" || u.family === "close" || u.family === "punct")) {
-    return u.family !== "punct" // commas in indices (derivative notation) are handled as unsupported elsewhere
+    return u.family !== "punct" // index-list punctuation is read by readIndexMarks, never as an index
   }
   if (SKIP_TYPES.has(u.type)) return true
   if (isPlain(node)) {
@@ -1480,22 +1501,179 @@ function allRiderTokens(nodes: any[]): boolean {
  * `coordinates` admits the named coordinate labels (CEO ruling 2026-08-17). It is
  * passed only from subscript position; the superscript caller is also the power
  * caller and must keep reading `\phi` in `e^{i\phi}` as part of an exponent.
+ *
+ * A list holding punctuation is no index list: its marks are derivative marks
+ * or separators between labels, which readIndexMarks tells apart where a
+ * script can carry them.
  */
 function allIndexTokens(nodes: any[], coordinates = false): boolean {
-  const meaningful = nodes.filter((n) => {
+  const meaningful = scriptTokensOf(nodes)
+  if (meaningful.length === 0 || meaningful.some(isPunct)) return false
+  return meaningful.every((n) => isIndexToken(n, coordinates)) && meaningful.some(isGenuineIndex)
+}
+
+/** A script's tokens, spacing removed. */
+function scriptTokensOf(nodes: any[]): any[] {
+  return nodes.filter((n) => {
     const u = unwrap(n)
     return u && !SKIP_TYPES.has(u.type)
   })
-  if (meaningful.length === 0) return false
-  if (
-    meaningful.some((n) => {
-      const u = unwrap(n)
-      return u.type === "atom" && u.family === "punct"
-    })
-  ) {
-    throw new Unsupported("comma/semicolon derivative indices, which are not supported yet")
+}
+
+function isPunct(n: any): boolean {
+  const u = unwrap(n)
+  return u?.type === "atom" && u.family === "punct"
+}
+
+/**
+ * Comma and semicolon derivative indices (R7). In an index list a semicolon
+ * sets off covariant-derivative indices, T_{ab;c} ≡ ∇_c T_{ab}, and a comma
+ * coordinate-derivative ones, \Phi_{,i} ≡ ∂_iΦ; a comma also separates labels
+ * (V_{m,n}, δ_{m,m₀}, the matrix entry A_{i,j}). Which marks are derivatives
+ * is the hub's declaration (HubRegistry.derivativeMarks) and never assumed.
+ * Read as one, the symbol is read with the indices before the first mark, its
+ * head, and each index after a mark adds the dimension of the operator the
+ * mark stands for: dim(T_{ab;c}) = dim(T_{ab}) + dim(∇), all of it lookup.
+ *
+ * The grammar. Brackets are transparent, since an antisymmetrizer straddles
+ * the mark (R_{ab[cd;e]}). The tokens before the first mark are the head:
+ * index tokens, a coordinate label among them where a subscript admits one,
+ * rider tokens on a rider. Every mark is followed by at least one derivative
+ * index, and each is an abstract or component index token — never a named
+ * coordinate, an ellipsis or a nested group.
+ *
+ * The outcomes, in this order:
+ * - Every mark declared and a named coordinate after one (`g_{ab,r}`): that
+ *   declines by name. ∂_θ is no length derivative, and t and r are left
+ *   undecided on purpose.
+ * - The grammar holds and every mark is declared: the split. A digit 2 or 3
+ *   after a mark declines: in a spherical chart x² and x³ are θ and φ, where
+ *   a derivative does not have the registry's length dimension, which is the
+ *   angular guard's reason.
+ * - A semicolon otherwise: declared, a covariant-derivative list the grammar
+ *   cannot read; undeclared, a derivative the hub does not read.
+ * - The grammar holds with an undeclared mark: a derivative the hub does not
+ *   read. Before this reading, that reason was also given to label lists.
+ * - Anything else is a list of labels: the commas separate them, and the
+ *   subscript is part of the symbol's name, read exact-only (resolveSymbol).
+ *   `V_{m,n}` is the unknown V_{m,n}.
+ *
+ * On a symbol whose indexed entry says a comma separates (commaSeparates), a
+ * comma after head indices is always a separator: δ_{i,j} is an entry of the
+ * Kronecker delta. With no head the symbol differentiated is the bare one,
+ * which that entry does not describe (`\delta_{,i}`, a density contrast's
+ * gradient), and the comma is read as the hub reads it.
+ */
+type MarkSplit = { head: any[]; marks: string[] }
+
+type MarkGrammar = MarkSplit & {
+  /** The derivative indices, one per mark in `marks`. */
+  indices: any[]
+  /** Every mark followed by derivative indices, each an index token. */
+  grammar: boolean
+  headOk: boolean
+  /** A named coordinate standing as a derivative index, as written. */
+  coordinate: string | null
+  punct: string[]
+}
+
+function markGrammarOf(nodes: any[], headToken: (n: any) => boolean): MarkGrammar | null {
+  const tokens = scriptTokensOf(nodes)
+  if (!tokens.some(isPunct)) return null
+  const head: any[] = []
+  const marks: string[] = []
+  const indices: any[] = []
+  let mark: string | null = null
+  let sinceMark = 0
+  let grammar = true
+  let coordinate: string | null = null
+  for (const n of tokens) {
+    const u = unwrap(n)
+    if (isPunct(n)) {
+      if (mark != null && sinceMark === 0) grammar = false
+      mark = u.text
+      sinceMark = 0
+      continue
+    }
+    if (u.type === "atom" && (u.family === "open" || u.family === "close")) continue
+    if (mark == null) {
+      head.push(n)
+      continue
+    }
+    const text = textOf(n)
+    if (coordinate == null && text != null && COORDINATE_LABELS.has(text)) coordinate = text
+    if (!isIndexToken(n) || !isGenuineIndex(n) || u.type === "ordgroup") grammar = false
+    marks.push(mark)
+    indices.push(n)
+    sinceMark += 1
   }
-  return meaningful.every((n) => isIndexToken(n, coordinates)) && meaningful.some(isGenuineIndex)
+  if (mark == null || sinceMark === 0) grammar = false
+  const punct = tokens.filter(isPunct).map((n) => unwrap(n).text as string)
+  return { head, marks, indices, grammar, headOk: head.every(headToken), coordinate, punct }
+}
+
+const UNDECLARED_MARKS_REASON = "comma/semicolon derivative indices, which are not supported yet"
+
+/**
+ * A script's index-list punctuation read (see MarkSplit): null when there is
+ * none, "labels" for separators, else the derivative split. Every other
+ * outcome declines here.
+ */
+function readIndexMarks(
+  nodes: any[],
+  ctx: Ctx,
+  opts: { rider: boolean; commaSeparates: boolean },
+): MarkSplit | "labels" | null {
+  const headToken = opts.rider
+    ? (n: any) => isIndexToken(n) || RIDER_LABELS.has(textOf(n) ?? "")
+    : (n: any) => isIndexToken(n, true)
+  const read = markGrammarOf(nodes, headToken)
+  if (read == null) return null
+  const declared = ctx.reg.derivativeMarks ?? {}
+  const allDeclared = read.punct.every((p) => declared[p] != null)
+  const separates = opts.commaSeparates && read.head.length > 0 && read.punct.includes(",")
+  if (!separates && read.headOk && allDeclared) {
+    if (read.coordinate != null) {
+      throw new Unsupported(`a derivative index along the named coordinate “${read.coordinate}”, which is not supported yet`)
+    }
+    if (read.grammar) {
+      const angular = read.indices.map(textOf).find((t) => t === "2" || t === "3")
+      if (angular != null) {
+        throw new Unsupported(
+          `a derivative index “${angular}”, which is θ or φ in a spherical chart — a derivative along it does not share the registry's length dimension`,
+        )
+      }
+      return { head: read.head, marks: read.marks }
+    }
+  }
+  if (read.punct.includes(";")) {
+    throw new Unsupported(allDeclared ? "a covariant-derivative index list the engine could not read" : UNDECLARED_MARKS_REASON)
+  }
+  if (read.grammar && read.headOk && !separates) throw new Unsupported(UNDECLARED_MARKS_REASON)
+  return "labels"
+}
+
+/**
+ * Derivative indices in a superscript (`\Phi^{,i}`, a rider's `{}^{;a}`): an
+ * index list the hub's marks read as a derivative, raised. Its dimension is
+ * the split's, but nothing reads a raised derivative index, and read as a
+ * power or a label it was declined in words that did not say what it is. A
+ * superscript whose marks the hub does not declare keeps those words.
+ */
+function superscriptMarksGuard(sup: any, ctx: Ctx): void {
+  const read = markGrammarOf(nodeListOf(sup), (n) => isIndexToken(n))
+  const declared = ctx.reg.derivativeMarks ?? {}
+  if (read == null || !read.grammar || !read.headOk || !read.punct.every((p) => declared[p] != null)) return
+  throw new Unsupported("derivative indices in a superscript, which are not supported yet")
+}
+
+/** The dimension a split's derivative indices add: each mark's operator, looked up as an indexed symbol. */
+function derivativeDim(split: MarkSplit, ctx: Ctx): Dim {
+  let d = ZERO
+  for (const mark of split.marks) {
+    d = dimAdd(d, resolveSymbol(ctx.reg.derivativeMarks![mark], `{}_{${mark}}`, ctx, { indices: true }))
+  }
+  return d
 }
 
 function isSignToken(n: any): boolean {
@@ -1560,12 +1738,7 @@ function classifySupNodes(nodes: any[]): { p: number; q: number } | "index" | "s
   // component shape is an index, and a braced power is not read.
   const braced = digitsOf(openGroups(rest))
   if (braced != null) return isComponent(braced) ? "index" : "expr"
-  try {
-    if (allIndexTokens(nodes)) return "index"
-  } catch {
-    // fall through to "expr"
-  }
-  return "expr"
+  return allIndexTokens(nodes) ? "index" : "expr"
 }
 
 type PrimeSplit = { count: number; rest: any[]; restRaw: any[] }
@@ -1653,8 +1826,14 @@ function plainNumeralValue(f: Factor): number | null {
   return f.kind === "num" && /^[0-9.]+$/.test(tex) ? Number.parseFloat(tex) : null
 }
 
+/**
+ * A subscript's dictionary key: its spelling with braces and spaces removed.
+ * A derivative split's head (headSubscriptOf) is not one span of the source,
+ * whose slice would take in a bracket the derivative straddles, and carries
+ * the key its tokens spell.
+ */
 function subKeyText(sub: any, ctx: Ctx): string {
-  return srcOf(sub, ctx).replace(/[{}\s]/g, "")
+  return (typeof sub.headKey === "string" ? sub.headKey : srcOf(sub, ctx)).replace(/[{}\s]/g, "")
 }
 
 /**
@@ -1767,7 +1946,13 @@ function resolveSymbol(
   baseText: string,
   displayTex: string,
   ctx: Ctx,
-  opts: { sub?: any; indices?: boolean; differential?: boolean } = {},
+  opts: {
+    sub?: any
+    indices?: boolean
+    differential?: boolean
+    /** What a miss lists as unknown, where the lookup reads less than was written (`A_{i,j}`, not its head `A_{i}`). */
+    missTex?: string
+  } = {},
 ): Dim {
   const reg = ctx.reg
   const frame = dummyFrameOf(baseText, ctx)
@@ -1782,14 +1967,20 @@ function resolveSymbol(
     key = exactKey
     // Under a sum over s, r_s is the s-th r, not the dictionary's fixed r_s.
     // After that sum's term, whether the sum reaches it is not written.
-    const frames = ctx.dummies.filter((f) => dummyFrameOf(f.tok, ctx) === f && containsLeaf(opts.sub, f.tok))
-    const retired = frames.find((f) => !f.live)
-    if (retired != null) throw new Unsupported(usedAfterReason(retired))
+    const frames = summationFramesIn(opts.sub, ctx)
     const index = entry != null ? frames[0] : undefined
     if (index != null) {
       throw new Unsupported(
         `“${displayTex}” under a sum over ${index.tok} — the dictionary's ${exactKey} is a fixed symbol, not a term of the sum`,
       )
+    }
+    // Derivative marks are read where the symbol's scripts are (analyzeScriptedSymbol);
+    // anywhere else a split is not supported, and separators leave the
+    // subscript a name, which no index reading below reaches.
+    if (!entry) {
+      const commaSeparates = reg.indexed[baseText]?.commaSeparates === true
+      const marks = readIndexMarks(nodeListOf(opts.sub), ctx, { rider: false, commaSeparates })
+      if (marks != null && marks !== "labels") throw new Unsupported(UNDECLARED_MARKS_REASON)
     }
     if (!entry && allIndexTokens(nodeListOf(opts.sub), true)) {
       entry = reg.indexed[baseText]
@@ -1817,7 +2008,7 @@ function resolveSymbol(
   // declines on its unknown symbols.
   if (!entry) {
     ctx.unknownHits += 1
-    ctx.unknown.set(key, displayTex)
+    ctx.unknown.set(key, opts.missTex ?? displayTex)
     return ZERO
   }
   // Key the legend by what the reader would see, so the same symbol reached
@@ -3288,11 +3479,7 @@ function isSetName(nodes: any[]): boolean {
       if (script == null) return true
       const list = nodeListOf(script)
       if (digitsOf(list.filter(isMeaningfulNode)) != null) return true
-      try {
-        return allIndexTokens(list, true)
-      } catch {
-        return false
-      }
+      return allIndexTokens(list, true)
     }
     if (!listed(cur.sub) || !listed(cur.sup)) return false
     cur = cur.base
@@ -3415,6 +3602,14 @@ function containsLeaf(node: any, tok: string, rebound = false): boolean {
 /** A retired index, met in a term after its sum's own. */
 function usedAfterReason(frame: DummyFrame): string {
   return `the summation index “${frame.tok}” used after its sum's term — whether the sum reaches it is not written`
+}
+
+/** The summation frames whose index a subscript holds; a retired one declines (usedAfterReason). */
+function summationFramesIn(sub: any, ctx: Ctx): DummyFrame[] {
+  const frames = ctx.dummies.filter((f) => dummyFrameOf(f.tok, ctx) === f && containsLeaf(sub, f.tok))
+  const retired = frames.find((f) => !f.live)
+  if (retired != null) throw new Unsupported(usedAfterReason(retired))
+  return frames
 }
 
 /**
@@ -4847,9 +5042,13 @@ function barredTensorTex(body: any[], ctx: Ctx): string | null {
   const run = body.filter(isMeaningfulNode)
   const scripted = indexedRunOf(run)
   if (scripted == null) return null
+  // A derivative index counts as the tensor's own (|T_{ab;c}| is the modulus
+  // or the determinant of ∇T), and so does an index a separating comma sets
+  // off (|δ_{i,j}|): the count asks only whether a matrix could stand between
+  // the bars.
   const indexCount = (script: any) => {
     if (script == null) return 0
-    const tokens = nodeListOf(script).filter(isMeaningfulNode)
+    const tokens = nodeListOf(script).filter((x) => isMeaningfulNode(x) && !isPunct(x))
     return allIndexTokens(tokens, true) ? tokens.length : 0
   }
   const count = scripted.reduce((sum, s) => sum + indexCount(s.sub) + indexCount(s.sup), 0)
@@ -5105,20 +5304,13 @@ const ANGULAR_LABELS = new Set(["\\theta", "\\phi", "\\varphi"])
 function angularIndexGuard(baseText: string, n: any, displayTex: string, ctx: Ctx): void {
   if (n.sub == null || n.sup == null) return
   if (ctx.reg.exact[`${baseText}_${subKeyText(n.sub, ctx)}`] || !ctx.reg.indexed[baseText]) return
-  const indexList = (nodes: any[]): boolean => {
-    try {
-      return allIndexTokens(nodes, true)
-    } catch {
-      return false
-    }
-  }
   const subNodes = nodeListOf(n.sub)
   const supNodes = nodeListOf(n.sup)
-  if (!indexList(subNodes)) return
+  if (!allIndexTokens(subNodes, true)) return
   const sup = classifySup(n.sup)
   if (typeof sup === "object") {
     if (baseText === "\\partial" || baseText === "\\nabla") return
-  } else if (sup !== "index" && !indexList(supNodes)) return
+  } else if (sup !== "index" && !allIndexTokens(supNodes, true)) return
   if (indexLettersOf([...subNodes, ...supNodes]).some((x) => ANGULAR_LABELS.has(x))) {
     throw new Unsupported(
       `an angular coordinate index on “${displayTex}” — components along θ and φ do not share the registry's length dimension`,
@@ -5166,11 +5358,7 @@ function isDigitPower(supNode: any, sup: ReturnType<typeof classifySup> | null):
 function componentLookup(baseText: string, sub: any, ctx: Ctx): boolean {
   if (baseText === "\\partial" || baseText === "\\nabla" || !ctx.reg.indexed[baseText]) return false
   if (ctx.reg.exact[`${baseText}_${subKeyText(sub, ctx)}`]) return false
-  try {
-    return allIndexTokens(nodeListOf(sub), true)
-  } catch {
-    return false
-  }
+  return allIndexTokens(nodeListOf(sub), true)
 }
 
 /**
@@ -5513,13 +5701,7 @@ function labelKeyOf(core: any[]): string | null {
   }
   // `h^{(2)}` and `\theta^{(\nu)}` hold an index list in parentheses, a frame
   // component as often as an order, and keep the index reading.
-  let indexList = false
-  try {
-    indexList = allIndexTokens(middle)
-  } catch {
-    // a comma inside: no index list
-  }
-  if (indexList) return null
+  if (allIndexTokens(middle)) return null
   const chars = middle.map((x) => {
     const u = unwrap(x)
     if (u?.type === "atom" && (u.text === "*" || u.text === "\\ast")) return "*"
@@ -5708,15 +5890,23 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
     analyzeFactor(n.base, ctx)
   }
 
+  if (sup === "expr") superscriptMarksGuard(n.sup, ctx)
+
   // {}^{d} / {}_{\mu\nu} index riders (as in R_{abc}{}^{d} or \Gamma^{\rho}{}_{\mu\nu}).
+  // A rider's derivative indices (`T^{ab}{}_{;b}`) differentiate the symbol it
+  // continues, and the rider carries their dimension: the constants a term
+  // takes then go around the whole run, never between it and its rider.
   if (base == null || (base.type === "ordgroup" && base.body.length === 0)) {
     // A sign on nothing labels no symbol.
     if (sup === "signLabel") throw new Unsupported(SIGN_LABEL_REASON)
     const supIsIndex = n.sup == null || sup === "index" || allRiderTokens(nodeListOf(n.sup))
-    const subIsIndex = n.sub == null || allRiderTokens(nodeListOf(n.sub))
+    const marks = n.sub != null ? readIndexMarks(nodeListOf(n.sub), ctx, { rider: true, commaSeparates: false }) : null
+    const split = marks != null && marks !== "labels" ? marks : null
+    const subIsIndex = n.sub == null || split != null || (marks == null && allRiderTokens(nodeListOf(n.sub)))
     if ((n.sup != null || n.sub != null) && supIsIndex && subIsIndex) {
       const tex = supsubTex("{}", n, ctx)
-      return { kind: "rider", dim: ZERO, emit: () => tex }
+      const d = split != null ? derivativeDim(split, ctx) : ZERO
+      return { kind: "rider", dim: d, emit: () => tex }
     }
     throw new Unsupported("a floating super/subscript")
   }
@@ -5826,8 +6016,17 @@ function analyzeScriptedSymbol(
   const legendTex = order > 0 ? supsubTex(symbol.underived, n, ctx) : wholeTex
   const derived = (d: Dim) => (order > 0 ? dimSub(d, dim(0, 0, order)) : d)
 
-  // Symbol with a subscript: identity, indices, or unknown.
+  // Symbol with a subscript: identity, indices, derivative indices, or unknown.
   if (n.sub != null) {
+    const split = ctx.reg.exact[`${name}_${subKeyText(n.sub, ctx)}`]
+      ? null
+      : readIndexMarks(nodeListOf(n.sub), ctx, {
+          rider: false,
+          commaSeparates: ctx.reg.indexed[name]?.commaSeparates === true,
+        })
+    if (split != null && split !== "labels") {
+      return analyzeDifferentiatedSymbol(n, symbol, name, reading, order, wholeTex, split, ctx)
+    }
     angularIndexGuard(name, n, wholeTex, ctx)
     componentDigitGuard(name, n, reading, wholeTex, ctx)
     const d = derived(resolveSymbol(name, legendTex, ctx, { sub: n.sub }))
@@ -5890,6 +6089,80 @@ function analyzeScriptedSymbol(
   const expSum = parseSum(nodeListOf(n.sup), ctx, { anchor: "forced", target: DIMENSIONLESS })
   const emit = () => `${baseTex}^{${expSum.emit()}}`
   return { kind: "sym", dim: ZERO, emit }
+}
+
+/**
+ * A symbol differentiated by the derivative indices in its subscript
+ * (readIndexMarks): `T_{ab;c}`, `\Phi_{,ii}`, `\Gamma^{\mu}_{\alpha\gamma,\beta}`.
+ * The symbol is read as it would be written without the derivative: with its
+ * head as an identity and then as indices, bare when there is no head, and
+ * its superscript an index list, a label or a power as on any symbol. Each
+ * derivative index then adds its operator's dimension. The guards on an
+ * indexed reading judge the head's: the angular guard, the component digit,
+ * and a dot over an indexed symbol. A numeric power raises the derivative, as
+ * it raises any subscripted symbol whole (`\Phi_{,i}^{2}` is (∂_iΦ)²). With no
+ * head, c and G would be the constants differentiated, which no reading
+ * makes of them, and decline as marked constants.
+ *
+ * The legend names the symbol differentiated (Φ, g_{00}) and each operator
+ * (`{}_{;}`, the covariant derivative). A miss lists the symbol as written:
+ * its head alone (`A_{i}` for `A_{i,j}`) is nowhere in the source. The
+ * emission is the scripts as written.
+ */
+function analyzeDifferentiatedSymbol(
+  n: any,
+  symbol: SymbolBase,
+  name: string,
+  reading: ReturnType<typeof classifySup> | null,
+  order: number,
+  wholeTex: string,
+  split: MarkSplit,
+  ctx: Ctx,
+): Factor {
+  summationFramesIn(n.sub, ctx)
+  const headSub = headSubscriptOf(split, ctx)
+  if (headSub == null && (name === "c" || name === "G")) throw new Unsupported(`a label or mark on the constant “${name}”`)
+  const head = { base: n.base, sub: headSub, sup: n.sup }
+  // A power is no part of the symbol differentiated, and its row does not show it.
+  const power = reading != null && typeof reading === "object"
+  const subTex = headSub != null ? `_{${headSub.headKey}}` : ""
+  const supTex = n.sup != null && !power ? scriptTex("^", n.sup, ctx) : ""
+  const legendTex = (order > 0 ? symbol.underived : symbol.tex) + (supWrittenFirst(n, ctx) ? supTex + subTex : subTex + supTex)
+  if (order > 0 && readsIndexed(name, head, reading, ctx)) throw new Unsupported(dotOnIndexedReason(wholeTex))
+  let d: Dim
+  if (headSub != null) {
+    angularIndexGuard(name, head, wholeTex, ctx)
+    componentDigitGuard(name, head, reading, wholeTex, ctx)
+    d = resolveSymbol(name, legendTex, ctx, { sub: headSub, missTex: wholeTex })
+  } else {
+    d = resolveSymbol(name, legendTex, ctx, { indices: reading === "index", missTex: wholeTex })
+  }
+  if (order > 0) d = dimSub(d, dim(0, 0, order))
+  d = dimAdd(d, derivativeDim(split, ctx))
+  if (reading == null || reading === "index") return { kind: "sym", dim: d, emit: () => wholeTex }
+  if (typeof reading === "object") return { kind: "sym", dim: dimScale(d, reading.p, reading.q), emit: () => wholeTex }
+  throw new Unsupported(`an exponent on “${wholeTex}” that could not be read`)
+}
+
+/**
+ * A derivative split's head as a subscript of its own, keyed by the tokens it
+ * holds (subKeyText), or null when no index stands before the first mark.
+ */
+function headSubscriptOf(split: MarkSplit, ctx: Ctx): { type: "ordgroup"; body: any[]; headKey: string } | null {
+  if (split.head.length === 0) return null
+  return { type: "ordgroup", body: split.head, headKey: joinTex(split.head.map((x) => indexTokenTex(x, ctx))) }
+}
+
+/**
+ * One index token as written. A decorated token's shorthand primes (`\mu'`)
+ * have no span, and a slice of the token drops them; they come back as
+ * apostrophes, as a primed symbol's do.
+ */
+function indexTokenTex(node: any, ctx: Ctx): string {
+  const u = unwrap(node)
+  if (u?.type !== "supsub") return srcOf(node, ctx)
+  const primes = u.sup != null ? splitPrimes(u.sup) : null
+  return srcOf(u.base, ctx) + scriptsTex(u, ctx, primes != null ? primedSupTex(u.sup, primes, ctx) : undefined)
 }
 
 /**
@@ -6153,7 +6426,14 @@ function analyzeScriptedCompound(
   if (base != null) {
     bracedDigitGuard(n, base, ctx)
     if (isEvaluationBar(base)) throw new Unsupported(evaluationBarReason(n))
-    const subIsIndex = n.sub == null || allIndexTokens(nodeListOf(n.sub), true)
+    // Derivative indices on a braced tensor or a group differentiate the whole
+    // (`{T^{ab}}_{;b}`, `\left(T^{ab} - \rho u^{a}u^{b}\right)_{;b}`), whose inner
+    // terms restore against its own anchor. A power beside them is read on
+    // neither side: (X^{2})_{;b} and (X_{;b})^{2} differ by X.
+    const marks = n.sub != null ? readIndexMarks(nodeListOf(n.sub), ctx, { rider: false, commaSeparates: false }) : null
+    const split = marks != null && marks !== "labels" ? marks : null
+    if (split != null && n.sup != null) throw new Unsupported("a super/subscript construct the engine could not read")
+    const subIsIndex = n.sub == null || split != null || allIndexTokens(nodeListOf(n.sub), true)
     const bracket = isBracketGroup(base)
     const kept = n.sup != null && bracket && preservesGroup(n.sup)
     if (!kept && label != null && label !== "mixed") {
@@ -6195,7 +6475,7 @@ function analyzeScriptedCompound(
             ? ZERO
             : inner.dim
       const scripts = scriptsTex(n, ctx)
-      return scripted(inner, scaled, () => scripts)
+      return scripted(inner, split != null ? dimAdd(scaled, derivativeDim(split, ctx)) : scaled, () => scripts)
     }
     if (bracket && n.sup == null) {
       if (containsDeep(n.sub, (x) => relTextOf(x) != null)) {

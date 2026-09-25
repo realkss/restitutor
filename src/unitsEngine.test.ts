@@ -5426,3 +5426,206 @@ describe("sums (step 17)", () => {
     declines("x = \\sin\\theta\\sum_i r", "a function whose argument runs into “\\sum” — where the argument ends is not written")
   })
 })
+
+describe("derivative marks: comma and semicolon derivative indices (step 18)", () => {
+  // The GR hub declares no mark (an owner call): every test that reads a split
+  // does it under a test registry.
+  const semicolon: HubRegistry = { ...reg, derivativeMarks: { ";": "\\nabla" } }
+  const comma: HubRegistry = { ...reg, derivativeMarks: { ",": "\\partial" } }
+  const both: HubRegistry = { ...reg, derivativeMarks: { ";": "\\nabla", ",": "\\partial" } }
+  const UNDECLARED = "comma/semicolon derivative indices, which are not supported yet"
+  const COVARIANT = "a covariant-derivative index list the engine could not read"
+  const RAISED = "derivative indices in a superscript, which are not supported yet"
+  const NAMED = (x: string) => `a derivative index along the named coordinate “${x}”, which is not supported yet`
+  const DIGIT = (x: string) =>
+    `a derivative index “${x}”, which is θ or φ in a spherical chart — a derivative along it does not share the registry's length dimension`
+  const translated = (tex: string, registry: HubRegistry, target: TargetSpec = SI) => {
+    const result = translateTex(tex, katex, registry, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = result as Extract<TranslationResult, { kind: "translated" }>
+    rendersInKatex(out.restoredTex)
+    return out
+  }
+  const restoresTo = (tex: string, si: string, registry: HubRegistry = both) => {
+    const out = translated(tex, registry)
+    assert.strictEqual(out.restoredTex, si, tex)
+    assert.strictEqual(translated(tex, registry, GEO).changed, false, tex)
+    return out
+  }
+  const unchanged = (tex: string, registry: HubRegistry = both) => {
+    for (const target of [SI, GEO]) assert.strictEqual(translated(tex, registry, target).changed, false, tex)
+  }
+  const declines = (tex: string, reason: string, registry: HubRegistry = both) => {
+    for (const target of [SI, GEO]) {
+      const result = translateTex(tex, katex, registry, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [reason], tex)
+        assert.deepStrictEqual(result.unknown, [], tex)
+      }
+    }
+  }
+  const unknownOnly = (tex: string, unknown: string[], registry: HubRegistry = both) => {
+    const result = translateTex(tex, katex, registry, SI)
+    assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+    if (result.kind === "declined") {
+      assert.deepStrictEqual(result.reasons, [], tex)
+      assert.deepStrictEqual(result.unknown, unknown, tex)
+    }
+  }
+  const legendOf = (out: { legend: { tex: string; gloss: string; unit: string }[] }) =>
+    out.legend.map((e) => [e.tex, e.gloss, e.unit])
+
+  test("index-list punctuation is an atom of the punct family, inside the script", () => {
+    const [n] = katex.__parse("T_{ab;c,d}")
+    const marks = n.sub.body.filter((x: any) => x.type === "atom" && x.family === "punct").map((x: any) => x.text)
+    assert.deepStrictEqual(marks, [";", ","])
+  })
+
+  test("with no mark declared, a derivative declines as before and a label list is an unknown name", () => {
+    for (const tex of [
+      "\\Phi_{,ii} = 4\\pi\\rho",
+      "T^{ab}{}_{;b} = 0",
+      "{T^{ab}}_{;b} = 0",
+      "\\left(R^{ab} - \\frac{1}{2}g^{ab}R\\right)_{;b} = 0",
+      "A_{i,j} = A_{j,i}",
+      "\\delta_{i,j} = 0",
+    ])
+      declines(tex, UNDECLARED, reg)
+    // Commas that fail the derivative grammar separate labels, and the whole
+    // subscript is the symbol's name: never "derivative indices".
+    unknownOnly("V_{m,n} = 0", ["V_{m,n}"], reg)
+    unknownOnly("x = N_{e,z}", ["N_{e,z}"], reg)
+    // A raised list keeps the words it had.
+    declines("T^{ab;c} = 0", "the superscript “ab;c” on “T”, which the engine cannot read as a power or an index", reg)
+    // A label list on a group is a subscript that may be an evaluation point.
+    declines(
+      "\\langle r\\rangle_{V,t} = M",
+      "a subscript “V,t” on a group, which may be an evaluation point and is not supported yet",
+      reg,
+    )
+  })
+
+  test("a declared mark reads the head's symbol plus one operator per derivative index", () => {
+    const poisson = restoresTo("\\Phi_{,ii} = 4\\pi\\rho", "\\Phi_{,ii} = 4\\pi G\\rho")
+    assert.strictEqual(poisson.targetUnitTex, "\\mathrm{s}^{-2}")
+    assert.deepStrictEqual(legendOf(poisson).slice(0, 2), [
+      ["\\Phi", "Newtonian potential", "m² s⁻²"],
+      ["{}_{,}", "coordinate derivative", "m⁻¹"],
+    ])
+    assert.strictEqual(translated("\\Phi_{,ii} = 4\\pi G\\rho", both, GEO).restoredTex, "\\Phi_{,ii} = 4\\pi\\rho")
+    restoresTo("\\Gamma^{i}_{00} = \\Phi_{,i}", "\\Gamma^{i}_{00} = \\frac{\\Phi_{,i}}{c^{2}}")
+    const d = dimensionOf("\\Phi_{,ii}", katexDefault, both)
+    assert.ok(d.kind === "dim", JSON.stringify(d))
+    assert.deepStrictEqual(d.dim, [0, 0, -24, 0, 0])
+  })
+
+  test("riders, braced tensors, brackets and groups carry the derivative; constants go around the whole", () => {
+    for (const tex of [
+      "T^{ab}{}_{;b} = 0",
+      "{T^{ab}}_{;b} = 0",
+      "R_{ab[cd;e]} = 0",
+      "\\nabla_b T^{ab} = T^{ab}{}_{;b}",
+      "\\left(R^{ab} - \\frac{1}{2}g^{ab}R\\right)_{;b} = 0",
+      "T^{ab}{}_{c;b} = 0",
+      "R^{\\alpha}{}_{\\beta\\gamma\\delta;\\epsilon} = 0",
+    ])
+      unchanged(tex)
+    assert.strictEqual(translated("T^{ab}{}_{;b} = 0", both).targetUnitTex, "\\mathrm{kg}\\,\\mathrm{m}^{-2}\\,\\mathrm{s}^{-2}")
+    assert.deepStrictEqual(legendOf(translated("R_{ab[cd;e]} = 0", both))[0], ["R_{abcd}", "Riemann / Ricci curvature", "m⁻²"])
+    restoresTo("\\left(T^{ab} - \\rho u^{a}u^{b}\\right)_{;b} = 0", "\\left(T^{ab} - \\rho u^{a}u^{b}c^{2}\\right)_{;b} = 0")
+    restoresTo("R^{ab}{}_{;b} = 8\\pi T^{ab}{}_{;b}", "R^{ab}{}_{;b} = \\frac{8\\pi GT^{ab}{}_{;b}}{c^{4}}")
+    // Decorated indices stand after the mark; a numeric power raises the derivative.
+    assert.deepStrictEqual(legendOf(translated("T_{\\mu'\\nu';\\lambda'} = 0", both))[0], [
+      "T_{\\mu'\\nu'}",
+      "stress–energy tensor (as an energy density)",
+      "J m⁻³",
+    ])
+    const squared = translated("\\Phi_{,i}^{2} = 0", both)
+    assert.strictEqual(squared.targetUnitTex, "\\mathrm{m}^{2}\\,\\mathrm{s}^{-4}")
+    assert.strictEqual(squared.legend[0].tex, "\\Phi")
+  })
+
+  test("each mark is read only where the hub declares it", () => {
+    unchanged("T^{ab}{}_{;b} = 0", semicolon)
+    declines("\\Phi_{,ii} = 4\\pi\\rho", UNDECLARED, semicolon)
+    declines("A_{a,b;c} = 0", UNDECLARED, semicolon)
+    restoresTo("\\Phi_{,ii} = 4\\pi\\rho", "\\Phi_{,ii} = 4\\pi G\\rho", comma)
+    declines("T_{ab;c} = 0", UNDECLARED, comma)
+    declines("g_{ab;\\theta} = 0", UNDECLARED, comma)
+    unknownOnly("V_{m,n} = 0", ["V_{m,n}"], comma)
+  })
+
+  test("a list the derivative grammar does not read declines by name, or is a list of labels", () => {
+    unknownOnly("V_{m,n} = 0", ["V_{m,n}"])
+    // A miss lists the symbol as written, never its head alone.
+    unknownOnly("A_{i,j} = A_{j,i}", ["A_{j,i}"])
+    declines("g_{ab;\\theta} = 0", NAMED("\\theta"))
+    declines("g_{ab,r} = 0", NAMED("r"))
+    declines("T_{ab;} = 0", COVARIANT)
+    declines("T_{ab;;c} = 0", COVARIANT)
+    declines("T_{ab;\\cdots} = 0", COVARIANT)
+    // θ and φ as x² and x³: the angular guard's reason, said of a digit.
+    declines("T_{ab;2} = 0", DIGIT("2"))
+    declines("T_{ab;3} = 0", DIGIT("3"))
+    declines("T^{ab}{}_{;3} = 0", DIGIT("3"))
+    unchanged("T_{ab;1} = 0")
+    unchanged("T_{ab;0} = 0")
+  })
+
+  test("raised derivative indices decline as what they are", () => {
+    declines("T^{ab;c} = 0", RAISED)
+    declines("\\Phi^{,i}\\Phi_{,i} = 0", RAISED)
+    declines("\\phi_{,\\mu}{}^{,\\mu} = 0", RAISED)
+    // Undeclared, a raised list keeps its reading as a superscript.
+    declines("\\Phi^{,i} = 0", "the superscript “,i” on “\\Phi”, which the engine cannot read as a power or an index", semicolon)
+  })
+
+  test("the guards on an indexed reading judge the head's", () => {
+    declines(
+      "\\Gamma^{\\theta}_{r\\theta;a} = 0",
+      "an angular coordinate index on “\\Gamma^{\\theta}_{r\\theta;a}” — components along θ and φ do not share the registry's length dimension",
+    )
+    declines("\\Gamma^{2}_{00,i} = 0", "a digit superscript on “\\Gamma^{2}_{00,i}” — a component index or a power")
+    declines(
+      "x = \\dot{T}_{ab;c}",
+      "a dot on the indexed symbol “\\dot{T}_{ab;c}” — a time derivative or the derivative along u^{a}, which differ by a velocity",
+    )
+    declines("x = \\lvert T_{ab;c}\\rvert", "bars around the tensor “T_{ab;c}” — a modulus or a determinant, which differ in dimension")
+    declines(
+      "x = \\sum_{i=1}^{3} x_{i} + M\\Phi_{,i}",
+      "the summation index “i” used after its sum's term — whether the sum reaches it is not written",
+    )
+  })
+
+  test("what the split does not reach declines", () => {
+    // No head: the constants themselves would be differentiated.
+    declines("x = c_{,i}", "a label or mark on the constant “c”")
+    declines("x = G_{;a}", "a label or mark on the constant “G”")
+    // A power beside a group's derivative is (X²)_{;b} or (X_{;b})².
+    declines("(T^{ab})^{2}_{;b} = 0", "a super/subscript construct the engine could not read")
+    // A primed symbol and a differential do not read a split.
+    declines("x = x'_{,i}", UNDECLARED)
+    declines("x = dx_{,i}", UNDECLARED)
+  })
+
+  test("a comma the dictionary says separates never differentiates its indexed symbol", () => {
+    const flagged: HubRegistry = {
+      ...both,
+      indexed: {
+        ...reg.indexed,
+        "\\delta": { ...reg.indexed["\\delta"], commaSeparates: true },
+        "T^{\\mathrm{vac}}": reg.indexed.T,
+      },
+      bare: { ...reg.bare, "\\delta": { dim: [0, 0, 0, 0, 0], gloss: "density contrast", si: "1" } },
+    }
+    unknownOnly("\\delta_{i,j} = 0", ["\\delta_{i,j}"], flagged)
+    // Unflagged, the declared comma reads it as a derivative: the flag is the dictionary's.
+    unchanged("\\delta_{i,j} = 0")
+    // With no head the symbol differentiated is the bare one, which the flag does not describe.
+    assert.deepStrictEqual(legendOf(translated("\\delta_{,i} = 0", flagged))[0], ["\\delta", "density contrast", "1"])
+    unchanged("\\delta_{ij;k} = 0", flagged)
+    // A label goes into the name the head is read under.
+    restoresTo("T^{\\mathrm{vac}}_{ab;c} = \\Lambda g_{ab;c}", "T^{\\mathrm{vac}}_{ab;c} = \\frac{\\Lambda g_{ab;c}c^{4}}{G}", flagged)
+  })
+})
