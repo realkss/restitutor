@@ -1041,11 +1041,11 @@ describe("declining honestly", () => {
 
   test("F13: decline reasons name what actually stopped the engine", () => {
     // A sum is a sum, not an unreadable super/subscript.
-    const summed = run("x = \\sum_i r")
+    const summed = run("r = \\sum_{m}\\frac{M}{m^2}")
     assert.strictEqual(summed.kind, "declined", JSON.stringify(summed))
     if (summed.kind === "declined") {
       assert.ok(
-        summed.reasons.some((r) => r.includes("a sum over an index set")),
+        summed.reasons.some((r) => r.includes("summation index")),
         JSON.stringify(summed.reasons),
       )
       assert.ok(
@@ -3862,7 +3862,9 @@ describe("index tokens, primes and the canonical symbol key", () => {
       assert.deepStrictEqual(result.unknown, [], tex)
     }
     // A primed big operator names itself.
-    assert.deepStrictEqual(declined("E = \\sum' p").reasons, ["“\\sum” — a sum over an index set, which is not supported yet"])
+    assert.deepStrictEqual(declined("E = \\sum' p").reasons, [
+      "the operator “\\sum” in a position where the engine cannot read what it acts on",
+    ])
     assert.deepStrictEqual(declined("E = \\int' dr").reasons, [
       "the operator “\\int” in a position where the engine cannot read what it acts on",
     ])
@@ -4116,8 +4118,8 @@ describe("bases, accents, labels and named operators (step 11)", () => {
     ])
     // An italic superscript beside a subscript is still a power or a label, unread.
     assert.deepStrictEqual(reasons("g_i^{n} = 0"), ["an exponent on “g_{i}^{n}” that could not be read"])
-    // A big operator names itself before any label is read.
-    assert.deepStrictEqual(reasons("\\sum^{\\rm N}_{i}x_i = r"), ["“\\sum” — a sum over an index set, which is not supported yet"])
+    // A big operator is read before any label is: the upright N is its range.
+    assert.strictEqual(rawRestored("\\sum^{\\rm N}_{i}x_i = r"), "\\sum^{\\rm N}_{i}x_{i} = r")
     // A parenthesized index list is still an index list (a frame component).
     assert.strictEqual(rawRestored("E = p^{(\\mu)}"), "E = p^{(\\mu)}c")
   })
@@ -5165,11 +5167,10 @@ describe("integrals, limits and determinants (step 16)", () => {
     declines("E = \\frac{M\\det(g_{ab})}{2}", NONLINEAR)
   })
 
-  test("products, sums and the operators not read decline by name", () => {
+  test("products and the operators not read decline by name", () => {
     declines("M = \\prod_{i} M", PRODUCT)
     declines("E = \\frac{M\\prod_{n=1}^{\\infty}(1 - e^{-n})}{2}", PRODUCT)
     declines("\\Phi = \\sqrt{\\frac{M\\prod_{n=1}^{\\infty}(1-e^{-n})}{r}}", PRODUCT)
-    declines("x = \\sum_i r", "“\\sum” — a sum over an index set, which is not supported yet")
     declines("x = \\max_{t} r", "“\\max” — an extremum over a set, which is not supported yet")
     declines("x = \\coprod_i r", "the operator “\\coprod”, which is not supported yet")
     declines("x = \\mathop{\\rm lim}_{t} r", "the operator “lim” built with \\mathop, which is not supported yet")
@@ -5186,5 +5187,166 @@ describe("integrals, limits and determinants (step 16)", () => {
     )
     // Inside its own braces the style is rebuilt.
     unchanged("x = {\\displaystyle\\int_0^r dr}", "x = {\\displaystyle \\int_{0}^{r}dr}")
+  })
+})
+
+describe("sums (step 17)", () => {
+  const translated = (tex: string, target: TargetSpec = SI, registry: HubRegistry = reg) => {
+    const result = translateTex(tex, katex, registry, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    const out = result as Extract<TranslationResult, { kind: "translated" }>
+    rendersInKatex(out.restoredTex)
+    return out
+  }
+  // The SI restoration exactly as emitted, and a geometrized target that leaves the source as written.
+  const restoresTo = (tex: string, si: string) => {
+    const out = translated(tex)
+    assert.strictEqual(out.restoredTex, si, tex)
+    assert.strictEqual(out.changed, true, tex)
+    assert.strictEqual(translated(tex, GEO).changed, false, tex)
+    return out
+  }
+  const unchanged = (tex: string, emitted?: string) => {
+    for (const target of [SI, GEO]) {
+      const out = translated(tex, target)
+      assert.strictEqual(out.changed, false, tex)
+      if (emitted != null) assert.strictEqual(out.restoredTex, emitted, tex)
+    }
+  }
+  const declines = (tex: string, reason: string, registry: HubRegistry = reg) => {
+    for (const target of [SI, GEO]) {
+      const result = translateTex(tex, katex, registry, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [reason], tex)
+        assert.deepStrictEqual(result.unknown, [], tex)
+      }
+    }
+  }
+  const INDEX_ROW = { gloss: "summation index (an integer)", unit: "1" }
+  const QUANTITY = (i: string) =>
+    `the summation index “${i}” standing as a quantity, where the sum does not say what it runs over`
+  const AFTER = (i: string) => `the summation index “${i}” used after its sum's term — whether the sum reaches it is not written`
+  const SUPERSCRIPT = (i: string) =>
+    `the summation index “${i}” in a superscript, where it is a power or a component index and the notation does not say which`
+  const NAMING = (s: string) =>
+    `a range under “\\sum” naming “${s}”, which the dictionary reads as a dimensional quantity rather than a count`
+  const ON_GROUP = "a superscript “k” on a group, which may be an exponent or an index"
+
+  test("a sum has the dimension of its summand; an index the range declares an integer is a pure number", () => {
+    const series = restoresTo("r = \\sum_{n=0}^{\\infty} \\frac{M}{n^2}", "r = \\sum_{n=0}^{\\infty}\\frac{GM}{n^{2}c^{2}}")
+    // n is the sum's, never a dictionary symbol of that name.
+    assert.deepStrictEqual(
+      series.legend.filter((e) => e.tex === "n").map((e) => ({ gloss: e.gloss, unit: e.unit })),
+      [INDEX_ROW],
+    )
+    unchanged("x = \\sum_i r", "x = \\sum_{i}r")
+    unchanged("\\sum_{n=1}^{\\infty}n=-\\frac{1}{12}", "\\sum_{n=1}^{\\infty}n = -\\frac{1}{12}")
+    // An enclosing sum's integer index declares the inner start value: m = -ℓ.
+    restoresTo(
+      "r = \\sum_{\\ell=0}^{\\infty}\\sum_{m=-\\ell}^{\\ell} \\frac{M}{m^2 + 1}",
+      "r = \\sum_{\\ell=0}^{\\infty}\\sum_{m=-\\ell}^{\\ell}\\frac{GM}{\\left(m^{2} + 1\\right)c^{2}}",
+    )
+    unchanged("M = \\sum_{i=1}^{3}\\sum_{j=i}^{3} \\frac{M}{j}")
+    // The mass shell: an explicit contraction, in either order.
+    restoresTo("M^{2} = -\\sum_{\\mu=0}^{3} p_{\\mu}p^{\\mu}", "M^{2} = -\\frac{\\sum_{\\mu=0}^{3}p_{\\mu}p^{\\mu}}{c^{2}}")
+    restoresTo("M^{2} = -\\sum_{\\mu=0}^{3} p^{\\mu}p_{\\mu}", "M^{2} = -\\frac{\\sum_{\\mu=0}^{3}p^{\\mu}p_{\\mu}}{c^{2}}")
+    // An index named i is the sum's, not the imaginary unit.
+    const imaginary = translated("r = \\sum_{i=1}^{N} i\\, r")
+    assert.ok(imaginary.legend.some((e) => e.tex === "i" && e.gloss === INDEX_ROW.gloss), JSON.stringify(imaginary.legend))
+    // The scripts keep their written order and a written \limits.
+    restoresTo("E = \\sum^{N}_{n=0} M", "E = \\sum^{N}_{n=0}Mc^{2}")
+    restoresTo("E = \\sum\\limits_{n=0}^{N} M", "E = \\sum\\limits_{n=0}^{N}Mc^{2}")
+    restoresTo("E = M\\sum_{n=1}^{\\infty}\\frac{1}{n^2}", "E = M\\sum_{n=1}^{\\infty}\\frac{c^{2}}{n^{2}}")
+    const r = dimensionOf("\\sum_i r", katex, reg)
+    assert.ok(r.kind === "dim", JSON.stringify(r))
+    assert.deepStrictEqual(r.dim, [0, 12, 0, 0, 0])
+  })
+
+  test("only `=` with an integer start value declares an integer; otherwise the index is no quantity", () => {
+    // Nonzero wavevectors and positive frequencies are written so as often as integers are.
+    declines("r = \\sum_{k\\neq0}\\frac{M}{k^{2}}", QUANTITY("k"))
+    declines("\\Phi = \\sum_{v>0} v^{2}", QUANTITY("v"))
+    declines("x = \\sum_{v>0} v\\,t", QUANTITY("v"))
+    declines("E = \\sum_{\\omega>0}\\hbar\\omega", QUANTITY("\\omega"))
+    declines("r = \\sum_{m} \\frac{M}{m^2}", QUANTITY("m"))
+    declines("r = \\sum_{i} i\\, r", QUANTITY("i"))
+    declines("E = \\sum_{k} k_{\\mu}", QUANTITY("k"))
+    declines("r = \\sum_{i}\\sum_{j=i}^{3} \\frac{r}{j}", QUANTITY("j"))
+    declines("r = \\sum_{k=0}^{3} k_{\\mu}", "the summation index “k” carrying a script (“k_{\\mu}”), which the engine does not read")
+    declines("r = \\sum_{k} dk", "the summation index “k” as the variable of a differential, which the engine does not read")
+  })
+
+  test("after its sum's term an index is out of reach; a bracket closes the sum", () => {
+    declines("r = \\sum_{n} M + n", AFTER("n"))
+    declines("x = \\sum_{n=0}^{3} r + n", AFTER("n"))
+    declines("r = \\sum_{\\mu} M + x^{\\mu}", AFTER("\\mu"))
+    // Outside the bracket, n is the dictionary's n (unknown here).
+    const closed = run("x = \\left(\\sum_{n=1}^{3} r\\right) + n")
+    assert.ok(closed.kind === "declined", JSON.stringify(closed))
+    assert.deepStrictEqual([closed.reasons, closed.unknown], [[], ["n"]])
+  })
+
+  test("an index in a superscript is a power or a component; only an explicit contraction is read", () => {
+    // The reviewer's power series: read as first powers, they came back wrong.
+    declines("M = \\sum_{k=0}^{\\infty}x^{k}", SUPERSCRIPT("k"))
+    declines("g_{tt} = -\\sum_{k=0}^{\\infty}\\left(\\frac{2M}{r}\\right)^{k}", ON_GROUP)
+    declines("g_{tt} = \\sum_{k=0}^{\\infty}(\\frac{2M}{r})^{k}", ON_GROUP)
+    declines("r = \\sum_{k=0}^{\\infty} r\\left(\\frac{M}{r}\\right)^{k}", ON_GROUP)
+    // Whatever the range declares, and at any depth.
+    declines("x = \\sum_{n=-\\infty}^{\\infty} r e^{in\\theta}", SUPERSCRIPT("n"))
+    declines("E = \\sum_{\\mu} g_{\\mu\\nu}x^{\\mu}", SUPERSCRIPT("\\mu"))
+    // A contraction is two factors of the sum's own term: not one symbol, not inside a bracket.
+    declines("E = \\sum_{\\mu} p_{\\mu}^{\\mu}", SUPERSCRIPT("\\mu"))
+    declines("E = \\sum_{\\mu}\\left(p_{\\mu}p^{\\mu}\\right)", SUPERSCRIPT("\\mu"))
+    // A label's letters are no index: the i of `in` is not the sum's.
+    const labelled = { ...reg, indexed: { ...reg.indexed, "u^{\\mathrm{in}}": reg.bare.r } }
+    for (const [tex, emitted] of [
+      ["r = \\sum_i u^{\\text{in}}_i", "r = \\sum_{i}u^{\\text{in}}_{i}"],
+      ["r = \\sum_i u^{\\rm in}_i", "r = \\sum_{i}u^{\\rm in}_{i}"],
+    ]) {
+      const out = translated(tex, SI, labelled)
+      assert.deepStrictEqual([out.restoredTex, out.changed], [emitted, false], tex)
+    }
+  })
+
+  test("a range is index values: one naming a dimensional symbol, stacked, or without an index declines", () => {
+    declines("r = \\sum_{n=0}^{M} r", NAMING("M"))
+    declines("r = \\sum_{n=0}^{\\sqrt{M}} r", NAMING("M"))
+    declines("r = \\sum_{n=0}^{\\frac{r}{M}} r", NAMING("r"))
+    declines("r = \\sum_{r<2M} r", NAMING("M"))
+    declines("r = \\sum_{n=0}^{r_s} r", NAMING("r_s"))
+    declines("r = \\sum_{n=0}^{c} r", NAMING("c"))
+    // A live enclosing index is an index value; one retired with its sum's term is the dictionary's name.
+    unchanged("r = \\sum_{m=0}^{3} \\sum_{k=0}^{m} r")
+    declines("r = \\sum_{m} r + \\sum_{k=0}^{m} r", NAMING("m"))
+    // A subscript names; a word set upright is a label.
+    restoresTo("E = \\sum_{n=0}^{N_{max}} M", "E = \\sum_{n=0}^{N_{max}}Mc^{2}")
+    restoresTo("E = \\sum_{n=0}^{N_{\\rm max}} M", "E = \\sum_{n=0}^{N_{\\rm max}}Mc^{2}")
+    declines("r = \\sum_{j=0\\atop j\\neq k} r", "a stacked range under “\\sum”, which is not supported yet")
+    for (const [tex, range] of [
+      ["r = \\sum_{\\bm{k}} r", "\\bm{k}"],
+      ["r = \\sum_{n'} r", "n'"],
+      ["r = \\sum_{0<n} r", "0<n"],
+    ]) {
+      declines(tex, `the range “${range}” under “\\sum”, whose index the engine cannot isolate`)
+    }
+  })
+
+  test("a fixed symbol whose subscript the sum runs over is not a term of the sum", () => {
+    declines("r_s = \\sum_{s} r_s", "“r_{s}” under a sum over s — the dictionary's r_s is a fixed symbol, not a term of the sum")
+    // The whole canonical key is the fixed symbol's, label included.
+    const out = { ...reg, exact: { ...reg.exact, "u^{\\mathrm{out}}_j": reg.bare.r } }
+    assert.strictEqual(translated("x = u^{\\text{out}}_j", SI, out).restoredTex, "x = u^{\\text{out}}_{j}")
+    declines(
+      "x = \\sum_{j=1}^{3} u^{\\text{out}}_j",
+      "“u^{\\text{out}}_{j}” under a sum over j — the dictionary's u^{\\mathrm{out}}_j is a fixed symbol, not a term of the sum",
+      out,
+    )
+  })
+
+  test("a sum acts on what follows it in its term", () => {
+    declines("\\theta = \\sum_{n=1}^{\\infty}", "the operator “\\sum” with nothing to act on")
+    declines("x = \\sin\\theta\\sum_i r", "a function whose argument runs into “\\sum” — where the argument ends is not written")
   })
 })

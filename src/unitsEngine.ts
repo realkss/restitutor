@@ -392,6 +392,13 @@ type Ctx = {
    */
   keysRead: string[]
   /**
+   * The indices of the sums being read, innermost last (analyzeTerm). A frame
+   * is live while its sum's own term is read, and retired, still visible, for
+   * the terms after it in the sum it stands in; parseSum drops it where that
+   * sum ends (DummyFrame).
+   */
+  dummies: DummyFrame[]
+  /**
    * Set during the pair of replays the numeral-fusion net reads
    * (numeralFusionNet), live and masked, and null otherwise. It holds the
    * identity each factor and each signed term is given there (netId), the
@@ -594,7 +601,7 @@ type Factor = {
    * Braces only group, so a measure is read through them.
    */
   braced?: Factor
-  /** On a big operator (∫, lim, det): which one, and how its scripts are emitted. */
+  /** On a big operator (∫, Σ, lim, det): which one, and how its scripts are emitted. */
   bigop?: BigOp
   /**
    * A determinant, named as written. No constant passes through one unchanged
@@ -1763,6 +1770,8 @@ function resolveSymbol(
   opts: { sub?: any; indices?: boolean; differential?: boolean } = {},
 ): Dim {
   const reg = ctx.reg
+  const frame = dummyFrameOf(baseText, ctx)
+  if (frame != null) return summationIndexDim(frame, displayTex, opts, ctx)
   let entry: RegEntry | undefined
   let key = baseText
   if (opts.sub != null) {
@@ -1771,6 +1780,13 @@ function resolveSymbol(
     const exactKey = `${baseText}_${subKeyText(opts.sub, ctx)}`
     entry = reg.exact[exactKey]
     key = exactKey
+    // Under a sum over s, r_s is the s-th r, not the dictionary's fixed r_s.
+    const index = entry != null ? ctx.dummies.find((f) => containsLeaf(opts.sub, f.tok)) : undefined
+    if (index != null) {
+      throw new Unsupported(
+        `“${displayTex}” under a sum over ${index.tok} — the dictionary's ${exactKey} is a fixed symbol, not a term of the sum`,
+      )
+    }
     if (!entry && allIndexTokens(nodeListOf(opts.sub), true)) {
       entry = reg.indexed[baseText]
       key = `${baseText} (indexed)`
@@ -2200,7 +2216,15 @@ function parseSum(nodes: any[], ctx: Ctx, mode: SumMode, spacing: FactorSpacing 
   termNodeLists.push(current)
   signs.push(pendingSign)
 
-  const terms = termNodeLists.map((list, idx) => analyzeTerm(list, signs[idx], ctx, spacing))
+  // A sum's indices stay visible, retired, to the terms after its own, and go
+  // out of scope where this sum ends: a bracket closes them (`(\sum_n M) + n`).
+  const dummyMark = ctx.dummies.length
+  let terms: TermInfo[]
+  try {
+    terms = termNodeLists.map((list, idx) => analyzeTerm(list, signs[idx], ctx, spacing))
+  } finally {
+    ctx.dummies.length = dummyMark
+  }
   // `\int dt\, v + r` is ∫(v + r) dt or (∫v dt) + r, and the two differ by the
   // measure's dimension. With the measure written last (`\int v\,dt + r`) the
   // integrand is closed, and a dimensionless measure leaves both readings alike.
@@ -2368,6 +2392,8 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
   let i = 0
   const push = (f: Factor) => factors.push(f)
   const spacedFactors = spacing != null && spacedBetweenFactors(nodes, spacing)
+  const dummyStart = ctx.dummies.length
+  const bindings: { toks: string[]; operand: any[] }[] = []
 
   while (i < nodes.length) {
     const raw = nodes[i]
@@ -2485,6 +2511,11 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
     const big = bigOperatorAt(nodes, i, ctx)
     if (big != null) {
       push(big.factor)
+      // A sum's indices are its dummies in the rest of the term, its operand.
+      if (big.indices != null) {
+        for (const tok of big.indices.toks) ctx.dummies.push({ tok, integer: big.indices.integer, live: true })
+        bindings.push({ toks: big.indices.toks, operand: nodes.slice(big.next) })
+      }
       i = big.next
       continue
     }
@@ -2512,8 +2543,12 @@ function analyzeTerm(nodes: any[], sign: string, ctx: Ctx, spacing: FactorSpacin
   // big operators are read, though: which measures and bounds an integral
   // owns depends on the term being one product.
   if (spacedFactors) throw new Unsupported(SPACING_REASON)
+  summationSuperscriptGuard(nodes, bindings, dummyStart, ctx)
   const openIntegral = readBigOps(factors, slashIdx, ctx)
   keepNumeralsApart(factors, ctx)
+  // The indices this term's sums bound retire with it: the terms after it lie
+  // beyond those sums' written reach.
+  for (let idx = dummyStart; idx < ctx.dummies.length; idx += 1) ctx.dummies[idx].live = false
 
   const numDim = factors.slice(0, slashIdx < 0 ? factors.length : slashIdx)
   const denDim = slashIdx < 0 ? [] : factors.slice(slashIdx + 1)
@@ -3060,7 +3095,7 @@ function holdsOperator(f: Factor): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Big operators: integrals, limits, determinants
+// Big operators: integrals, sums, limits, determinants
 // ---------------------------------------------------------------------------
 
 /**
@@ -3091,11 +3126,11 @@ type DiffInfo = {
   tainted: boolean
 }
 
-type BigOpFamily = "integral" | "limit" | "det"
+type BigOpFamily = "integral" | "sum" | "limit" | "det"
 
 type BigOp = {
   family: BigOpFamily
-  /** The operator's name as KaTeX records it (`\int`, `\lim`, `\det`). */
+  /** The operator's name as KaTeX records it (`\int`, `\sum`, `\lim`, `\det`). */
   name: string
   /** The supsub the operator's scripts are set on, or null. */
   scripted: any | null
@@ -3119,17 +3154,20 @@ type BigOp = {
  *   the dimension of f·x by the product rule. The operator is a factor of no
  *   dimension, and nothing is looked up that the integrand and the measure do
  *   not already look up.
+ * - A sum Σ over any index set has the dimension of its summand; the index
+ *   it binds is read by its range (summationRange).
  * - lim f has the dimension of f.
  * - det of a dimensionless matrix is dimensionless; of any other, its
  *   dimension counts the rows, which the notation does not write.
  *
- * ∫ and lim are linear, so a constant restored inside them or beside them says
- * the same; none passes through det unchanged (Factor.nonlinear).
+ * ∫, Σ and lim are linear, so a constant restored inside them or beside them
+ * says the same; none passes through det unchanged (Factor.nonlinear).
  */
 const INTEGRAL_OPS = new Set(["\\int", "\\iint", "\\iiint", "\\oint", "\\oiint", "\\oiiint"])
 
 function familyOf(name: string): BigOpFamily | null {
   if (INTEGRAL_OPS.has(name)) return "integral"
+  if (name === "\\sum") return "sum"
   if (name === "\\lim") return "limit"
   if (name === "\\det") return "det"
   return null
@@ -3207,7 +3245,6 @@ function opDeclineReason(op: any): string {
     }
     return `the operator “${word}” built with \\mathop, which is not supported yet`
   }
-  if (name === "\\sum") return "“\\sum” — a sum over an index set, which is not supported yet"
   if (name === "\\prod") return "“\\prod” — a product over an index set, which is not supported yet"
   if (EXTREMUM_OPS.has(name)) return `“${name}” — an extremum over a set, which is not supported yet`
   if (familyOf(name) != null) return `the operator “${name}” in a position where the engine cannot read what it acts on`
@@ -3322,12 +3359,281 @@ function limitScripts(scripted: any | null, ctx: Ctx): () => string {
 }
 
 /**
- * The big operator at `nodes[i]`, as one factor of its term, with the index of
- * the next node; null for anything else. An operator the engine does not read
- * declines here, named (opDeclineReason). A primed operator (`\int'`) is left
- * to the primed reading, which declines it by the same reason.
+ * An index a sum binds while the sum is read (Ctx.dummies). In the sum's own
+ * term the index is the sum's dummy, never the dictionary symbol of its name:
+ * m under Σ_m is no mass, nor k under Σ_k a wavenumber. It stands for a pure
+ * number only where the range declares it an integer (summationRange).
  */
-function bigOperatorAt(nodes: any[], i: number, ctx: Ctx): { factor: Factor; next: number } | null {
+type DummyFrame = { tok: string; integer: boolean; live: boolean }
+
+/** The indices a sum's range binds, and whether the range declares them integers. */
+type SummationRange = { toks: string[]; integer: boolean }
+
+/** The innermost frame binding `tok`, live or retired, or null. */
+function dummyFrameOf(tok: string, ctx: Ctx): DummyFrame | null {
+  for (let idx = ctx.dummies.length - 1; idx >= 0; idx -= 1) {
+    if (ctx.dummies[idx].tok === tok) return ctx.dummies[idx]
+  }
+  return null
+}
+
+/**
+ * Whether a node holds, at any depth, the letter `tok` as a symbol. A word set
+ * in \text or an upright font is a label, whose letters are none: the i of
+ * `a^{\text{in}}_{i}` is in its subscript only.
+ */
+function containsLeaf(node: any, tok: string): boolean {
+  if (node == null || typeof node !== "object") return false
+  if (Array.isArray(node)) return node.some((x) => containsLeaf(x, tok))
+  if (node.type === "text" || (node.type === "font" && UPRIGHT_FONTS.has(node.font))) return false
+  if ((node.type === "mathord" || node.type === "textord") && node.text === tok) return true
+  return ["body", "numer", "denom", "base", "sup", "sub", "index"].some((key) => containsLeaf(node[key], tok))
+}
+
+/** A retired index, met in a term after its sum's own. */
+function usedAfterReason(frame: DummyFrame): string {
+  return `the summation index “${frame.tok}” used after its sum's term — whether the sum reaches it is not written`
+}
+
+/**
+ * A summation index where the engine would look a symbol up by its name
+ * (resolveSymbol). In a term after its sum's own term, whether the sum reaches
+ * it is not written. In its own term it is a pure number where the range
+ * declares an integer, and otherwise what it runs over is not written, so it
+ * may not stand as a quantity. An index under a differential, or carrying a
+ * script (`k_{\mu}` under Σ_k), is none of the things the range declares.
+ */
+function summationIndexDim(
+  frame: DummyFrame,
+  displayTex: string,
+  opts: { sub?: any; indices?: boolean; differential?: boolean },
+  ctx: Ctx,
+): Dim {
+  if (!frame.live) throw new Unsupported(usedAfterReason(frame))
+  if (opts.differential === true) {
+    throw new Unsupported(`the summation index “${frame.tok}” as the variable of a differential, which the engine does not read`)
+  }
+  if (!frame.integer) {
+    throw new Unsupported(
+      `the summation index “${frame.tok}” standing as a quantity, where the sum does not say what it runs over`,
+    )
+  }
+  if (opts.sub != null || opts.indices === true) {
+    throw new Unsupported(`the summation index “${frame.tok}” carrying a script (“${displayTex}”), which the engine does not read`)
+  }
+  const gloss = "summation index (an integer)"
+  const legendKey = `${displayTex}|${gloss}`
+  if (!ctx.legend.has(legendKey)) ctx.legend.set(legendKey, { tex: displayTex, gloss, si: "1", dim: ZERO })
+  return ZERO
+}
+
+/** A letter that can name a sum's index, as written: italic, or Greek (`\ell` is KaTeX's textord). */
+function indexLetterOf(x: any): string | null {
+  const text: string | undefined = x?.type === "mathord" || x?.type === "textord" ? x.text : undefined
+  if (text == null || text === "\\infty") return null
+  if (x.type === "textord" && !["\\ell", "\\imath", "\\jmath"].includes(text)) return null
+  return /^(?:[A-Za-z]|\\[A-Za-z]+)$/.test(text) ? text : null
+}
+
+/**
+ * A sum's start value that is an integer: digits, signs, ∞, and indices
+ * already bound as integers by an enclosing sum's term (`m = -\ell` inside
+ * Σ_{\ell=0}), and at least one of those that is not a sign.
+ */
+function isIntegerValue(nodes: any[], ctx: Ctx): boolean {
+  const live = nodes.filter(isMeaningfulNode)
+  const counts = (x: any) => {
+    const text: string | undefined = x?.type === "mathord" || x?.type === "textord" ? x.text : undefined
+    if (text == null) return false
+    if (/^[0-9]$/.test(text) || text === "\\infty") return true
+    const frame = dummyFrameOf(text, ctx)
+    return frame != null && frame.live && frame.integer
+  }
+  return live.some(counts) && live.every((x) => counts(x) || isSignToken(x))
+}
+
+/**
+ * The first symbol in a sum's range, at any depth (a root, a fraction, a
+ * bracket, a power), that the dictionary reads as dimensional, bare or by its
+ * subscript (`r_s`), or null. The sum's own indices and the live indices of
+ * enclosing sums are index values; an index retired with its sum's term is
+ * not, and is read as the dictionary reads its name. A word set upright or in
+ * \text (`N_{\rm max}`) is a label, not a product of symbols. The lookup is
+ * silent: it adds no legend row and no unknown.
+ */
+function dimensionalLeafOf(nodes: any[], toks: string[], ctx: Ctx): string | null {
+  const visit = (n: any): string | null => {
+    if (n == null || typeof n !== "object") return null
+    if (Array.isArray(n)) {
+      for (const x of n) {
+        const found = visit(x)
+        if (found != null) return found
+      }
+      return null
+    }
+    if (n.type === "text" || (n.type === "font" && UPRIGHT_FONTS.has(n.font))) return null
+    // A symbol's subscript is part of its name (`N_{max}`), never a factor of
+    // the value; the name as a whole is looked up.
+    const base = n.type === "supsub" && n.sub != null ? textOf(n.base) : null
+    if (base != null) {
+      const key = `${base}_${safeSrc(n.sub, ctx).replace(/[{}\s]/g, "")}`
+      const entry = ctx.reg.exact[key]
+      if (entry != null && !dimIsZero(entry.dim)) return key
+    }
+    if ((n.type === "mathord" || n.type === "textord") && !toks.includes(n.text) && dummyFrameOf(n.text, ctx)?.live !== true) {
+      const entry = ctx.reg.bare[n.text]
+      if (entry != null && !dimIsZero(entry.dim)) return n.text
+    }
+    for (const key of ["body", "numer", "denom", "base", "sup", "sub", "index"]) {
+      if (key === "sub" && base != null) continue
+      const found = visit(n[key])
+      if (found != null) return found
+    }
+    return null
+  }
+  return visit(nodes)
+}
+
+/**
+ * The indices a sum binds, read off its subscript, and whether they are
+ * integers. Σ_{n=a}^{b} steps n by one from a, so an integer start value
+ * (isIntegerValue) makes the one index it names an integer; that is the only
+ * declaration read. A range that only names its indices (Σ_k, Σ_{\ell,m}), or
+ * bounds one by an inequality (Σ_{k \neq 0}, Σ_{\omega > 0}), does not say
+ * what it runs over: nonzero wavevectors and positive frequencies are written
+ * so as often as integers are.
+ *
+ * The range is index values, dimensionless by what Σ means, and is carried as
+ * written, never read. So a range naming a symbol the dictionary reads as
+ * dimensional anywhere in it (Σ_{n=0}^{M}, Σ_{n=0}^{\sqrt{M}}, Σ_{r<2M})
+ * cannot be told from a value that would need restoring, and declines.
+ */
+function summationRange(name: string, scripted: any | null, ctx: Ctx): SummationRange {
+  const toks: string[] = []
+  let integer = false
+  const values: any[] = []
+  if (scripted?.sub != null) {
+    const nodes = nodeListOf(scripted.sub).filter(isMeaningfulNode)
+    if (nodes.some((x) => unwrap(x)?.type === "genfrac" && unwrap(x).hasBarLine === false)) {
+      throw new Unsupported(`a stacked range under “${name}”, which is not supported yet`)
+    }
+    const rel = nodes.findIndex((x) => relTextOf(x) != null)
+    const isolate = () =>
+      new Unsupported(`the range “${scriptSrc(scripted.sub, ctx)}” under “${name}”, whose index the engine cannot isolate`)
+    for (const x of rel < 0 ? nodes : nodes.slice(0, rel)) {
+      if (x.type === "atom" && x.family === "punct") continue
+      const tok = indexLetterOf(x)
+      if (tok == null) throw isolate()
+      toks.push(tok)
+    }
+    if (toks.length === 0) throw isolate()
+    if (rel >= 0) {
+      const value = nodes.slice(rel + 1)
+      values.push(...value)
+      integer = toks.length === 1 && relTextOf(nodes[rel]) === "=" && isIntegerValue(value, ctx)
+    }
+  }
+  if (scripted?.sup != null) values.push(scripted.sup)
+  const named = dimensionalLeafOf(values, toks, ctx)
+  if (named != null) {
+    throw new Unsupported(
+      `a range under “${name}” naming “${named}”, which the dictionary reads as a dimensional quantity rather than a count`,
+    )
+  }
+  return { toks, integer }
+}
+
+/**
+ * The superscripts in `nodes`, at any depth, that hold the letter `tok`. An
+ * operator's scripts are its range or its bounds, read by their own rules, and
+ * are not looked into.
+ */
+function superscriptsHolding(nodes: any[], tok: string): any[] {
+  const found: any[] = []
+  const visit = (n: any): void => {
+    if (n == null || typeof n !== "object") return
+    if (Array.isArray(n)) {
+      n.forEach(visit)
+      return
+    }
+    if (n.type === "supsub" && opOf(n) != null) return
+    if (n.type === "supsub" && n.sup != null && containsLeaf(n.sup, tok)) found.push(n)
+    for (const key of ["body", "numer", "denom", "base", "sup", "sub", "index"]) visit(n[key])
+  }
+  visit(nodes)
+  return found
+}
+
+/**
+ * An explicit contraction: a factor of the sum's operand whose superscript is
+ * an index list holding the index, beside another factor, the same symbol as
+ * written, carrying the index in its subscript (`p_{\mu}p^{\mu}`). The two are
+ * components of one tensor, and the superscript is an index, not a power. One
+ * symbol carrying the index in both scripts (`x_{k}^{k}`) is no contraction:
+ * that superscript may be a power of x_k.
+ */
+function isContraction(s: any, operand: any[], tok: string, ctx: Ctx): boolean {
+  const top = operand.map(peelStyles)
+  if (!top.includes(s) || classifySup(s.sup) !== "index") return false
+  const base = safeSrc(s.base, ctx)
+  return (
+    base !== "" &&
+    top.some(
+      (t) =>
+        t !== s &&
+        t?.type === "supsub" &&
+        t.sub != null &&
+        nodeListOf(t.sub).some((x) => textOf(x) === tok) &&
+        safeSrc(t.base, ctx) === base,
+    )
+  )
+}
+
+/**
+ * A summation index in a superscript. In the sum's operand it is a power or a
+ * component index there, and the notation does not say which: Σ_k x^{k} is a
+ * power series and Σ_μ x^{μ} a sum of components, and a Latin a–k or Greek
+ * letter reads as an index either way, so the series came back as a first
+ * power. Every superscript at any depth of the operand declines, whatever the
+ * range declares, except an explicit contraction (isContraction). In a term
+ * after the sum's own term, whether the sum reaches the index is not written.
+ *
+ * `bindings` are the indices this term's sums bound, each with the operand
+ * after its operator; `dummyStart` is where the term's own frames begin, and
+ * the retired frames before it are those of the terms before this one.
+ */
+function summationSuperscriptGuard(
+  nodes: any[],
+  bindings: { toks: string[]; operand: any[] }[],
+  dummyStart: number,
+  ctx: Ctx,
+): void {
+  for (const { toks, operand } of bindings) {
+    for (const tok of toks) {
+      if (superscriptsHolding(operand, tok).some((s) => !isContraction(s, operand, tok, ctx))) {
+        throw new Unsupported(
+          `the summation index “${tok}” in a superscript, where it is a power or a component index and the notation does not say which`,
+        )
+      }
+    }
+  }
+  for (const frame of ctx.dummies.slice(0, dummyStart)) {
+    if (!frame.live && superscriptsHolding(nodes, frame.tok).length > 0) throw new Unsupported(usedAfterReason(frame))
+  }
+}
+
+/**
+ * The big operator at `nodes[i]`, as one factor of its term, with the index of
+ * the next node, and a sum's indices; null for anything else. An operator the
+ * engine does not read declines here, named (opDeclineReason). A primed
+ * operator (`\int'`, `\sum'`) is left to the primed reading, which declines it
+ * by the same reason.
+ */
+function bigOperatorAt(
+  nodes: any[],
+  i: number,
+  ctx: Ctx,
+): { factor: Factor; next: number; indices?: SummationRange } | null {
   const raw = nodes[i]
   // A style command written right before an operator (`x = \displaystyle\int`)
   // wraps it, and whatever follows it, in a node with no span; the operator's
@@ -3383,6 +3689,13 @@ function bigOperatorAt(nodes: any[], i: number, ctx: Ctx): { factor: Factor; nex
       bigop.scripts = () => domain
     }
     return { factor, next: i + 1 }
+  }
+  if (family === "sum") {
+    // The range binds the sum's indices, and is carried as written.
+    const indices = summationRange(op.name, scripted, ctx)
+    const scripts = scripted != null ? scriptsTex(scripted, ctx) : ""
+    bigop.scripts = () => scripts
+    return { factor, next: i + 1, indices }
   }
   if (family === "limit") {
     bigop.scripts = limitScripts(scripted, ctx)
@@ -4169,7 +4482,8 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
       if (BAR_FAMILY[text]) throw new Unsupported(unpairedBarReason(text))
       uprightLetterGuard(text, ctx.font?.upright === true)
       constantFontGuard(text, ctx.font?.node ?? null, ctx)
-      if (text === "\\pi" || text === "i" || text === "e" || text === "\\infty") {
+      // A summation index named i or e is the sum's, not the constant (resolveSymbol).
+      if ((text === "\\pi" || text === "i" || text === "e" || text === "\\infty") && dummyFrameOf(text, ctx) == null) {
         const src = srcOf(n, ctx)
         return { kind: "num", dim: ZERO, emit: () => src }
       }
@@ -5471,7 +5785,7 @@ function analyzeScriptedSymbol(
   // Read bare, the base is the constant itself only in italic type.
   constantFontGuard(baseText, font, ctx)
   if (typeof reading === "object") {
-    const isConst = baseText === "\\pi" || baseText === "i" || baseText === "e"
+    const isConst = (baseText === "\\pi" || baseText === "i" || baseText === "e") && dummyFrameOf(baseText, ctx) == null
     const d = isConst ? ZERO : resolveSymbol(baseText, baseTex, ctx, {})
     const scaled = dimScale(d, reading.p, reading.q)
     if (baseText === "c" || baseText === "G") {
@@ -5495,7 +5809,7 @@ function analyzeScriptedSymbol(
   }
   // Expression exponent: legal only on a dimensionless base; the exponent is
   // itself a geometrized expression restored against a dimensionless target.
-  const pureNumber = baseText === "e" || baseText === "\\pi" || baseText === "i"
+  const pureNumber = (baseText === "e" || baseText === "\\pi" || baseText === "i") && dummyFrameOf(baseText, ctx) == null
   const baseDim = pureNumber ? ZERO : resolveSymbol(baseText, baseTex, ctx, {})
   if (!dimIsZero(baseDim)) throw new Unsupported(unreadExponentReason(n.sup, baseTex, ctx))
   // An unknown base gives no dimension to say whether its superscript is an
@@ -7194,6 +7508,7 @@ export function dimensionOf(
     font: null,
     constantsRead: [],
     keysRead: [],
+    dummies: [],
     net: null,
   }
   const legendOut = () =>
@@ -7738,6 +8053,7 @@ function translateCore(
     font: null,
     constantsRead: [],
     keysRead: [],
+    dummies: [],
     net: null,
   }
 

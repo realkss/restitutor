@@ -212,7 +212,6 @@ describe("the decline ledger", () => {
       "g = \\det_{3}(g_{ab})",
       "\\Phi = \\sqrt{\\frac{M\\det(g_{ab})}{r}}",
       "M = \\prod_{i} M",
-      "x = \\sum_i r",
       "x = \\max_{t} r",
       "x = \\coprod_i r",
       "x = \\mathop{\\rm lim}_{t} r",
@@ -223,6 +222,22 @@ describe("the decline ledger", () => {
     ])
       assert.strictEqual(outcome(tex).class, "unsupported", tex)
     assert.deepStrictEqual(outcome("v = H_0\\,d").unknown, ["d"])
+    // Step 17: a summation index the range does not declare, read where the
+    // sum may not reach it, or in a superscript; a range that is not index
+    // values; and a fixed symbol whose subscript the sum runs over.
+    for (const tex of [
+      "r = \\sum_{m} \\frac{M}{m^2}",
+      "r = \\sum_{n} M + n",
+      "M = \\sum_{k=0}^{\\infty}x^{k}",
+      "r = \\sum_{k} dk",
+      "E = \\sum_{k=0}^{3} k_{\\mu}",
+      "r_s = \\sum_{s} r_s",
+      "r = \\sum_{n=0}^{M} r",
+      "r = \\sum_{j=0\\atop j\\neq k} r",
+      "r = \\sum_{\\bm{k}} r",
+    ])
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    assert.strictEqual(outcome("x = \\sum_i r").class, "unchanged")
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)
