@@ -5449,8 +5449,10 @@ describe("sums (step 17)", () => {
 })
 
 describe("derivative marks: comma and semicolon derivative indices (step 18)", () => {
-  // The GR hub declares no mark (an owner call): every test that reads a split
-  // does it under a test registry.
+  // Which marks a hub reads is an owner call: GR declares the semicolon only
+  // (step 19c). The code path is tested under test registries that declare
+  // none, one or both.
+  const unmarked: HubRegistry = { ...reg, derivativeMarks: undefined }
   const semicolon: HubRegistry = { ...reg, derivativeMarks: { ";": "\\nabla" } }
   const comma: HubRegistry = { ...reg, derivativeMarks: { ",": "\\partial" } }
   const both: HubRegistry = { ...reg, derivativeMarks: { ";": "\\nabla", ",": "\\partial" } }
@@ -5512,18 +5514,18 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
       "A_{i,j} = A_{j,i}",
       "\\delta_{i,j} = 0",
     ])
-      declines(tex, UNDECLARED, reg)
+      declines(tex, UNDECLARED, unmarked)
     // Commas that fail the derivative grammar separate labels, and the whole
     // subscript is the symbol's name: never "derivative indices".
-    unknownOnly("V_{m,n} = 0", ["V_{m,n}"], reg)
-    unknownOnly("x = N_{e,z}", ["N_{e,z}"], reg)
+    unknownOnly("V_{m,n} = 0", ["V_{m,n}"], unmarked)
+    unknownOnly("x = N_{e,z}", ["N_{e,z}"], unmarked)
     // A raised list keeps the words it had.
-    declines("T^{ab;c} = 0", "the superscript “ab;c” on “T”, which the engine cannot read as a power or an index", reg)
+    declines("T^{ab;c} = 0", "the superscript “ab;c” on “T”, which the engine cannot read as a power or an index", unmarked)
     // A label list on a group is a subscript that may be an evaluation point.
     declines(
       "\\langle r\\rangle_{V,t} = M",
       "a subscript “V,t” on a group, which may be an evaluation point and is not supported yet",
-      reg,
+      unmarked,
     )
   })
 
@@ -5575,6 +5577,45 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
     declines("T_{ab;c} = 0", UNDECLARED, comma)
     declines("g_{ab;\\theta} = 0", UNDECLARED, comma)
     unknownOnly("V_{m,n} = 0", ["V_{m,n}"], comma)
+  })
+
+  test("the GR hub reads the semicolon as ∇ and leaves the comma declined (step 19c)", () => {
+    // Owner ruling 2026-09-26: a semicolon in an index list has no other
+    // reading; a comma also separates labels, so it stays undeclared.
+    assert.deepStrictEqual(reg.derivativeMarks, { ";": "\\nabla" })
+    for (const tex of [
+      "T^{ab}{}_{;b} = 0",
+      "{T^{ab}}_{;b} = 0",
+      "R_{ab[cd;e]} = 0",
+      "\\nabla_b T^{ab} = T^{ab}{}_{;b}",
+      "\\left(R^{ab} - \\frac{1}{2}g^{ab}R\\right)_{;b} = 0",
+      "g_{ab;c} = 0",
+    ])
+      unchanged(tex, reg)
+    const conservation = translated("T^{ab}{}_{;b} = 0", reg)
+    assert.strictEqual(conservation.targetUnitTex, "\\mathrm{kg}\\,\\mathrm{m}^{-2}\\,\\mathrm{s}^{-2}")
+    assert.deepStrictEqual(legendOf(conservation)[1], ["{}_{;}", "covariant derivative", "m⁻¹"])
+    restoresTo("\\left(T^{ab} - \\rho u^{a}u^{b}\\right)_{;b} = 0", "\\left(T^{ab} - \\rho u^{a}u^{b}c^{2}\\right)_{;b} = 0", reg)
+    restoresTo("R^{ab}{}_{;b} = 8\\pi T^{ab}{}_{;b}", "R^{ab}{}_{;b} = \\frac{8\\pi GT^{ab}{}_{;b}}{c^{4}}", reg)
+    // The comma, alone or beside a semicolon, declines as before.
+    for (const tex of [
+      "\\Phi_{,ii} = 4\\pi\\rho",
+      "\\Gamma^{i}_{00} = \\Phi_{,i}",
+      "A_{i,j} = A_{j,i}",
+      "\\delta_{i,j} = 0",
+      "A_{a,b;c} = 0",
+      "h_{\\nu\\alpha,\\mu}{}^{\\alpha} = 0",
+    ])
+      declines(tex, UNDECLARED, reg)
+    unknownOnly("V_{m,n} = 0", ["V_{m,n}"], reg)
+    declines("\\Phi^{,i}\\Phi_{,i} = 0", "the superscript “,i” on “\\Phi”, which the engine cannot read as a power or an index", reg)
+    // The reviewers' counterexamples keep their declines under the live hub.
+    declines("T_{ab;2} = 0", DIGIT("2"), reg)
+    declines("T^{ab}{}_{;3} = 0", DIGIT("3"), reg)
+    declines("g_{ab;\\theta} = 0", NAMED("\\theta"), reg)
+    declines("T^{ab;c} = 0", RAISED, reg)
+    declines("T_{ab;;c} = 0", COVARIANT, reg)
+    declines("x = G_{;a}", "a label or mark on the constant “G”", reg)
   })
 
   test("a list the derivative grammar does not read declines by name, or is a list of labels", () => {
@@ -5683,7 +5724,7 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
     unchanged("T^{ab}{}_{;b} = 0")
     unchanged("R_{abc}{}^{d} = 0")
     // Under undeclared marks nothing is a derivative, and the words are the old ones.
-    declines("h_{\\nu\\alpha,\\mu}{}^{\\alpha} = 0", UNDECLARED, reg)
+    declines("h_{\\nu\\alpha,\\mu}{}^{\\alpha} = 0", UNDECLARED, unmarked)
   })
 
   test("a superscript beside derivative indices is the head's index only when typed first and set flush", () => {
@@ -5845,10 +5886,10 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
     // A mark of its own still makes the superscript derivative indices.
     declines("T^{ab;c} = 0", RAISED)
     // Under undeclared marks nothing is a derivative, and the words are the old ones.
-    declines(`h_{\\mu\\nu,\\alpha}^{${SIX}} = 0`, UNDECLARED, reg)
-    declines(`h^{${SIX}}_{\\mu\\nu,\\alpha} = 0`, UNDECLARED, reg)
-    declines("{T^{\\ \\ c}}_{ab;c} = 0", UNDECLARED, reg)
-    declines("\\Gamma_{00,i}^{i} = 4\\pi\\rho", UNDECLARED, reg)
+    declines(`h_{\\mu\\nu,\\alpha}^{${SIX}} = 0`, UNDECLARED, unmarked)
+    declines(`h^{${SIX}}_{\\mu\\nu,\\alpha} = 0`, UNDECLARED, unmarked)
+    declines("{T^{\\ \\ c}}_{ab;c} = 0", UNDECLARED, unmarked)
+    declines("\\Gamma_{00,i}^{i} = 4\\pi\\rho", UNDECLARED, unmarked)
   })
 })
 

@@ -285,6 +285,12 @@ const GR_REGISTRY: HubRegistry = {
     V: { dim: dim(0, 3, 0), gloss: "volume element", si: "m³" },
     "\\lambda": { dim: dim(0, 1, 0), gloss: "wavelength", si: "m" },
   },
+  // Owner ruling 2026-09-26: the semicolon in an index list is the covariant
+  // derivative, T^{ab}{}_{;b} ≡ ∇_b T^{ab}, since a semicolon there has no
+  // other reading in physics notation. The comma is deliberately not declared:
+  // it also separates labels (the matrix entry A_{i,j}, V_{m,n}), so a comma
+  // list keeps declining in this hub.
+  derivativeMarks: { ";": "\\nabla" },
 }
 
 const REGISTRIES: HubRegistry[] = [GR_REGISTRY]

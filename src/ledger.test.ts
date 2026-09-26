@@ -250,7 +250,7 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("x = \\sum_i r").class, "unchanged")
   })
   test("derivative marks: every reason the split gives is a construct the reader does not handle", () => {
-    // Step 18, under a hub that declares both marks (GR declares none).
+    // Step 18, under a hub that declares both marks (GR declares the semicolon only).
     const marks = { ...GR, derivativeMarks: { ";": "\\nabla", ",": "\\partial" } }
     for (const tex of [
       "g_{ab,r} = 0",
@@ -267,7 +267,10 @@ describe("the decline ledger", () => {
       "{T^{\\ \\ c}}_{ab;c} = 0",
     ])
       assert.strictEqual(classifyOutcome(translateTex(tex, katex, marks, SI)).class, "unsupported", tex)
-    for (const tex of ["\\Phi_{,ii} = 4\\pi\\rho", "T^{ab}{}_{;b} = 0"]) assert.strictEqual(outcome(tex).class, "unsupported", tex)
+    // Step 19c: GR reads the semicolon as ∇ and leaves the comma declined.
+    assert.strictEqual(outcome("\\Phi_{,ii} = 4\\pi\\rho").class, "unsupported")
+    assert.strictEqual(outcome("A_{i,j} = A_{j,i}").class, "unsupported")
+    assert.strictEqual(outcome("T^{ab}{}_{;b} = 0").class, "unchanged")
     assert.strictEqual(outcome("V_{m,n} = 0").class, "unknown-symbol")
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
