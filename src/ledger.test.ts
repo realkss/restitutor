@@ -59,8 +59,13 @@ describe("the decline ledger", () => {
     // A comma inside an expression other than brackets is the reader's.
     assert.strictEqual(outcome("x = \\frac{a, b}{c}").class, "unsupported")
     assert.strictEqual(outcome("\\sin(x").class, "parse")
-    // An indexed component along θ or φ that carries a superscript: the angular guard.
-    assert.strictEqual(outcome("\\Gamma^{\\mu}_{\\theta\\theta} = 0").class, "unsupported")
+    // Coordinate components (P3): an upper label, a coordinate the dictionary
+    // does not read, repeated derivatives, and a ct-chart reading beside a
+    // component along t are the reader's.
+    assert.strictEqual(outcome("\\Gamma^{\\theta}_{rr} = 0").class, "unsupported")
+    assert.strictEqual(outcome("g_{t't'} = 0").class, "unsupported")
+    assert.strictEqual(outcome("\\partial_{tt}\\phi = \\partial_{rr}\\phi").class, "unsupported")
+    assert.strictEqual(outcome("\\partial_{t}\\alpha = \\beta^{i}\\partial_{i}\\alpha").class, "unsupported")
     // Upright words and letters, a run of letters under another font, a
     // placeholder constant, and a constant that would land inside a font are
     // the reader's; prose means the carrier was not one equation.

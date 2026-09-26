@@ -77,6 +77,17 @@ export type RegEntry = {
    * set, never inferred from a symbol's name.
    */
   commaSeparates?: boolean
+  /**
+   * The reading's dimension assumes the time coordinate is x⁰ = ct beyond
+   * what its indices say, so it holds in the ct-chart and not in a chart
+   * whose time coordinate is a time. The shift vector is the case: from
+   * ∂_t = αn + β^i∂_i, β is a pure number when x⁰ = ct and a velocity when t
+   * is a time, whatever its indices. A component along a named time
+   * coordinate (componentEntry) reads the equation in the second chart, and
+   * the two in one display decline (chartMixGuard). The flag is the
+   * dictionary's to set, never inferred from a symbol's name.
+   */
+  ctChart?: boolean
 }
 
 export type HubRegistry = {
@@ -242,7 +253,7 @@ const GR_REGISTRY: HubRegistry = {
     k: { dim: dim(0, -1, 0), gloss: "wave vector", si: "m⁻¹" },
     h: { dim: ZERO, gloss: "metric perturbation", si: "1" },
     K: { dim: dim(0, -1, 0), gloss: "extrinsic curvature", si: "m⁻¹" },
-    "\\beta": { dim: ZERO, gloss: "shift vector", si: "1" },
+    "\\beta": { dim: ZERO, gloss: "shift vector", si: "1", ctChart: true },
     "\\Lambda": { dim: ZERO, gloss: "Lorentz transformation", si: "1" },
     // ADDED 2026-08-17 — PENDING CEO MERGE REVIEW.
     // Reading verified against "00. Conventions and Notation" §5, where ω_c is
@@ -375,6 +386,14 @@ type Ctx = {
    * than a reading, and it is tainted.
    */
   unknownHits: number
+  /**
+   * The first reading of the display that holds only in the ct-chart
+   * (RegEntry.ctChart), and the first component along a coordinate of time
+   * (componentEntry), each as quoted; chartMixGuard declines the display that
+   * reads both.
+   */
+  ctChartRead: { tex: string; noun: string } | null
+  timeComponentRead: { tex: string; label: string } | null
   /** Set whenever the emitted equation differs from the source (insertion or strip). */
   mutated: boolean
   /** Geometrized target: verify consistency but strip c/G factors instead of inserting. */
@@ -776,13 +795,24 @@ const EXCHANGES = new Set(["\\leftrightarrow", "\\longleftrightarrow", "\\rightl
 const BRANCH_OPS = new Set(["\\pm", "\\mp"])
 const LATIN_INDICES = new Set("abcdefghijk".split(""))
 /**
- * CEO RULING 2026-08-17 — coordinate labels count as index tokens.
+ * CEO RULING 2026-08-17 — coordinate labels count as index tokens — as revised
+ * by the owner's ruling of 2026-09-26 (P3): a lower coordinate label carries
+ * that coordinate's dimension.
  *
- * A named coordinate standing in a subscript is an index like any other: it says
- * *which* component, not *how much* of anything, and carries no dimension. The
- * conventions page's §3 index table names only the abstract Latin, component
- * Greek and spatial i–k families, so this is an addition to it rather than a
- * reading of it — hence the ruling.
+ * A named coordinate standing in a subscript is an index: it says *which*
+ * component. The conventions page's §3 index table names only the abstract
+ * Latin, component Greek and spatial i–k families, so this is an addition to
+ * it rather than a reading of it — hence the ruling. The 2026-08-17 ruling
+ * read such an index as carrying no dimension of its own, like an abstract
+ * one; but an abstract index stands for a length coordinate here (x⁰ = ct),
+ * and a named one does not. A coordinate-basis component takes one reciprocal
+ * coordinate per lower index, T_{…t…} = T(…, ∂_t, …), and ∂_t = ∂/∂t has the
+ * dimension 1/[t]: `\partial_t` read as ∂/∂(ct) shipped `\omega = \partial_t\phi`
+ * as `c\partial_{t}\phi`, and `\partial_t\alpha = -2\alpha K` unchanged where
+ * SI needs a c. So each lower label trades one reciprocal length for the
+ * reciprocal of its coordinate's own dimension, read from `differential`
+ * (componentEntry): ∂_t is s⁻¹, ∂_θ a pure number, g_{tt} m² s⁻² (−c² in
+ * SI), g_{θθ} m² (r²).
  *
  * The set is the one the corpus actually uses. Walking all 56 display equations
  * for subscript tokens the engine rejected turns up exactly four coordinates —
@@ -797,7 +827,10 @@ const LATIN_INDICES = new Set("abcdefghijk".split(""))
  * position, and `classifySup` cannot see whose exponent it is reading: admitting
  * coordinates there turns `e^{i\phi}` into a lookup of a nonexistent indexed `e`,
  * which would replace a truthful dimensional decline with a false claim that the
- * dictionary is missing an entry.
+ * dictionary is missing an entry. On a symbol the dictionary indexes, an index
+ * list naming a coordinate in the superscript is a contravariant component
+ * (`g^{\phi\phi}`), which is not read: it declines by name
+ * (coordinateSuperscriptGuard) rather than going on as an exponent.
  */
 const COORDINATE_LABELS = new Set(["t", "r", "\\theta", "\\phi", "\\varphi"])
 const GREEK_INDICES = new Set([
@@ -1473,8 +1506,8 @@ function hasDecoratedIndexToken(nodes: any[]): boolean {
 
 /**
  * The index letters of an index list, read through the tokens that decorate
- * or group them: the angular guard asks which coordinates a component names,
- * and `\theta'` or `{\theta\theta}` names θ as `\theta` does.
+ * or group them: componentEntry counts the indices a derivative carries, and
+ * `{tt}` holds two as `tt` does, `t'` one as `t` does.
  */
 function indexLettersOf(nodes: any[]): string[] {
   return nodes.flatMap((x) => {
@@ -1557,8 +1590,8 @@ function isPunct(n: any): boolean {
  *   undecided on purpose.
  * - The grammar holds and every mark is declared: the split. A digit 2 or 3
  *   after a mark declines: in a spherical chart x² and x³ are θ and φ, where
- *   a derivative does not have the registry's length dimension, which is the
- *   angular guard's reason.
+ *   a derivative does not have the registry's length dimension, and a digit
+ *   names no coordinate whose own dimension a lookup could give (componentEntry).
  * - A semicolon otherwise: declared, a covariant-derivative list the grammar
  *   cannot read; undeclared, a derivative the hub does not read.
  * - The grammar holds with an undeclared mark: a derivative the hub does not
@@ -2092,6 +2125,114 @@ export function symbolKey(tex: string): string | null {
   return `${base}${"'".repeat(primes)}${sub != null ? `_${sub}` : ""}`
 }
 
+/** How a gloss or a reason names each coordinate label a component is along. */
+const COORDINATE_NAMES: Record<string, string> = { t: "t", r: "r", "\\theta": "θ", "\\phi": "φ", "\\varphi": "φ" }
+
+/** A label by its name; a decorated one (`t'`), which has none, quoted as written. */
+function coordinateNameOf(tex: string): string {
+  return COORDINATE_NAMES[tex] ?? `“${tex}”`
+}
+
+/**
+ * The tokens of an index list that name a coordinate, through the braces that
+ * group them: a label (`t`, `\theta`), or one decorated (`t'`, `t_1`), which
+ * names another coordinate, the primed or numbered one.
+ */
+function coordinateTokensOf(nodes: any[]): any[] {
+  return nodes.flatMap((x) => {
+    const u = unwrap(x)
+    if (u?.type === "ordgroup") return coordinateTokensOf(u.body)
+    const text = textOf(u?.type === "supsub" ? u.base : u)
+    return text != null && COORDINATE_LABELS.has(text) ? [x] : []
+  })
+}
+
+/**
+ * The noun a gloss names its reading by, before its first qualifier: "metric"
+ * for "metric (dimensionless with x⁰ = ct)", "four-velocity" for
+ * "four-velocity, normalized …". A component's gloss is built on it, since the
+ * qualifier describes the reading the component no longer has.
+ */
+function glossNounOf(entry: RegEntry): string {
+  return entry.gloss.split(/\s*[(,]/)[0].trim()
+}
+
+/**
+ * P3, the owner's ruling of 2026-09-26: a coordinate-basis component read
+ * with the coordinates its lower labels name (COORDINATE_LABELS). The indexed
+ * entry holds with every index a length coordinate (x⁰ = ct), and a lower
+ * index is one reciprocal coordinate; each lower label trades one reciprocal
+ * length for the reciprocal of its coordinate's own dimension, read from
+ * `differential`, where the dictionary keeps what a coordinate measures. So
+ * g_{tt} is the metric's dimension times (m/s)², m² s⁻², which is g_tt = −c²
+ * in SI; ∂_t is s⁻¹; ∂_θ is a pure number; r, a length, leaves the entry as
+ * it is. The abstract indices beside a label keep the entry's reading, as
+ * they do everywhere.
+ *
+ * Declines:
+ * - A coordinate the dictionary has no reading for (a primed `t'`): its
+ *   dimension is not written anywhere the lookup reaches.
+ * - A label among several indices on ∂ or ∇ (`\partial_{tt}`, `\nabla_{tr}`):
+ *   the shorthand for repeated derivatives, where the dictionary's entry reads
+ *   one. Read per index, ∂_{tt} came out m s⁻², a derivative whose equation
+ *   balanced only because two errors cancelled; with abstract indices alone
+ *   the shorthand is read as it always was.
+ *
+ * The gloss names the reading by its noun and says which coordinates the
+ * component is along, each once: `metric, component along t`, never the
+ * dimensionless qualifier of the entry it came from. Its unit is the
+ * component's own. A component along a coordinate of time is noted for
+ * chartMixGuard.
+ */
+function componentEntry(entry: RegEntry, baseText: string, subNodes: any[], displayTex: string, ctx: Ctx): RegEntry {
+  const labels = coordinateTokensOf(subNodes)
+  if (labels.length === 0) return entry
+  if ((baseText === "\\partial" || baseText === "\\nabla") && indexLettersOf(scriptTokensOf(subNodes).filter(isGenuineIndex)).length > 1) {
+    throw new Unsupported(`several indices on the derivative “${displayTex}”, a coordinate among them — a repeated derivative, which is not supported yet`)
+  }
+  let d = entry.dim
+  const names: string[] = []
+  for (const token of labels) {
+    const tex = indexTokenTex(token, ctx)
+    const coordinate = ctx.reg.differential[symbolKey(tex) ?? tex]
+    if (coordinate == null) {
+      throw new Unsupported(`a component along the coordinate “${tex}”, which the dictionary does not read`)
+    }
+    d = dimSub(dimAdd(d, dim(0, 1, 0)), coordinate.dim)
+    const name = coordinateNameOf(tex)
+    if (!names.includes(name)) names.push(name)
+    if (dimIsZero(dimSub(coordinate.dim, dim(0, 0, 1)))) ctx.timeComponentRead ??= { tex: displayTex, label: name }
+  }
+  chartMixGuard(ctx)
+  if (dimIsZero(dimSub(d, entry.dim))) return entry
+  return {
+    ...entry,
+    dim: d,
+    gloss: `${glossNounOf(entry)}, component along ${names.join(" and ")}`,
+    si: plainUnitOf(d, { system: "si", geometrized: false }),
+  }
+}
+
+/**
+ * A display that reads a component along a coordinate of time (componentEntry)
+ * reads its equation in a chart whose time coordinate is a time; a reading the
+ * dictionary holds only with x⁰ = ct (RegEntry.ctChart) reads it in the other
+ * chart. Together they would restore constants for two charts at once:
+ * `\partial_t g_{ij} = -2\alpha K_{ij} + \nabla_i\beta_j + \nabla_j\beta_i`
+ * gave the K term the c the t-chart needs and the shift terms a c that holds
+ * only for the ct-chart shift, where in the t-chart the shift is a velocity and
+ * takes none. The notation does not say which shift is meant, so the display
+ * declines, whichever of the two it reads first.
+ */
+function chartMixGuard(ctx: Ctx): void {
+  const reading = ctx.ctChartRead
+  const component = ctx.timeComponentRead
+  if (reading == null || component == null) return
+  throw new Unsupported(
+    `the ${reading.noun} “${reading.tex}” beside “${component.tex}”, a component along the time coordinate ${component.label} — the dictionary reads the ${reading.noun} with x⁰ = ct, which that component does not`,
+  )
+}
+
 function resolveSymbol(
   baseText: string,
   displayTex: string,
@@ -2135,6 +2276,7 @@ function resolveSymbol(
     if (!entry && allIndexTokens(nodeListOf(opts.sub), true)) {
       entry = reg.indexed[baseText]
       key = `${baseText} (indexed)`
+      if (entry) entry = componentEntry(entry, baseText, nodeListOf(opts.sub), displayTex, ctx)
     }
   } else if (opts.indices) {
     entry = reg.indexed[baseText]
@@ -2160,6 +2302,10 @@ function resolveSymbol(
     ctx.unknownHits += 1
     ctx.unknown.set(key, opts.missTex ?? displayTex)
     return ZERO
+  }
+  if (entry.ctChart === true) {
+    ctx.ctChartRead ??= { tex: displayTex, noun: glossNounOf(entry) }
+    chartMixGuard(ctx)
   }
   // Key the legend by what the reader would see, so the same symbol reached
   // through different routes (bare r and the r inside dr) shows one row.
@@ -3358,7 +3504,7 @@ function analyzeDifferential(
     powered = typeof sup === "object" && sup != null
     if (opU.sub != null) {
       const display = srcOf(opU, ctx)
-      angularIndexGuard(baseText, opU, display, ctx)
+      coordinateSuperscriptGuard(baseText, opU, display, ctx)
       varDim = resolveSymbol(baseText, display, ctx, { sub: opU.sub, differential })
       operandDim = varDim
       // dx_1^2 = (dx_1)² — the numeric power scales the differential too.
@@ -5427,48 +5573,44 @@ function symbolBaseOf(raw: any, ctx: Ctx, wrapped = false): SymbolBase | null {
 }
 
 /**
- * The angular guard. The registry gives an indexed tensor one dimension for all
- * of its components, and that holds only because x⁰ = ct makes every coordinate
- * a length. θ and φ break the premise: Γ^r_{θθ} is a length and Γ^θ_{φφ} is
- * dimensionless, where the registry says m⁻¹ for both. The error is a pure power
- * of length, which no c–G insertion can absorb, so it can never place a wrong
- * constant; it does ship an unchanged translation under a wrong unit banner
- * (`\Gamma^{\mu}_{\theta\theta} = 0` as m⁻¹, `T^{0}_{\theta} = 0` as a pressure).
+ * The upper coordinate label. A coordinate named in a superscript index list on
+ * a symbol the dictionary indexes (`g^{\phi\phi}`, `\Gamma^{\theta}_{rr}`,
+ * `T^{t}_{a}`) is a contravariant component, and it is not read: P3 gives a
+ * lower label its coordinate's dimension, and nothing gives an upper one. Left
+ * to the superscript's other reading, it is an exponent on the bare symbol:
+ * `g^{\phi\phi}`, the determinant to the power φφ, is a pure number, and beside
+ * P3's lower labels the Carroll 2-sphere's
+ * `R_{\theta\theta} = g^{\phi\phi}R_{\phi\theta\phi\theta}` declined on a
+ * completion its reason blamed on the registry's readings, when the engine's
+ * own exponent reading was the cause. So it declines by name, in either
+ * script order and through a prime or braces on the label (`\theta'`,
+ * `{\theta\theta}`), which leave it naming a coordinate.
  *
- * The CEO ruling of 2026-08-17 admits θ and φ as subscript indices, and it
- * stands: a component with a subscript alone (g_{\theta\theta}, \partial_\phi)
- * still reads through it. A component that also carries a superscript was out
- * of reach while every superscript-first tensor declined as a reassembly fault;
- * emitting scripts in source order brings it in, and the ruling never covered
- * it. So an indexed reading with a superscript and θ or φ in either script
- * declines by name — in either script order, so the spelling never decides the
- * reading, and through a prime, a label or braces on the index (`\theta'`,
- * `{\theta\theta}`), which leave it the same coordinate. An identity the
- * registry spells out (an `exact` entry) is not an indexed reading and is left
- * alone, as is a subscript that is not an index list, and a superscript that
- * is neither a power nor an index list keeps its own reason.
+ * This is the angular guard (step 3) narrowed to superscript position, as P3
+ * allows (integration §2.2 conflict 6). That guard declined θ and φ in either
+ * script beside a superscript, because every component then took the
+ * registry's length dimension; a lower θ now takes its own (componentEntry),
+ * so `\Gamma^{\mu}_{\theta\theta}` and `T^{0}_{\theta}` read, and a digit on a
+ * component (`g_{\phi\phi}^{2}`) keeps the component-digit reason.
  *
- * A power on \partial or \nabla is a derivative order, not a component, and it
- * is the ruling's own case: the Teukolsky operator's \partial_\phi^2 is among the
- * equations the ruling was drawn from. It reads as the ruling reads it.
+ * An identity the registry spells out (an `exact` entry) is not an indexed
+ * reading and is left alone, as is a subscript that is not an index list, and
+ * a superscript that is no plain index list keeps its own reason: a power is
+ * none, and on ∂ or ∇ it is the derivative's order; a bracketed one
+ * (`e^{(\theta)}`) is a frame label or an order as often as a component.
  */
-const ANGULAR_LABELS = new Set(["\\theta", "\\phi", "\\varphi"])
-
-function angularIndexGuard(baseText: string, n: any, displayTex: string, ctx: Ctx): void {
-  if (n.sub == null || n.sup == null) return
-  if (ctx.reg.exact[`${baseText}_${subKeyText(n.sub, ctx)}`] || !ctx.reg.indexed[baseText]) return
-  const subNodes = nodeListOf(n.sub)
-  const supNodes = nodeListOf(n.sup)
-  if (!allIndexTokens(subNodes, true)) return
-  const sup = classifySup(n.sup)
-  if (typeof sup === "object") {
-    if (baseText === "\\partial" || baseText === "\\nabla") return
-  } else if (sup !== "index" && !allIndexTokens(supNodes, true)) return
-  if (indexLettersOf([...subNodes, ...supNodes]).some((x) => ANGULAR_LABELS.has(x))) {
-    throw new Unsupported(
-      `an angular coordinate index on “${displayTex}” — components along θ and φ do not share the registry's length dimension`,
-    )
+function coordinateSuperscriptGuard(baseText: string, n: any, displayTex: string, ctx: Ctx): void {
+  if (n.sup == null || !ctx.reg.indexed[baseText]) return
+  if (n.sub != null) {
+    if (ctx.reg.exact[`${baseText}_${subKeyText(n.sub, ctx)}`] || !allIndexTokens(nodeListOf(n.sub), true)) return
   }
+  const supNodes = nodeListOf(n.sup)
+  if (!allIndexTokens(supNodes, true) || scriptTokensOf(supNodes).some((x) => unwrap(x)?.type === "atom")) return
+  const labels = coordinateTokensOf(supNodes).map((x) => coordinateNameOf(indexTokenTex(x, ctx)))
+  if (labels.length === 0) return
+  throw new Unsupported(
+    `an upper coordinate label on “${displayTex}” — a contravariant component along ${[...new Set(labels)].join(" and ")}, which is not supported yet`,
+  )
 }
 
 /**
@@ -5481,9 +5623,10 @@ function angularIndexGuard(baseText: string, n: any, displayTex: string, ctx: Ct
  * `indexed`, since that is where a component index can stand; an identity the
  * registry spells out (H_0^2) is a power, and a symbol with no index subscript
  * (r^2, M^2) has no component to name. A power on \partial or \nabla is a
- * derivative order, as the angular guard reads it. The digit 1 is left alone:
- * as a power it leaves the dimension the index reading gives, so both readings
- * ship the same translation (`\Gamma^{1}_{00} = \frac{GM}{r^{3}}(r - 2GM)`).
+ * derivative order, as the Teukolsky operator's \partial_\phi^2 is. The digit
+ * 1 is left alone: as a power it leaves the dimension the index reading
+ * gives, so both readings ship the same translation
+ * (`\Gamma^{1}_{00} = \frac{GM}{r^{3}}(r - 2GM)`).
  */
 function componentDigitGuard(
   baseText: string,
@@ -6075,10 +6218,8 @@ function readPrimed(
       : baseTex + ticks + (n.sub != null ? scriptTex("_", n.sub, ctx) : "")
   // The guards see the scripts the primed symbol carries, the primes set aside.
   const scripts = { sub: n.sub, sup: rest == null ? null : { type: "ordgroup", body: split.rest } }
-  if (n.sub != null) {
-    angularIndexGuard(key, scripts, tex, ctx)
-    componentDigitGuard(key, scripts, rest, tex, ctx)
-  }
+  coordinateSuperscriptGuard(key, scripts, tex, ctx)
+  if (n.sub != null) componentDigitGuard(key, scripts, rest, tex, ctx)
   if (rest === "signLabel") throw new Unsupported(SIGN_LABEL_REASON)
   const varDim = resolveSymbol(key, display, ctx, {
     sub: n.sub,
@@ -6235,6 +6376,8 @@ function analyzeScriptedSymbol(
   // dictionary gives; the dotted one's is not the dictionary's.
   const legendTex = order > 0 ? supsubTex(symbol.underived, n, ctx) : wholeTex
   const derived = (d: Dim) => (order > 0 ? dimSub(d, dim(0, 0, order)) : d)
+  // A label's parentheses and letters are its name, never a component.
+  if (label == null) coordinateSuperscriptGuard(name, n, wholeTex, ctx)
 
   // Symbol with a subscript: identity, indices, derivative indices, or unknown.
   if (n.sub != null) {
@@ -6247,7 +6390,6 @@ function analyzeScriptedSymbol(
     if (split != null && split !== "labels") {
       return analyzeDifferentiatedSymbol(n, symbol, name, reading, order, wholeTex, split, ctx)
     }
-    angularIndexGuard(name, n, wholeTex, ctx)
     componentDigitGuard(name, n, reading, wholeTex, ctx)
     const d = derived(resolveSymbol(name, legendTex, ctx, { sub: n.sub }))
     const unitConstant = `${name}_${subKeyText(n.sub, ctx)}` === "k_B" || undefined
@@ -6321,11 +6463,13 @@ function analyzeScriptedSymbol(
  * staggeredIntoMarksGuard one set inside the symbol, as in
  * `\bar{h^{\ \ \alpha}}_{\mu\nu,\alpha}`, whose own superscript is empty). Each
  * derivative index then adds its operator's dimension. The guards on an
- * indexed reading judge the head's: the angular guard, the component digit,
- * and a dot over an indexed symbol. A numeric power raises the derivative, as
- * it raises any subscripted symbol whole (`\Phi_{,i}^{2}` is (∂_iΦ)²). With no
- * head, c and G would be the constants differentiated, which no reading
- * makes of them, and decline as marked constants.
+ * indexed reading judge the head's: an upper coordinate label, the component
+ * digit, and a dot over an indexed symbol; a lower label in the head is read
+ * with its coordinate's dimension (componentEntry). A numeric power raises
+ * the derivative, as it raises any subscripted symbol whole
+ * (`\Phi_{,i}^{2}` is (∂_iΦ)²). With no head, c and G would be the constants
+ * differentiated, which no reading makes of them, and decline as marked
+ * constants.
  *
  * The legend names the symbol differentiated (Φ, g_{00}) and each operator
  * (`{}_{;}`, the covariant derivative). A miss lists the symbol as written:
@@ -6354,9 +6498,9 @@ function analyzeDifferentiatedSymbol(
   const supTex = n.sup != null && !power ? scriptTex("^", n.sup, ctx) : ""
   const legendTex = (order > 0 ? symbol.underived : symbol.tex) + (supWrittenFirst(n, ctx) ? supTex + subTex : subTex + supTex)
   if (order > 0 && readsIndexed(name, head, reading, ctx)) throw new Unsupported(dotOnIndexedReason(wholeTex))
+  if (reading != null) coordinateSuperscriptGuard(name, head, wholeTex, ctx)
   let d: Dim
   if (headSub != null) {
-    angularIndexGuard(name, head, wholeTex, ctx)
     componentDigitGuard(name, head, reading, wholeTex, ctx)
     d = resolveSymbol(name, legendTex, ctx, { sub: headSub, missTex: wholeTex })
   } else {
@@ -7159,6 +7303,13 @@ function emitTermWith(t: TermInfo, a12: number, b12: number, ctx: Ctx): string {
   // constant the term already carries, then joins the product; negatives wrap
   // the result in a fraction.
   const merged = mergeConstants(t.factors, a12, b12)
+  // A lone numeral 1 multiplying an inserted constant says nothing: `-1` taking
+  // c² is `-c^{2}`, never `-1c^{2}`, as a fraction's bare 1 numerator is dropped
+  // (P3b). A constant set in the denominator alone keeps the 1 over it.
+  const loneOne = merged.factors.filter((f) => f.kind !== "glue")
+  if ((merged.a12 > 0 || merged.b12 > 0) && loneOne.length === 1 && loneOne[0].kind === "num" && loneOne[0].emit() === "1") {
+    merged.factors = []
+  }
   const numParts = partsWith(
     merged.factors,
     merged.b12 > 0 ? restored("G", merged.b12, merged.folded.G) : "",
@@ -7297,7 +7448,11 @@ function unicodeExp(unit: string, e12: number): string {
 /** Plain-text unit label for a legend row, in the target system. */
 function legendUnitOf(record: LegendRecord, spec: TargetSpec): string {
   if (spec.system === "si" && !spec.geometrized) return record.si
-  const d = record.dim
+  return plainUnitOf(record.dim, spec)
+}
+
+/** Plain-text unit of a dimension in the target's base units. */
+function plainUnitOf(d: Dim, spec: TargetSpec): string {
   const [uM, uL, uT, uTh, uI] = baseUnitsOf(spec.system)
   const units: Array<[string, number]> = spec.geometrized
     ? [
@@ -8079,6 +8234,8 @@ export function dimensionOf(
     legend: new Map(),
     unknown: new Map(),
     unknownHits: 0,
+    ctChartRead: null,
+    timeComponentRead: null,
     mutated: false,
     strip: false,
     rereading: false,
@@ -8624,6 +8781,8 @@ function translateCore(
     legend: new Map(),
     unknown: new Map(),
     unknownHits: 0,
+    ctChartRead: null,
+    timeComponentRead: null,
     mutated: false,
     strip: spec.geometrized,
     rereading,

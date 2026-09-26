@@ -880,34 +880,36 @@ describe("registry additions (2026-08-17)", () => {
     }
   })
 
-  test("CEO ruling: \\partial_t resolves wherever \\partial_a already does", () => {
-    // The four labels the corpus actually carries, each on \partial.
-    for (const label of ["t", "r", "\\theta", "\\phi"]) {
+  test("CEO ruling as revised (P3): \\partial_t resolves wherever \\partial_a does, with t's dimension", () => {
+    // The four labels the corpus actually carries, each on \partial. r is a
+    // length, as an abstract index is; t is a time, θ and φ pure numbers.
+    const wave: [string, string][] = [
+      ["t", "\\Box\\phi = \\frac{\\partial_{t}\\partial_{t}\\phi}{c^{2}}"],
+      ["r", "\\Box\\phi = \\partial_{r}\\partial_{r}\\phi"],
+    ]
+    for (const [label, out] of wave) {
       const tex = `\\Box \\phi = \\partial_${label} \\partial_${label} \\phi`
       const result = run(tex)
       assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
       if (result.kind === "translated") {
-        assert.strictEqual(result.changed, false, result.restoredTex)
+        assert.strictEqual(result.restoredTex.replace(/\s+/g, ""), out.replace(/\s+/g, ""))
         assert.ok(
-          result.legend.some((l) => l.gloss.includes("coordinate derivative")),
+          result.legend.some((l) => l.gloss.startsWith("coordinate derivative")),
           `${tex} → ${JSON.stringify(result.legend)}`,
         )
       }
     }
-    // A coordinate label reads the same as an abstract index does.
-    const abstract = run("\\Box \\phi = \\partial_a \\partial_a \\phi")
-    const coordinate = run("\\Box \\phi = \\partial_t \\partial_r \\phi")
-    assert.strictEqual(abstract.kind, "translated")
-    assert.strictEqual(coordinate.kind, "translated")
-    // And it reaches the rest of the indexed family, not just \partial:
-    // coordinate-component notation now resolves.
+    // □ is m⁻² and ∂_θ∂_θ a pure number: no constant makes them one.
+    for (const label of ["\\theta", "\\phi"]) {
+      const result = run(`\\Box \\phi = \\partial_${label} \\partial_${label} \\phi`)
+      assert.strictEqual(result.kind, "declined", JSON.stringify(result))
+    }
+    // It reaches the rest of the indexed family, not just \partial.
     const metric = run("g_{tt} = -1")
     assert.strictEqual(metric.kind, "translated", JSON.stringify(metric))
     if (metric.kind === "translated") {
-      assert.ok(
-        metric.legend.some((l) => l.tex === "g_{tt}" && l.gloss.includes("metric")),
-        JSON.stringify(metric.legend),
-      )
+      assert.strictEqual(metric.restoredTex, "g_{tt} = -c^{2}")
+      assert.deepStrictEqual(metric.legend, [{ tex: "g_{tt}", gloss: "metric, component along t", unit: "m² s⁻²" }])
     }
   })
 
@@ -1489,15 +1491,15 @@ describe("source fidelity: foreign-lexer locs, spacing as written, control space
   })
 })
 
-describe("script order and the angular guard", () => {
-  const ANGULAR = (tex: string) =>
-    `an angular coordinate index on “${tex}” — components along θ and φ do not share the registry's length dimension`
-  const declinesAngular = (tex: string, quoted: string) => {
+describe("script order and the coordinate-label guard", () => {
+  const UPPER = (tex: string, along: string) =>
+    `an upper coordinate label on “${tex}” — a contravariant component along ${along}, which is not supported yet`
+  const declinesUpper = (tex: string, quoted: string, along: string) => {
     for (const target of [SI, GEO]) {
       const result = run(tex, target)
       assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
       if (result.kind === "declined") {
-        assert.deepStrictEqual(result.reasons, [ANGULAR(quoted)], tex)
+        assert.deepStrictEqual(result.reasons, [UPPER(quoted, along)], tex)
         assert.deepStrictEqual(result.unknown, [], tex)
       }
     }
@@ -1540,26 +1542,37 @@ describe("script order and the angular guard", () => {
     verbatim("E = \\left(v\\right)^{2}_{a}m")
   })
 
-  test("an indexed component with a superscript and θ or φ in either script declines by name", () => {
+  test("an upper coordinate label on an indexed symbol declines by name; a lower one is read (P3)", () => {
     // Unblocked by script order, these became unchanged translations under a
-    // banner of m⁻¹ and of a pressure: Γ^μ_{θθ} and T^0_θ are neither.
-    declinesAngular("\\Gamma^{\\mu}_{\\theta\\theta} = 0", "\\Gamma^{\\mu}_{\\theta\\theta}")
-    declinesAngular("T^{0}_{\\theta} = 0", "T^{0}_{\\theta}")
-    declinesAngular("\\Gamma^{\\theta}_{rr} = 0", "\\Gamma^{\\theta}_{rr}")
-    declinesAngular("\\Gamma^{r}_{\\theta\\theta} = -r", "\\Gamma^{r}_{\\theta\\theta}")
-    declinesAngular("\\Gamma^{\\theta}_{r\\theta} = \\frac{1}{r}", "\\Gamma^{\\theta}_{r\\theta}")
-    declinesAngular("x^{\\mu}_{\\varphi} = 0", "x^{\\mu}_{\\varphi}")
-    // The spelling never decides the reading: subscript first declines as well,
-    // though it used to translate.
-    declinesAngular("\\Gamma_{\\theta\\theta}^{\\mu} = 0", "\\Gamma_{\\theta\\theta}^{\\mu}")
-    // A power is a superscript too.
-    declinesAngular("E = g_{\\phi\\phi}^{2}", "g_{\\phi\\phi}^{2}")
+    // banner of m⁻¹: Γ^θ_{rr} and Γ^r_{θθ} are neither. A lower θ now takes
+    // its own dimension, and nothing gives an upper one.
+    declinesUpper("\\Gamma^{\\theta}_{rr} = 0", "\\Gamma^{\\theta}_{rr}", "θ")
+    declinesUpper("\\Gamma^{r}_{\\theta\\theta} = -r", "\\Gamma^{r}_{\\theta\\theta}", "r")
+    declinesUpper("\\Gamma^{\\theta}_{r\\theta} = \\frac{1}{r}", "\\Gamma^{\\theta}_{r\\theta}", "θ")
+    declinesUpper("T^{t}_{a} = 0", "T^{t}_{a}", "t")
+    // The spelling never decides the reading: subscript first declines as well.
+    declinesUpper("\\Gamma_{rr}^{\\theta} = 0", "\\Gamma_{rr}^{\\theta}", "θ")
+    // With no subscript it was an exponent on the bare symbol: g^{φφ}, the
+    // determinant to the power φφ, a pure number (Carroll's 2-sphere).
+    declinesUpper("R_{\\theta\\theta} = g^{\\phi\\phi}R_{\\phi\\theta\\phi\\theta}", "g^{\\phi\\phi}", "φ")
+    declinesUpper("u^{t} = 1", "u^{t}", "t")
+    declinesUpper("g^{t\\phi} = 0", "g^{t\\phi}", "t and φ")
     // Every indexed lookup, the differential's operand included.
-    declinesAngular("ds = dx^{\\mu}_{\\theta}", "x^{\\mu}_{\\theta}")
+    declinesUpper("ds = dx^{\\theta}_{\\mu}", "x^{\\theta}_{\\mu}", "θ")
+    // An abstract superscript beside lower labels reads: Γ^μ_{θθ} is a length
+    // (Γ^r_{θθ} = −r), T^0_θ a stress–energy component times a length.
+    verbatim("\\Gamma^{\\mu}_{\\theta\\theta} = 0")
+    verbatim("T^{0}_{\\theta} = 0")
+    verbatim("\\Gamma_{\\theta\\theta}^{\\mu} = 0")
+    const gamma = run("\\Gamma^{\\mu}_{\\theta\\theta} = 0")
+    assert.ok(gamma.kind === "translated" && gamma.targetUnitTex === "\\mathrm{m}", JSON.stringify(gamma))
+    // A digit on a component keeps its own reason: a power or a component index.
+    const digit = run("E = g_{\\phi\\phi}^{2}")
+    assert.ok(digit.kind === "declined" && digit.reasons[0].startsWith("a digit superscript"), JSON.stringify(digit))
   })
 
-  test("the guard leaves the 2026-08-17 subscript ruling and other reasons alone", () => {
-    // A subscript alone still reads θ and φ as indices.
+  test("the guard leaves the subscript ruling and other reasons alone", () => {
+    // A subscript alone still reads θ and φ, now with their dimensions.
     verbatim("g_{\\theta\\phi} = 0")
     // A power on ∂ is a derivative order: the Teukolsky operator's ∂_φ², one of
     // the equations the ruling was drawn from, still stops only on unknown ψ.
@@ -2037,8 +2050,9 @@ describe("relations core: relations, continuation rows, branch signs", () => {
       ],
       ["E = \\pm \\sqrt{p^2 + M^2}", "E = \\pm \\sqrt{p^{2} + M^{2}c^{2}}c", "\\mathrm{kg}\\,\\mathrm{m}^{2}\\,\\mathrm{s}^{-2}"],
       ["r = e^{\\pm i \\omega t} M", "r = \\frac{Ge^{\\pm i\\omega t}M}{c^{2}}", "\\mathrm{m}"],
-      // `= \pm 1` states a value, not a unit convention, and is restored like `= -1`.
-      ["v = \\pm 1", "v = \\pm 1c", "\\mathrm{m}\\,\\mathrm{s}^{-1}"],
+      // `= \pm 1` states a value, not a unit convention, and is restored like
+      // `= -1`; the lone 1 beside the constant goes (P3b).
+      ["v = \\pm 1", "v = \\pm c", "\\mathrm{m}\\,\\mathrm{s}^{-1}"],
       // Ledger #830 (gr-qc/9712019), with G explicit and c = 1.
       [
         "{\\frac{{dt}}{{dr}}}=\\pm\\left(1-{\\frac{{2GM}}{r}}\\right)^{-1}",
@@ -3471,21 +3485,21 @@ describe("statement layer: lists, connectives, wide space and the unit summary",
     declines("M = 1,\\ r_s = 2M", UNIT_ONE("M = 1"), [SI, HL, GEO])
     declines("r_s = 2M \\qquad M = 1", UNIT_ONE("M = 1"), [SI, HL, GEO])
     declines("\\Rightarrow v \\ll 1", UNIT_ONE("v \\ll 1"), [SI])
-    // Against a dimensionless statement the 1 is a pure number, and a signed
-    // 1 or a 1 in a sum is an ordinary term.
+    // A signed 1 or a 1 in a sum is an ordinary term: g_tt is m² s⁻² (P3), and
+    // Schwarzschild's g_tt = −(1 − 2GM/rc²)c².
     expect(
       "g_{tt} = -1 \\qquad r \\gg M",
       SI,
-      "g_{tt} = -1 \\qquad r \\gg \\frac{GM}{c^{2}}",
-      `\\text{dimensionless};\\ ${M}`,
+      "g_{tt} = -c^{2} \\qquad r \\gg \\frac{GM}{c^{2}}",
+      `\\mathrm{m}^{2}\\,\\mathrm{s}^{-2};\\ ${M}`,
       true,
     )
     expect("g_{tt} = -1 \\qquad r \\gg M", GEO, "g_{tt} = -1 \\qquad r \\gg M", "\\text{dimensionless};\\ \\mathrm{cm}", false)
     expect(
       "g_{tt} = -1 + \\frac{2M}{r} \\qquad r > 2M",
       SI,
-      "g_{tt} = -1 + \\frac{2GM}{rc^{2}} \\qquad r > \\frac{2GM}{c^{2}}",
-      `\\text{dimensionless};\\ ${M}`,
+      "g_{tt} = -c^{2} + \\frac{2GM}{r} \\qquad r > \\frac{2GM}{c^{2}}",
+      `\\mathrm{m}^{2}\\,\\mathrm{s}^{-2};\\ ${M}`,
       true,
     )
     expect("r_s = 2M, \\qquad \\frac{r}{r_s} = 1", SI, "r_{s} = \\frac{2GM}{c^{2}}, \\qquad \\frac{r}{r_{s}} = 1", `${M};\\ \\text{dimensionless}`, true)
@@ -3746,25 +3760,29 @@ describe("index tokens, primes and the canonical symbol key", () => {
     assert.strictEqual(rawRestored("E = p^{\\alpha_1}"), "E = p^{\\alpha_1}c")
   })
 
-  test("the angular guard reads θ and φ through a prime, a label and braces on the index", () => {
-    const ANGULAR = (tex: string) =>
-      `an angular coordinate index on “${tex}” — components along θ and φ do not share the registry's length dimension`
-    for (const [tex, quoted] of [
-      ["\\Gamma^{\\mu}_{\\theta'\\theta'} = 0", "\\Gamma^{\\mu}_{\\theta'\\theta'}"],
-      ["\\Gamma^{\\mu}_{{\\theta\\theta}} = 0", "\\Gamma^{\\mu}_{{\\theta\\theta}}"],
-      ["\\Gamma^{\\theta'}_{rr} = 0", "\\Gamma^{\\theta'}_{rr}"],
-    ]) {
-      assert.deepStrictEqual(declined(tex).reasons, [ANGULAR(quoted)], tex)
+  test("coordinate labels are read through a prime and braces on the index (P3)", () => {
+    const UPPER = (tex: string, along: string) =>
+      `an upper coordinate label on “${tex}” — a contravariant component along ${along}, which is not supported yet`
+    const UNREAD = (coordinate: string) => `a component along the coordinate “${coordinate}”, which the dictionary does not read`
+    // A primed label names another coordinate, θ′, whose dimension the
+    // dictionary does not give; braces only group the labels.
+    assert.deepStrictEqual(declined("\\Gamma^{\\mu}_{\\theta'\\theta'} = 0").reasons, [UNREAD("\\theta'")])
+    assert.deepStrictEqual(declined("g_{\\theta'\\theta'} = 0").reasons, [UNREAD("\\theta'")])
+    assert.strictEqual(rawRestored("\\Gamma^{\\mu}_{{\\theta\\theta}} = 0"), "\\Gamma^{\\mu}_{{\\theta\\theta}} = 0")
+    assert.deepStrictEqual(declined("\\Gamma^{\\theta'}_{rr} = 0").reasons, [UPPER("\\Gamma^{\\theta'}_{rr}", "“\\theta'”")])
+    assert.deepStrictEqual(declined("\\Gamma^{{\\theta}}_{rr} = 0").reasons, [UPPER("\\Gamma^{{\\theta}}_{rr}", "θ")])
+    // Where the dictionary reads the primed coordinate, the component is read with it.
+    const boosted: HubRegistry = {
+      ...primed,
+      differential: { ...primed.differential, "t'": primed.bare["t'"] },
     }
-    // A primed symbol's own indexed reading is guarded as any other is.
-    assert.deepStrictEqual(declined("\\Gamma'^{\\mu}_{\\theta\\theta} = 0", primed).reasons, [
-      ANGULAR("\\Gamma'^{\\mu}_{\\theta\\theta}"),
-    ])
+    assert.strictEqual(rawRestored("g_{t't'} = -1", SI, boosted), "g_{t't'} = -c^{2}")
+    // A primed symbol's own indexed reading is read and guarded as any other is.
+    assert.strictEqual(rawRestored("\\Gamma'^{\\mu}_{\\theta\\theta} = 0", SI, primed), "\\Gamma'^{\\mu}_{\\theta\\theta} = 0")
+    assert.deepStrictEqual(declined("\\Gamma'^{\\theta}_{rr} = 0", primed).reasons, [UPPER("\\Gamma'^{\\theta}_{rr}", "θ")])
     assert.deepStrictEqual(declined("\\Gamma'^{2}_{00} = 0", primed).reasons, [
       "a digit superscript on “\\Gamma'^{2}_{00}” — a component index or a power",
     ])
-    // The subscript ruling still reads them.
-    assert.strictEqual(rawRestored("g_{\\theta'\\theta'} = 0"), "g_{\\theta'\\theta'} = 0")
   })
 
   test("a primed symbol is looked up under its own name and borrows nothing from its letter", () => {
@@ -4705,13 +4723,15 @@ describe("differentials (step 14)", () => {
     restoresTo("\\frac{d}{d\\tau} = u^{a}\\nabla_{a}", "\\frac{d}{d\\tau} = u^{a}c\\nabla_{a}")
     restoresTo("\\frac{d}{d\\tau} = u^{\\mu}\\partial_{\\mu}", "\\frac{d}{d\\tau} = u^{\\mu}c\\partial_{\\mu}")
     restoresTo("\\frac{d^{2}}{d\\tau^{2}} = \\Box", "\\frac{d^{2}}{d\\tau^{2}} = c^{2}\\Box")
-    // The material derivative. ∂_t is the t component of ∂_μ, a coordinate
-    // label read as an index (COORDINATE_LABELS), so it is ∂/∂(ct).
+    // The material derivative. ∂_t is the t component of ∂_μ, read with t's
+    // own dimension (P3): ∂/∂t, as d/dt is, and it takes no c. Read as
+    // ∂/∂(ct) it shipped as `c\partial_{t}`.
     restoresTo(
       "\\frac{d}{dt} = \\partial_{t} + \\vec{v}\\cdot\\nabla",
-      "\\frac{d}{dt} = c\\partial_{t} + \\vec{v}\\cdot\\nabla",
+      "\\frac{d}{dt} = \\partial_{t} + \\vec{v}\\cdot\\nabla",
     )
     restoresTo("\\frac{d}{dt} = \\nabla", "\\frac{d}{dt} = c\\nabla")
+    restoresTo("\\frac{d}{dr} = \\partial_{t}", "\\frac{d}{dr} = \\frac{\\partial_{t}}{c}")
     // Braced, powered, in a group, under a font or an arrow.
     restoresTo("\\frac{d}{d\\tau} = {\\partial}_{\\mu}u^{\\mu}", "\\frac{d}{d\\tau} = c{\\partial}_{\\mu}u^{\\mu}")
     restoresTo("\\frac{d^{2}}{dt^{2}} = \\nabla^{2}", "\\frac{d^{2}}{dt^{2}} = c^{2}\\nabla^{2}")
@@ -5566,7 +5586,7 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
     declines("T_{ab;} = 0", COVARIANT)
     declines("T_{ab;;c} = 0", COVARIANT)
     declines("T_{ab;\\cdots} = 0", COVARIANT)
-    // θ and φ as x² and x³: the angular guard's reason, said of a digit.
+    // θ and φ as x² and x³: a digit names no coordinate a lookup could read.
     declines("T_{ab;2} = 0", DIGIT("2"))
     declines("T_{ab;3} = 0", DIGIT("3"))
     declines("T^{ab}{}_{;3} = 0", DIGIT("3"))
@@ -5585,7 +5605,7 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
   test("the guards on an indexed reading judge the head's", () => {
     declines(
       "\\Gamma^{\\theta}_{r\\theta;a} = 0",
-      "an angular coordinate index on “\\Gamma^{\\theta}_{r\\theta;a}” — components along θ and φ do not share the registry's length dimension",
+      "an upper coordinate label on “\\Gamma^{\\theta}_{r\\theta;a}” — a contravariant component along θ, which is not supported yet",
     )
     declines("\\Gamma^{2}_{00,i} = 0", "a digit superscript on “\\Gamma^{2}_{00,i}” — a component index or a power")
     declines(
@@ -5887,13 +5907,17 @@ describe("unit literal: a bare 1 stands only against a pure number (step 19a)", 
     for (const target of [SI, HL, GEO]) {
       // The registry's Ω is a solid angle, and its metric is dimensionless (x⁰ = ct).
       translates("\\Omega = 1", target, "\\Omega = 1")
-      translates("g_{tt} = 1", target, "g_{tt} = 1")
-      translates("g_{tt} = -1", target, "g_{tt} = -1")
+      translates("g_{00} = 1", target, "g_{00} = 1")
+      translates("g_{00} = -1", target, "g_{00} = -1")
     }
-    translates("g_{tt} = -1 \\qquad r \\gg M", SI, "g_{tt} = -1 \\qquad r \\gg \\frac{GM}{c^{2}}")
+    // With the t-chart's g_tt a speed squared (P3), a signed 1 takes c² and
+    // the lone 1 beside it goes (P3b).
+    translates("g_{tt} = -1", SI, "g_{tt} = -c^{2}")
+    translates("g_{tt} = -1", GEO, "g_{tt} = -1")
+    translates("g_{tt} = -1 \\qquad r \\gg M", SI, "g_{tt} = -c^{2} \\qquad r \\gg \\frac{GM}{c^{2}}")
     translates("g_{tt} = -1 \\qquad r \\gg M", GEO, "g_{tt} = -1 \\qquad r \\gg M")
-    translates("v = -1", SI, "v = -1c")
-    translates("v = \\pm 1", SI, "v = \\pm 1c")
+    translates("v = -1", SI, "v = -c")
+    translates("v = \\pm 1", SI, "v = \\pm c")
     // Anchored on the 1, the statement is a pure number and its other side is completed to one.
     translates("1 = \\frac{r}{M}", SI, "1 = \\frac{rc^{2}}{GM}")
     // A 1 that is one term of a sum pins the sum to dimensionless, as before.
@@ -5919,23 +5943,163 @@ describe("unit literal: a bare 1 stands only against a pure number (step 19a)", 
   })
 
   test("the solver reviewer's counterexamples: a metric component with a dimension beside a bare 1 declines", () => {
-    // Were a coordinate component read with its coordinates' dimensions (plan
-    // step 19, P3), g_tt = 1 would have shipped unchanged under m² s⁻², beside
-    // g_tt = -1 restored as -c². Stated here with test readings.
-    const component = (si: string, dim: number[]) => ({ dim: dim as [number, number, number, number, number], gloss: "a metric component", si })
-    const components: HubRegistry = {
-      ...reg,
-      exact: {
-        ...reg.exact,
-        g_tt: component("m² s⁻²", [0, 24, -24, 0, 0]),
-        "\\eta_tt": component("m² s⁻²", [0, 24, -24, 0, 0]),
-        "g_\\theta\\theta": component("m²", [0, 24, 0, 0, 0]),
-      },
-    }
-    for (const tex of ["g_{tt} = 1", "-g_{tt} = 1", "\\eta_{tt} = 1"]) declines(tex, tex, [SI, HL], components)
+    // With a coordinate component read with its coordinates' dimensions (P3),
+    // g_tt = 1 would have shipped unchanged under m² s⁻², beside g_tt = -1
+    // restored as -c².
+    for (const tex of ["g_{tt} = 1", "-g_{tt} = 1", "\\eta_{tt} = 1"]) declines(tex, tex, [SI, HL])
     // A length squared is no pure number geometrized either.
-    declines("g_{\\theta\\theta} = 1", "g_{\\theta\\theta} = 1", [SI, HL, GEO], components)
+    declines("g_{\\theta\\theta} = 1", "g_{\\theta\\theta} = 1", [SI, HL, GEO])
     // In G = c = 1 a speed squared is a pure number, and the 1 is one.
-    translates("g_{tt} = 1", GEO, "g_{tt} = 1", components)
+    translates("g_{tt} = 1", GEO, "g_{tt} = 1")
+  })
+})
+
+describe("coordinate components: a lower coordinate label carries its coordinate's dimension (P3, step 19b)", () => {
+  const translates = (tex: string, target: TargetSpec, restoredTex: string, registry: HubRegistry = reg) => {
+    const result = translateTex(tex, katex, registry, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    if (result.kind === "translated") assert.strictEqual(result.restoredTex, restoredTex, tex)
+    return result as Extract<TranslationResult, { kind: "translated" }>
+  }
+  const declines = (tex: string, reason: string, registry: HubRegistry = reg) => {
+    for (const target of [SI, GEO]) {
+      const result = translateTex(tex, katex, registry, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") assert.deepStrictEqual(result.reasons, [reason], tex)
+    }
+  }
+  const unchanged = (tex: string) => {
+    for (const target of [SI, GEO]) {
+      const result = translateTex(tex, katex, reg, target)
+      assert.ok(result.kind === "translated" && !result.changed, `${tex} → ${JSON.stringify(result)}`)
+    }
+  }
+  const CHART = (reading: string, component: string) =>
+    `the shift vector “${reading}” beside “${component}”, a component along the time coordinate t — the dictionary reads the shift vector with x⁰ = ct, which that component does not`
+  const REPEATED = (tex: string) =>
+    `several indices on the derivative “${tex}”, a coordinate among them — a repeated derivative, which is not supported yet`
+  const UPPER = (tex: string, along: string) =>
+    `an upper coordinate label on “${tex}” — a contravariant component along ${along}, which is not supported yet`
+
+  test("∂_t is ∂/∂t: the live misreadings are fixed", () => {
+    // Read as ∂/∂(ct), `\omega = \partial_t\phi` shipped as `c\partial_{t}\phi`
+    // and ledger 2409.01939#61 unchanged where SI needs a c.
+    unchanged("\\omega = \\partial_t\\phi")
+    const omega = translates("\\omega = \\partial_t\\phi", SI, "\\omega = \\partial_{t}\\phi")
+    assert.ok(
+      omega.legend.some((l) => l.tex === "\\partial_{t}" && l.gloss === "coordinate derivative, component along t" && l.unit === "s⁻¹"),
+      JSON.stringify(omega.legend),
+    )
+    translates("\\partial_t\\alpha = -2\\alpha K", SI, "\\partial_{t}\\alpha = -2\\alpha Kc")
+    translates("\\partial_t\\alpha = -2\\alpha K", GEO, "\\partial_{t}\\alpha = -2\\alpha K")
+    translates("\\partial_{t}\\alpha=-2\\alpha(K-\\langle K\\rangle)", SI, "\\partial_{t}\\alpha = -2\\alpha(K - \\langle K\\rangle)c")
+    // The wave operator: □ = −c⁻²∂_t² + ∇².
+    translates(
+      "\\Box\\phi = -\\partial_t^2\\phi + \\partial_r^2\\phi",
+      SI,
+      "\\Box\\phi = -\\frac{\\partial_{t}^{2}\\phi}{c^{2}} + \\partial_{r}^{2}\\phi",
+    )
+    translates("\\Box\\phi = -\\partial_t^2\\phi + \\partial_r^2\\phi", GEO, "\\Box\\phi = -\\partial_{t}^{2}\\phi + \\partial_{r}^{2}\\phi")
+    // ∂_t now agrees with ∂/∂t, which always read as s⁻¹, and with ∂_0 = ∂/∂(ct).
+    unchanged("\\partial_t\\phi = \\dot{\\phi}")
+    translates("\\partial_0\\phi = \\partial_t\\phi", SI, "\\partial_{0}\\phi = \\frac{\\partial_{t}\\phi}{c}")
+  })
+
+  test("components of the metric, the momentum and the stress–energy tensor take their SI form", () => {
+    translates("g_{tt} = -1", SI, "g_{tt} = -c^{2}")
+    translates("g_{tt} = -1", GEO, "g_{tt} = -1")
+    translates("g_{tt}g_{rr} = -1", SI, "g_{tt}g_{rr} = -c^{2}")
+    // Declined before: the metric read dimensionless beside r².
+    unchanged("g_{\\theta\\theta} = r^2")
+    // ds² = g_tt dt² + g_rr dr² needs no c in the t-chart; read as ct it gave g_{tt}c^{2}dt^2.
+    unchanged("ds^2 = g_{tt}dt^2 + g_{rr}dr^2")
+    unchanged("p_t = -E")
+    unchanged("p_\\phi = L")
+    translates("T_{tt} = \\rho", SI, "T_{tt} = \\rho c^{4}")
+    translates("T_{tt} = T_{00}", SI, "T_{tt} = T_{00}c^{2}")
+    // Kerr's g_tφ = −2GMar sin²θ/(cΣ), and the frame-dragging rate (Carroll).
+    translates(
+      "g_{t\\phi} = -\\frac{2Mar\\sin^2\\theta}{\\Sigma}",
+      SI,
+      "g_{t\\phi} = -\\frac{2GMar\\sin^{2}\\theta}{\\Sigma c}",
+    )
+    unchanged("\\frac{d\\phi}{dt} = -\\frac{g_{t\\phi}}{g_{\\phi\\phi}}")
+    // Carroll's 2-sphere of radius a: R_θφθφ is a length squared.
+    unchanged("R_{\\theta\\phi\\theta\\phi} = a^{2}\\sin^{2}\\theta")
+    // The Friedmann equation's lone 1 goes beside the c² it takes (P3b).
+    translates("\\dot{a}^2 = \\frac{8\\pi G}{3}\\rho a^2 - 1", SI, "\\dot{a}^{2} = \\frac{8\\pi G}{3}\\rho a^{2} - c^{2}")
+    // □ is m⁻², ∂_θ∂_θ a pure number.
+    const angular = run("\\Box\\phi = \\partial_\\theta\\partial_\\theta\\phi")
+    assert.strictEqual(angular.kind, "declined", JSON.stringify(angular))
+    // The definitions path reads components as the translator does.
+    const gtt = dimensionOf("g_{tt}", katexDefault, reg)
+    assert.ok(gtt.kind === "dim", JSON.stringify(gtt))
+    if (gtt.kind === "dim") assert.deepStrictEqual(gtt.dim, [0, 24, -24, 0, 0])
+  })
+
+  test("a component's gloss is built on the reading's noun, each coordinate named once", () => {
+    const legendOf = (tex: string) => run(tex).legend.map((l) => `${l.tex}: ${l.gloss} [${l.unit}]`)
+    assert.deepStrictEqual(legendOf("g_{tt} = -1"), ["g_{tt}: metric, component along t [m² s⁻²]"])
+    assert.ok(legendOf("g_{t\\phi} = 0").includes("g_{t\\phi}: metric, component along t and φ [m² s⁻¹]"))
+    assert.ok(legendOf("g_{\\theta\\theta} = r^2").includes("g_{\\theta\\theta}: metric, component along θ [m²]"))
+    assert.ok(legendOf("u_{t} = -c").includes("u_{t}: four-velocity, component along t [m s⁻¹]"))
+    // Along r, a length, the component is the entry itself.
+    assert.ok(legendOf("g_{rr} = 1").includes("g_{rr}: metric (dimensionless with x⁰ = ct) [1]"))
+  })
+
+  test("repeated derivatives with a coordinate among their indices decline", () => {
+    // Read index by index, ∂_{tt} came out m s⁻², and the equation balanced
+    // only because two errors cancelled.
+    declines("\\partial_{tt}\\phi = \\partial_{rr}\\phi", REPEATED("\\partial_{tt}"))
+    declines("\\nabla_{tr}\\phi = 0", REPEATED("\\nabla_{tr}"))
+    declines("\\Box\\phi = \\partial_{\\mu t}\\phi", REPEATED("\\partial_{\\mu t}"))
+    // Across a rider the numeral is an order or an index, as before.
+    const rider = run("\\partial_t{}^{2}\\phi = \\partial_r{}^{2}\\phi")
+    assert.ok(rider.kind === "declined" && rider.reasons[0].startsWith("a detached superscript"), JSON.stringify(rider))
+  })
+
+  test("a ct-chart reading beside a component along t declines, whichever is read first", () => {
+    // The solver reviewer's counterexample: the K term took the t-chart's c
+    // and the shift terms a c right only for the ct-chart shift.
+    declines(
+      "\\partial_t g_{ij} = -2\\alpha K_{ij} + \\nabla_i\\beta_j + \\nabla_j\\beta_i",
+      CHART("\\beta_{j}", "\\partial_{t}"),
+    )
+    // Ledger 2409.01939#63, and the same read in the other order.
+    declines("\\partial_{t}\\alpha=-\\alpha e^{-\\alpha}K+\\beta^{i}\\partial_{i}\\alpha", CHART("\\beta^{i}", "\\partial_{t}"))
+    declines("\\beta^{i}\\partial_{i}\\alpha = \\partial_{t}\\alpha", CHART("\\beta^{i}", "\\partial_{t}"))
+    declines("\\beta_{t} = 0", CHART("\\beta_{t}", "\\beta_{t}"))
+    // Without a component along t the shift is read as it always was.
+    unchanged("\\partial_{i}\\beta^{i} = K")
+    // The flag is the dictionary's: a registry without it reads the shift as data.
+    const unflagged: HubRegistry = { ...reg, indexed: { ...reg.indexed, "\\beta": { ...reg.indexed["\\beta"], ctChart: undefined } } }
+    translates("\\beta^{i}\\partial_{i}\\alpha = \\partial_{t}\\alpha", SI, "\\beta^{i}\\partial_{i}\\alpha = \\frac{\\partial_{t}\\alpha}{c}", unflagged)
+  })
+
+  test("an upper coordinate label declines by name (the solver reviewer's counterexamples)", () => {
+    // Carroll's 2-sphere, gr-qc/9712019 #350 and #353: read as exponents on the
+    // determinant, the g^{φφ} and g^{θθ} factors were pure numbers.
+    declines("R_{\\theta\\theta} = g^{\\phi\\phi}R_{\\phi\\theta\\phi\\theta}", UPPER("g^{\\phi\\phi}", "φ"))
+    declines(
+      "R=g^{\\theta\\theta}R_{\\theta\\theta}+g^{\\phi\\phi}R_{\\phi\\phi}={\\frac{2}{{a^{2}}}}",
+      UPPER("g^{\\theta\\theta}", "θ"),
+    )
+    declines("\\partial^{t}\\phi = 0", UPPER("\\partial^{t}", "t"))
+    // A label or a bracketed superscript is no component: `u^{\rm out}` is
+    // looked up under its own name, and `x^{(\theta)}` keeps its reason.
+    const label = run("u^{\\rm t} = 0")
+    assert.ok(label.kind === "declined" && label.reasons.length === 0, JSON.stringify(label))
+    const bracketed = run("x = y^{(\\theta)}")
+    assert.ok(bracketed.kind === "declined" && !bracketed.reasons[0].includes("upper coordinate label"), JSON.stringify(bracketed))
+  })
+
+  test("derivative indices after a head of coordinate labels add their operator to the component", () => {
+    const marks: HubRegistry = { ...reg, derivativeMarks: { ";": "\\nabla" } }
+    // T_{tt;a} = ∇_a T_{tt}: the component, then one covariant derivative.
+    const tt = translates("T_{tt;a} = 0", SI, "T_{tt;a} = 0", marks)
+    assert.strictEqual(tt.targetUnitTex, "\\mathrm{kg}\\,\\mathrm{s}^{-4}")
+    // A coordinate after the mark is still refused.
+    const after = translateTex("T_{ab;t} = 0", katex, marks, SI)
+    assert.ok(after.kind === "declined" && after.reasons[0].includes("named coordinate"), JSON.stringify(after))
   })
 })
