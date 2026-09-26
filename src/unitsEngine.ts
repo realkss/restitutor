@@ -722,15 +722,38 @@ function joinTex(parts: string[]): string {
 
 const SKIP_TYPES = new Set(["kern", "spacing", "mspace"])
 const WRAPPER_TYPES = new Set(["styling", "sizing", "color", "mclass", "vcenter"])
-const TRANSPARENT_ACCENTS = new Set([
-  "\\bar",
-  "\\hat",
-  "\\tilde",
-  "\\vec",
-  "\\check",
-  "\\breve",
-  "\\overline",
-])
+/**
+ * The accents read through to the symbol under them. Every reading an
+ * overbar has keeps the dimension (a complex conjugate, a mean, a Dirac
+ * adjoint, the trace-reversed h̄_{μν}, a barred chart, a reduced constant), and
+ * `\vec{x}` is the vector whose magnitude is x: h̄_{μν} has the dimension of h.
+ */
+const TRANSPARENT_ACCENTS = new Set(["\\bar", "\\vec", "\\overline"])
+/**
+ * The accents that make another symbol (R1, the owner's ruling of 2026-09-26),
+ * which is looked up under its own name (symbolKey), never under its letter's.
+ * A hat marks a unit vector (dimensionless), an operator or an estimator; a
+ * tilde a Fourier transform (times a time or a volume), a dimensionless
+ * rescaling (r̃ = r/M) or another quantity of the same kind; a check an inverse
+ * transform. Read through, `\vec{v} = v\hat{v}` shipped `\frac{v\hat{v}}{c}`
+ * with the unit vector a velocity, and `\tilde{v} = v/c` shipped `vc/c`. No
+ * notation says which reading a page means, so none is assumed; an accented
+ * symbol the dictionary does not list is unknown.
+ */
+const LOOKUP_ACCENTS = new Set(["\\hat", "\\tilde", "\\check", "\\breve"])
+/**
+ * The wide accents are stretchy renderings of the narrow ones (F-B1), and
+ * name the same symbol: `\widehat{v}` is keyed, and read, as `\hat{v}`. They
+ * are aliased only because the narrow ones are lookups; read through, the
+ * alias would have carried the hat's misreadings to a spelling that declined.
+ */
+const WIDE_ACCENTS: Record<string, string> = { "\\widehat": "\\hat", "\\widetilde": "\\tilde", "\\widecheck": "\\check" }
+
+/** The lookup accent a label spells (R1), a wide one by its narrow form, or null. */
+function lookupAccentOf(label: string): string | null {
+  const narrow = WIDE_ACCENTS[label] ?? label
+  return LOOKUP_ACCENTS.has(narrow) ? narrow : null
+}
 const FUNC_OPS = new Set([
   "\\sin",
   "\\cos",
@@ -2052,6 +2075,14 @@ function subKeyText(sub: any, ctx: Ctx): string {
  * page another symbol than the letter, while the engine reads the letter under
  * the font; so a page's reading of it keys where no lookup reaches, never on
  * the letter's own entry.
+ *
+ * An accent that makes another symbol (LOOKUP_ACCENTS: the hat, the tilde, the
+ * check, the breve) is part of the base, which the engine looks up whole, and
+ * is keyed in one spelling however the page writes it: `\hat v`, `\hat{v}` and
+ * the stretchy `\widehat{v}` are all `\hat{v}`, and `\tilde{h}_{ij}` is
+ * `\tilde{h}_ij`. The accent is over one symbol, itself keyed (`\hat{\theta}`,
+ * `\hat{\mathbf{e}}`); a script inside it (`\hat{x_{1}}`) makes a compound the
+ * engine does not look up, and gives null.
  */
 export function symbolKey(tex: string): string | null {
   const src = tex.trim()
@@ -2090,7 +2121,20 @@ export function symbolKey(tex: string): string | null {
   let base: string | null
   if (src[at] === "\\") {
     base = controlWord()
-    if (base != null && src[at] === "{") {
+    const accent = base != null ? lookupAccentOf(base) : null
+    if (accent != null) {
+      skipSpace()
+      const arg =
+        src[at] === "{"
+          ? group()
+          : src[at] === "\\"
+            ? controlWord()
+            : at < src.length && !/[_^'{}]/.test(src[at])
+              ? src[at++]
+              : null
+      const inner = arg == null ? null : symbolKey(arg)
+      base = inner == null || isScriptedKey(inner) ? null : `${accent}{${inner}}`
+    } else if (base != null && src[at] === "{") {
       const arg = group()
       base = arg == null ? null : `${base}{${arg}}`
     }
@@ -2129,6 +2173,17 @@ export function symbolKey(tex: string): string | null {
   }
   if (primeRuns > 1 || (primeRuns === 1 && sup)) return null
   return `${base}${"'".repeat(primes)}${sub != null ? `_${sub}` : ""}`
+}
+
+/** Whether a symbolKey carries primes or a subscript: a `'` or `_` outside the braces of its base. */
+function isScriptedKey(key: string): boolean {
+  let depth = 0
+  for (const ch of key) {
+    if (ch === "{") depth += 1
+    else if (ch === "}") depth -= 1
+    else if (depth === 0 && (ch === "_" || ch === "'")) return true
+  }
+  return false
 }
 
 /** How a gloss or a reason names each coordinate label a component is along. */
@@ -5287,6 +5342,15 @@ function analyzeFactor(rawNode: any, ctx: Ctx): Factor {
           return { kind: "sym", dim: d, emit: () => display }
         })
       }
+      if (lookupAccentOf(label) != null) {
+        // Another symbol (R1), looked up under its own name. Over anything
+        // but one symbol there is no name to look up, and reading through to
+        // the expression is what R1 rules out.
+        const symbol = symbolBaseOf(n, ctx)
+        if (symbol == null) throw new Unsupported(`the accent “${label}” over a compound expression, which is not supported`)
+        const d = resolveSymbol(symbol.text, symbol.tex, ctx, {})
+        return { kind: "sym", dim: d, emit: () => symbol.tex }
+      }
       if (TRANSPARENT_ACCENTS.has(label)) {
         return analyzeAccentBody(ctx, () => {
           const inner = bracedArg(n.base, ctx)
@@ -5399,8 +5463,8 @@ function isSingleBarGroup(n: any): boolean {
  * dimensionless; counted over the first supsub alone, the mixed tensor
  * |T^{a}{}_{b}| passed as a modulus. Accents, fonts, styles and braces do not
  * change what stands between the bars, wherever the reader set them: on the
- * base (`\tilde T_{ab}`, `\mathbf{T}_{ab}`) or around the whole indexed
- * symbol (`\tilde{T_{ab}}`, `{\bf T_{ab}}`, `{T^{a}{}_{b}}`). Peeled from the
+ * base (`\bar T_{ab}`, `\mathbf{T}_{ab}`) or around the whole indexed
+ * symbol (`\bar{T_{ab}}`, `{\bf T_{ab}}`, `{T^{a}{}_{b}}`). Peeled from the
  * base alone, every wrapped spelling of the whole passed as a modulus.
  */
 function barredTensorTex(body: any[], ctx: Ctx): string | null {
@@ -5457,7 +5521,7 @@ function decoratedTexOf(raw: any, ctx: Ctx): string {
 
 /**
  * The nodes of a barred run under their decorations: a group the peeling
- * reaches with several children (`{T^{a}{}_{b}}`, `\tilde{T^{a}{}_{b}}`)
+ * reaches with several children (`{T^{a}{}_{b}}`, `\bar{T^{a}{}_{b}}`)
  * contributes each of them, so a staggered run reads the same braced or not.
  */
 function decoratedRunOf(node: any): any[] {
@@ -5586,7 +5650,11 @@ function supsubTex(baseTex: string, n: any, ctx: Ctx): string {
  * a font or an accent standing bare is rebuilt around what it holds.
  */
 type SymbolBase = {
-  /** The letter the dictionary keys: `h` for `\bar{h}`, `R` for `\boldsymbol{R}`. */
+  /**
+   * The name the dictionary keys: the letter, `h` for `\bar{h}` and `R` for
+   * `\boldsymbol{R}`, or the accented symbol whole where the accent makes
+   * another (R1: `\hat{g}` for `\hat{g}` and `\widehat{g}`).
+   */
   text: string
   tex: string
   /** The symbol as written without its accents (`r` for `\dot{r}`): what a dotted symbol's legend shows. */
@@ -5630,7 +5698,10 @@ function symbolBaseOf(raw: any, ctx: Ctx, wrapped = false): SymbolBase | null {
     const inner = symbolBaseOf(peeled.type === "accent" ? peeled.base : peeled.body, ctx, true)
     if (inner == null) return null
     const body = inner.tex.startsWith("{") && outerBracesArePartners(inner.tex) ? inner.tex.slice(1, -1) : inner.tex
-    return { ...inner, tex: `${label}{${body}}`, accent: label, stacked: inner.accent != null, plain: false }
+    const tex = `${label}{${body}}`
+    // An accent that makes another symbol (R1) names it: the dictionary keys ĝ, not g.
+    const text = peeled.type === "accent" && lookupAccentOf(label) != null ? (symbolKey(tex) ?? tex) : inner.text
+    return { ...inner, text, tex, accent: label, stacked: inner.accent != null, plain: false }
   }
   if (peeled.type !== "mathord" && peeled.type !== "textord") return null
   if (wrapped && /^[0-9]$/.test(peeled.text)) return null
@@ -6015,11 +6086,12 @@ function constantFontGuard(text: string, font: any, ctx: Ctx): void {
  * An accent's body analyzed, and declined when the analysis read a c or G in
  * it as the constant. An accent makes the letter another symbol, as a bold or
  * calligraphic font does (constantFontGuard): `\vec{c}` is a vector, `\bar{G}`
- * a mean or a label, `\hat{c}` a unit vector or an operator, `\dot{c}` a
- * dotted variable as often as the rate of change of the speed of light. Read
- * through the accent, the letter was the constant itself, and a geometrized
- * target set it to one under its accent: `\vec{c} M` shipped as `\vec{1}M`,
- * and `\hat{c} = 1` as `\hat{1} = 1`.
+ * a mean or a label, `\dot{c}` a dotted variable as often as the rate of
+ * change of the speed of light. Read through the accent, the letter was the
+ * constant itself, and a geometrized target set it to one under its accent:
+ * `\vec{c} M` shipped as `\vec{1}M`, and `\hat{c} = 1` as `\hat{1} = 1` while
+ * the hat was read through (a hat is now looked up whole, LOOKUP_ACCENTS, and
+ * never reads its letter).
  *
  * The decision is the analysis's, not the body's shape. A guard that matched
  * the lone letter under the accent was passed, one review round after
@@ -6353,14 +6425,13 @@ function analyzeSupsub(n: any, ctx: Ctx): Factor {
 
 /**
  * The accents a scripted symbol is read through (R3). The bar, the vector
- * arrow, the check and the breve keep the symbol's dimension, as the engine
- * reads them on a symbol with no scripts, and a dot takes a time off it per
- * order. The hat and the tilde are read through on a symbol with no scripts,
- * which is the owner's to rule on (a unit vector, an operator, a Fourier
- * transform or a rescaling need not keep the dimension), and are not extended
- * to scripted symbols; a wide accent is not read at all.
+ * arrow and the overline keep the symbol's dimension, as the engine reads them
+ * on a symbol with no scripts, and a dot takes a time off it per order. An
+ * accent that makes another symbol (LOOKUP_ACCENTS, wide forms included) is
+ * not read through but named: `\hat{g}_{\alpha\beta}` is looked up as
+ * `\hat{g}` with its subscript, exactly and then as indices, as any symbol is.
  */
-const SCRIPTED_ACCENTS = new Set(["\\bar", "\\vec", "\\check", "\\breve", "\\overline", "\\dot", "\\ddot"])
+const SCRIPTED_ACCENTS = new Set([...TRANSPARENT_ACCENTS, "\\dot", "\\ddot"])
 
 /**
  * The symbol a supsub's scripts are set on (symbolBaseOf), or null for a
@@ -6368,7 +6439,7 @@ const SCRIPTED_ACCENTS = new Set(["\\bar", "\\vec", "\\check", "\\breve", "\\ove
  * symbol stays with the compound reading, which reads it as it always has
  * (`\bar{r}^{2}`, `\dot{r}^{2}`, `{c}^{2}`): the scripts that need the symbol's
  * name are the subscript, an index list and a label. So does c or G under an
- * accent, which the compound reading declines as another symbol
+ * accent read through, which the compound reading declines as another symbol
  * (analyzeAccentBody). A label mixed with indices is named before the accent
  * is judged, as it is on a symbol with none.
  */
@@ -6384,14 +6455,11 @@ function scriptedSymbolOf(
   const tex = supsubTex(symbol.tex, n, ctx)
   if (label === "mixed") throw new Unsupported(`a superscript on “${tex}” that mixes a label with indices`)
   if (symbol.accent == null) return symbol
+  // A hatted c is named `\hat{c}` (symbolBaseOf), never the constant.
   if (symbol.text === "c" || symbol.text === "G") return null
   if (symbol.stacked) throw new Unsupported(`stacked accents on “${tex}”, which are not supported`)
-  if (SCRIPTED_ACCENTS.has(symbol.accent)) return symbol
-  if (TRANSPARENT_ACCENTS.has(symbol.accent)) {
-    throw new Unsupported(
-      `the accent “${symbol.accent}” over the scripted symbol “${tex}” — a unit vector, an operator or a transform, which need not keep the symbol's dimension — is not supported yet`,
-    )
-  }
+  // An accent that makes another symbol (R1) is part of the name its scripts are read on.
+  if (SCRIPTED_ACCENTS.has(symbol.accent) || lookupAccentOf(symbol.accent) != null) return symbol
   throw new Unsupported(`the unsupported accent “${symbol.accent}”`)
 }
 
@@ -6478,8 +6546,12 @@ function analyzeScriptedSymbol(
     return { kind: "sym", dim: d, emit: () => wholeTex }
   }
   // A power on an accented symbol stays with the compound reading
-  // (scriptedSymbolOf); any other exponent is not read on it.
-  if (symbol.accent != null) throw new Unsupported(`an exponent on “${wholeTex}” that could not be read`)
+  // (scriptedSymbolOf); any other exponent is not read on it. A symbol an
+  // accent names (R1) is a symbol like any other: unknown, its superscript
+  // is not read at all, as on an unknown letter below.
+  if (symbol.accent != null && lookupAccentOf(symbol.accent) == null) {
+    throw new Unsupported(`an exponent on “${wholeTex}” that could not be read`)
+  }
   // Read bare, the base is the constant itself only in italic type.
   constantFontGuard(baseText, font, ctx)
   if (typeof reading === "object") {

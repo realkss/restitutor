@@ -162,7 +162,6 @@ describe("the decline ledger", () => {
       "h^{ij\\mathrm{TT}} = 0",
       "x = c^{\\dagger}",
       "\\dot{u}^{a} = u^{b}\\nabla_{b}u^{a}",
-      "\\hat{g}_{ab} = 0",
       "\\hat{\\bar{h}}_{ab} = 0",
       "r = (r)^{+}",
       "\\operatorname{diag}(-1,1,1,1) = g_{ab}",
@@ -272,6 +271,13 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("A_{i,j} = A_{j,i}").class, "unsupported")
     assert.strictEqual(outcome("T^{ab}{}_{;b} = 0").class, "unchanged")
     assert.strictEqual(outcome("V_{m,n} = 0").class, "unknown-symbol")
+  })
+  test("accents that make another symbol: a miss is an unknown symbol, an expression under one is the reader's", () => {
+    // Step 19d (R1): a hat, tilde, check or breve is looked up whole.
+    for (const tex of ["\\vec{v} = v\\hat{v}", "\\tilde{v} = v/c", "\\widehat{v} = v/c", "\\hat{g}_{ab} = 0", "\\check{r}_{s} = 2M"])
+      assert.strictEqual(outcome(tex).class, "unknown-symbol", tex)
+    for (const tex of ["x = \\hat{c^{2}} M", "h_{ab} = |\\tilde{h_{ab}}|", "x = \\widetilde{r + M}"])
+      assert.strictEqual(outcome(tex).class, "unsupported", tex)
   })
   test("nothing the engine says on these pages lands outside the classes", () => {
     // Every wording the engine used on the corpus (scripts/ledger.ts, 2026-09-11)

@@ -1650,9 +1650,14 @@ describe("reassembly fidelity and upright words", () => {
   })
 
   test("a font under an accent survives", () => {
-    assert.strictEqual(rawRestored("E = \\tilde{\\bm{p}}"), "E = \\tilde{\\bm{p}}c")
+    assert.strictEqual(rawRestored("E = \\bar{\\bm{p}}"), "E = \\bar{\\bm{p}}c")
     assert.strictEqual(rawRestored("E = \\vec{\\mathbf{p}}"), "E = \\vec{\\mathbf{p}}c")
-    assert.strictEqual(rawRestored("E = \\tilde{\\bm{p}}", GEO), "E = \\tilde{\\bm{p}}")
+    assert.strictEqual(rawRestored("E = \\bar{\\bm{p}}", GEO), "E = \\bar{\\bm{p}}")
+    // Since step 19d (R1) a tilde makes another symbol, looked up under its
+    // name, font and all.
+    const tilde = run("E = \\tilde{\\bm{p}}")
+    assert.ok(tilde.kind === "declined", JSON.stringify(tilde))
+    assert.deepStrictEqual(tilde.unknown, ["\\tilde{\\bm{p}}"])
   })
 
   test("a constant never lands inside a font, and a sum under one is parenthesized", () => {
@@ -2647,36 +2652,21 @@ describe("batch-1 review fixes", () => {
     // `\vec{c}Mc` and `\frac{\bar{G}Mc^{2}}{G}`, the accented letter read as the constant.
     declines("E = \\vec{c} M", ACCENTED("\\vec{c}", "c"))
     declines("E = \\bar{G} M", ACCENTED("\\bar{G}", "G"))
-    declines("E = \\tilde{G} M", ACCENTED("\\tilde{G}", "G"))
-    declines("\\hat{c} = 1", ACCENTED("\\hat{c}", "c"), [GEO])
     declines("E = \\vec c M", ACCENTED("\\vec{c}", "c"))
     declines("E = \\bar{{c}} M", ACCENTED("\\bar{c}", "c"))
     declines("E = \\overline{c} M", ACCENTED("\\overline{c}", "c"))
-    declines("E = \\check{c} M", ACCENTED("\\check{c}", "c"))
-    declines("E = \\breve{G} M", ACCENTED("\\breve{G}", "G"))
-    declines("E = \\hat{c}^{2} M", ACCENTED("\\hat{c}", "c"))
     declines("E = \\vec{c}\\cdot\\vec{p}", ACCENTED("\\vec{c}", "c"), [GEO])
-    // A script on the letter under the accent: live at GEO `\bar{1}M`,
-    // `\overline{1}M` and `\hat{1}t^{2}/t`; at SI `\frac{G\bar{c^{2}}M}{c^{4}}`.
+    // A script on the letter under the accent: live at GEO `\bar{1}M` and
+    // `\overline{1}M`; at SI `\frac{G\bar{c^{2}}M}{c^{4}}`.
     declines("x = \\bar{c^{2}} M", ACCENTED("\\bar{c^{2}}", "c"))
     declines("x = \\overline{c^{2}} M", ACCENTED("\\overline{c^{2}}", "c"))
-    declines("x = \\hat{c^{2}}\\,t^{2}/t", ACCENTED("\\hat{c^{2}}", "c"), [GEO])
-    // c_0 is not read as the constant but looked up, and is not in the registry:
-    // the decline names it unknown, not the accent (step 7c: the accent decides
-    // on what the analysis read).
-    const subscripted = run("x = \\hat{c_{0}} M")
-    assert.ok(subscripted.kind === "declined", JSON.stringify(subscripted))
-    assert.deepStrictEqual(subscripted.reasons, [])
-    assert.deepStrictEqual(subscripted.unknown, ["c_{0}"])
     declines("x = \\bar{{c}^{2}} M", ACCENTED("\\bar{{c}^{2}}", "c"))
-    declines("x = \\tilde{G^{2}} M", ACCENTED("\\tilde{G^{2}}", "G"))
     // An empty group, a script on nothing or brackets beside the lone letter:
-    // live at GEO `\bar{1}M`, `\vec{1}M`, `\hat{1}M`, `\overline{1}M`, and
+    // live at GEO `\bar{1}M`, `\vec{1}M`, `\overline{1}M`, and
     // `\bar{{}^{2}}M` with the square stripped as c² under the bar.
     declines("x = \\bar{c{}} M", ACCENTED("\\bar{c}", "c"))
     declines("x = \\bar{{}c} M", ACCENTED("\\bar{c}", "c"))
     declines("x = \\vec{{}c} M", ACCENTED("\\vec{c}", "c"))
-    declines("x = \\hat{G{}} M", ACCENTED("\\hat{G}", "G"))
     declines("x = \\overline{c{}} M", ACCENTED("\\overline{c}", "c"))
     declines("x = \\bar{{c}{}} M", ACCENTED("\\bar{{c}}", "c"))
     // Since step 15 the numeral on nothing after c declines first, as it does
@@ -2701,8 +2691,8 @@ describe("batch-1 review fixes", () => {
       declines("x = \\bar{((c))} M", ACCENTED("\\bar{((c))}", "c"), [target])
       declines("x = \\bar{(c)^{2}} M", ACCENTED("\\bar{(c)^{2}}", "c"), [target])
       declines("x = \\bar{[(c)]} M", ACCENTED("\\bar{[(c)]}", "c"), [target])
-      declines("x = \\hat{((G))} M", ACCENTED("\\hat{((G))}", "G"), [target])
-      declines("\\hat{((c))}M = M", ACCENTED("\\hat{((c))}", "c"), [target])
+      declines("x = \\vec{((G))} M", ACCENTED("\\vec{((G))}", "G"), [target])
+      declines("\\vec{((c))}M = M", ACCENTED("\\vec{((c))}", "c"), [target])
       declines("x = \\bar{c\\cdot} M", ACCENTED("\\bar{c\\cdot}", "c"), [target])
       declines("x = \\bar{2c} M", ACCENTED("\\bar{2c}", "c"), [target])
       declines("x = \\bar{1\\,c} M", ACCENTED("\\bar{1c}", "c"), [target])
@@ -2719,6 +2709,35 @@ describe("batch-1 review fixes", () => {
     assert.strictEqual(rawRestored("E = \\bar{m}c^2", HL), "E = \\bar{m}c^{2}")
     assert.strictEqual(rawRestored("\\dot{r} = v"), "\\dot{r} = v")
     assert.strictEqual(rawRestored("E = \\vec{p}\\cdot\\vec{v}", GEO), "E = \\vec{p}\\cdot\\vec{v}")
+  })
+
+  // Step 19d (R1): a hat, tilde, check or breve makes another symbol, looked
+  // up whole, so the letter under it is never read at all, the constant least
+  // of all. What the constant guard declined above is now an unknown symbol or,
+  // over an expression, no symbol to look up.
+  test("under a hat, tilde, check or breve c and G are never read: the accented symbol is looked up", () => {
+    const unknownOnly = (tex: string, symbol: string, target: TargetSpec = SI) => {
+      const result = run(tex, target)
+      assert.ok(result.kind === "declined", `${tex} → ${JSON.stringify(result)}`)
+      assert.deepStrictEqual([result.reasons, result.unknown], [[], [symbol]], tex)
+    }
+    for (const target of [SI, HL, GEO]) {
+      unknownOnly("E = \\tilde{G} M", "\\tilde{G}", target)
+      unknownOnly("\\hat{c} = 1", "\\hat{c}", target)
+      unknownOnly("E = \\check{c} M", "\\check{c}", target)
+      unknownOnly("E = \\breve{G} M", "\\breve{G}", target)
+      unknownOnly("E = \\hat{c}^{2} M", "\\hat{c}", target)
+      unknownOnly("E = \\widehat{c} M", "\\widehat{c}", target)
+    }
+    const COMPOUND = (accent: string) => `the accent “${accent}” over a compound expression, which is not supported`
+    for (const target of [SI, GEO]) {
+      declines("x = \\hat{c^{2}}\\,t^{2}/t", COMPOUND("\\hat"), [target])
+      declines("x = \\tilde{G^{2}} M", COMPOUND("\\tilde"), [target])
+      declines("x = \\hat{((G))} M", COMPOUND("\\hat"), [target])
+      declines("\\hat{((c))}M = M", COMPOUND("\\hat"), [target])
+      // Live before R1, the subscripted c_0 was read through the hat and listed unknown.
+      declines("x = \\hat{c_{0}} M", COMPOUND("\\hat"), [target])
+    }
   })
 
   test("a translation that sets numerals side by side, or parts them, declines (the numeral-fusion net)", () => {
@@ -3205,13 +3224,16 @@ describe("delimiters: bars, sized delimiters, Dirac notation and construct names
     declines("P = |\\mathbf{T}_{ab}|", TENSOR("\\mathbf{T}_{ab}"))
     // Review round: braces, an accent, an overline or an old-style font set
     // around the whole indexed symbol hid it, and the bars read as a modulus.
-    declines("\\rho = |\\tilde{T_{ab}}|", TENSOR("\\tilde{T_{ab}}"))
+    // (The reviewer's accent was a tilde, which since step 19d (R1) makes
+    // another symbol and over an indexed expression declines on its own.)
+    declines("\\rho = |\\bar{T_{ab}}|", TENSOR("\\bar{T_{ab}}"))
     declines("\\rho = |{\\bf T_{ab}}|", TENSOR("{\\bf T_{ab}}"))
     declines("\\rho = |{T^{a}{}_{b}}|", TENSOR("{T^{a}{}_{b}}"))
     declines("\\rho = \\left|{T_{ab}}\\right|", TENSOR("{T_{ab}}"))
-    declines("\\rho = \\left|\\tilde{T_{ab}}\\right|", TENSOR("\\tilde{T_{ab}}"))
+    declines("\\rho = \\left|\\vec{T_{ab}}\\right|", TENSOR("\\vec{T_{ab}}"))
     declines("\\rho = |{\\textstyle T_{ab}}|", TENSOR("{\\textstyle T_{ab}}"))
-    declines("\\rho = |\\tilde{T^{a}{}_{b}}|", TENSOR("\\tilde{T^{a}{}_{b}}"))
+    declines("\\rho = |\\bar{T^{a}{}_{b}}|", TENSOR("\\bar{T^{a}{}_{b}}"))
+    declines("\\rho = |\\tilde{T_{ab}}|", "the accent “\\tilde” over a compound expression, which is not supported")
     declines("\\rho = |\\overline{T}_{ab}|", TENSOR("\\overline{T}_{ab}"))
     declines("\\rho = |\\overline{T_{ab}}|", TENSOR("\\overline{T_{ab}}"))
     // Second review round: a braced indexed symbol carrying a further script
@@ -3226,7 +3248,7 @@ describe("delimiters: bars, sized delimiters, Dirac notation and construct names
     // The wrappers change nothing else: one index is still a component's
     // modulus, and a dimensionless tensor still passes.
     assert.strictEqual(rawRestored("\\rho = |{T_{a}}|"), "\\rho = \\frac{|{T_{a}}|}{c^{2}}")
-    assert.strictEqual(rawRestored("h_{ab} = |\\tilde{h_{ab}}|"), "h_{ab} = |\\tilde{h_{ab}}|")
+    assert.strictEqual(rawRestored("h_{ab} = |\\bar{h_{ab}}|"), "h_{ab} = |\\bar{h_{ab}}|")
     assert.strictEqual(rawRestored("h_{ab} = |{h_{a}}_{b}|"), "h_{ab} = |{h_{a}}_{b}|")
   })
 
@@ -3952,8 +3974,6 @@ describe("bases, accents, labels and named operators (step 11)", () => {
   }
   const DOT = (tex: string) =>
     `a dot on the indexed symbol “${tex}” — a time derivative or the derivative along u^{a}, which differ by a velocity`
-  const SCRIPTED_ACCENT = (accent: string, tex: string) =>
-    `the accent “${accent}” over the scripted symbol “${tex}” — a unit vector, an operator or a transform, which need not keep the symbol's dimension — is not supported yet`
   const MARK_ON_COMPOUND = (mark: string) =>
     `the label or mark “${mark}” on a compound expression, which the engine cannot read as a symbol`
 
@@ -4025,7 +4045,7 @@ describe("bases, accents, labels and named operators (step 11)", () => {
     assert.deepStrictEqual(reasons("\\vec{k}' = k"), ["a prime on a compound expression, which the engine cannot read as a symbol"])
   })
 
-  test("a scripted bar, arrow, check, breve or overline reads the symbol under it with its scripts (R3)", () => {
+  test("a scripted bar, arrow or overline reads the symbol under it with its scripts (R3)", () => {
     // Read as a compound base, h̄_{μν} looked up the bare h.
     const box = translated("\\Box\\bar h_{\\mu\\nu} = -16\\pi T_{\\mu\\nu}")
     assert.strictEqual(box.restoredTex, "\\Box\\bar{h}_{\\mu\\nu} = -\\frac{16\\pi GT_{\\mu\\nu}}{c^{4}}")
@@ -4037,8 +4057,7 @@ describe("bases, accents, labels and named operators (step 11)", () => {
       assert.strictEqual(unchanged(tex).targetUnitTex, "\\mathrm{kg}\\,\\mathrm{m}^{-1}\\,\\mathrm{s}^{-2}", tex)
     }
     unchanged("\\bar{\\mathbf{h}}_{\\mu\\nu} = 0")
-    assert.strictEqual(rawRestored("\\check{r}_{s} = 2M"), "\\check{r}_{s} = \\frac{2GM}{c^{2}}")
-    assert.strictEqual(rawRestored("\\breve{r}_{s} = 2M"), "\\breve{r}_{s} = \\frac{2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("\\vec{r}_{s} = 2M"), "\\vec{r}_{s} = \\frac{2GM}{c^{2}}")
     // A lone power keeps the compound reading it always had.
     assert.strictEqual(rawRestored("\\bar r^2 = M^2"), "\\bar{r}^{2} = \\frac{G^{2}M^{2}}{c^{4}}")
     // Under an accent c is another symbol, scripted or not.
@@ -4065,23 +4084,101 @@ describe("bases, accents, labels and named operators (step 11)", () => {
     assert.deepStrictEqual(declined("\\dot{\\zeta}_{k} = 0").unknown, ["\\zeta_{k}"])
   })
 
-  test("stacked, hat, tilde and wide accents on a scripted symbol decline; the bare letter is never read", () => {
+  test("stacked accents on a scripted symbol decline; the bare letter is never read", () => {
     assert.deepStrictEqual(reasons("\\hat{\\bar{h}}_{ab} = 0"), ["stacked accents on “\\hat{\\bar{h}}_{ab}”, which are not supported"])
     assert.deepStrictEqual(reasons("\\bar{\\dot{T}}_{ab} = 0"), ["stacked accents on “\\bar{\\dot{T}}_{ab}”, which are not supported"])
-    // Owner-gated (R1): read through a hat, ĝ_{αβ} was the metric determinant
-    // and θ̂ the polar angle.
-    assert.deepStrictEqual(reasons("\\hat{g}_{\\alpha\\beta} = 0"), [SCRIPTED_ACCENT("\\hat", "\\hat{g}_{\\alpha\\beta}")])
-    assert.deepStrictEqual(reasons("\\hat{x}^{i}\\hat{x}_{i} = 1"), [SCRIPTED_ACCENT("\\hat", "\\hat{x}^{i}")])
-    assert.deepStrictEqual(reasons("{\\hat{\\theta}}^{(\\nu)}({\\hat{e}}_{(\\mu)}) = \\delta^{\\nu}_{\\mu}"), [
-      SCRIPTED_ACCENT("\\hat", "{\\hat{\\theta}}^{(\\nu)}"),
-    ])
-    assert.deepStrictEqual(reasons("\\tilde{h}_{ij} = h_{ij}"), [SCRIPTED_ACCENT("\\tilde", "\\tilde{h}_{ij}")])
-    // Without R1 a wide accent is not read at all; `\widehat{v} = v/c` would ship `vc/c`.
-    assert.deepStrictEqual(reasons("\\widehat{v} = v/c"), ["the unsupported accent “\\widehat”"])
-    assert.deepStrictEqual(reasons("\\widetilde{\\Gamma}^{a}_{bc} = -\\Gamma^{a}_{bc}"), ["the unsupported accent “\\widetilde”"])
     // An index subscript on an accented letter the dictionary has no reading
     // for is a miss, not the bare letter (v, a velocity).
     assert.deepStrictEqual(declined("\\vec{v}_{1} = v").unknown, ["\\vec{v}_{1}"])
+  })
+
+  // Step 19d (R1, the owner's ruling of 2026-09-26): a hat, tilde, check or
+  // breve makes another symbol, looked up under its own name (symbolKey).
+  test("a hat, tilde, check or breve names another symbol, unknown unless the dictionary lists it (R1)", () => {
+    const unknownOnly = (tex: string, symbols: string[]) => {
+      const result = declined(tex)
+      assert.deepStrictEqual([result.reasons, result.unknown], [[], symbols], tex)
+    }
+    // Live wrong before R1: the unit vector read as a velocity, `\frac{v\hat{v}}{c}`;
+    // the rescaled velocity ṽ = v/c read as v, `vc/c`.
+    unknownOnly("\\vec v = v\\hat v", ["\\hat{v}"])
+    unknownOnly("\\vec{v} = v\\hat{v}", ["\\hat{v}"])
+    unknownOnly("\\tilde v = v/c", ["\\tilde{v}"])
+    unknownOnly("\\tilde{r} = r/M", ["\\tilde{r}"])
+    // The wide accents are the same symbols, listed as written (F-B1).
+    unknownOnly("\\widehat{v} = v/c", ["\\widehat{v}"])
+    unknownOnly("\\widetilde{r} = 2M", ["\\widetilde{r}"])
+    unknownOnly("\\widecheck{r} = 2M", ["\\widecheck{r}"])
+    // Scripted: the accented name with its subscript, exactly and as indices.
+    // Read through the hat, ĝ_{αβ} was the metric and θ̂ the polar angle; the
+    // tetrad ê_{(μ)} passed only as Euler's number.
+    unknownOnly("\\hat{g}_{\\alpha\\beta} = 0", ["\\hat{g}_{\\alpha\\beta}"])
+    unknownOnly("\\beta^{\\alpha\\beta}\\hat{g}_{\\alpha\\beta} = 0", ["\\hat{g}_{\\alpha\\beta}"])
+    unknownOnly("{\\hat{\\theta}}^{(\\nu)}({\\hat{e}}_{(\\mu)}) = \\delta^{\\nu}_{\\mu}", ["{\\hat{\\theta}}^{(\\nu)}", "{\\hat{e}}_{(\\mu)}"])
+    unknownOnly("\\tilde{h}_{ij} = h_{ij}", ["\\tilde{h}_{ij}"])
+    unknownOnly("\\widetilde{\\Gamma}^{a}_{bc} = -\\Gamma^{a}_{bc}", ["\\widetilde{\\Gamma}^{a}_{bc}"])
+    unknownOnly("\\check{r}_{s} = 2M", ["\\check{r}_{s}"])
+    unknownOnly("\\breve{r}_{s} = 2M", ["\\breve{r}_{s}"])
+    // The CFT page's c̃ is a central charge, never the speed of light.
+    unknownOnly("E = -\\frac{2\\pi(c + \\tilde{c})}{24}", ["\\tilde{c}"])
+    // A power is read on the accented symbol, as on any other, and on an
+    // unknown one a symbolic superscript is not read at all (`h = h^{s}`).
+    unknownOnly("\\hat{v}^{2} = 1", ["\\hat{v}"])
+    unknownOnly("x = \\hat{g}^{\\zeta}", ["\\hat{g}"])
+    unknownOnly("x = \\hat{c}^{n}", ["\\hat{c}"])
+    // Under a transparent accent the hat is still its own symbol.
+    unknownOnly("\\vec{\\hat{x}} = 0", ["\\hat{x}"])
+    // Over an expression there is no symbol to look up.
+    assert.deepStrictEqual(reasons("x = \\widetilde{r + M}"), ["the accent “\\widetilde” over a compound expression, which is not supported"])
+    assert.deepStrictEqual(reasons("x = \\hat{1}\\,r"), ["the accent “\\hat” over a compound expression, which is not supported"])
+    // The bar and the arrow stay transparent: h̄_{μν} keeps h's dimension.
+    assert.strictEqual(rawRestored("\\Box\\bar h_{\\mu\\nu} = -16\\pi T_{\\mu\\nu}"), "\\Box\\bar{h}_{\\mu\\nu} = -\\frac{16\\pi GT_{\\mu\\nu}}{c^{4}}")
+    assert.strictEqual(rawRestored("E = \\vec{p}"), "E = \\vec{p}c")
+  })
+
+  test("an accented symbol the dictionary lists is read under its own name, in every spelling (R1)", () => {
+    const ONE = { dim: [0, 0, 0, 0, 0] as HubRegistry["bare"][string]["dim"], gloss: "unit vector", si: "1" }
+    const declared: HubRegistry = {
+      ...reg,
+      bare: { ...reg.bare, [symbolKey("\\hat{n}")!]: ONE, [symbolKey("\\tilde{\\omega}")!]: ONE },
+      exact: { ...reg.exact, [symbolKey("\\tilde{h}_{ij}")!]: reg.bare.r },
+      indexed: { ...reg.indexed, [symbolKey("\\hat{e}")!]: ONE },
+    }
+    // The unit vector is dimensionless, and v n̂ restores as v does.
+    for (const tex of ["\\vec{v} = v\\hat{n}", "\\vec{v} = v\\hat n", "\\vec{v} = v\\widehat{n}"]) {
+      const out = translated(tex, SI, declared)
+      assert.strictEqual(out.changed, false, tex)
+      assert.ok(out.legend.some((e) => e.gloss === "unit vector"), tex)
+    }
+    assert.strictEqual(rawRestored("\\tilde{\\omega} = M\\omega", SI, declared), "\\tilde{\\omega} = \\frac{GM\\omega}{c^{3}}")
+    assert.strictEqual(rawRestored("\\tilde{h}_{ij} = 2M", SI, declared), "\\tilde{h}_{ij} = \\frac{2GM}{c^{2}}")
+    assert.strictEqual(rawRestored("\\widetilde{h}_{ij} = 2M", SI, declared), "\\widetilde{h}_{ij} = \\frac{2GM}{c^{2}}")
+    translated("\\hat{e}_{\\mu}\\hat{e}^{\\mu} = 1", SI, declared)
+    // Never the letter's reading: h̃ with no subscript is not h̃_{ij}, nor h.
+    assert.deepStrictEqual(declined("\\tilde{h} = 0", declared).unknown, ["\\tilde{h}"])
+    assert.deepStrictEqual(declined("\\check{n} = 1", declared).unknown, ["\\check{n}"])
+  })
+
+  test("symbolKey keys an accent that makes another symbol in one spelling (R1)", () => {
+    for (const [tex, key] of [
+      ["\\hat{v}", "\\hat{v}"],
+      ["\\hat v", "\\hat{v}"],
+      ["\\hat {v}", "\\hat{v}"],
+      ["\\widehat{v}", "\\hat{v}"],
+      ["\\hat\\theta", "\\hat{\\theta}"],
+      ["\\widetilde{\\Gamma}", "\\tilde{\\Gamma}"],
+      ["\\widecheck{r}", "\\check{r}"],
+      ["\\breve{x}", "\\breve{x}"],
+      ["\\hat{\\mathbf{e}}", "\\hat{\\mathbf{e}}"],
+      ["\\tilde{h}_{ij}", "\\tilde{h}_ij"],
+      ["\\widetilde{h}_{i j}", "\\tilde{h}_ij"],
+    ] as const) {
+      assert.strictEqual(symbolKey(tex), key, tex)
+    }
+    // A script under the accent makes a compound, and an accent needs an argument.
+    for (const tex of ["\\hat{x_{1}}", "\\hat{x'}", "\\hat", "\\hat{}", "\\widetilde{\\Gamma}^{a}"]) {
+      assert.strictEqual(symbolKey(tex), null, tex)
+    }
   })
 
   test("a label is part of the symbol's name, looked up under it and never under its letter (R4)", () => {
