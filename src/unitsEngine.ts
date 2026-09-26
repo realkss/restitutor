@@ -2181,16 +2181,40 @@ function glossNounOf(entry: RegEntry): string {
  * The gloss names the reading by its noun and says which coordinates the
  * component is along, each once: `metric, component along t`, never the
  * dimensionless qualifier of the entry it came from. Its unit is the
- * component's own. A component along a coordinate of time is noted for
- * chartMixGuard.
+ * component's own. The trade itself is componentDim's, which a subscript on a
+ * braced tensor or a sum of tensors takes as well (analyzeScriptedCompound).
  */
 function componentEntry(entry: RegEntry, baseText: string, subNodes: any[], displayTex: string, ctx: Ctx): RegEntry {
-  const labels = coordinateTokensOf(subNodes)
-  if (labels.length === 0) return entry
+  if (coordinateTokensOf(subNodes).length === 0) return entry
   if ((baseText === "\\partial" || baseText === "\\nabla") && indexLettersOf(scriptTokensOf(subNodes).filter(isGenuineIndex)).length > 1) {
     throw new Unsupported(`several indices on the derivative “${displayTex}”, a coordinate among them — a repeated derivative, which is not supported yet`)
   }
-  let d = entry.dim
+  const component = componentDim(entry.dim, subNodes, displayTex, ctx)
+  if (dimIsZero(dimSub(component.dim, entry.dim))) return entry
+  return {
+    ...entry,
+    dim: component.dim,
+    gloss: `${glossNounOf(entry)}, component along ${component.names.join(" and ")}`,
+    si: plainUnitOf(component.dim, { system: "si", geometrized: false }),
+  }
+}
+
+/**
+ * P3's trade: the dimension `d` of a tensor read with every index a length
+ * coordinate, taken to the component its lower index list names, with the
+ * names of the coordinates it is along, each once. Every lower label trades one
+ * reciprocal length for the reciprocal of its coordinate's dimension, wherever
+ * the list stands: on a symbol (componentEntry) or on a braced tensor or a sum
+ * of tensors (analyzeScriptedCompound), so `{T^{\mu}}_{t}` and `T^{\mu}_{t}`
+ * are one component and read alike. A coordinate the dictionary has no
+ * reading for declines, and a label alone in its own parentheses declines
+ * (frameLegGuard). A component along a coordinate of time is noted for
+ * chartMixGuard.
+ */
+function componentDim(d: Dim, subNodes: any[], displayTex: string, ctx: Ctx): { dim: Dim; names: string[] } {
+  const labels = coordinateTokensOf(subNodes)
+  if (labels.length === 0) return { dim: d, names: [] }
+  frameLegGuard(subNodes, displayTex, ctx)
   const names: string[] = []
   for (const token of labels) {
     const tex = indexTokenTex(token, ctx)
@@ -2204,13 +2228,49 @@ function componentEntry(entry: RegEntry, baseText: string, subNodes: any[], disp
     if (dimIsZero(dimSub(coordinate.dim, dim(0, 0, 1)))) ctx.timeComponentRead ??= { tex: displayTex, label: name }
   }
   chartMixGuard(ctx)
-  if (dimIsZero(dimSub(d, entry.dim))) return entry
-  return {
-    ...entry,
-    dim: d,
-    gloss: `${glossNounOf(entry)}, component along ${names.join(" and ")}`,
-    si: plainUnitOf(d, { system: "si", geometrized: false }),
+  return { dim: d, names }
+}
+
+/**
+ * A coordinate label alone in its own parentheses in a lower index list
+ * (`u_{(t)}`, `g_{(t)(t)}`, `p_{(t)}`) is the tetrad notation of Chandrasekhar
+ * and the ZAMO literature as often as a coordinate component: a leg of an
+ * orthonormal frame, whose components keep the length-coordinate dimension
+ * (η_{(a)(b)} = diag(−1, 1, 1, 1), so `u_{(t)} = -1` holds as written, and
+ * `p_{(t)} = -E` is the local energy over c). Read as a component along t, the
+ * first came back as `-c` and the second lost its c. The notation does not say
+ * which is meant, so it declines, as a bracketed superscript is left to its
+ * other readings (coordinateSuperscriptGuard). Where the two readings agree it
+ * does not: a leg along r and a component along r both keep the length
+ * coordinate's dimension, so `g_{(r)(r)} = 1` reads, unchanged. A bracket that
+ * spans several indices (`T_{(t\phi)}`, `T_{(ab)}`) symmetrizes them and reads
+ * through.
+ */
+function frameLegGuard(subNodes: any[], displayTex: string, ctx: Ctx): void {
+  const tokens = scriptTokensOf(subNodes)
+  const paren = (x: any, family: "open" | "close") => {
+    const u = unwrap(x)
+    return u?.type === "atom" && u.family === family && u.text === (family === "open" ? "(" : ")")
   }
+  for (let i = 0; i + 2 < tokens.length; i += 1) {
+    const label = coordinateTokensOf([tokens[i + 1]])
+    if (!paren(tokens[i], "open") || !paren(tokens[i + 2], "close") || label.length !== 1) continue
+    const tex = indexTokenTex(label[0], ctx)
+    if (isLengthCoordinate(tex, ctx)) continue
+    throw new Unsupported(
+      `the bracketed label “(${tex})” in “${displayTex}” — a frame leg or a component along ${coordinateNameOf(tex)}, which the notation does not settle`,
+    )
+  }
+  for (const x of tokens) {
+    const u = unwrap(x)
+    if (u?.type === "ordgroup") frameLegGuard(u.body, displayTex, ctx)
+  }
+}
+
+/** Whether a coordinate label names a coordinate the dictionary reads as a length, whose component P3 leaves as the entry reads it. */
+function isLengthCoordinate(tex: string, ctx: Ctx): boolean {
+  const coordinate = ctx.reg.differential[symbolKey(tex) ?? tex]
+  return coordinate != null && dimIsZero(dimSub(coordinate.dim, dim(0, 1, 0)))
 }
 
 /**
@@ -6501,6 +6561,8 @@ function analyzeDifferentiatedSymbol(
   if (reading != null) coordinateSuperscriptGuard(name, head, wholeTex, ctx)
   let d: Dim
   if (headSub != null) {
+    // The head has shed the brackets a frame leg is written in (`u_{(t);b}`).
+    frameLegGuard(nodeListOf(n.sub), wholeTex, ctx)
     componentDigitGuard(name, head, reading, wholeTex, ctx)
     d = resolveSymbol(name, legendTex, ctx, { sub: headSub, missTex: wholeTex })
   } else {
@@ -6836,17 +6898,18 @@ function analyzeScriptedCompound(
     })
     if (subIsIndex && supIsReadable) {
       const inner = analyzeFactor(n.base, ctx)
-      const dimensionless = isDimensionlessGroup(inner.dim, ctx)
+      const own = compoundComponentDim(n, base, inner.dim, split, ctx)
+      const dimensionless = isDimensionlessGroup(own, ctx)
       if (sup === "index" && !kept && !dimensionless && !isTensorSum(base, ctx)) {
         throw new Unsupported(`a superscript “${scriptSrc(n.sup, ctx)}” on a group, which may be an exponent or an index`)
       }
       const scaled = kept
-        ? inner.dim
+        ? own
         : typeof sup === "object" && sup != null
-          ? dimScale(inner.dim, sup.p, sup.q)
+          ? dimScale(own, sup.p, sup.q)
           : sup === "index" && dimensionless
             ? ZERO
-            : inner.dim
+            : own
       const scripts = scriptsTex(n, ctx)
       if (split == null) return scripted(inner, scaled, () => scripts)
       return { ...scripted(inner, dimAdd(scaled, derivativeDim(split, ctx)), () => scripts), derivativeIndices: true }
@@ -6878,6 +6941,46 @@ function analyzeScriptedCompound(
   }
 
   throw new Unsupported("a super/subscript construct the engine could not read")
+}
+
+/**
+ * P3 on a compound base: the dimension of a group, `d`, taken to the component
+ * its index subscript names (the indices before the first derivative mark,
+ * where it has some). On a braced tensor or a sum of tensors, each read
+ * through its indexed entry (isIndexedTensor, isTensorSum), the subscript is
+ * the index list of every one of them, which is a fact of the notation, and a
+ * coordinate label there trades as it does on the symbol (componentDim): the
+ * staggered `{T^{\mu}}_{t}` is T^μ_t. Left as the group's dimension, it read
+ * in the ct-chart beside the t-chart component written unbraced, and
+ * `{T^{\mu}}_{t} = -\rho u^{\mu}u_{t} - P\delta^{\mu}_{t}` shipped with one c
+ * on ρ and one under P where SI takes c² on ρ and none on P.
+ *
+ * On any other group a coordinate label is a component of a tensor expression
+ * or a label, such as the variable of an average (`\langle r\rangle_{t}`) or
+ * the one a partial derivative holds fixed
+ * (`\left(\frac{\partial E}{\partial r}\right)_{t}`), and the two readings
+ * differ wherever the coordinate is no length: that declines. Where they agree
+ * (a label r, which trades a length for a length), the group keeps its
+ * dimension, and so it does where only the label is a reading: a coordinate
+ * the dictionary does not read (`\left[r\right]_{t_0}`, evaluated at t₀) has
+ * no component to be. A numeric power beside the subscript raises the
+ * component, as `(X_{t})^{2}`.
+ */
+function compoundComponentDim(n: any, base: any, d: Dim, split: MarkSplit | null, ctx: Ctx): Dim {
+  const indexNodes = split != null ? split.head : nodeListOf(n.sub)
+  if (coordinateTokensOf(indexNodes).length === 0) return d
+  const tex = quotedTexOf(n.base, ctx) + scriptsTex(n, ctx)
+  // A split's head has shed its brackets, so a frame leg is looked for in the
+  // subscript as written.
+  frameLegGuard(nodeListOf(n.sub), tex, ctx)
+  if (isIndexedTensor(n.base, ctx) || isTensorSum(base, ctx)) return componentDim(d, indexNodes, tex, ctx).dim
+  const unlike = coordinateTokensOf(indexNodes)
+    .map((x) => indexTokenTex(x, ctx))
+    .find((label) => ctx.reg.differential[symbolKey(label) ?? label] != null && !isLengthCoordinate(label, ctx))
+  if (unlike == null) return d
+  throw new Unsupported(
+    `the coordinate label ${coordinateNameOf(unlike)} in the subscript of “${tex}”, which is no tensor — a component along ${coordinateNameOf(unlike)} or a label, such as the variable of an average or one held fixed, which the notation does not settle`,
+  )
 }
 
 /**

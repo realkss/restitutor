@@ -6102,4 +6102,57 @@ describe("coordinate components: a lower coordinate label carries its coordinate
     const after = translateTex("T_{ab;t} = 0", katex, marks, SI)
     assert.ok(after.kind === "declined" && after.reasons[0].includes("named coordinate"), JSON.stringify(after))
   })
+
+  test("a label on a braced tensor or a sum of tensors trades as it does on the symbol (review fix)", () => {
+    // The staggered mixed tensor (1904.04923 #1 spells T^t_ν so): read as the
+    // group's dimension, `{T^{\mu}}_{t}` took the ct-chart beside the t-chart
+    // u_t and δ^μ_t, and the perfect fluid shipped with one c on ρ and one
+    // under P.
+    const fluid = "{T^{\\mu}}_{t} = -\\rho u^{\\mu}u_{t} - P\\delta^{\\mu}_{t}"
+    translates(fluid, SI, "{T^{\\mu}}_{t} = -\\rho u^{\\mu}u_{t}c^{2} - P\\delta^{\\mu}_{t}")
+    translates(fluid, GEO, fluid)
+    unchanged("{T^{\\mu}}_{t} = T^{\\mu}_{t}")
+    unchanged("{\\Gamma^{\\mu}}_{tt} = \\Gamma^{\\mu}_{tt}")
+    unchanged("{T^{\\mu}}_{\\theta} = T^{\\mu}_{\\theta}")
+    unchanged("(p_{1}+p_{2})_{t} = p_{t}")
+    // A power beside the label raises the component.
+    unchanged("{T^{\\mu}}_{t}^{2} = (T^{\\mu}_{t})^{2}")
+    // The head before derivative marks, as on the symbol.
+    const marks: HubRegistry = { ...reg, derivativeMarks: { ";": "\\nabla" } }
+    const head = translates("{T^{a}}_{t;b} = T^{a}_{t;b}", SI, "{T^{a}}_{t;b} = T^{a}_{t;b}", marks)
+    assert.strictEqual(head.targetUnitTex, "\\mathrm{kg}\\,\\mathrm{m}^{-1}\\,\\mathrm{s}^{-3}")
+    // The shift is read beside the component as it is unbraced.
+    declines("{\\beta^{i}}_{t} = 0", CHART("\\beta^{i}", "{\\beta^{i}}_{t}"))
+  })
+
+  test("a label on a group that is no tensor declines where its two readings differ (review fix)", () => {
+    const NO_TENSOR = (tex: string, label: string) =>
+      `the coordinate label ${label} in the subscript of “${tex}”, which is no tensor — a component along ${label} or a label, such as the variable of an average or one held fixed, which the notation does not settle`
+    declines("\\left(T^{a} + \\rho u^{a}\\right)_{t} = 0", NO_TENSOR("\\left(T^{a}+\\rho u^{a}\\right)_{t}", "t"))
+    declines("x = \\langle r\\rangle_{t}", NO_TENSOR("\\langle r\\rangle_{t}", "t"))
+    // Along r, a length, the component and the label agree.
+    translates("\\left(T^{a} + \\rho u^{a}\\right)_{r} = 0", SI, "\\left(T^{a} + \\rho u^{a}c^{2}\\right)_{r} = 0")
+  })
+
+  test("a label alone in its own parentheses is a frame leg as often as a component, and declines (review fix)", () => {
+    const LEG = (tex: string, label: string, along: string) =>
+      `the bracketed label “(${label})” in “${tex}” — a frame leg or a component along ${along}, which the notation does not settle`
+    // Chandrasekhar's tetrad components: u_(t) = −1 and p_(t) = −E_loc/c hold
+    // in an orthonormal frame, where P3's component along t read them as −c
+    // and without the c.
+    declines("u_{(t)} = -1", LEG("u_{(t)}", "t", "t"))
+    declines("p_{(t)} = -E", LEG("p_{(t)}", "t", "t"))
+    declines("g_{(t)(t)} = -1", LEG("g_{(t)(t)}", "t", "t"))
+    declines("T_{(\\theta)(\\theta)} = P", LEG("T_{(\\theta)(\\theta)}", "\\theta", "θ"))
+    declines("{T^{\\mu}}_{(t)} = 0", LEG("{T^{\\mu}}_{(t)}", "t", "t"))
+    // The brackets are looked for in the subscript as written, before the marks.
+    const marks: HubRegistry = { ...reg, derivativeMarks: { ";": "\\nabla" } }
+    declines("u_{(t);b} = 0", LEG("u_{(t);b}", "t", "t"), marks)
+    declines("{T^{a}}_{(t);b} = 0", LEG("{T^{a}}_{(t);b}", "t", "t"), marks)
+    // A leg along r and a component along r agree; a bracket over several
+    // indices symmetrizes them.
+    unchanged("g_{(r)(r)} = 1")
+    unchanged("T_{(t\\phi)} = 0")
+    translates("T_{(ab)} = \\rho u_{a}u_{b}", SI, "T_{(ab)} = \\rho u_{a}u_{b}c^{2}")
+  })
 })

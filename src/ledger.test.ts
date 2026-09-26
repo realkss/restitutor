@@ -60,9 +60,12 @@ describe("the decline ledger", () => {
     assert.strictEqual(outcome("x = \\frac{a, b}{c}").class, "unsupported")
     assert.strictEqual(outcome("\\sin(x").class, "parse")
     // Coordinate components (P3): an upper label, a coordinate the dictionary
-    // does not read, repeated derivatives, and a ct-chart reading beside a
-    // component along t are the reader's.
+    // does not read, repeated derivatives, a ct-chart reading beside a
+    // component along t, a label alone in its parentheses (a frame leg), and
+    // a label on a group that is no tensor are the reader's.
     assert.strictEqual(outcome("\\Gamma^{\\theta}_{rr} = 0").class, "unsupported")
+    assert.strictEqual(outcome("u_{(t)} = -1").class, "unsupported")
+    assert.strictEqual(outcome("\\left(T^{a} + \\rho u^{a}\\right)_{t} = 0").class, "unsupported")
     assert.strictEqual(outcome("g_{t't'} = 0").class, "unsupported")
     assert.strictEqual(outcome("\\partial_{tt}\\phi = \\partial_{rr}\\phi").class, "unsupported")
     assert.strictEqual(outcome("\\partial_{t}\\alpha = \\beta^{i}\\partial_{i}\\alpha").class, "unsupported")
