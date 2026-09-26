@@ -661,8 +661,9 @@ type TermInfo = {
   /**
    * A literal 1 standing alone. On a bare side of a relation this is a
    * convention marker ("… = 1"), not a quantity, so it takes no constants —
-   * `G = c = 1` must not restore to `… = 1G`. Inside a sum the 1 is an ordinary
-   * dimensionless term and still pins the sum to dimensionless.
+   * `G = c = 1` must not restore to `… = 1G`. It stands only against a pure
+   * number (unitLiteralGuard): `M = 1` declines. Inside a sum the 1 is an
+   * ordinary dimensionless term and still pins the sum to dimensionless.
    */
   isUnitLiteral: boolean
   /**
@@ -7566,8 +7567,8 @@ function translateRow(nodes: any[], ctx: Ctx, carriedTarget: Carried): RowResult
   // Insertions are solved once, during analysis; emission can then be replayed.
   // A side that is nothing but a literal 1 is a convention marker rather than a
   // quantity, so it stays a bare 1 (the same transparency a literal 0 has had).
-  // In a display with a line of several statements it may only against a
-  // pure number (unitLiteralGuard, in translateCore).
+  // It may only against a pure number (unitLiteralGuard, in translateCore),
+  // which is judged once the whole display is read.
   const resolvedTarget = target
   const isUnitLiteralSide = (sum: SumInfo | null) => sum != null && !sum.multiTerm && sum.terms[0].isUnitLiteral
   const insertionsPerSide = sums.map((sum) => {
@@ -7654,10 +7655,9 @@ type LineItem = { row: RowResult } | { tex: string }
 
 /**
  * A display line as statements: each translated as its own row, in order,
- * with the separators between them. `split` is set when the line held more
- * than one statement (a separator, or wide space that split a piece).
+ * with the separators between them.
  */
-type LineResult = { items: LineItem[]; rows: RowResult[]; split: boolean }
+type LineResult = { items: LineItem[]; rows: RowResult[] }
 
 const isListPunct = (n: any) => n?.type === "atom" && n.family === "punct" && (n.text === "," || n.text === ";")
 
@@ -7789,24 +7789,23 @@ function dimensionlessIn(d: Dim, geometrized: boolean): boolean {
 }
 
 /**
- * In a display with a split line, a statement with a side that is a bare 1
- * (translateRow leaves it bare, a convention marker) declines unless its
- * dimension is a pure number in the target. Beside a quantity with units the
- * 1 stands for that quantity's unit value, which the notation does not
- * state: at SI `v \ll 1` means v ≪ c and `\frac{M}{r} \ll 1` means
- * GM/(rc²) ≪ 1, yet both shipped with the 1 bare under a banner of m s⁻¹ and
- * kg m⁻¹, beside a first statement restored in full. Whether a lone 1 is
- * restored or declined is the owner's ruling (integration §4.2 item 9, plan
- * step 19), so this is the conservative default, and it covers only what the
- * statement layer newly reads: a display with a line of several statements
- * in it, which declined whole before the layer. It covers every statement of
- * that display, not the split line's alone: in `\begin{aligned} r_s &= 2M,
- * \qquad t = 0 \\ M &= 1 \end{aligned}` the list row is what made the display
- * readable, and the `M = 1` on the row below shipped under a kg banner. A
- * display with no split line keeps its reading until the ruling, a single
- * statement and a two-row `g_{tt} \approx -(1+2\Phi) \\ |\Phi| \ll 1` alike.
- * Against a pure number the 1 is one (`g_{tt} = -1 \qquad v \ll 1` in
- * Geometrized units), and a 1 inside a sum is an ordinary term, restored
+ * A statement with a side that is a bare 1 (translateRow leaves it bare, a
+ * convention marker) declines unless its dimension is a pure number in the
+ * target. Beside a quantity with units the 1 stands for that quantity's unit
+ * value, which the notation does not state: `M = 1` sets a mass to the unit
+ * of a system the equation never names (geometrized, Planck, solar), and at
+ * SI `v \ll 1` means v ≪ c and `\frac{M}{r} \ll 1` means GM/(rc²) ≪ 1. Each
+ * shipped with the 1 bare under a banner of kg, m s⁻¹ and kg m⁻¹, a banner
+ * the 1 does not carry. The owner ruled on 2026-09-26 (integration §4.2 item
+ * 9) that a lone 1 is transparent only against a dimensionless anchor, in
+ * every display: a single statement, each statement of a list, and each row
+ * of an array, a continuation row judged against the chain it continues
+ * (`v &= \frac{dr}{dt} \\ &= 1`). A mass set to 1 is a length set to 1
+ * geometrized, so `M = 1` declines on every target. A relation among the
+ * constants alone (`c = 1`, `G = c = 1`) never gets here: declarationGuard
+ * declines it as the declaration it is. Against a pure number the 1 is one
+ * (`\Omega = 1`, and `g_{tt} = -1 \qquad v \ll 1` in Geometrized units), and
+ * a 1 after a minus or a ± and a 1 inside a sum are ordinary terms, restored
  * like any other. A symbol the registry does not know leaves no target to
  * judge, since its dimension was read as a pure number's: `v\xi \ll 1` may
  * well be dimensionless. The display declines for the unknown instead, which
@@ -7814,7 +7813,7 @@ function dimensionlessIn(d: Dim, geometrized: boolean): boolean {
  * any line (a list, an ambiguous continuation) is the one the reader sees.
  */
 function unitLiteralGuard(lines: LineResult[], ctx: Ctx): void {
-  if (!lines.some((line) => line.split) || ctx.unknown.size > 0) return
+  if (ctx.unknown.size > 0) return
   for (const line of lines) {
     for (const row of line.rows) {
       if (!row.unitLiteralSide || dimensionlessIn(row.target, ctx.strip)) continue
@@ -7915,7 +7914,6 @@ function translateLine(nodes: any[], ctx: Ctx, carried: Carried): LineResult {
   const items: LineItem[] = []
   const rows: RowResult[] = []
   const splits = pieces.map(wideSplit)
-  const split = seps.length > 0 || splits.some(({ parts }) => parts.length > 1)
   pieces.forEach((piece, i) => {
     const before = i > 0 ? seps[i - 1] : null
     const after = seps[i] ?? null
@@ -7949,7 +7947,7 @@ function translateLine(nodes: any[], ctx: Ctx, carried: Carried): LineResult {
       items.push({ row })
     })
   })
-  return { items, rows, split }
+  return { items, rows }
 }
 
 /**

@@ -3433,8 +3433,9 @@ describe("statement layer: lists, connectives, wide space and the unit summary",
   test("a statement with a bare 1 for a side declines unless it is a pure number in the target", () => {
     // The statement-layer reviewer's counterexamples: each shipped at SI with
     // the 1 bare under a false banner (v ≪ c, |Φ| ≪ c², GM/(rc²) ≪ 1 and
-    // r = GM/c² were meant). Whether a lone 1 is restored is the owner's
-    // ruling (integration §4.2 item 9); until then a split line declines.
+    // r = GM/c² were meant). The owner's ruling (integration §4.2 item 9)
+    // declines a lone 1 against a quantity in every display; a single
+    // statement's cases are in "unit literal (step 19a)".
     const cases: [string, string, string, string][] = [
       [
         "E = m + \\frac{1}{2}mv^2, \\qquad v \\ll 1",
@@ -5828,5 +5829,113 @@ describe("derivative marks: comma and semicolon derivative indices (step 18)", (
     declines(`h^{${SIX}}_{\\mu\\nu,\\alpha} = 0`, UNDECLARED, reg)
     declines("{T^{\\ \\ c}}_{ab;c} = 0", UNDECLARED, reg)
     declines("\\Gamma_{00,i}^{i} = 4\\pi\\rho", UNDECLARED, reg)
+  })
+})
+
+describe("unit literal: a bare 1 stands only against a pure number (step 19a)", () => {
+  const HL: TargetSpec = { system: "hl", geometrized: false }
+  const UNIT_ONE = (statement: string) =>
+    `a side that is the number 1 in “${statement}”, whose units the equation does not state`
+  const declines = (tex: string, statement: string, targets: TargetSpec[], registry: HubRegistry = reg) => {
+    for (const target of targets) {
+      const result = translateTex(tex, katex, registry, target)
+      assert.strictEqual(result.kind, "declined", `${tex} → ${JSON.stringify(result)}`)
+      if (result.kind === "declined") assert.deepStrictEqual(result.reasons, [UNIT_ONE(statement)], tex)
+    }
+  }
+  const translates = (tex: string, target: TargetSpec, restoredTex: string, registry: HubRegistry = reg) => {
+    const result = translateTex(tex, katex, registry, target)
+    assert.strictEqual(result.kind, "translated", `${tex} → ${JSON.stringify(result)}`)
+    if (result.kind === "translated") assert.strictEqual(result.restoredTex, restoredTex, tex)
+  }
+  const aligned = (...rows: string[]) => `\\begin{aligned}\n${rows.join(" \\\\\n")}\n\\end{aligned}`
+
+  test("a single statement with a bare 1 beside a quantity declines on every target it is not a pure number in", () => {
+    // Each shipped unchanged under a banner the 1 does not carry: a mass, a
+    // curvature, a speed, a length and an energy set to the unit of a system
+    // the equation never names.
+    for (const tex of ["M = 1", "R = 1", "E = mc^{2} = 1"]) declines(tex, tex, [SI, HL, GEO])
+    declines("\\ell_P = \\sqrt{\\hbar G/c^3} = 1", "\\ell_{P} = \\sqrt{\\hbar G/c^{3}} = 1", [SI, HL, GEO])
+    // A speed, and GM/(rc²), are pure numbers geometrized, and there the 1 is one.
+    for (const tex of ["v = 1", "v = c = 1", "v \\ll 1", "0 < v < 1", "\\frac{M}{r} \\ll 1", "\\frac{r}{M} = 1"]) {
+      declines(tex, tex, [SI, HL])
+    }
+    for (const tex of ["v = 1", "v \\ll 1", "0 < v < 1", "\\frac{M}{r} \\ll 1", "\\frac{r}{M} = 1"]) {
+      translates(tex, GEO, tex)
+    }
+    // A 1 multiplied out, or written with a plus, is still the lone 1.
+    declines("M = 1 \\cdot 1", "M = 1\\cdot1", [SI, GEO])
+    declines("M = +1", "M = +1", [SI, GEO])
+  })
+
+  test("in an array without a list row every row is judged, a continuation row against its chain", () => {
+    declines(aligned("r_s &= 2M", "M &= 1"), "M &= 1", [SI, HL, GEO])
+    declines(aligned("M &= 1", "&= r"), "M &= 1", [SI, HL, GEO])
+    // v = dr/dt = 1 is v = c.
+    declines(aligned("v &= \\frac{dr}{dt}", "&= 1"), "&= 1", [SI, HL])
+    const weakField = aligned("g_{tt} &\\approx -(1 + 2\\Phi)", "|\\Phi| &\\ll 1")
+    declines(weakField, "|\\Phi| &\\ll 1", [SI, HL])
+    translates(weakField, GEO, weakField)
+    translates(
+      aligned("\\frac{r}{r_s} &= 1", "r_s &= 2M"),
+      SI,
+      aligned("\\frac{r}{r_{s}} &= 1", "r_{s} &= \\frac{2GM}{c^{2}}"),
+    )
+  })
+
+  test("against a dimensionless anchor the 1 is one, and a 1 after a minus or a ±, or in a sum, is a term", () => {
+    for (const target of [SI, HL, GEO]) {
+      // The registry's Ω is a solid angle, and its metric is dimensionless (x⁰ = ct).
+      translates("\\Omega = 1", target, "\\Omega = 1")
+      translates("g_{tt} = 1", target, "g_{tt} = 1")
+      translates("g_{tt} = -1", target, "g_{tt} = -1")
+    }
+    translates("g_{tt} = -1 \\qquad r \\gg M", SI, "g_{tt} = -1 \\qquad r \\gg \\frac{GM}{c^{2}}")
+    translates("g_{tt} = -1 \\qquad r \\gg M", GEO, "g_{tt} = -1 \\qquad r \\gg M")
+    translates("v = -1", SI, "v = -1c")
+    translates("v = \\pm 1", SI, "v = \\pm 1c")
+    // Anchored on the 1, the statement is a pure number and its other side is completed to one.
+    translates("1 = \\frac{r}{M}", SI, "1 = \\frac{rc^{2}}{GM}")
+    // A 1 that is one term of a sum pins the sum to dimensionless, as before.
+    const sum = run("E^2 = 1 - \\frac{2M}{r}")
+    assert.strictEqual(sum.kind, "declined", JSON.stringify(sum))
+    // Relations among the constants alone are declarations, whatever the 1.
+    for (const tex of ["c = 1", "G = c = 1"]) {
+      const result = run(tex)
+      assert.strictEqual(result.kind, "declined", JSON.stringify(result))
+      if (result.kind === "declined") assert.ok(result.reasons[0].includes("constants themselves"), tex)
+    }
+  })
+
+  test("an unknown symbol leaves no anchor to judge, and the statement declines for it alone", () => {
+    for (const target of [SI, GEO]) {
+      const result = run("v\\xi = 1", target)
+      assert.strictEqual(result.kind, "declined", JSON.stringify(result))
+      if (result.kind === "declined") {
+        assert.deepStrictEqual(result.reasons, [])
+        assert.deepStrictEqual(result.unknown, ["\\xi"])
+      }
+    }
+  })
+
+  test("the solver reviewer's counterexamples: a metric component with a dimension beside a bare 1 declines", () => {
+    // Were a coordinate component read with its coordinates' dimensions (plan
+    // step 19, P3), g_tt = 1 would have shipped unchanged under m² s⁻², beside
+    // g_tt = -1 restored as -c². Stated here with test readings.
+    const component = (si: string, dim: number[]) => ({ dim: dim as [number, number, number, number, number], gloss: "a metric component", si })
+    const components: HubRegistry = {
+      ...reg,
+      exact: {
+        ...reg.exact,
+        g_tt: component("m² s⁻²", [0, 24, -24, 0, 0]),
+        "\\eta_tt": component("m² s⁻²", [0, 24, -24, 0, 0]),
+        "g_\\theta\\theta": component("m²", [0, 24, 0, 0, 0]),
+      },
+    }
+    for (const tex of ["g_{tt} = 1", "-g_{tt} = 1", "\\eta_{tt} = 1"]) declines(tex, tex, [SI, HL], components)
+    // A length squared is no pure number geometrized either.
+    declines("g_{\\theta\\theta} = 1", "g_{\\theta\\theta} = 1", [SI, HL, GEO], components)
+    // In G = c = 1 a speed squared is a pure number, and the 1 is one.
+    translates("g_{tt} = 1", GEO, "g_{tt} = 1", components)
   })
 })
